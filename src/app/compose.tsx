@@ -23,9 +23,10 @@ import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useJournal } from '@/hooks/use-journal';
+import { useSettings } from '@/hooks/use-settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GrainBackground } from '@/components/grain-background';
-import { X, Image as ImageIcon, PlayCircle, Mic } from 'lucide-react-native';
+import { X, Image as ImageIcon, PlayCircle, Mic, Type } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -55,11 +56,33 @@ export default function ComposeScreen() {
   
   const [body, setBody] = useState('');
   const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
+  const [fontFamily, setFontFamily] = useState('JetBrainsMono-Medium');
   
   const { addComposition } = useJournal();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
+
+  const AVAILABLE_FONTS = [
+    { id: 'JetBrainsMono-Medium', name: 'SYS.MONO' },
+    { id: 'Inter_400Regular', name: 'INTER' },
+    { id: 'PlayfairDisplay_400Regular', name: 'PLAYFAIR' },
+    { id: 'ComicNeue_400Regular', name: 'COMIC' },
+    { id: 'SpaceGrotesk_400Regular', name: 'GROTESK' },
+    { id: 'BebasNeue_400Regular', name: 'BEBAS' },
+    { id: 'Caveat_400Regular', name: 'CAVEAT' },
+    { id: 'DancingScript_400Regular', name: 'DANCING' },
+    { id: 'Righteous_400Regular', name: 'FUNKY' },
+    { id: 'EBGaramond_400Regular', name: 'POETRY' },
+  ];
+
+  const cycleFont = () => {
+    const currentIndex = AVAILABLE_FONTS.findIndex(f => f.id === fontFamily);
+    const nextFont = AVAILABLE_FONTS[(currentIndex + 1) % AVAILABLE_FONTS.length];
+    setFontFamily(nextFont.id);
+  };
+  
+  const currentFontName = AVAILABLE_FONTS.find(f => f.id === fontFamily)?.name || 'SYS.MONO';
 
   const now = useMemo(() => new Date(), []);
   const dateString = useMemo(() => formatComposeDate(now), [now]);
@@ -107,7 +130,7 @@ export default function ComposeScreen() {
 
     setIsSaving(true);
     try {
-      await addComposition({ textContent: body.trim(), mediaElements });
+      await addComposition({ textContent: body.trim(), mediaElements, fontFamily });
       router.back();
     } catch (error) {
       console.error('Failed to save composition:', error);
@@ -179,6 +202,22 @@ export default function ComposeScreen() {
 
           <View style={styles.toolbarSpacer} />
 
+          {/* Font chooser */}
+          <Pressable 
+            onPress={cycleFont}
+            style={({ pressed }) => [
+              styles.fontButton,
+              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
+            ]}
+            accessibilityLabel="Cycle Font"
+            accessibilityRole="button"
+          >
+            <Type size={14} color={theme.text} />
+            <ThemedText style={[styles.fontButtonText, { color: theme.text }]}>
+              {currentFontName}
+            </ThemedText>
+          </Pressable>
+
           {/* Save button — pill, only active when there's content */}
           <Pressable
             onPress={handleSave}
@@ -186,7 +225,7 @@ export default function ComposeScreen() {
             style={({ pressed }) => [
               styles.saveButton,
               {
-                backgroundColor: canSave ? '#000000' : '#E0E0E0',
+                backgroundColor: canSave ? theme.text : theme.border,
                 opacity: pressed && canSave ? 0.7 : 1,
               },
             ]}
@@ -196,7 +235,7 @@ export default function ComposeScreen() {
             <ThemedText
               style={[
                 styles.saveText,
-                { color: canSave ? '#FFFFFF' : '#A0A0A0' },
+                { color: canSave ? theme.background : theme.textMuted },
               ]}
             >
               {isSaving ? 'Saving' : 'Save'}
@@ -257,15 +296,15 @@ export default function ComposeScreen() {
 
           {/* Body text input — the main writing area */}
           <TextInput
-            style={[styles.bodyInput, { color: theme.text }]}
+            style={[styles.bodyInput, { color: theme.text, fontFamily }]}
             placeholder="What's on your mind?"
-            placeholderTextColor="#C0C0C0"
+            placeholderTextColor={theme.textMuted}
             multiline
             autoFocus
             value={body}
             onChangeText={setBody}
-            selectionColor="rgba(0,0,0,0.2)"
-            cursorColor="#000000"
+            selectionColor={theme.border}
+            cursorColor={theme.text}
             textAlignVertical="top"
             scrollEnabled={false}
           />
@@ -276,8 +315,8 @@ export default function ComposeScreen() {
               {mediaElements.map((m) => (
                 <View key={m.id} style={styles.mediaPreviewWrapper}>
                   {m.type === 'audio' ? (
-                    <View style={[styles.mediaPreviewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
-                      <Mic size={24} color="#FFF" />
+                    <View style={[styles.mediaPreviewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.backgroundElement }]}>
+                      <Mic size={24} color={theme.text} />
                     </View>
                   ) : (
                     <Image source={{ uri: m.uri }} style={styles.mediaPreviewImage} contentFit="cover" />
@@ -349,6 +388,21 @@ const styles = StyleSheet.create({
   saveText: {
     fontFamily: 'JetBrainsMono-SemiBold',
     fontSize: 13,
+    letterSpacing: 0.5,
+  },
+  fontButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 34,
+    borderWidth: 1,
+    marginRight: 12,
+  },
+  fontButtonText: {
+    fontFamily: 'JetBrainsMono-SemiBold',
+    fontSize: 11,
     letterSpacing: 0.5,
   },
 
@@ -459,7 +513,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(127,127,127,0.1)',
     zIndex: 100,
     justifyContent: 'center',
     alignItems: 'center',

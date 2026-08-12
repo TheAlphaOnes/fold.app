@@ -5,6 +5,7 @@ import type { Composition, CompositionRow, MediaElement } from '@/types/journal'
 export interface CreateCompositionInput {
   textContent: string;
   mediaElements: MediaElement[];
+  fontFamily: string;
 }
 
 export interface UpdateMediaPositionsInput {
@@ -24,6 +25,7 @@ function rowToComposition(row: CompositionRow): Composition {
     textContent: row.text_content,
     mediaElements,
     createdAt: row.created_at,
+    fontFamily: row.font_family,
   };
 }
 
@@ -51,16 +53,18 @@ export async function createComposition(input: CreateCompositionInput): Promise<
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
-    'INSERT INTO compositions (text_content, media_elements, created_at) VALUES (?, ?, ?)',
+    'INSERT INTO compositions (text_content, media_elements, created_at, font_family) VALUES (?, ?, ?, ?)',
     input.textContent,
     mediaJson,
-    now
+    now,
+    input.fontFamily
   );
   return {
     id: result.lastInsertRowId as number,
     textContent: input.textContent,
     mediaElements: input.mediaElements,
     createdAt: now,
+    fontFamily: input.fontFamily,
   };
 }
 
@@ -77,4 +81,9 @@ export async function updateMediaPositions(input: UpdateMediaPositionsInput): Pr
 export async function deleteComposition(id: number): Promise<void> {
   const db = await getDatabase();
   await db.runAsync('DELETE FROM compositions WHERE id = ?', id);
+}
+
+export async function deleteAllCompositions(): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('DELETE FROM compositions');
 }

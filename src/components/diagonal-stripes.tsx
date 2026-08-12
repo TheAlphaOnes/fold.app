@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,8 +20,8 @@ interface DiagonalStripesProps {
 
 /**
  * Repeating diagonal hatching texture.
- * When `animated` is true, the stripes slowly drift diagonally
- * to give the surface a living, breathing feel.
+ * Uses a rotated oversized container and translates by exactly the pattern width
+ * to achieve a seamless infinite loop without out-of-bounds drift.
  */
 export function DiagonalStripes({
   color = '#863800',
@@ -32,35 +32,38 @@ export function DiagonalStripes({
 
   useEffect(() => {
     if (animated) {
-      // Slow, continuous diagonal drift — loops forever
+      // Loop perfectly over the exact pattern width (5px)
+      // Moving 5 pixels over 500ms gives a nice subtle scrolling speed.
       translateX.value = withRepeat(
-        withTiming(-12, {
-          duration: 4000,
+        withTiming(-5, {
+          duration: 1000,
           easing: Easing.linear,
         }),
-        -1, // Infinite repeats
-        false, // Don't reverse — just loop
+        -1, // infinite
+        false // no reverse, continuous forward motion
       );
+    } else {
+      translateX.value = 0;
     }
   }, [animated, translateX]);
 
-  const driftStyle = useAnimatedStyle(() => ({
+  const animatedStyle = useAnimatedStyle(() => ({
     transform: [
+      { rotate: '-55deg' },
       { translateX: translateX.value },
-      { translateY: translateX.value },
     ],
   }));
 
   return (
     <Animated.View
       style={[
-        animated ? styles.containerAnimated : StyleSheet.absoluteFill,
+        styles.container,
         { opacity },
-        animated ? driftStyle : undefined,
+        animatedStyle,
       ]}
       pointerEvents="none"
     >
-      <Svg width="120%" height="120%">
+      <Svg width="100%" height="100%">
         <Defs>
           <Pattern
             id="cardStripes"
@@ -69,7 +72,6 @@ export function DiagonalStripes({
             width="5"
             height="5"
             patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-55)"
           >
             <Line
               x1="0"
@@ -81,19 +83,19 @@ export function DiagonalStripes({
             />
           </Pattern>
         </Defs>
-        <Rect x="-20%" y="-20%" width="140%" height="140%" fill="url(#cardStripes)" />
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#cardStripes)" />
       </Svg>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  containerAnimated: {
+  container: {
     position: 'absolute',
-    // Oversized so the drift animation doesn't reveal edges
-    top: -20,
-    left: -20,
-    right: -20,
-    bottom: -20,
+    // Oversized to ensure the rotated edges don't clip the card bounds
+    width: '250%',
+    height: '250%',
+    top: '-75%',
+    left: '-75%',
   },
 });

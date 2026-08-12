@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/fold-logo.png",
     "scheme": "fold",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "icon": "./assets/expo.icon"
@@ -35,7 +35,8 @@
         }
       ],
       "expo-video",
-      "expo-audio"
+      "expo-audio",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

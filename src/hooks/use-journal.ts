@@ -4,6 +4,7 @@ import {
   createComposition, 
   updateMediaPositions,
   deleteComposition,
+  deleteAllCompositions,
   type CreateCompositionInput
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
@@ -49,6 +50,10 @@ export function useJournal() {
     setCompositions(prev => prev.filter(comp => comp.id !== id));
     await deleteComposition(id);
   }, []);
+  const removeAllCompositions = useCallback(async () => {
+    setCompositions([]);
+    await deleteAllCompositions();
+  }, []);
 
   return {
     compositions,
@@ -58,5 +63,6 @@ export function useJournal() {
     addComposition,
     updatePositions,
     removeComposition,
+    removeAllCompositions,
   };
 }

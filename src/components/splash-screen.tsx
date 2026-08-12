@@ -35,19 +35,19 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
   // We use the elegant phase-shifted base wave, and inject a localized circular motion.
   const getParametricPoint = (t: number) => {
     'worklet';
-    // 1. Base sweeping wave (crosses zero at center)
+    // 1. Very gentle base sweeping wave (single slow arc)
     const base_x = t;
-    const base_y = baseY - Math.sin((t / width - 0.5) * Math.PI * 2) * 35;
+    const base_y = baseY - Math.sin((t / width) * Math.PI) * 20;
 
     // 2. Localized loop slightly to the left of the logo
     const loopCenter = width * 0.35; 
     const dist = t - loopCenter;
     
-    // Gaussian envelope for the loop radius so it fades out smoothly.
-    const radius = 35 * Math.exp(-Math.pow(dist / 80, 2));
+    // Wider, smoother Gaussian envelope for perfect blending
+    const radius = 30 * Math.exp(-Math.pow(dist / 100, 2));
 
     // The angle spins completely around once, forming the cursive loop.
-    const angle = (dist / 120) * Math.PI * 2;
+    const angle = (dist / 110) * Math.PI * 2;
 
     // Subtracting sine/cosine creates the counter-clockwise loop going backwards in X.
     const x = base_x - Math.sin(angle) * radius;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue,
@@ -21,6 +21,7 @@ import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
+import { User } from 'lucide-react-native';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -159,6 +160,22 @@ export default function HomeScreen() {
     // Clean background
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
+
+      <Pressable 
+        style={({ pressed }) => [
+          styles.profileButton, 
+          { 
+            top: 21, 
+            opacity: pressed ? 0.5 : 1,
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border
+          }
+        ]}
+        onPress={() => router.push('/profile')}
+      >
+        <User size={20} color={theme.text} />
+      </Pressable>
+
       {compositions.length === 0 && !loading ? (
         <EmptyState />
       ) : (
@@ -190,7 +207,7 @@ export default function HomeScreen() {
       {/* Floating bottom bar with Date and Add Button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{dateStr}</Text>
+          <Text style={[styles.dateText, { color: theme.textMuted }]}>{dateStr}</Text>
         </View>
         <AddButton onPress={handleAdd} />
       </View>
@@ -219,4 +236,20 @@ const styles = StyleSheet.create({
     color: '#878787', // Technical gray
     letterSpacing: 1,
   },
+  profileButton: {
+    position: 'absolute',
+    right: 21,
+    zIndex: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  }
 });
