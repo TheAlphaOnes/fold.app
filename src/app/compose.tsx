@@ -17,6 +17,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
@@ -24,7 +25,12 @@ import { ThemedText } from '@/components/themed-text';
 import { useJournal } from '@/hooks/use-journal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GrainBackground } from '@/components/grain-background';
-import { X } from 'lucide-react-native';
+import { X, Image as ImageIcon, PlayCircle, Mic } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
+import { VinylRecord } from '@/components/vinyl-record';
+import type { MediaElement } from '@/types/journal';
 
 function formatComposeDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -45,22 +51,63 @@ function formatComposeTime(date: Date): string {
 export default function ComposeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  
   const [body, setBody] = useState('');
+  const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
+  
   const { addComposition } = useJournal();
   const [isSaving, setIsSaving] = useState(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder);
 
   const now = useMemo(() => new Date(), []);
   const dateString = useMemo(() => formatComposeDate(now), [now]);
   const timeString = useMemo(() => formatComposeTime(now), [now]);
 
-  const canSave = body.trim().length > 0 && !isSaving;
+  // A post must have either text OR media to be saveable
+  const canSave = (body.trim().length > 0 || mediaElements.length > 0) && !isSaving;
+
+  const handleAttachMedia = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'],
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const newMedia: MediaElement[] = result.assets.map((asset) => {
+          // Generate a random initial layout position. 
+          // Assuming card is roughly the screen size, we spawn stickers near the center area.
+          const stickerSize = 120;
+          const safeW = screenWidth - 60 - stickerSize;
+          const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+          
+          return {
+            id: Math.random().toString(36).substring(2, 9),
+            uri: asset.uri,
+            type: asset.type === 'video' ? 'video' : 'image',
+            x_pos: 30 + Math.random() * safeW,
+            y_pos: 30 + Math.random() * safeH,
+            width: asset.width,
+            height: asset.height,
+          };
+        });
+
+        setMediaElements((prev) => [...prev, ...newMedia]);
+      }
+    } catch (error) {
+      console.error('Failed to pick media:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (!canSave) return;
 
     setIsSaving(true);
     try {
-      await addComposition({ textContent: body.trim(), mediaElements: [] });
+      await addComposition({ textContent: body.trim(), mediaElements });
       router.back();
     } catch (error) {
       console.error('Failed to save composition:', error);
@@ -70,6 +117,40 @@ export default function ComposeScreen() {
 
   const handleClose = () => {
     router.back();
+  };
+
+  const handleRecordToggle = async () => {
+    try {
+      if (recorderState.isRecording) {
+        // Stop recording
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (uri) {
+          const newMedia: MediaElement = {
+            id: Math.random().toString(36).substring(2, 9),
+            uri,
+            type: 'audio',
+            x_pos: 30 + Math.random() * (screenWidth - 150),
+            y_pos: 30 + Math.random() * (screenHeight - 150),
+          };
+          setMediaElements((prev) => [...prev, newMedia]);
+        }
+      } else {
+        // Start recording
+        const { status } = await AudioModule.requestRecordingPermissionsAsync();
+        if (status !== 'granted') return;
+        
+        await AudioModule.setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        });
+
+        await recorder.prepareToRecordAsync();
+        await recorder.record();
+      }
+    } catch (err) {
+      console.error('Failed to toggle recording', err);
+    }
   };
 
   return (
@@ -130,15 +211,45 @@ export default function ComposeScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Date + time metadata — monospace, industrial readout */}
+          {/* Date + time + media attach metadata — monospace, industrial readout */}
           <View style={styles.metaRow}>
-            <ThemedText style={styles.metaDate} themeColor="textMuted">
-              {dateString}
-            </ThemedText>
-            <View style={styles.metaDot} />
-            <ThemedText style={styles.metaTime} themeColor="textMuted">
-              {timeString}
-            </ThemedText>
+            <View style={styles.metaLeft}>
+              <ThemedText style={styles.metaDate} themeColor="textMuted">
+                {dateString}
+              </ThemedText>
+              <View style={styles.metaDot} />
+              <ThemedText style={styles.metaTime} themeColor="textMuted">
+                {timeString}
+              </ThemedText>
+            </View>
+            
+            <View style={styles.metaRight}>
+              <Pressable 
+                onPress={handleRecordToggle}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1, marginRight: 8 }
+                ]}
+              >
+                <Mic size={18} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Record
+                </ThemedText>
+              </Pressable>
+
+              <Pressable 
+                onPress={handleAttachMedia}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 }
+                ]}
+              >
+                <ImageIcon size={18} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Attach
+                </ThemedText>
+              </Pressable>
+            </View>
           </View>
 
           {/* Divider — thin, quiet */}
@@ -153,15 +264,53 @@ export default function ComposeScreen() {
             autoFocus
             value={body}
             onChangeText={setBody}
-            selectionColor={theme.accent}
+            selectionColor="rgba(0,0,0,0.2)"
+            cursorColor="#000000"
             textAlignVertical="top"
             scrollEnabled={false}
           />
+
+          {/* Previews of attached media */}
+          {mediaElements.length > 0 && (
+            <View style={styles.mediaPreviewsContainer}>
+              {mediaElements.map((m) => (
+                <View key={m.id} style={styles.mediaPreviewWrapper}>
+                  {m.type === 'audio' ? (
+                    <View style={[styles.mediaPreviewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
+                      <Mic size={24} color="#FFF" />
+                    </View>
+                  ) : (
+                    <Image source={{ uri: m.uri }} style={styles.mediaPreviewImage} contentFit="cover" />
+                  )}
+                  {m.type === 'video' && (
+                    <View style={styles.videoOverlay} />
+                  )}
+                  {/* Small X button to remove this specific media */}
+                  <Pressable 
+                    style={styles.removeMediaButton}
+                    onPress={() => setMediaElements(prev => prev.filter(x => x.id !== m.id))}
+                  >
+                    <X size={12} color="#FFF" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
         </ScrollView>
 
         {/* Bottom safe area pad */}
         <View style={{ height: insets.bottom }} />
       </KeyboardAvoidingView>
+
+      {/* Full-screen recording overlay */}
+      {recorderState.isRecording && (
+        <View style={styles.recordingOverlay}>
+          <Pressable style={styles.recordingOverlayInner} onPress={handleRecordToggle}>
+            <VinylRecord size={300} isRecording={true} isPlaying={false} />
+            <ThemedText style={styles.recordingText}>Tap to stop</ThemedText>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -212,8 +361,26 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginBottom: 13,
+  },
+  metaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  attachText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 12,
   },
   metaDate: {
     fontFamily: 'JetBrainsMono-Medium',
@@ -241,5 +408,72 @@ const styles = StyleSheet.create({
     fontSize: 21,
     lineHeight: 34,
     minHeight: 200,
+  },
+  mediaPreviewsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 21,
+    paddingBottom: 21,
+  },
+  mediaPreviewWrapper: {
+    width: 60,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  mediaPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recordingOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    zIndex: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  recordingOverlayInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingText: {
+    marginTop: 40,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: '#878787',
   },
 });

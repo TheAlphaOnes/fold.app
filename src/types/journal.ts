@@ -1,7 +1,7 @@
 export interface MediaElement {
   id: string; // Unique ID for this media in the array
   uri: string;
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'audio';
   x_pos: number;
   y_pos: number;
   width?: number;

@@ -35,6 +35,16 @@ export async function getAllCompositions(): Promise<Composition[]> {
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
+export async function getCompositionById(id: number): Promise<Composition | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<any>(
+    'SELECT * FROM compositions WHERE id = ?',
+    id
+  );
+  if (!row) return null;
+  return rowToComposition(mapRow(row));
+}
+
 export async function createComposition(input: CreateCompositionInput): Promise<Composition> {
   const db = await getDatabase();
   const now = Date.now();

@@ -89,7 +89,7 @@ export function DiagonalStripes({
 
 const styles = StyleSheet.create({
   containerAnimated: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
     // Oversized so the drift animation doesn't reveal edges
     top: -20,
     left: -20,

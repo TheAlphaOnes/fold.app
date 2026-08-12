@@ -5,8 +5,12 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   interpolate,
-  Extrapolation
+  Extrapolation,
+  withSpring,
+  runOnJS,
+  type SharedValue
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
@@ -25,13 +29,13 @@ interface CarouselItemProps {
   index: number;
   snapInterval: number;
   cardHeight: number;
-  scrollY: Animated.SharedValue<number>;
+  scrollY: SharedValue<number>;
+  updatePositions: (id: number, media: any) => void;
 }
 
-function CarouselItem({ item, index, snapInterval, cardHeight, scrollY }: CarouselItemProps) {
-  // Maya motion: scale creates depth without affecting layout dimensions.
-  // Active card = 1.0, neighbors = 0.95, distant = 0.92
-  // Opacity fades distant cards gently so the active card dominates focus.
+function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
+  const pressedScale = useSharedValue(1);
+  
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
       (index - 2) * snapInterval,
@@ -41,8 +45,7 @@ function CarouselItem({ item, index, snapInterval, cardHeight, scrollY }: Carous
       (index + 2) * snapInterval,
     ];
 
-    // Gentle scale: active card is full size, neighbors slightly smaller
-    const scale = interpolate(
+    const scrollScale = interpolate(
       scrollY.value,
       inputRange,
       [0.92, 0.95, 1, 0.95, 0.92],
@@ -50,15 +53,34 @@ function CarouselItem({ item, index, snapInterval, cardHeight, scrollY }: Carous
     );
 
     return {
-      transform: [{ scale }],
+      transform: [{ scale: scrollScale * pressedScale.value }],
     };
   });
 
+  const navigateToDetail = () => {
+    router.push(`/memory/${item.id}`);
+  };
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onStart(() => {
+      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+    })
+    .onEnd(() => {
+      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      runOnJS(navigateToDetail)();
+    })
+    .onFinalize(() => {
+      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+    });
+
   return (
     <View style={{ height: snapInterval, justifyContent: 'center', paddingHorizontal: 21 }}>
-      <Animated.View style={animatedStyle}>
-        <MemoryCard content={item.textContent} height={cardHeight} timestamp={item.createdAt} />
-      </Animated.View>
+      <GestureDetector gesture={doubleTap}>
+        <Animated.View style={animatedStyle}>
+          <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
@@ -67,7 +89,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { compositions, loading, refresh } = useJournal();
+  const { compositions, loading, refresh, updatePositions } = useJournal();
 
   useFocusEffect(
     useCallback(() => {
@@ -129,6 +151,7 @@ export default function HomeScreen() {
       snapInterval={snapInterval}
       cardHeight={cardHeight}
       scrollY={scrollY}
+      updatePositions={updatePositions}
     />
   );
 
