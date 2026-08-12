@@ -13,6 +13,7 @@ import { ActivityGrid } from '@/components/activity-grid';
 import { VolumeChart } from '@/components/volume-chart';
 import { MomentumChart } from '@/components/momentum-chart';
 import { RecentAssets } from '@/components/recent-assets';
+import { TECalendar } from '@/components/te-calendar';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -109,25 +110,17 @@ export default function ProfileScreen() {
         </View>
 
         {/* Time Machine Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-          <View style={styles.portfolioHeader}>
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0 }]}>
+          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 0 }]}>
             <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
           </View>
-          <ThemedText style={[styles.statLabel, { color: mutedText, marginBottom: 16, fontSize: 11 }]}>
+          <ThemedText style={[styles.statLabel, { color: mutedText, marginBottom: 16, fontSize: 11, paddingHorizontal: 16 }]}>
             Travel back to a specific date and explore the memories from that exact day across all years.
           </ThemedText>
           
-          <Pressable 
-            style={({ pressed }) => [
-              styles.timeMachineBtn,
-              { backgroundColor: theme.text, opacity: pressed ? 0.8 : 1 }
-            ]}
-            onPress={() => router.push('/archive-picker')}
-          >
-            <ThemedText style={[styles.timeMachineBtnText, { color: theme.background }]}>
-              Select a Date
-            </ThemedText>
-          </Pressable>
+          <View style={{ borderTopWidth: 1, borderTopColor: borderColor }}>
+            <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
+          </View>
         </View>
 
         {/* Charts */}

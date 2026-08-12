@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Text } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { getDatesWithMemories } from '@/db/journal-repository';
 import { ThemedText } from './themed-text';
 
 interface TECalendarProps {
-  value: Date;
-  onChange: (date: Date) => void;
+  onSelect: (date: Date) => void;
 }
 
-export function TECalendar({ value, onChange }: TECalendarProps) {
+export function TECalendar({ onSelect }: TECalendarProps) {
   const theme = useTheme();
-  const [currentMonth, setCurrentMonth] = useState(new Date(value.getFullYear(), value.getMonth(), 1));
+  const [currentMonth, setCurrentMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [activeDates, setActiveDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -45,14 +44,6 @@ export function TECalendar({ value, onChange }: TECalendarProps) {
     );
   };
 
-  const isSelected = (d: number) => {
-    return (
-      d === value.getDate() &&
-      currentMonth.getMonth() === value.getMonth() &&
-      currentMonth.getFullYear() === value.getFullYear()
-    );
-  };
-
   const hasMemory = (d: number) => {
     const y = currentMonth.getFullYear();
     const m = String(currentMonth.getMonth() + 1).padStart(2, '0');
@@ -62,27 +53,31 @@ export function TECalendar({ value, onChange }: TECalendarProps) {
 
   const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+  const handlePress = (d: number) => {
+    onSelect(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d));
+  };
+
   return (
     <View style={[styles.container, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => changeMonth(-1)} style={styles.navButton}>
-          <ChevronLeft size={20} color={theme.text} />
+        <Pressable onPress={() => changeMonth(-1)} style={({ pressed }) => [styles.navButton, pressed && { opacity: 0.5 }]}>
+          <ChevronLeft size={16} color={theme.text} />
         </Pressable>
         
         <ThemedText style={[styles.headerTitle, { color: theme.text }]}>
           {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
         </ThemedText>
         
-        <Pressable onPress={() => changeMonth(1)} style={styles.navButton}>
-          <ChevronRight size={20} color={theme.text} />
+        <Pressable onPress={() => changeMonth(1)} style={({ pressed }) => [styles.navButton, pressed && { opacity: 0.5 }]}>
+          <ChevronRight size={16} color={theme.text} />
         </Pressable>
       </View>
 
       {/* Days of week */}
-      <View style={styles.weekRow}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <View key={`dow-${i}`} style={styles.dayCell}>
+      <View style={[styles.weekRow, { borderBottomColor: theme.border }]}>
+        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day, i) => (
+          <View key={`dow-${i}`} style={styles.dowCell}>
             <ThemedText style={[styles.dowText, { color: theme.textMuted }]}>{day}</ThemedText>
           </View>
         ))}
@@ -91,36 +86,62 @@ export function TECalendar({ value, onChange }: TECalendarProps) {
       {/* Calendar Grid */}
       <View style={styles.grid}>
         {days.map((d, i) => {
+          // Calculate border styles to form a perfect inner grid
+          const isRightEdge = (i + 1) % 7 === 0;
+          const isBottomRow = i >= days.length - 7 && days.length - i <= 7;
+          
           if (d === null) {
-            return <View key={`empty-${i}`} style={styles.dayCell} />;
+            return (
+              <View 
+                key={`empty-${i}`} 
+                style={[
+                  styles.dayCell, 
+                  { 
+                    borderRightColor: theme.border, 
+                    borderBottomColor: theme.border,
+                    borderRightWidth: isRightEdge ? 0 : 1,
+                    borderBottomWidth: isBottomRow ? 0 : 1,
+                  }
+                ]} 
+              />
+            );
           }
 
-          const selected = isSelected(d);
           const current = isToday(d);
           const active = hasMemory(d);
 
           return (
             <Pressable
               key={`day-${d}`}
-              style={styles.dayCell}
-              onPress={() => onChange(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d))}
+              style={({ pressed }) => [
+                styles.dayCell,
+                { 
+                  borderRightColor: theme.border, 
+                  borderBottomColor: theme.border,
+                  borderRightWidth: isRightEdge ? 0 : 1,
+                  borderBottomWidth: isBottomRow ? 0 : 1,
+                  backgroundColor: pressed ? theme.text : 'transparent'
+                }
+              ]}
+              onPress={() => handlePress(d)}
             >
-              <View style={[
-                styles.dayCircle,
-                selected && { backgroundColor: theme.text }
-              ]}>
-                <ThemedText style={[
-                  styles.dayText,
-                  { color: selected ? theme.background : (current ? theme.text : theme.textMuted) }
-                ]}>
-                  {d}
-                </ThemedText>
-              </View>
-              {/* Dot Indicator */}
-              <View style={[
-                styles.dot,
-                { backgroundColor: active ? '#FF4B00' : 'transparent' }
-              ]} />
+              {({ pressed }) => (
+                <>
+                  <ThemedText style={[
+                    styles.dayText,
+                    { color: pressed ? theme.background : (current ? theme.text : theme.textMuted) }
+                  ]}>
+                    {d < 10 ? `0${d}` : d}
+                  </ThemedText>
+                  {/* Dot Indicator */}
+                  {active && (
+                    <View style={[
+                      styles.dot,
+                      { backgroundColor: pressed ? theme.background : '#E45B00' }
+                    ]} />
+                  )}
+                </>
+              )}
             </Pressable>
           );
         })}
@@ -132,9 +153,7 @@ export function TECalendar({ value, onChange }: TECalendarProps) {
 const styles = StyleSheet.create({
   container: {
     borderWidth: 1,
-    borderRadius: 8,
     width: '100%',
-    maxWidth: 340,
     overflow: 'hidden',
   },
   header: {
@@ -146,7 +165,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   navButton: {
-    padding: 4,
+    padding: 8,
   },
   headerTitle: {
     fontFamily: 'JetBrainsMono-Bold',
@@ -155,43 +174,36 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 4,
+    borderBottomWidth: 1,
+  },
+  dowCell: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
   },
   dowText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    textAlign: 'center',
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 9,
+    letterSpacing: 1,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 8,
-    paddingBottom: 16,
   },
   dayCell: {
-    width: '14.28%', // 100 / 7
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dayCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: '14.285%', // exactly 1/7th
+    aspectRatio: 1, // square cells
     justifyContent: 'center',
     alignItems: 'center',
   },
   dayText: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 14,
+    fontSize: 12,
   },
   dot: {
     width: 4,
     height: 4,
-    borderRadius: 2,
     position: 'absolute',
-    bottom: 2,
+    bottom: 6,
   }
 });
