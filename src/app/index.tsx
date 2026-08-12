@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue,
@@ -16,7 +16,7 @@ import { useJournal } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -31,19 +31,9 @@ interface CarouselItemProps {
 function CarouselItem({ item, index, snapInterval, cardHeight, scrollY }: CarouselItemProps) {
   // Reanimated style to make the cards bounce/scale down as they move away from center
   const animatedStyle = useAnimatedStyle(() => {
-    const scale = interpolate(
-      scrollY.value,
-      [
-        (index - 1) * snapInterval,
-        index * snapInterval,
-        (index + 1) * snapInterval,
-      ],
-      [0.938, 1, 0.938], // Much softer scale so they peek out
-      Extrapolation.CLAMP
-    );
-    
+    // Removed scale interpolation based on user feedback to maintain consistent card height
     return {
-      transform: [{ scale }],
+      transform: [],
     };
   });
 
@@ -76,6 +66,20 @@ export default function HomeScreen() {
   const prevCount = useRef(compositions.length);
 
   // Auto-scroll to the bottom when a new item is added
+  const [dateStr, setDateStr] = useState('');
+  
+  useEffect(() => {
+    const now = new Date();
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const day = days[now.getDay()];
+    
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = String(now.getFullYear()).slice(-2);
+    
+    setDateStr(`${day} ${d}.${m}.${y}`);
+  }, []);
+
   useEffect(() => {
     if (compositions.length > prevCount.current) {
       setTimeout(() => {
@@ -85,15 +89,18 @@ export default function HomeScreen() {
     prevCount.current = compositions.length;
   }, [compositions.length]);
   
-  // Calculate available height excluding notch and home indicator
-  const availableHeight = height - insets.top - insets.bottom;
+  // Calculate exact visual bounds to perfectly center the card between the UI elements
+  const TOP_BAR_HEIGHT = insets.top; // Removed top bar, just use safe area inset
+  const BOTTOM_BAR_HEIGHT = insets.bottom + 90; // Add button + Date text
   
-  // Golden ratio aspect ratio: 1:1.618 based on width, capped to fit safe area
-  const cardHeight = Math.min(width * 1.618, availableHeight * 0.9);
+  const visualAvailableHeight = height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
+  
+  // Golden ratio aspect ratio, capped to fit the visual area
+  const cardHeight = Math.min(width * 1.618, visualAvailableHeight * 0.95);
   const snapInterval = cardHeight + CARD_GAP;
   
-  // Padding to perfectly center the active card in the safe viewport
-  const verticalPadding = (availableHeight - snapInterval) / 2;
+  // Padding to perfectly center the active card in the true visual viewport
+  const visualPadding = (visualAvailableHeight - snapInterval) / 2;
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -135,16 +142,19 @@ export default function HomeScreen() {
         // Smooth scroll animations tracking
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-          // Center the first and last cards perfectly in the safe area
+          // Center the first and last cards perfectly between the top and bottom bars
           contentContainerStyle={{
-            paddingTop: verticalPadding + insets.top,
-            paddingBottom: verticalPadding + insets.bottom,
+            paddingTop: TOP_BAR_HEIGHT + visualPadding,
+            paddingBottom: BOTTOM_BAR_HEIGHT + visualPadding,
           }}
         />
       )}
 
-      {/* Floating add button pinned to the bottom */}
+      {/* Floating bottom bar with Date and Add Button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.dateContainer}>
+          <Text style={styles.dateText}>{dateStr}</Text>
+        </View>
         <AddButton onPress={handleAdd} />
       </View>
     </View>
@@ -161,5 +171,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingTop: 12,
+  },
+  dateContainer: {
+    alignItems: 'center',
+    marginBottom: 16, // Space between date and Add Button
+  },
+  dateText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 14,
+    color: '#878787', // Technical gray
+    letterSpacing: 1,
   },
 });
