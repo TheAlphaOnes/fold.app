@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { CompositionRow } from '@/types/journal';
 
-const SCHEMA_SQL = `
+const CREATE_SQL = `
 PRAGMA journal_mode = WAL;
 
 CREATE TABLE IF NOT EXISTS compositions (
@@ -9,11 +9,9 @@ CREATE TABLE IF NOT EXISTS compositions (
   text_content   TEXT    NOT NULL,
   media_elements TEXT    NOT NULL, -- JSON string
   created_at     INTEGER NOT NULL,
-  font_family    TEXT    DEFAULT 'JetBrainsMono-Regular'
+  font_family    TEXT    DEFAULT 'JetBrainsMono-Regular',
+  font_size      INTEGER DEFAULT 21
 );
-
--- Safe migration if the table existed before font_family was added
-ALTER TABLE compositions ADD COLUMN font_family TEXT DEFAULT 'JetBrainsMono-Regular';
 
 CREATE INDEX IF NOT EXISTS idx_compositions_created_at
   ON compositions (created_at DESC);
@@ -25,14 +23,19 @@ CREATE TABLE IF NOT EXISTS user_settings (
 `;
 
 export async function initSchema(db: SQLiteDatabase): Promise<void> {
-  // We wrap in a try-catch because ALTER TABLE will throw if the column already exists
+  await db.execAsync(CREATE_SQL);
+
+  // Safe migrations if the table existed before columns were added
   try {
-    await db.execAsync(SCHEMA_SQL);
+    await db.execAsync("ALTER TABLE compositions ADD COLUMN font_family TEXT DEFAULT 'JetBrainsMono-Regular';");
   } catch (e: any) {
-    // Ignore duplicate column errors from the naive migration
-    if (!e.message?.includes('duplicate column name')) {
-      throw e;
-    }
+    if (!e.message?.includes('duplicate column name')) throw e;
+  }
+
+  try {
+    await db.execAsync("ALTER TABLE compositions ADD COLUMN font_size INTEGER DEFAULT 21;");
+  } catch (e: any) {
+    if (!e.message?.includes('duplicate column name')) throw e;
   }
 }
 
@@ -44,5 +47,6 @@ export function mapRow(row: unknown): CompositionRow {
     media_elements: String(r.media_elements),
     created_at: Number(r.created_at),
     font_family: r.font_family ? String(r.font_family) : 'JetBrainsMono-Regular',
+    font_size: r.font_size ? Number(r.font_size) : 21,
   };
 }

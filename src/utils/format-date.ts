@@ -28,3 +28,11 @@ export function formatRelativeTime(timestamp: number): string {
   const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
   return formatter.format(date).toUpperCase();
 }
+
+export function formatMillis(millis: number): string {
+  if (!millis || isNaN(millis)) return '00:00';
+  const totalSeconds = Math.floor(millis / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}

@@ -6,6 +6,7 @@ export interface CreateCompositionInput {
   textContent: string;
   mediaElements: MediaElement[];
   fontFamily: string;
+  fontSize: number;
 }
 
 export interface UpdateMediaPositionsInput {
@@ -26,6 +27,7 @@ function rowToComposition(row: CompositionRow): Composition {
     mediaElements,
     createdAt: row.created_at,
     fontFamily: row.font_family,
+    fontSize: row.font_size,
   };
 }
 
@@ -53,11 +55,12 @@ export async function createComposition(input: CreateCompositionInput): Promise<
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
-    'INSERT INTO compositions (text_content, media_elements, created_at, font_family) VALUES (?, ?, ?, ?)',
+    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size) VALUES (?, ?, ?, ?, ?)',
     input.textContent,
     mediaJson,
     now,
-    input.fontFamily
+    input.fontFamily,
+    input.fontSize
   );
   return {
     id: result.lastInsertRowId as number,
@@ -65,6 +68,7 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     mediaElements: input.mediaElements,
     createdAt: now,
     fontFamily: input.fontFamily,
+    fontSize: input.fontSize,
   };
 }
 

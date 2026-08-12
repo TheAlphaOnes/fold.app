@@ -32,6 +32,7 @@ import { Image } from 'expo-image';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
 import { VinylRecord } from '@/components/vinyl-record';
 import type { MediaElement } from '@/types/journal';
+import { formatMillis } from '@/utils/format-date';
 
 function formatComposeDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -57,6 +58,7 @@ export default function ComposeScreen() {
   const [body, setBody] = useState('');
   const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
   const [fontFamily, setFontFamily] = useState('JetBrainsMono-Medium');
+  const [fontSize, setFontSize] = useState(21);
   
   const { addComposition } = useJournal();
   const [isSaving, setIsSaving] = useState(false);
@@ -76,13 +78,26 @@ export default function ComposeScreen() {
     { id: 'EBGaramond_400Regular', name: 'POETRY' },
   ];
 
+  const FONT_SIZES = [
+    { id: 16, name: 'S' },
+    { id: 21, name: 'M' },
+    { id: 28, name: 'L' },
+  ];
+
   const cycleFont = () => {
     const currentIndex = AVAILABLE_FONTS.findIndex(f => f.id === fontFamily);
     const nextFont = AVAILABLE_FONTS[(currentIndex + 1) % AVAILABLE_FONTS.length];
     setFontFamily(nextFont.id);
   };
+
+  const cycleSize = () => {
+    const currentIndex = FONT_SIZES.findIndex(s => s.id === fontSize);
+    const nextSize = FONT_SIZES[(currentIndex + 1) % FONT_SIZES.length];
+    setFontSize(nextSize.id);
+  };
   
   const currentFontName = AVAILABLE_FONTS.find(f => f.id === fontFamily)?.name || 'SYS.MONO';
+  const currentSizeName = FONT_SIZES.find(s => s.id === fontSize)?.name || 'M';
 
   const now = useMemo(() => new Date(), []);
   const dateString = useMemo(() => formatComposeDate(now), [now]);
@@ -130,7 +145,7 @@ export default function ComposeScreen() {
 
     setIsSaving(true);
     try {
-      await addComposition({ textContent: body.trim(), mediaElements, fontFamily });
+      await addComposition({ textContent: body.trim(), mediaElements, fontFamily, fontSize });
       router.back();
     } catch (error) {
       console.error('Failed to save composition:', error);
@@ -201,6 +216,21 @@ export default function ComposeScreen() {
           </Pressable>
 
           <View style={styles.toolbarSpacer} />
+
+          {/* Size chooser */}
+          <Pressable 
+            onPress={cycleSize}
+            style={({ pressed }) => [
+              styles.fontButton,
+              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
+            ]}
+            accessibilityLabel="Cycle Size"
+            accessibilityRole="button"
+          >
+            <ThemedText style={[styles.fontButtonText, { color: theme.text, fontSize: 13 }]}>
+              {currentSizeName}
+            </ThemedText>
+          </Pressable>
 
           {/* Font chooser */}
           <Pressable 
@@ -296,7 +326,7 @@ export default function ComposeScreen() {
 
           {/* Body text input — the main writing area */}
           <TextInput
-            style={[styles.bodyInput, { color: theme.text, fontFamily }]}
+            style={[styles.bodyInput, { color: theme.text, fontFamily, fontSize }]}
             placeholder="What's on your mind?"
             placeholderTextColor={theme.textMuted}
             multiline
@@ -341,12 +371,15 @@ export default function ComposeScreen() {
         <View style={{ height: insets.bottom }} />
       </KeyboardAvoidingView>
 
-      {/* Full-screen recording overlay */}
+        {/* Full-screen recording overlay */}
       {recorderState.isRecording && (
         <View style={styles.recordingOverlay}>
           <Pressable style={styles.recordingOverlayInner} onPress={handleRecordToggle}>
             <VinylRecord size={300} isRecording={true} isPlaying={false} />
             <ThemedText style={styles.recordingText}>Tap to stop</ThemedText>
+            <ThemedText style={[styles.recordingText, { fontSize: 24, marginTop: 12, opacity: 0.8 }]}>
+              {formatMillis(recorderState.durationMillis)}
+            </ThemedText>
           </Pressable>
         </View>
       )}

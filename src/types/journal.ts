@@ -14,6 +14,7 @@ export interface CompositionRow {
   media_elements: string; // JSON string
   created_at: number;
   font_family: string;
+  font_size: number;
 }
 
 export interface Composition {
@@ -22,4 +23,5 @@ export interface Composition {
   mediaElements: MediaElement[];
   createdAt: number;
   fontFamily: string;
+  fontSize: number;
 }

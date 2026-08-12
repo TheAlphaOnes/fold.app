@@ -61,7 +61,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
       <View style={{ flex: 1, zIndex: 1 }}>
         {!hasMedia && (
           <View style={styles.textWrapperAbsolute}>
-            <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular' }]} numberOfLines={13} ellipsizeMode="tail">
+            <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
               {hasText ? item.textContent.trim() : '[NO TEXT SAVED]'}
             </Text>
           </View>
@@ -87,7 +87,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
             </View>
             {hasText && (
               <View style={{ flexShrink: 1, width: '100%' }}>
-                <Text style={[styles.singleMediaText, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular' }]} numberOfLines={8} ellipsizeMode="tail">
+                <Text style={[styles.singleMediaText, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 18, lineHeight: (item.fontSize || 18) * 1.4 }]} numberOfLines={8} ellipsizeMode="tail">
                   {item.textContent.trim()}
                 </Text>
               </View>
@@ -98,7 +98,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
         {hasMedia && !isSingleMedia && (
           <View style={{ flex: 1 }}>
             <View style={styles.textWrapperAbsolute} pointerEvents="none">
-              <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular' }]} numberOfLines={13} ellipsizeMode="tail">
+              <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
                 {item.textContent.trim()}
               </Text>
             </View>

@@ -8,9 +8,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Play, Pause } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { VinylRecord } from '@/components/vinyl-record';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
+import { formatMillis } from '@/utils/format-date';
 
 // --- Types ---
 type SlideData =
@@ -78,7 +79,9 @@ function VideoSlide({ media, width, height, isActive }: { media: MediaElement; w
 
 function AudioSlide({ media, width, height, isActive }: { media: MediaElement; width: number; height: number; isActive: boolean }) {
   const player = useAudioPlayer(media.uri);
+  const status = useAudioPlayerStatus(player);
   const [isPausedByUser, setIsPausedByUser] = React.useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     player.loop = true;
@@ -109,6 +112,9 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
       onPressOut={handlePressOut}
     >
       <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} />
+      <Text style={[styles.textSlideContent, { color: theme.text, marginTop: 24, fontSize: 18, fontFamily: 'JetBrainsMono-Medium' }]}>
+        {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
+      </Text>
     </Pressable>
   );
 }
