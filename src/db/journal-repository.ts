@@ -30,7 +30,7 @@ function rowToComposition(row: CompositionRow): Composition {
 export async function getAllCompositions(): Promise<Composition[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync(
-    'SELECT * FROM compositions ORDER BY created_at DESC'
+    'SELECT * FROM compositions ORDER BY created_at ASC'
   );
   return rows.map((row) => rowToComposition(mapRow(row)));
 }

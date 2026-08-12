@@ -4,10 +4,6 @@ import type { CompositionRow } from '@/types/journal';
 const SCHEMA_SQL = `
 PRAGMA journal_mode = WAL;
 
-DROP TABLE IF EXISTS memory_cards;
-DROP TABLE IF EXISTS memory_items;
-DROP TABLE IF EXISTS compositions;
-
 CREATE TABLE IF NOT EXISTS compositions (
   id             INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   text_content   TEXT    NOT NULL,

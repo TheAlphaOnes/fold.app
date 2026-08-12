@@ -32,42 +32,43 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 
 const styles = StyleSheet.create({
   small: {
+    fontFamily: 'JetBrainsMono-Medium',
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
   },
   smallBold: {
+    fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
   },
   default: {
+    fontFamily: 'JetBrainsMono-Medium',
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
   },
   title: {
+    fontFamily: 'JetBrainsMono-SemiBold',
     fontSize: 48,
-    fontWeight: 600,
     lineHeight: 52,
   },
   subtitle: {
+    fontFamily: 'JetBrainsMono-SemiBold',
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: 600,
   },
   link: {
-    lineHeight: 30,
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 14,
+    lineHeight: 30,
   },
   linkPrimary: {
-    lineHeight: 30,
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 14,
+    lineHeight: 30,
     color: '#3c87f7',
   },
   code: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
   },
 });
