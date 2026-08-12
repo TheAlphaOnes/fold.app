@@ -29,11 +29,28 @@ interface CarouselItemProps {
 }
 
 function CarouselItem({ item, index, snapInterval, cardHeight, scrollY }: CarouselItemProps) {
-  // Reanimated style to make the cards bounce/scale down as they move away from center
+  // Maya motion: scale creates depth without affecting layout dimensions.
+  // Active card = 1.0, neighbors = 0.95, distant = 0.92
+  // Opacity fades distant cards gently so the active card dominates focus.
   const animatedStyle = useAnimatedStyle(() => {
-    // Removed scale interpolation based on user feedback to maintain consistent card height
+    const inputRange = [
+      (index - 2) * snapInterval,
+      (index - 1) * snapInterval,
+      index * snapInterval,
+      (index + 1) * snapInterval,
+      (index + 2) * snapInterval,
+    ];
+
+    // Gentle scale: active card is full size, neighbors slightly smaller
+    const scale = interpolate(
+      scrollY.value,
+      inputRange,
+      [0.92, 0.95, 1, 0.95, 0.92],
+      Extrapolation.CLAMP
+    );
+
     return {
-      transform: [],
+      transform: [{ scale }],
     };
   });
 
@@ -89,18 +106,14 @@ export default function HomeScreen() {
     prevCount.current = compositions.length;
   }, [compositions.length]);
   
-  // Calculate exact visual bounds to perfectly center the card between the UI elements
-  const TOP_BAR_HEIGHT = insets.top; // Removed top bar, just use safe area inset
-  const BOTTOM_BAR_HEIGHT = insets.bottom + 90; // Add button + Date text
-  
-  const visualAvailableHeight = height - TOP_BAR_HEIGHT - BOTTOM_BAR_HEIGHT;
-  
-  // Golden ratio aspect ratio, capped to fit the visual area
-  const cardHeight = Math.min(width * 1.618, visualAvailableHeight * 0.95);
+  // The user wants the active card perfectly physically centered in the absolute screen
+  // so that the previous card and next card peek by the exact same number of pixels.
+  // We calculate card height strictly based on golden ratio, capped safely.
+  const cardHeight = Math.min(width * 1.618, height * 0.78);
   const snapInterval = cardHeight + CARD_GAP;
   
-  // Padding to perfectly center the active card in the true visual viewport
-  const visualPadding = (visualAvailableHeight - snapInterval) / 2;
+  // Pure symmetric padding based on the physical screen height
+  const symmetricPadding = (height - snapInterval) / 2;
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -142,10 +155,11 @@ export default function HomeScreen() {
         // Smooth scroll animations tracking
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-          // Center the first and last cards perfectly between the top and bottom bars
+          // Center cards perfectly in the absolute physical screen.
+          // We add extra padding at the bottom so the user can overscroll past the floating bottom bar if needed.
           contentContainerStyle={{
-            paddingTop: TOP_BAR_HEIGHT + visualPadding,
-            paddingBottom: BOTTOM_BAR_HEIGHT + visualPadding,
+            paddingTop: symmetricPadding,
+            paddingBottom: symmetricPadding + insets.bottom + 90,
           }}
         />
       )}
