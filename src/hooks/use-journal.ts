@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { 
   getAllCompositions, 
+  getOnThisDayCompositions,
   createComposition, 
   updateMediaPositions,
   deleteComposition,
@@ -9,15 +10,20 @@ import {
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 
-export function useJournal() {
+export function useJournal(targetDate: Date = new Date()) {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // We memoize the month and date to avoid unnecessary re-fetches
+  // if the exact timestamp changes but the day doesn't.
+  const targetMonth = targetDate.getMonth() + 1; // 1-12
+  const targetDay = targetDate.getDate();
+
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const items = await getAllCompositions();
+      const items = await getOnThisDayCompositions(targetMonth, targetDay);
       setCompositions(items);
       setError(null);
     } catch (err) {
@@ -25,7 +31,7 @@ export function useJournal() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [targetMonth, targetDay]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

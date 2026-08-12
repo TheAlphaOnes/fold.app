@@ -39,6 +39,27 @@ export async function getAllCompositions(): Promise<Composition[]> {
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
+export async function getOnThisDayCompositions(month: number, date: number): Promise<Composition[]> {
+  const db = await getDatabase();
+  const targetStr = `${month.toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
+  const rows = await db.getAllAsync(
+    `SELECT * FROM compositions 
+     WHERE strftime('%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ? 
+     ORDER BY created_at ASC`,
+    targetStr
+  );
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
+export async function getDatesWithMemories(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ date_str: string }>(
+    `SELECT DISTINCT strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) as date_str 
+     FROM compositions`
+  );
+  return rows.map(r => r.date_str).filter(Boolean);
+}
+
 export async function getCompositionById(id: number): Promise<Composition | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<any>(

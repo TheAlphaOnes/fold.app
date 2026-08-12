@@ -108,6 +108,28 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Time Machine Section */}
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+          <View style={styles.portfolioHeader}>
+            <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
+          </View>
+          <ThemedText style={[styles.statLabel, { color: mutedText, marginBottom: 16, fontSize: 11 }]}>
+            Travel back to a specific date and explore the memories from that exact day across all years.
+          </ThemedText>
+          
+          <Pressable 
+            style={({ pressed }) => [
+              styles.timeMachineBtn,
+              { backgroundColor: theme.text, opacity: pressed ? 0.8 : 1 }
+            ]}
+            onPress={() => router.push('/archive-picker')}
+          >
+            <ThemedText style={[styles.timeMachineBtnText, { color: theme.background }]}>
+              Select a Date
+            </ThemedText>
+          </Pressable>
+        </View>
+
         {/* Charts */}
         <ActivityGrid compositions={compositions} />
         <VolumeChart compositions={compositions} />
@@ -253,5 +275,16 @@ const styles = StyleSheet.create({
     color: '#FF4B00',
     marginTop: 8,
     letterSpacing: 2,
+  },
+  timeMachineBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeMachineBtnText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
   }
 });

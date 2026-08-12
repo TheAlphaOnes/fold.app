@@ -105,17 +105,19 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={FoldTheme}>
       <AnimatedSplashScreen isAppReady={isAppReady}>
-        <StatusBar hidden />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen 
-            name="compose" 
-            options={{ 
-              headerShown: false,
-              animation: 'slide_from_right'
-            }} 
-          />
-        </Stack>
+        <BiometricGate>
+          <StatusBar hidden />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen 
+              name="compose" 
+              options={{ 
+                headerShown: false,
+                animation: 'slide_from_right'
+              }} 
+            />
+          </Stack>
+        </BiometricGate>
       </AnimatedSplashScreen>
     </ThemeProvider>
   );
@@ -128,9 +130,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SettingsProvider>
         <AppThemeProvider>
-          <BiometricGate>
-            <RootLayoutNav />
-          </BiometricGate>
+          <RootLayoutNav />
         </AppThemeProvider>
       </SettingsProvider>
     </GestureHandlerRootView>
