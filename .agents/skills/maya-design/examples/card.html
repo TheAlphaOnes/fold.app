@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Maya Design - Card Example</title>
+  <style>
+    /* 
+      Maya Design Tokens: 
+      Concrete values extracted from tokens.md and components.md 
+    */
+    :root {
+      /* Base Surface */
+      --bg-root: #0A0A0A;
+      --bg-surface-1: #141414;
+      --bg-surface-2: #1C1C1C;
+      
+      /* Borders */
+      --border-default: rgba(255, 255, 255, 0.08);
+
+      /* Typography */
+      --text-primary: #EFEFEF;
+      --text-secondary: rgba(255, 255, 255, 0.55);
+      
+      /* Motion Curves */
+      --ease-out: cubic-bezier(0.19, 1, 0.22, 1);
+    }
+
+    body {
+      background-color: var(--bg-root);
+      color: var(--text-primary);
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      padding: 64px;
+      justify-content: center;
+    }
+
+    /* 
+      Component Blueprint: Card 
+      From references/components.md 
+    */
+    .maya-card {
+      /* Base container */
+      background-color: var(--bg-surface-1);
+      border: 0.5px solid var(--border-default);
+      border-radius: 12px; /* radius-large */
+      padding: 24px; /* space-6 */
+      margin: 0; /* No outer margins, use parent grid/flex gap */
+      
+      /* High Elevation Shadows (Dark Mode) */
+      box-shadow: 
+        0 2px 8px rgba(0,0,0,0.50),  /* Tight edge */
+        0 8px 32px rgba(0,0,0,0.35); /* Soft ambient */
+
+      /* Surface Lighting Gradient (nearly invisible) */
+      background-image: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+      
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px; /* space-4 */
+    }
+
+    /* 
+      Interactive Card Hover (optional)
+      Only applied if the card is a clickable element
+    */
+    .maya-card--interactive {
+      cursor: pointer;
+      transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+    }
+
+    .maya-card--interactive:hover {
+      transform: scale(1.015);
+      box-shadow: 
+        0 2px 8px rgba(0,0,0,0.50),
+        0 8px 32px rgba(0,0,0,0.35),
+        0 16px 48px rgba(0,0,0,0.12); /* Increased ambient glow */
+    }
+
+    /* 
+      Concentric Radii Demo 
+      Inner radius = Outer radius (12) - Padding (24) -> result is <= 0, so we use 1px or 4px for inner elements depending on layout. 
+      If the image is flush with edges, it adopts the outer radius.
+      If it's inset like a nested panel, it uses radius-medium.
+    */
+    .maya-card-inner-panel {
+      background-color: var(--bg-surface-2); /* Must be lighter than parent */
+      border-radius: 8px; /* radius-medium */
+      padding: 16px;
+    }
+
+    /* Typography inside Card */
+    h3 {
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1.35;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    p {
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.7;
+      margin: 0;
+      color: var(--text-secondary);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Example Interactive Card -->
+  <div class="maya-card maya-card--interactive">
+    <div>
+      <h3>Analytics Report</h3>
+      <p>View your performance metrics for the last 30 days.</p>
+    </div>
+    
+    <!-- Nested Surface Panel -->
+    <div class="maya-card-inner-panel">
+      <p style="font-size: 13px;">Conversion rate up 14%</p>
+    </div>
+  </div>
+
+</body>
+</html>

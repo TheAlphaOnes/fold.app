@@ -1,0 +1,65 @@
+{
+  "skill_name": "maya-design",
+  "evals": [
+    {
+      "id": "bento-grid",
+      "prompt": "Build a responsive analytics dashboard with 3 bento cards. Maya spacing, subtle hover scale, tactile click state.",
+      "expected_output": "Cards, grid layout, spacing, elevation, hover/active states",
+      "files": []
+    },
+    {
+      "id": "morphing-btn",
+      "prompt": "Create a Deploy button. On click: audio, tactile depress, icon swaps from rocket to checkmark with bouncy animation.",
+      "expected_output": "Icon swap mechanics, spring-bounce, audio, active state",
+      "files": []
+    },
+    {
+      "id": "theme-toggle",
+      "prompt": "Implement a dark/light mode toggle with cinematic circular reveal from the click point.",
+      "expected_output": "Theme toggle, View Transition API, Pythagorean math",
+      "files": []
+    },
+    {
+      "id": "form-validation",
+      "prompt": "Build a contact form (name, email, message). Show floating labels, inline errors on submit, success toast.",
+      "expected_output": "Inputs, form layout, validation state, concave depth, toast",
+      "files": []
+    },
+    {
+      "id": "accessible-modal",
+      "prompt": "Create a modal with focus trap, Escape to close, scroll-lock, backdrop dismiss. Include ARIA attributes.",
+      "expected_output": "Modal blueprint, a11y, root rendering",
+      "files": []
+    },
+    {
+      "id": "toast-stack",
+      "prompt": "Build a global toast system. Multiple types (success/error/warning). Auto-dismiss. Stack max 3.",
+      "expected_output": "Toast, single-instance pattern, animation",
+      "files": []
+    },
+    {
+      "id": "data-table",
+      "prompt": "Build a sortable data table. Sortable columns with arrow indicator, zebra rows, hover state. Tabular numbers.",
+      "expected_output": "Typography, tabular-nums, interaction states",
+      "files": []
+    },
+    {
+      "id": "skeleton-load",
+      "prompt": "Build a card that shows a skeleton shimmer for 2s then transitions to real content.",
+      "expected_output": "Loading skeleton, shimmer animation, fade-in",
+      "files": []
+    },
+    {
+      "id": "responsive-nav",
+      "prompt": "Build a sticky glassmorphism topbar with nav links, a CTA button, and a hamburger for mobile.",
+      "expected_output": "Topbar, glassmorphism, responsive breakpoints",
+      "files": []
+    },
+    {
+      "id": "empty-state",
+      "prompt": "Build an empty state for a task list. Icon, headline, body, CTA. Dashed border container.",
+      "expected_output": "Empty state, dashed border, spacing",
+      "files": []
+    }
+  ]
+}

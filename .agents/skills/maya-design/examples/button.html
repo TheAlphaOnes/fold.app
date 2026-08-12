@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Maya Design - Button Example</title>
+  <style>
+    /* 
+      Maya Design Tokens: 
+      These are the concrete values extracted from tokens.md, motion.md, and interaction.md 
+    */
+    :root {
+      /* Base Surface */
+      --bg-root: #0A0A0A;
+      --bg-surface-1: #141414;
+      
+      /* Semantic Intent: Success (Dark Mode) */
+      --success-base: hsl(152, 58%, 44%);
+      --success-hover: hsl(152, 58%, 50%);
+      --success-muted: hsla(152, 60%, 50%, 0.14);
+      --success-border: hsla(152, 58%, 44%, 0.35);
+      --success-text: hsl(152, 60%, 70%);
+
+      /* Typography */
+      --text-primary: #EFEFEF;
+      --font-body: 15px;
+      
+      /* Motion Curves */
+      --ease-out: cubic-bezier(0.19, 1, 0.22, 1);
+      --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    body {
+      background-color: var(--bg-root);
+      color: var(--text-primary);
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      gap: 24px;
+      padding: 64px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 
+      Component Blueprint: Button 
+      From references/components.md 
+    */
+    .maya-btn {
+      appearance: none;
+      border: none;
+      background: transparent;
+      margin: 0; /* Universal Rule: No outer margins */
+      
+      /* Anatomy */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      
+      padding: 0 16px;
+      height: 36px;
+      border-radius: 8px; /* radius-medium */
+      
+      /* Typography */
+      font-size: var(--font-body);
+      font-weight: 500;
+      color: var(--text-primary);
+      
+      cursor: pointer;
+      position: relative;
+      
+      /* Hit area expansion (if needed) */
+      min-width: 40px; 
+    }
+
+    /* Variant: Primary Success */
+    .maya-btn--primary-success {
+      background-color: var(--success-base);
+      color: #fff;
+    }
+    
+    .maya-btn--primary-success:hover {
+      background-color: var(--success-hover);
+      transition: background-color 150ms var(--ease-out);
+    }
+
+    /* Variant: Ghost Success */
+    .maya-btn--ghost-success {
+      background-color: transparent;
+      border: 0.5px solid var(--success-border);
+      color: var(--success-text);
+    }
+
+    .maya-btn--ghost-success:hover {
+      background-color: var(--success-muted);
+      transition: background-color 150ms var(--ease-out);
+    }
+
+    /* 
+      Universal Active State 
+      Applies tactile depression on press using spring-bounce
+    */
+    .maya-btn:active {
+      transform: scale(0.96);
+      transition: transform 100ms var(--spring-bounce);
+    }
+
+    /* Focus Ring */
+    .maya-btn:focus-visible {
+      outline: 2px solid hsl(213, 75%, 62%); /* Info blue */
+      outline-offset: 2px;
+    }
+
+    /* Disabled State */
+    .maya-btn:disabled {
+      opacity: 0.4;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Example Buttons -->
+  <button class="maya-btn maya-btn--primary-success" onclick="playSoftClick()">
+    Save Changes
+  </button>
+
+  <button class="maya-btn maya-btn--ghost-success" onclick="playSoftClick()">
+    Cancel
+  </button>
+
+  <script>
+    /* 
+      Audio Implementation: Soft Click 
+      From references/interaction.md 
+    */
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let ctx;
+
+    function playSoftClick() {
+      // Respect Reduced Motion
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) return;
+
+      if (!ctx) ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.value = 600;
+      
+      gainNode.gain.setValueAtTime(0.04, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+      
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    }
+  </script>
+</body>
+</html>
