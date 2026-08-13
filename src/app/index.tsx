@@ -25,6 +25,8 @@ import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import { useShareIntent } from 'expo-share-intent';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -95,6 +97,44 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { compositions, loading, refresh, updatePositions, setTargetDate } = useJournalStore();
   
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
+  
+  // Handle incoming shared media (e.g. from Photos app, Chrome, etc.)
+  useEffect(() => {
+    if (error) {
+      console.error('Share Intent Error:', error);
+      return;
+    }
+    
+    if (hasShareIntent && shareIntent.files && shareIntent.files.length > 0) {
+      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+      
+      if (isExpoGo) {
+        Alert.alert(
+          'Expo Go Limitation',
+          'Receiving shared media from other apps is disabled in Expo Go. It WILL work seamlessly in your final built app.',
+          [{ text: 'OK', onPress: () => resetShareIntent() }]
+        );
+        return;
+      }
+      
+      const file = shareIntent.files[0];
+      const isVideo = file.mimeType?.startsWith('video/') || file.path.endsWith('.mp4');
+      const ext = isVideo ? 'mp4' : 'jpg';
+      
+      // We must copy the file to our document directory to ensure we own it before navigating to compose
+      const dest = `${FileSystem.documentDirectory}shared_${Date.now()}.${ext}`;
+      FileSystem.copyAsync({ from: file.path, to: dest }).then(() => {
+        setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : 'image', width: 1080, height: 1920 });
+        resetShareIntent();
+        router.push('/compose');
+      }).catch(err => {
+        console.error('Failed to copy shared file', err);
+        resetShareIntent();
+      });
+    }
+  }, [hasShareIntent, shareIntent, error]);
+
   // Ensure we are viewing today's data on the home screen
   useFocusEffect(
     useCallback(() => {

@@ -219,6 +219,8 @@ export default function CameraScreen() {
         zoom={0}
         pictureSize="1920x1080"
         videoQuality="1080p"
+        ratio="16:9"
+        videoStabilizationMode="off"
       />
 
       {/* ─── UI Overlay (Outside CameraView to prevent remounts) ─── */}

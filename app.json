@@ -51,7 +51,8 @@
           "savePhotosPermission": "Allow Fold to save memories to your photos.",
           "isAccessMediaLocationEnabled": true
         }
-      ]
+      ],
+      "expo-share-intent"
     ],
     "experiments": {
       "typedRoutes": true,
