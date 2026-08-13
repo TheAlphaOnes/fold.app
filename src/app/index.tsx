@@ -212,18 +212,18 @@ export default function HomeScreen() {
       <GrainBackground />
 
       <Pressable 
-        style={({ pressed }) => [
-          styles.profileButton, 
+        style={({pressed}) => [
+          styles.tabB, 
           { 
-            top: 21, 
-            opacity: pressed ? 0.5 : 1,
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border
+            top: Math.max(insets.top, 20),
+            backgroundColor: pressed ? '#E0E0E0' : theme.backgroundElement,
+            borderColor: theme.border 
           }
         ]}
         onPress={() => router.push('/profile')}
       >
-        <User size={20} color={theme.text} />
+        <User size={16} color={theme.text} strokeWidth={2.5} />
+        <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </Pressable>
 
       {compositions.length === 0 && !loading ? (
@@ -289,21 +289,29 @@ const styles = StyleSheet.create({
     color: '#878787', // Technical gray
     letterSpacing: 1,
   },
-  profileButton: {
+  tabB: {
     position: 'absolute',
-    right: 21,
+    right: 0,
     zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
     borderWidth: 1,
-    justifyContent: 'center',
+    borderRightWidth: 0,
+    flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 2,
     elevation: 2,
+  },
+  notchIndicator: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginLeft: 8,
   },
   carouselItem: {
     justifyContent: 'center',
