@@ -9,11 +9,12 @@ export default function OnboardingLayout() {
       screenOptions={{ 
         headerShown: false,
         contentStyle: { backgroundColor: theme.background },
-        animation: 'fade',
+        animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="user-info" />
+      <Stack.Screen name="index" options={{ animation: 'fade' }} />
+      <Stack.Screen name="name" />
+      <Stack.Screen name="dob" />
     </Stack>
   );
 }

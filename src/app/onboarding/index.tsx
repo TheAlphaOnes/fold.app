@@ -7,6 +7,7 @@ import { ArrowRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { TacticalSlider } from '@/components/tactical-slider';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -53,19 +54,10 @@ export default function OnboardingStartScreen() {
         <View style={styles.spacer} />
 
         {/* CTA Button */}
-        <Pressable 
-          onPress={() => router.push('/onboarding/user-info')}
-          style={({ pressed }) => [
-            styles.ctaButton,
-            { 
-              backgroundColor: theme.accentWarm,
-              opacity: pressed ? 0.8 : 1,
-            }
-          ]}
-        >
-          <Text style={[styles.ctaText, { color: '#FFFFFF' }]}>INITIALIZE</Text>
-          <ArrowRight size={20} color="#FFFFFF" strokeWidth={2.5} />
-        </Pressable>
+        <TacticalSlider 
+          text="INITIALIZE" 
+          onConfirm={() => router.push('/onboarding/name')} 
+        />
 
       </View>
     </View>
