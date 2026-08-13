@@ -409,6 +409,7 @@ export default function MemoryDetailScreen() {
             item={composition} 
             height={cardHeight} 
             onUpdatePositions={async () => {}} 
+            isExporting={true}
           />
         </View>
       </View>

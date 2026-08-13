@@ -15,6 +15,7 @@ interface MemoryCardProps {
   item: Composition;
   height: number;
   onUpdatePositions: (id: number, updatedMedia: MediaElement[]) => void;
+  isExporting?: boolean;
 }
 
 /**
@@ -23,7 +24,7 @@ interface MemoryCardProps {
  * 2. Single Media: Hero image framed with text below.
  * 3. Canvas Mode (Multi-Media): Text centered, multiple media stickers freely draggable around it.
  */
-export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps) {
+export function MemoryCard({ item, height, onUpdatePositions, isExporting }: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   
@@ -55,6 +56,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
           backgroundColor: theme.backgroundElement,
           borderColor: theme.border,
         },
+        isExporting && { borderRadius: 0 },
       ]}
     >
       {/* LAYER 1: Stripes */}
