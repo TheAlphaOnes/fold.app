@@ -111,12 +111,12 @@ export function TECalendar({ onSelect }: TECalendarProps) {
         >
           {({ pressed }) => (
             <>
-              {/* Today: small filled circle behind the number */}
+              {/* Today: thin ring behind the number */}
               {isTodayCell && (
                 <View
                   style={[
-                    styles.todayCircle,
-                    { backgroundColor: pressed ? theme.background : theme.text },
+                    styles.todayRing,
+                    { borderColor: pressed ? theme.background : theme.text },
                   ]}
                 />
               )}
@@ -127,7 +127,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
                     color: pressed
                       ? theme.background
                       : isTodayCell
-                        ? theme.background // white text on the dark circle
+                        ? theme.text
                         : theme.textMuted,
                   },
                 ]}
@@ -380,12 +380,13 @@ const styles = StyleSheet.create({
     zIndex: 1, // above the todayCircle
   },
 
-  // Today: a circle positioned behind the number, centered
-  todayCircle: {
+  // Today: a thin ring positioned behind the number, centered
+  todayRing: {
     position: 'absolute',
     width: 28,
     height: 28,
     borderRadius: 14,
+    borderWidth: 1,
   },
 
   // Memory dot: absolute at cell bottom

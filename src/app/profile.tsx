@@ -110,14 +110,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* Time Machine Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0 }]}>
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
           <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 4, marginBottom: 0 }]}>
             <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
           </View>
-          
-          <View>
-            <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
-          </View>
+          <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
         </View>
 
         {/* Charts */}
