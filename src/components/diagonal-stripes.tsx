@@ -20,12 +20,14 @@ export function DiagonalStripes({
   opacity = 0.15,
   animated = false,
 }: DiagonalStripesProps) {
+  const patternId = `cardStripes-${color.replace('#', '')}-${opacity}`;
+
   return (
     <View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents="none">
       <Svg width="100%" height="100%">
         <Defs>
           <Pattern
-            id="cardStripes"
+            id={patternId}
             x="0"
             y="0"
             width="5"
@@ -43,7 +45,7 @@ export function DiagonalStripes({
             />
           </Pattern>
         </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#cardStripes)" />
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${patternId})`} />
       </Svg>
     </View>
   );

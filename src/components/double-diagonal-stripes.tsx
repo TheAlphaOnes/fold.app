@@ -51,6 +51,8 @@ export function DoubleDiagonalStripes({
     ],
   }));
 
+  const patternId = `doubleCardStripes-${color.replace('#', '')}-${opacity}`;
+
   return (
     <Animated.View
       style={[
@@ -63,7 +65,7 @@ export function DoubleDiagonalStripes({
       <Svg width="120%" height="120%">
         <Defs>
           <Pattern
-            id="doubleCardStripes"
+            id={patternId}
             x="0"
             y="0"
             width="15"
@@ -92,7 +94,7 @@ export function DoubleDiagonalStripes({
           </Pattern>
         </Defs>
         {/* Draw the pattern oversized to prevent edges from showing during drift */}
-        <Rect x="-20%" y="-20%" width="140%" height="140%" fill="url(#doubleCardStripes)" />
+        <Rect x="-20%" y="-20%" width="140%" height="140%" fill={`url(#${patternId})`} />
       </Svg>
     </Animated.View>
   );
