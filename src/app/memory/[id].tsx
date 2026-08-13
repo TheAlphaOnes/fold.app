@@ -244,7 +244,8 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = async (uri: string) => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      // Pass writeOnly=true and granularPermissions=['photo', 'video'] to avoid requesting the AUDIO permission
+      const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo', 'video']);
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Allow Fold to access your gallery to save media.');
         return;
