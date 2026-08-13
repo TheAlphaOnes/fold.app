@@ -224,7 +224,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.requireBiometrics}
               onValueChange={(val) => handleToggleSecurity('requireBiometrics', val)}
-              trackColor={{ false: theme.border, true: '#00FF66' }}
+              trackColor={{ false: theme.border, true: theme.accentWarm }}
               thumbColor={theme.background}
             />
           </View>
@@ -238,7 +238,7 @@ export default function SettingsScreen() {
             <Switch
               value={settings.privacyScreen}
               onValueChange={(val) => handleToggleSecurity('privacyScreen', val)}
-              trackColor={{ false: theme.border, true: '#00FF66' }}
+              trackColor={{ false: theme.border, true: theme.accentWarm }}
               thumbColor={theme.background}
             />
           </View>

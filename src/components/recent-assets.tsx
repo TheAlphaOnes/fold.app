@@ -30,7 +30,7 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
 
   const formatChange = (c: Composition) => {
     if (hasAudio(c)) {
-      return <ThemedText style={[styles.changeText, { color: '#00FF66' }]}>+12.25%</ThemedText>;
+      return <ThemedText style={[styles.changeText, { color: theme.accentWarm }]}>+12.25%</ThemedText>;
     }
     return <ThemedText style={[styles.changeText, { color: '#FF3B30' }]}>-5.2%</ThemedText>;
   };

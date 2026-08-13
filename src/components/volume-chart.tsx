@@ -82,7 +82,7 @@ export function VolumeChart({ compositions }: VolumeChartProps) {
         </View>
         <View style={styles.statCol}>
           <ThemedText style={styles.statLabel}>Net Audio</ThemedText>
-          <ThemedText style={[styles.statValue, { color: '#00FF66' }]}>
+          <ThemedText style={[styles.statValue, { color: theme.accentWarm }]}>
             +{audioCount}
           </ThemedText>
         </View>

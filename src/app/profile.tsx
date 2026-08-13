@@ -1,12 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { useJournalStore } from '@/hooks/use-journal';
 import { useSettings } from '@/hooks/use-settings';
+import { getAllCompositions } from '@/db/journal-repository';
+import type { Composition } from '@/types/journal';
+
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActivityGrid } from '@/components/activity-grid';
@@ -18,8 +20,12 @@ import { TECalendar } from '@/components/te-calendar';
 export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { compositions } = useJournalStore();
   const { settings } = useSettings();
+  const [compositions, setCompositions] = useState<Composition[]>([]);
+
+  useEffect(() => {
+    getAllCompositions().then(setCompositions).catch(console.error);
+  }, []);
 
   // Aggregate fake "Portfolio" data from real compositions
   const audioCount = useMemo(() => {
@@ -99,21 +105,21 @@ export default function ProfileScreen() {
               <ThemedText style={[styles.statValue, { color: fg }]}>
                 {todayCount}
               </ThemedText>
-              <ThemedText style={styles.statChangeGreen}>Entries</ThemedText>
+              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Entries</ThemedText>
             </View>
             <View style={styles.portfolioStat}>
               <ThemedText style={[styles.statLabel, { color: mutedText }]}>Words</ThemedText>
               <ThemedText style={[styles.statValue, { color: fg }]}>
                 {totalWords.toLocaleString()}
               </ThemedText>
-              <ThemedText style={styles.statChangeGreen}>Total</ThemedText>
+              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Total</ThemedText>
             </View>
             <View style={styles.portfolioStat}>
               <ThemedText style={[styles.statLabel, { color: mutedText }]}>Audio</ThemedText>
               <ThemedText style={[styles.statValue, { color: fg }]}>
                 {audioCount}
               </ThemedText>
-              <ThemedText style={styles.statChangeGreen}>Clips</ThemedText>
+              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Clips</ThemedText>
             </View>
           </View>
         </View>
@@ -244,10 +250,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 4,
   },
-  statChangeGreen: {
+  statChangeAccent: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 9,
-    color: '#00FF66',
   },
   statChangeRed: {
     fontFamily: 'JetBrainsMono-Medium',
