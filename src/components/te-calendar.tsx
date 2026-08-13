@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { getDatesWithMemories } from '@/db/journal-repository';
@@ -16,6 +16,10 @@ const DOW_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
 export function TECalendar({ onSelect }: TECalendarProps) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  // Profile padding is 16 on each side (32 total)
+  const cellWidth = (width - 32) / 7;
+  const pickerHeight = ((width - 32) / 3) / 1.6;
 
   const [currentDate, setCurrentDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -87,6 +91,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             key={`e-${i}`}
             style={[
               styles.dayCell,
+              { height: cellWidth },
               !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
               !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             ]}
@@ -104,47 +109,41 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           onPress={() => onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
           style={({ pressed }) => [
             styles.dayCell,
+            { height: cellWidth },
             !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
             !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             pressed && { backgroundColor: theme.text },
           ]}
         >
-          {({ pressed }) => (
-            <>
-              {/* Today: thin ring behind the number */}
-              {isTodayCell && (
-                <View
-                  style={[
-                    styles.todayRing,
-                    { borderColor: pressed ? theme.background : theme.text },
-                  ]}
-                />
-              )}
-              <ThemedText
-                style={[
-                  styles.dayText,
-                  {
-                    color: pressed
-                      ? theme.background
-                      : isTodayCell
-                        ? theme.text
-                        : theme.textMuted,
-                  },
-                ]}
-              >
+          {({ pressed }) => {
+            const textColor = pressed ? theme.background : isTodayCell ? theme.text : theme.textMuted;
+            const textEl = (
+              <ThemedText style={[styles.dayText, { color: textColor }]}>
                 {dayNum < 10 ? `0${dayNum}` : dayNum}
               </ThemedText>
-              {/* Memory dot: sits at bottom of cell, well below text */}
-              {hasMemoryCell && (
-                <View
-                  style={[
-                    styles.memoryDot,
-                    { backgroundColor: pressed ? theme.background : '#E45B00' },
-                  ]}
-                />
-              )}
-            </>
-          )}
+            );
+
+            return (
+              <>
+                {isTodayCell ? (
+                  <View style={[styles.todayRing, { borderColor: pressed ? theme.background : theme.text }]}>
+                    {textEl}
+                  </View>
+                ) : (
+                  textEl
+                )}
+                {/* Memory dot: sits at bottom of cell */}
+                {hasMemoryCell && (
+                  <View
+                    style={[
+                      styles.memoryDot,
+                      { backgroundColor: pressed ? theme.background : '#E45B00' },
+                    ]}
+                  />
+                )}
+              </>
+            );
+          }}
         </Pressable>
       );
     }
@@ -183,6 +182,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           }}
           style={({ pressed }) => [
             styles.pickerCell,
+            { height: pickerHeight },
             col < cols - 1 && { borderRightWidth: 1, borderRightColor: theme.border },
             row < rows - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
             (pressed || isSelected) && { backgroundColor: theme.text },
@@ -226,6 +226,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           }}
           style={({ pressed }) => [
             styles.pickerCell,
+            { height: pickerHeight },
             col < cols - 1 && { borderRightWidth: 1, borderRightColor: theme.border },
             row < rows - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border },
             (pressed || isSelected) && { backgroundColor: theme.text },
@@ -370,7 +371,6 @@ const styles = StyleSheet.create({
   // --- Day cells ---
   dayCell: {
     width: '14.2857%', // 1/7
-    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -380,13 +380,14 @@ const styles = StyleSheet.create({
     zIndex: 1, // above the todayCircle
   },
 
-  // Today: a thin ring positioned behind the number, centered
+  // Today: a thin ring wrapping the number, centered
   todayRing: {
-    position: 'absolute',
     width: 28,
     height: 28,
     borderRadius: 14,
     borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Memory dot: absolute at cell bottom
@@ -401,7 +402,6 @@ const styles = StyleSheet.create({
   // --- Month / Year picker cells ---
   pickerCell: {
     width: '33.333%',
-    aspectRatio: 1.6,
     justifyContent: 'center',
     alignItems: 'center',
   },
