@@ -99,15 +99,20 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     <GestureDetector gesture={composed}>
       <Animated.View style={[
         styles.sticker, 
-        { 
+        media.type !== 'audio' && { 
           backgroundColor: theme.isDark ? '#111111' : '#F0F0F0',
-          borderColor: theme.isDark ? '#000000' : '#FFFFFF' 
+          borderColor: theme.isDark ? '#000000' : '#FFFFFF',
+          borderWidth: 4, 
         }, 
+        media.type === 'audio' && {
+          backgroundColor: 'transparent',
+          borderWidth: 0,
+        },
         animatedStyle
       ]}>
         <View style={styles.innerFrame}>
           {media.type === 'audio' ? (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
               <VinylRecord size={70} isPlaying={false} isRecording={false} />
             </View>
           ) : (
@@ -132,7 +137,6 @@ const styles = StyleSheet.create({
   sticker: {
     width: 90, // Reduced size, 3:4 ratio
     height: 120,
-    borderWidth: 4,
     shadowColor: '#000',
   },
   innerFrame: {
