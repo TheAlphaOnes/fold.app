@@ -73,24 +73,32 @@ export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
     });
 
   const panGesture = Gesture.Pan()
-    .activeOffsetY([-10, 10]) // Only activate on vertical movement
+    .activeOffsetY([-8, 8]) // Activate only on vertical movement
     .onUpdate((e) => {
-      // Only allow dragging upwards (negative Y)
       if (e.translationY < 0) {
-        // Add some resistance
-        translateY.value = e.translationY * 0.6;
+        // Hard clamp at -50px with diminishing resistance beyond -30px
+        const raw = e.translationY;
+        const CLAMP = -50;
+        const EASE_START = -30;
+        if (raw > EASE_START) {
+          translateY.value = raw;
+        } else {
+          // Rubber-band effect: moves slower after EASE_START
+          translateY.value = EASE_START + (raw - EASE_START) * 0.3;
+        }
+        // Hard floor
+        if (translateY.value < CLAMP) translateY.value = CLAMP;
       }
     })
     .onEnd((e) => {
-      if (e.translationY < -60) {
-        // Trigger swipe up action
+      if (e.translationY < -50) {
         runOnJS(fireSwipeUp)();
       }
-      
-      // Snap back
+      // Crisp snap back
       translateY.value = withSpring(0, {
-        damping: 15,
-        stiffness: 250,
+        damping: 20,
+        stiffness: 400,
+        mass: 0.4,
       });
     });
 

@@ -20,9 +20,10 @@ import { useJournal } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
-import { useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import { useCallback, useRef, useState, useMemo } from 'react';
 import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -118,10 +119,16 @@ export default function HomeScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        
+        // Camera URIs on iOS are temporary. Copy to persistent storage before navigating.
+        const ext = asset.type === 'video' ? 'mp4' : 'jpg';
+        const destUri = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
+        await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+
         router.push({
           pathname: '/compose',
           params: {
-            initialMediaUri: asset.uri,
+            initialMediaUri: destUri,
             initialMediaType: asset.type === 'video' ? 'video' : 'image',
             initialMediaWidth: asset.width,
             initialMediaHeight: asset.height,
@@ -137,19 +144,16 @@ export default function HomeScreen() {
   const prevCount = useRef(compositions.length);
 
   // Auto-scroll to the bottom when a new item is added
-  const [dateStr, setDateStr] = useState('');
-  
-  useEffect(() => {
+  // Compute date synchronously so it never flashes empty
+  const [dateStr] = useState(() => {
     const now = new Date();
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const day = days[now.getDay()];
-    
     const d = String(now.getDate()).padStart(2, '0');
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const y = String(now.getFullYear()).slice(-2);
-    
-    setDateStr(`${day} ${d}.${m}.${y}`);
-  }, []);
+    return `${day} ${d}.${m}.${y}`;
+  });
 
   useEffect(() => {
     if (compositions.length > prevCount.current) {
