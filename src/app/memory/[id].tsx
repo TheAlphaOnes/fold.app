@@ -12,6 +12,8 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { VinylRecord } from '@/components/vinyl-record';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 
 // --- Types ---
 type SlideData =
@@ -121,6 +123,63 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
 
 function MediaSlide({ media, width, height, isActive }: { media: MediaElement; width: number; height: number; isActive: boolean }) {
   const insets = useSafeAreaInsets();
+  
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
+
+  // Track zoom state in JS so we can toggle the pan gesture's enabled prop.
+  // Pan is only active when zoomed in — this lets FlatList receive horizontal
+  // swipe events at 1x scale so the user can still paginate between slides.
+  const [isZoomed, setIsZoomed] = React.useState(false);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(1, savedScale.value * e.scale);
+    })
+    .onEnd(() => {
+      if (scale.value <= 1.05) {
+        // Snap back to unzoomed — reset everything and unlock FlatList swipe
+        scale.value = withSpring(1);
+        savedScale.value = 1;
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        savedTranslateX.value = 0;
+        savedTranslateY.value = 0;
+        runOnJS(setIsZoomed)(false);
+      } else {
+        savedScale.value = scale.value;
+        runOnJS(setIsZoomed)(true);
+      }
+    });
+
+  const panGesture = Gesture.Pan()
+    // Only capture pan events when zoomed in — at 1x the FlatList handles swiping
+    .enabled(isZoomed)
+    .onUpdate((e) => {
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const composed = Gesture.Simultaneous(pinchGesture, panGesture);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value }
+    ],
+    flex: 1,
+  }));
+
   if (media.type === 'video') {
     return <VideoSlide media={media} width={width} height={height} isActive={isActive} />;
   }
@@ -129,21 +188,17 @@ function MediaSlide({ media, width, height, isActive }: { media: MediaElement; w
   }
 
   return (
-    <ScrollView
-      style={{ width, height }}
-      contentContainerStyle={{ flex: 1, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}
-      maximumZoomScale={4}
-      minimumZoomScale={1}
-      showsHorizontalScrollIndicator={false}
-      showsVerticalScrollIndicator={false}
-      bouncesZoom={true}
-    >
-      <Image 
-        source={{ uri: media.uri }} 
-        style={{ flex: 1 }} 
-        contentFit="contain" 
-      />
-    </ScrollView>
+    <View style={{ width, height, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}>
+      <GestureDetector gesture={composed}>
+        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+          <Image 
+            source={{ uri: media.uri }} 
+            style={{ flex: 1 }} 
+            contentFit="contain" 
+          />
+        </Animated.View>
+      </GestureDetector>
+    </View>
   );
 }
 

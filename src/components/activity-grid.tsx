@@ -42,11 +42,14 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
     const countMap: Record<string, number> = {};
     let total = 0;
     
+    const formatDate = (date: Date) => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
     compositions.forEach(comp => {
       const d = new Date(comp.createdAt);
       if (d.getFullYear() === selectedYear) {
-        d.setHours(0, 0, 0, 0);
-        const key = d.toISOString().split('T')[0];
+        const key = formatDate(d);
         countMap[key] = (countMap[key] || 0) + 1;
         total++;
       }
@@ -71,7 +74,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
     let weekIndex = 0;
 
     while (currentDate <= endDate) {
-      const key = currentDate.toISOString().split('T')[0];
+      const key = formatDate(currentDate);
       const count = countMap[key] || 0;
       
       data.push({

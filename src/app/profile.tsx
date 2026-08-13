@@ -22,13 +22,22 @@ export default function ProfileScreen() {
   const { settings } = useSettings();
 
   // Aggregate fake "Portfolio" data from real compositions
-  const totalDuration = useMemo(() => {
-    // We don't have exact durations in the media element yet, but if we did, we'd sum them here.
-    return 0; // Minutes
+  const audioCount = useMemo(() => {
+    return compositions.filter(c => c.mediaElements.some(m => m.type === 'audio')).length;
   }, [compositions]);
 
   const totalWords = useMemo(() => {
     return compositions.reduce((acc, c) => acc + (c.textContent?.trim().split(/\s+/).filter(Boolean).length || 0), 0);
+  }, [compositions]);
+
+  const todayCount = useMemo(() => {
+    const today = new Date();
+    return compositions.filter(c => {
+      const d = new Date(c.createdAt);
+      return d.getDate() === today.getDate() && 
+             d.getMonth() === today.getMonth() && 
+             d.getFullYear() === today.getFullYear();
+    }).length;
   }, [compositions]);
 
   // We now use theme colors instead of hardcoded terminal dark mode
@@ -88,23 +97,23 @@ export default function ProfileScreen() {
             <View style={styles.portfolioStat}>
               <ThemedText style={[styles.statLabel, { color: mutedText }]}>Today</ThemedText>
               <ThemedText style={[styles.statValue, { color: fg }]}>
-                {compositions.length > 0 ? '12' : '0'}
+                {todayCount}
               </ThemedText>
-              <ThemedText style={styles.statChangeGreen}>↑ 25.50%</ThemedText>
+              <ThemedText style={styles.statChangeGreen}>Entries</ThemedText>
             </View>
             <View style={styles.portfolioStat}>
               <ThemedText style={[styles.statLabel, { color: mutedText }]}>Words</ThemedText>
               <ThemedText style={[styles.statValue, { color: fg }]}>
                 {totalWords.toLocaleString()}
               </ThemedText>
-              <ThemedText style={styles.statChangeRed}>↓ 5.50%</ThemedText>
+              <ThemedText style={styles.statChangeGreen}>Total</ThemedText>
             </View>
             <View style={styles.portfolioStat}>
-              <ThemedText style={[styles.statLabel, { color: mutedText }]}>Audio (m)</ThemedText>
+              <ThemedText style={[styles.statLabel, { color: mutedText }]}>Audio</ThemedText>
               <ThemedText style={[styles.statValue, { color: fg }]}>
-                {totalDuration}
+                {audioCount}
               </ThemedText>
-              <ThemedText style={styles.statChangeGreen}>↑ 25.50%</ThemedText>
+              <ThemedText style={styles.statChangeGreen}>Clips</ThemedText>
             </View>
           </View>
         </View>

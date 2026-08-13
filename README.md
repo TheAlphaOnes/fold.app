@@ -1,40 +1,92 @@
 <div align="center">
-  <img src="assets/fold-logo.png" alt="Fold Logo" width="200" />
+  <img src="assets/fold-logo.png" alt="Fold Logo" width="120" />
+  <h1>Fold</h1>
+  <p><strong>A spatial journal for messy, beautiful minds.</strong></p>
 </div>
-
-# Fold
-
-Most journals force your memories into rigid lines of text and perfectly aligned grids. But human memory doesn't work that way. Memories are messy, visual, and chaotic. 
-
-Fold is a digital canvas that respects how you actually remember things. Instead of typing into a box, you drop photos, videos, and voice notes onto a free-form surface. You can drag them around, stack them, and arrange them exactly how the moment felt. It is a space designed to capture the raw, unfiltered reality of your days.
-
-We built Fold with a singular vision: to give you back ownership of your personal space. There are no algorithms, no social feeds, and no mandatory cloud syncs. Your canvas lives entirely on your device, locked behind your own biometrics. It is a tool built for you, and only you.
 
 ---
 
-## Technical Architecture (Hackathon Details)
+## 📌 Vision
 
-While the product experience is designed to be as invisible and fluid as possible, the underlying architecture is built for high performance and strict privacy.
+Most journals force your memories into rigid lines of text and perfectly aligned grids. But human memory doesn't work that way. Memories are visual, chaotic, and spatial. 
 
-- **Framework:** Built with React Native and Expo (using Expo Router for file-based navigation).
-- **Direct DOM Bypass:** To achieve 60fps when dragging media around the canvas, Fold completely bypasses React's render cycle during gestures, utilizing Reanimated's shared values and worklets running directly on the UI thread.
-- **Local-First Database:** The entire application runs offline. Data is persisted using `expo-sqlite`, ensuring absolute privacy and zero latency.
-- **Media Handling:** Camera captures are saved instantly to the device's persistent application directory. We leverage native media rendering (`expo-image`, `expo-video`, `expo-audio`) to handle heavy assets without blocking the main JavaScript thread.
-- **Security:** Sensitive actions, including raw JSON data exports and device memory wiping, are protected by `expo-local-authentication`, tying directly into the native secure enclave (Face ID / Touch ID).
+**Fold is a digital canvas that respects how you actually remember things.** 
+Instead of typing into a box, you drop photos, videos, and voice notes onto a free-form surface. You can drag them around, stack them, and arrange them exactly how the moment felt. It is a space designed to capture the raw, unfiltered reality of your days.
 
-## Getting Started
+We built Fold with a singular vision: to give you back ownership of your personal space. There are no algorithms, no social feeds, and no mandatory cloud syncs. Your canvas lives entirely on your device, locked behind your own biometrics.
 
-1. **Install dependencies:**
+---
+
+## 🚀 Features
+
+- **Spatial Canvas**: Drag, drop, and place text, images, videos, and audio freely.
+- **Local-First Architecture**: Your data never leaves your device unless you export it.
+- **Biometric Security**: Secure your memories behind Face ID or Touch ID.
+- **Universal Capture**: Swipe up directly from the home screen to instantly capture a photo or video.
+- **Rich Insights**: Visualize your journaling habits with GitHub-style heatmaps and volume charts.
+- **Zero-Latency Interactions**: 60FPS gesture interactions using native UI thread worklets.
+
+---
+
+## 🛠️ Tech Stack
+
+Fold is built for high performance and strict privacy:
+
+- **Framework**: [Expo](https://expo.dev) & React Native
+- **Navigation**: Expo Router (File-based routing)
+- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
+- **Database**: `expo-sqlite` (Local, on-device persistence)
+- **Animations**: `react-native-reanimated` (Direct UI thread manipulation)
+- **Gestures**: `react-native-gesture-handler`
+
+---
+
+## 🏃 Getting Started
+
+### Prerequisites
+- Node.js (v18 or newer)
+- `npm` or `pnpm`
+- iOS Simulator or an physical device with [Expo Go](https://expo.dev/client).
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/TheAlphaOnes/fold.app.git
+   cd fold.app
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
+   *(Or `pnpm install` if you prefer).*
 
-2. **Run the app:**
+3. **Start the development server**
    ```bash
    npm start
    ```
 
-3. **Open on your device:**
-   Download the Expo Go app on your phone and scan the QR code, or press `i` to launch the iOS simulator.
+4. **Launch the App**
+   - Press `i` to open in the iOS simulator.
+   - Or scan the QR code with the Expo Go app on your physical device.
 
-*(Note: Hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully).*
+> **Note**: Hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully.
+
+---
+
+## 🔒 Privacy & Security
+
+Fold operates on a strict **local-first** principle.
+- No analytics trackers.
+- No background data harvesting.
+- Raw JSON exports available at any time.
+- Single-tap "Erase Everything" function.
+
+All sensitive actions tie directly into the native secure enclave (Face ID / Touch ID) via `expo-local-authentication`.
+
+---
+
+<div align="center">
+  <i>Built with care for those who want to remember.</i>
+</div>

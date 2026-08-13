@@ -44,6 +44,7 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
 
       {recent.map((c, i) => {
         const dateStr = new Date(c.createdAt).toLocaleDateString(undefined, { 
+          year: 'numeric',
           month: 'short', 
           day: 'numeric' 
         });

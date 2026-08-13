@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue,
@@ -113,41 +113,7 @@ export default function HomeScreen() {
   };
 
   const handleSwipeUp = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Sorry, we need camera permissions to capture memories!');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images', 'videos'],
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        
-        // Camera URIs on iOS are temporary. Copy to persistent storage before navigating.
-        // Preserve the original extension (.mov for iOS videos, .jpg for photos) so the OS can play them.
-        const originalUri = asset.uri;
-        const extMatch = originalUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mov' : 'jpg');
-        const destUri = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
-        await FileSystem.copyAsync({ from: originalUri, to: destUri });
-
-        setPendingCameraMedia({
-          uri: destUri,
-          type: asset.type === 'video' ? 'video' : 'image',
-          width: asset.width,
-          height: asset.height,
-        });
-
-        router.push('/compose');
-      }
-    } catch (error) {
-      console.error('Failed to launch camera:', error);
-    }
+    router.push('/camera');
   };
 
   const listRef = useRef<Animated.FlatList<Composition>>(null);
@@ -161,7 +127,7 @@ export default function HomeScreen() {
     const day = days[now.getDay()];
     const d = String(now.getDate()).padStart(2, '0');
     const m = String(now.getMonth() + 1).padStart(2, '0');
-    const y = String(now.getFullYear()).slice(-2);
+    const y = now.getFullYear();
     return `${day} ${d}.${m}.${y}`;
   });
 

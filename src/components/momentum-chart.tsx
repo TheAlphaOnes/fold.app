@@ -32,8 +32,7 @@ export function MomentumChart({ compositions }: MomentumChartProps) {
       }
     });
     
-    // Add some noise to make it look like a cool graph even with little data
-    return result.map((v, i) => v + Math.sin(i * 0.8) * 1.5 + 2);
+    return result;
   }, [compositions]);
 
   const maxVal = Math.max(...data, 5);

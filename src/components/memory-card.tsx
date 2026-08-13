@@ -82,8 +82,9 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
                 />
               )}
               {item.mediaElements[0].type === 'video' && (
-                <View style={styles.videoOverlay}>
-                  <PlayCircle size={48} color="rgba(255,255,255,0.9)" />
+                <View style={styles.videoBadge}>
+                  <Text style={styles.videoBadgeText}>VIDEO</Text>
+                  <PlayCircle size={10} color="#FFFFFF" />
                 </View>
               )}
             </View>
@@ -208,13 +209,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#000000',
   },
-  videoOverlay: {
+  videoBadge: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'center',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  videoBadgeText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
 
   // ─── Canvas Layout ───

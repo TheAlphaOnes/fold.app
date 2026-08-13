@@ -120,7 +120,7 @@ export default function ArchiveScreen() {
     
     const d = String(targetDate.getDate()).padStart(2, '0');
     const m = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const y = String(targetDate.getFullYear()).slice(-2);
+    const y = targetDate.getFullYear();
     
     setDateStr(`${day} ${d}.${m}.${y}`);
   }, [targetDate]);
