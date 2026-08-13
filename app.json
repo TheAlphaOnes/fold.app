@@ -44,15 +44,7 @@
           "microphonePermission": "Allow Fold to access your microphone to record audio for memories."
         }
       ],
-      [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow Fold to save memories to your photos.",
-          "savePhotosPermission": "Allow Fold to save memories to your photos.",
-          "isAccessMediaLocationEnabled": true
-        }
-      ],
-      "expo-share-intent"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

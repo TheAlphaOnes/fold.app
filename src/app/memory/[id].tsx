@@ -14,7 +14,6 @@ import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
-import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 import { useJournalStore } from '@/hooks/use-journal';
 
@@ -244,13 +243,13 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = async (uri: string) => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need access to your photos to save media.');
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Error', 'Saving is not available on this device.');
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved', 'Media saved to your gallery.');
+      // expo-sharing opens the native share sheet — user can hit "Save to Photos" from there
+      await Sharing.shareAsync(uri, { dialogTitle: 'Save to your gallery' });
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to save media.');

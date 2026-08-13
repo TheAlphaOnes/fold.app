@@ -25,7 +25,6 @@ import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
-import { useShareIntentContext } from 'expo-share-intent';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -102,25 +101,6 @@ export default function HomeScreen() {
       setTargetDate(new Date());
     }, [setTargetDate])
   );
-
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
-
-  useEffect(() => {
-    if (hasShareIntent && shareIntent.files && shareIntent.type === 'media') {
-      const files = shareIntent.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        setPendingCameraMedia({
-          uri: file.path,
-          type: file.mimeType?.includes('video') ? 'video' : 'image',
-          width: file.width || 1080,
-          height: file.height || 1920,
-        });
-        resetShareIntent();
-        router.push('/compose');
-      }
-    }
-  }, [hasShareIntent, shareIntent]);
 
   useFocusEffect(
     useCallback(() => {
