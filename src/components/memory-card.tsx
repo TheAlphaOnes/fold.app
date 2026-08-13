@@ -82,7 +82,9 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
                 />
               )}
               {item.mediaElements[0].type === 'video' && (
-                <View style={styles.videoOverlay} />
+                <View style={styles.videoOverlay}>
+                  <PlayCircle size={48} color="rgba(255,255,255,0.9)" />
+                </View>
               )}
             </View>
             {hasText && (

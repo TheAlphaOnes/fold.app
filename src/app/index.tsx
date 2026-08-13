@@ -121,9 +121,12 @@ export default function HomeScreen() {
         const asset = result.assets[0];
         
         // Camera URIs on iOS are temporary. Copy to persistent storage before navigating.
-        const ext = asset.type === 'video' ? 'mp4' : 'jpg';
+        // Preserve the original extension (.mov for iOS videos, .jpg for photos) so the OS can play them.
+        const originalUri = asset.uri;
+        const extMatch = originalUri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mov' : 'jpg');
         const destUri = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
-        await FileSystem.copyAsync({ from: asset.uri, to: destUri });
+        await FileSystem.copyAsync({ from: originalUri, to: destUri });
 
         router.push({
           pathname: '/compose',

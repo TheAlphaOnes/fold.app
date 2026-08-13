@@ -92,7 +92,9 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
             />
           )}
           {media.type === 'video' && (
-            <View style={styles.videoOverlay} />
+            <View style={styles.videoOverlay}>
+              <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
+            </View>
           )}
         </View>
       </Animated.View>
@@ -123,7 +125,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
