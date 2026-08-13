@@ -218,6 +218,7 @@ export default function CameraScreen() {
         flash={flash}
         zoom={0}
         pictureSize="1920x1080"
+        videoQuality="1080p"
       />
 
       {/* ─── UI Overlay (Outside CameraView to prevent remounts) ─── */}
