@@ -13,6 +13,7 @@ import Animated, {
 import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import * as Haptics from 'expo-haptics';
+import { DiagonalStripes } from '@/components/diagonal-stripes';
 
 interface TacticalSliderProps {
   onConfirm: () => void;
@@ -22,6 +23,11 @@ interface TacticalSliderProps {
 
 const THUMB_WIDTH = 64;
 const PADDING = 4;
+const HAPTIC_TICK_DISTANCE = 24; // trigger a tick every 24 pixels
+
+// Mechanical spring configs
+const SPRING_SNAP = { damping: 14, stiffness: 300, mass: 1 };
+const SPRING_CONFIRM = { damping: 18, stiffness: 200, mass: 0.8 };
 
 export function TacticalSlider({ onConfirm, text = 'SLIDE TO CONFIRM', width: overrideWidth }: TacticalSliderProps) {
   const theme = useTheme();
@@ -31,34 +37,53 @@ export function TacticalSlider({ onConfirm, text = 'SLIDE TO CONFIRM', width: ov
   const maxTranslate = sliderWidth - THUMB_WIDTH - (PADDING * 2);
 
   const translateX = useSharedValue(0);
+  const lastHapticX = useSharedValue(0);
   const [confirmed, setConfirmed] = useState(false);
 
   const handleConfirm = () => {
     if (!confirmed) {
       setConfirmed(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setTimeout(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }, 150);
       onConfirm();
     }
   };
 
+  const triggerTick = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      if (confirmed) return;
+      lastHapticX.value = 0;
+      runOnJS(triggerTick)();
+    })
     .onUpdate((event) => {
       if (confirmed) return;
       
-      // Clamp between 0 and maxTranslate
-      translateX.value = Math.max(0, Math.min(event.translationX, maxTranslate));
+      const clampedX = Math.max(0, Math.min(event.translationX, maxTranslate));
+      translateX.value = clampedX;
+
+      // Mechanical gear ticks
+      if (Math.abs(clampedX - lastHapticX.value) >= HAPTIC_TICK_DISTANCE) {
+        lastHapticX.value = clampedX;
+        runOnJS(triggerTick)();
+      }
     })
     .onEnd(() => {
       if (confirmed) return;
 
       if (translateX.value > maxTranslate * 0.85) {
         // Trigger confirm
-        translateX.value = withSpring(maxTranslate, { damping: 20, stiffness: 200, mass: 0.5 });
+        translateX.value = withSpring(maxTranslate, SPRING_CONFIRM);
         runOnJS(handleConfirm)();
       } else {
         // Snap back
-        translateX.value = withSpring(0, { damping: 20, stiffness: 200, mass: 0.5 });
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+        translateX.value = withSpring(0, SPRING_SNAP);
+        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       }
     });
 
@@ -90,13 +115,19 @@ export function TacticalSlider({ onConfirm, text = 'SLIDE TO CONFIRM', width: ov
       {/* Background Fill when dragging */}
       <Animated.View style={[styles.fill, { backgroundColor: theme.accentWarm }, fillAnimatedStyle]} />
 
+      {/* Internal Track Shadow / Border illusion */}
+      <View style={[styles.trackInner, { borderColor: theme.background }]} pointerEvents="none" />
+
       <Animated.Text style={[styles.text, { color: theme.textMuted }, textAnimatedStyle]}>
         {text}
       </Animated.Text>
 
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[styles.thumb, { backgroundColor: theme.text }, thumbAnimatedStyle]}>
-          <ChevronRight color={theme.background} size={24} strokeWidth={3} />
+          <DiagonalStripes color={theme.background} opacity={0.3} />
+          <View style={styles.chevronContainer}>
+            <ChevronRight color={theme.background} size={24} strokeWidth={3} />
+          </View>
         </Animated.View>
       </GestureDetector>
 
@@ -112,14 +143,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: PADDING,
     overflow: 'hidden',
+    borderBottomWidth: 3, // Physical depth to the track
+  },
+  trackInner: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderRadius: 6,
+    opacity: 0.5,
   },
   fill: {
     position: 'absolute',
     left: PADDING,
     top: PADDING,
     bottom: PADDING,
-    borderRadius: 6,
-    opacity: 0.2,
+    borderRadius: 4,
+    opacity: 0.3,
   },
   text: {
     position: 'absolute',
@@ -133,14 +171,21 @@ const styles = StyleSheet.create({
   thumb: {
     width: THUMB_WIDTH,
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  chevronContainer: {
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 12,
+    padding: 2,
   },
 });
