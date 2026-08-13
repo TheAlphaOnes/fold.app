@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 interface DraggableStickerProps {
   media: MediaElement;
-  onDragEnd: (id: string, x: number, y: number) => void;
+  onDragEnd: (id: string, x: number, y: number, scale?: number) => void;
   cardWidth: number;
   cardHeight: number;
 }
@@ -31,7 +31,13 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   const translateX = useSharedValue(clampedStartX);
   const translateY = useSharedValue(clampedStartY);
   const isDragging = useSharedValue(false);
-  const scale = useSharedValue(1);
+  
+  // Scale for pinch
+  const baseScale = useSharedValue(media.scale ?? 1);
+  const savedBaseScale = useSharedValue(media.scale ?? 1);
+  
+  // Scale for drag pop
+  const activeScale = useSharedValue(1);
 
   // Keep track of where the drag started so we can calculate relative movement
   const contextX = useSharedValue(0);
@@ -40,8 +46,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   const panGesture = Gesture.Pan()
     .onStart(() => {
       isDragging.value = true;
-      // Use a much tighter spring (or timing) for scale so it doesn't wobble
-      scale.value = withSpring(1.05, { damping: 25, stiffness: 400 });
+      activeScale.value = withSpring(1.05, { damping: 25, stiffness: 400 });
       contextX.value = translateX.value;
       contextY.value = translateY.value;
     })
@@ -58,12 +63,22 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     })
     .onEnd(() => {
       isDragging.value = false;
-      scale.value = withSpring(1, { damping: 25, stiffness: 400 });
-      runOnJS(onDragEnd)(media.id, translateX.value, translateY.value);
+      activeScale.value = withSpring(1, { damping: 25, stiffness: 400 });
+      runOnJS(onDragEnd)(media.id, translateX.value, translateY.value, baseScale.value);
     });
 
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((event) => {
+      baseScale.value = Math.max(0.5, Math.min(savedBaseScale.value * event.scale, 3));
+    })
+    .onEnd(() => {
+      savedBaseScale.value = baseScale.value;
+      runOnJS(onDragEnd)(media.id, translateX.value, translateY.value, baseScale.value);
+    });
+
+  const composed = Gesture.Simultaneous(panGesture, pinchGesture);
+
   const animatedStyle = useAnimatedStyle(() => {
-    // Avoid running springs inside the frame loop for shadows; use smooth timing instead
     return {
       position: 'absolute',
       left: 0,
@@ -71,7 +86,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
       transform: [
         { translateX: translateX.value },
         { translateY: translateY.value },
-        { scale: scale.value },
+        { scale: baseScale.value * activeScale.value },
       ],
       zIndex: isDragging.value ? 10 : 1,
       shadowOpacity: isDragging.value ? 0.2 : 0.05,
@@ -81,7 +96,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   });
 
   return (
-    <GestureDetector gesture={panGesture}>
+    <GestureDetector gesture={composed}>
       <Animated.View style={[
         styles.sticker, 
         { 

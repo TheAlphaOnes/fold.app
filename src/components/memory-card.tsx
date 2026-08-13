@@ -40,9 +40,9 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
   const isSingleMedia = item.mediaElements && item.mediaElements.length === 1;
   const hasText = item.textContent && item.textContent.trim().length > 0;
 
-  const handleDragEnd = (mediaId: string, newX: number, newY: number) => {
+  const handleDragEnd = (mediaId: string, newX: number, newY: number, newScale?: number) => {
     const updatedMedia = item.mediaElements.map((m) =>
-      m.id === mediaId ? { ...m, x_pos: newX, y_pos: newY } : m
+      m.id === mediaId ? { ...m, x_pos: newX, y_pos: newY, scale: newScale ?? m.scale ?? 1 } : m
     );
     onUpdatePositions(item.id, updatedMedia);
   };

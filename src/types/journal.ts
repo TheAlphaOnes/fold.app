@@ -6,6 +6,7 @@ export interface MediaElement {
   y_pos: number;
   width?: number;
   height?: number;
+  scale?: number;
 }
 
 export interface CompositionRow {
