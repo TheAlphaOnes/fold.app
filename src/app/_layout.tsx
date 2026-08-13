@@ -120,9 +120,13 @@ function RootLayoutNav() {
     if (isAppReady) {
       const inOnboarding = segments[0] === 'onboarding';
       if (!settings.hasOnboarded && !inOnboarding) {
-        router.replace('/onboarding');
+        setTimeout(() => {
+          router.replace('/onboarding');
+        }, 0);
       } else if (settings.hasOnboarded && inOnboarding) {
-        router.replace('/');
+        setTimeout(() => {
+          router.replace('/');
+        }, 0);
       }
     }
   }, [isAppReady, settings.hasOnboarded, segments]);
