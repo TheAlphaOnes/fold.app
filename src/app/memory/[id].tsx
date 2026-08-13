@@ -275,6 +275,7 @@ export default function MemoryDetailScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const hiddenPhotoRef = useRef<View>(null);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -307,18 +308,34 @@ export default function MemoryDetailScreen() {
     if (!media.isCinematic) return media.uri;
 
     const ext = media.type === 'video' ? 'mp4' : 'jpg';
+    
+    // For images, we can use the clever captureRef trick instantly
+    if (media.type === 'image' && hiddenPhotoRef.current) {
+      try {
+        setIsProcessing(true);
+        // Ensure it's rendered
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const uri = await captureRef(hiddenPhotoRef, {
+          format: 'jpg',
+          quality: 1,
+        });
+        return uri;
+      } catch (e) {
+        console.error('Failed to capture cinematic photo:', e);
+        return media.uri;
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    // For videos, we must use FFmpeg
     const outUri = `${FileSystem.cacheDirectory}cinematic_export_${Date.now()}.${ext}`;
     
     // 31.25% letterboxing (3:2 ratio inside 16:9)
     // We also add a subtle warm tint using colorbalance
     const vf = `colorbalance=rm=0.08:gm=0.04:bm=-0.02, drawbox=y=0:color=black:width=iw:height=ih*0.3125:t=fill, drawbox=y=ih*0.6875:color=black:width=iw:height=ih*0.3125:t=fill`;
     
-    let command = '';
-    if (media.type === 'video') {
-      command = `-i "${media.uri}" -vf "${vf}" -c:a copy -y "${outUri}"`;
-    } else {
-      command = `-i "${media.uri}" -vf "${vf}" -y "${outUri}"`;
-    }
+    const command = `-i "${media.uri}" -vf "${vf}" -c:a copy -y "${outUri}"`;
 
     try {
       setIsProcessing(true);
@@ -472,7 +489,7 @@ export default function MemoryDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Hidden card for capturing as image */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, left: -9999, width, height: cardHeight }}>
         <View 
           ref={hiddenCardRef} 
           collapsable={false} 
@@ -485,6 +502,26 @@ export default function MemoryDetailScreen() {
             isExporting={true}
           />
         </View>
+      </View>
+
+      {/* Hidden view for capturing cinematic photos instantly */}
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -101, left: -9999, width: 1080, height: 1920 }}>
+        {slides[currentIndex]?.type === 'media' && (slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.type === 'image' && (
+          <View ref={hiddenPhotoRef} collapsable={false} style={{ width: 1080, height: 1920, backgroundColor: '#000' }}>
+            <Image 
+              source={{ uri: (slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri }} 
+              style={{ flex: 1 }} 
+              contentFit="cover" 
+            />
+            {(slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.isCinematic && (
+              <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
+                <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
+                <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
+                <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       <FlatList
