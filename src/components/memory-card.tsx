@@ -49,12 +49,13 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
         {
           height,
           backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
         },
       ]}
     >
       {/* LAYER 1: Stripes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DiagonalStripes color={theme.isDark ? "#2A2A2A" : "#D0D0D0"} opacity={0.5} animated />
+        <DiagonalStripes color={theme.isDark ? "#1C1C1C" : "#D0D0D0"} opacity={theme.isDark ? 0.3 : 0.5} animated />
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
@@ -134,7 +135,6 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 34,
     borderWidth: 1,
-    borderColor: '#878787',
     overflow: 'hidden',
 
     shadowColor: '#000000',
