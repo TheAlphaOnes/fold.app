@@ -139,7 +139,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
       {/* LAYER 4: Logo Stamp (Only on Export) */}
       {isExporting && (
         <View style={styles.stamp} pointerEvents="none" collapsable={false}>
-          <Logo size={42} color={theme.isDark ? '#FFFFFF' : '#000000'} />
+          <Logo size={42} color={theme.text} />
         </View>
       )}
     </View>

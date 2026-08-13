@@ -135,7 +135,8 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
           <Animated.View style={[styles.travelingDot, dotStyle]} />
 
           {/* 3. Centered logo (keeps handoff from native splash seamless) */}
-          <Logo size={76} color={theme.text} />
+          {/* Logo is hardcoded to black because the native splash screen and AnimatedSplashScreen background are hardcoded to #FBFBFB */}
+          <Logo size={76} color="#000000" />
         </Animated.View>
       )}
     </View>
