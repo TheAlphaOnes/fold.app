@@ -22,6 +22,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { User } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -100,6 +101,36 @@ export default function HomeScreen() {
 
   const handleAdd = () => {
     router.push('/compose');
+  };
+
+  const handleSwipeUp = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sorry, we need camera permissions to capture memories!');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images', 'videos'],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        router.push({
+          pathname: '/compose',
+          params: {
+            initialMediaUri: asset.uri,
+            initialMediaType: asset.type === 'video' ? 'video' : 'image',
+            initialMediaWidth: asset.width,
+            initialMediaHeight: asset.height,
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to launch camera:', error);
+    }
   };
 
   const listRef = useRef<Animated.FlatList<Composition>>(null);
@@ -209,7 +240,7 @@ export default function HomeScreen() {
         <View style={styles.dateContainer}>
           <Text style={[styles.dateText, { color: theme.textMuted }]}>{dateStr}</Text>
         </View>
-        <AddButton onPress={handleAdd} />
+        <AddButton onPress={handleAdd} onSwipeUp={handleSwipeUp} />
       </View>
     </View>
   );

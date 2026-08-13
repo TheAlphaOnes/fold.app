@@ -19,7 +19,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useJournal } from '@/hooks/use-journal';
@@ -56,7 +56,33 @@ export default function ComposeScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   
   const [body, setBody] = useState('');
-  const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
+  
+  // Read any initial media passed from routing (e.g. from camera swipe gesture)
+  const params = useLocalSearchParams<{ 
+    initialMediaUri?: string; 
+    initialMediaType?: 'image' | 'video';
+    initialMediaWidth?: string;
+    initialMediaHeight?: string;
+  }>();
+
+  const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
+    if (params.initialMediaUri) {
+      const stickerSize = 120;
+      const safeW = screenWidth - 60 - stickerSize;
+      const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+      
+      return [{
+        id: Math.random().toString(36).substring(2, 9),
+        uri: params.initialMediaUri,
+        type: params.initialMediaType === 'video' ? 'video' : 'image',
+        x_pos: 30 + Math.random() * safeW,
+        y_pos: 30 + Math.random() * safeH,
+        width: params.initialMediaWidth ? parseInt(params.initialMediaWidth, 10) : 800,
+        height: params.initialMediaHeight ? parseInt(params.initialMediaHeight, 10) : 800,
+      }];
+    }
+    return [];
+  });
   const [fontFamily, setFontFamily] = useState('JetBrainsMono-Medium');
   const [fontSize, setFontSize] = useState(21);
   

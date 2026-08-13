@@ -15,11 +15,13 @@ import { DiagonalStripes } from '@/components/diagonal-stripes';
 
 interface AddButtonProps {
   onPress: () => void;
+  onSwipeUp?: () => void;
 }
 
-export function AddButton({ onPress }: AddButtonProps) {
+export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
+  const translateY = useSharedValue(0);
 
   const fireHaptic = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -29,6 +31,11 @@ export function AddButton({ onPress }: AddButtonProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onPress();
   }, [onPress]);
+
+  const fireSwipeUp = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    if (onSwipeUp) onSwipeUp();
+  }, [onSwipeUp]);
 
   const tapGesture = Gesture.Tap()
     .onBegin(() => {
@@ -65,10 +72,35 @@ export function AddButton({ onPress }: AddButtonProps) {
       runOnJS(firePress)();
     });
 
-  const composedGesture = Gesture.Race(tapGesture, longPressGesture);
+  const panGesture = Gesture.Pan()
+    .activeOffsetY([-10, 10]) // Only activate on vertical movement
+    .onUpdate((e) => {
+      // Only allow dragging upwards (negative Y)
+      if (e.translationY < 0) {
+        // Add some resistance
+        translateY.value = e.translationY * 0.6;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY < -60) {
+        // Trigger swipe up action
+        runOnJS(fireSwipeUp)();
+      }
+      
+      // Snap back
+      translateY.value = withSpring(0, {
+        damping: 15,
+        stiffness: 250,
+      });
+    });
+
+  const composedGesture = Gesture.Race(tapGesture, longPressGesture, panGesture);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { scale: scale.value },
+      { translateY: translateY.value }
+    ],
   }));
 
   return (

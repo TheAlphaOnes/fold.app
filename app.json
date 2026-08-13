@@ -36,7 +36,14 @@
       ],
       "expo-video",
       "expo-audio",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Fold to access your camera to capture memories.",
+          "microphonePermission": "Allow Fold to access your microphone to record audio for memories."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
