@@ -122,7 +122,7 @@ export default function HomeScreen() {
   // Auto-scroll to the bottom when a new item is added
   const [dateStr] = useState(() => {
     const now = new Date();
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const day = days[now.getDay()];
     const d = String(now.getDate()).padStart(2, '0');
     const m = String(now.getMonth() + 1).padStart(2, '0');
