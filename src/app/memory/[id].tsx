@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
@@ -16,6 +16,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
 
 // --- Types ---
@@ -244,12 +245,32 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = async (uri: string) => {
     try {
-      // Pass writeOnly=true and granularPermissions=['photo', 'video'] to avoid requesting the AUDIO permission
-      const { status } = await MediaLibrary.requestPermissionsAsync(true, ['photo', 'video']);
+      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+      
+      if (isExpoGo && Platform.OS === 'android') {
+        Alert.alert(
+          'Expo Go Limitation',
+          'Direct saving to gallery is disabled in Expo Go on Android due to strict permission rules. It WILL work silently with one tap in your final built app.\n\nFor now, we will open the Share sheet so you can tap "Save to device".',
+          [
+            { 
+              text: 'OK', 
+              onPress: async () => {
+                const isAvailable = await Sharing.isAvailableAsync();
+                if (isAvailable) await Sharing.shareAsync(uri);
+              } 
+            }
+          ]
+        );
+        return;
+      }
+
+      // For iOS Expo Go, and built apps on both platforms, do the proper native save
+      const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Allow Fold to access your gallery to save media.');
         return;
       }
+      
       await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Saved', 'Saved to your gallery.');
     } catch (e) {
