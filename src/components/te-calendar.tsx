@@ -39,22 +39,32 @@ export function TECalendar({ onSelect }: TECalendarProps) {
 
   const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-  // --- DAYS VIEW ---
   const renderDaysView = () => {
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
 
     const cells = [];
-    // 42 cells total (6 weeks x 7 days) ensures the grid never resizes and remains a perfect block
     for (let i = 0; i < 42; i++) {
       const dayNum = i - firstDayOfMonth + 1;
       const isValidDay = dayNum > 0 && dayNum <= daysInMonth;
+      
+      const isRightEdge = (i + 1) % 7 === 0;
+      const isBottomRow = i >= 35; // 42 - 7
 
       if (!isValidDay) {
         cells.push(
           <View 
             key={`empty-${i}`} 
-            style={[styles.cell, styles.dayCell, { borderRightColor: theme.border, borderBottomColor: theme.border }]} 
+            style={[
+              styles.cell, 
+              styles.dayCell, 
+              { 
+                borderRightColor: theme.border, 
+                borderBottomColor: theme.border,
+                borderRightWidth: isRightEdge ? 0 : 1,
+                borderBottomWidth: isBottomRow ? 0 : 1
+              }
+            ]} 
           />
         );
         continue;
@@ -88,6 +98,8 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             { 
               borderRightColor: theme.border, 
               borderBottomColor: theme.border,
+              borderRightWidth: isRightEdge ? 0 : 1,
+              borderBottomWidth: isBottomRow ? 0 : 1,
               backgroundColor: pressed ? theme.text : 'transparent'
             }
           ]}
@@ -123,7 +135,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             </View>
           ))}
         </View>
-        <View style={[styles.grid, { borderTopColor: theme.border, borderLeftColor: theme.border }]}>
+        <View style={[styles.grid, { borderTopColor: theme.border }]}>
           {cells}
         </View>
       </>
@@ -135,6 +147,8 @@ export function TECalendar({ onSelect }: TECalendarProps) {
     const cells = [];
     for (let i = 0; i < 12; i++) {
       const isSelected = i === currentDate.getMonth();
+      const isRightEdge = (i + 1) % 3 === 0;
+      const isBottomRow = i >= 9;
       cells.push(
         <Pressable
           key={`month-${i}`}
@@ -144,6 +158,8 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             { 
               borderRightColor: theme.border, 
               borderBottomColor: theme.border,
+              borderRightWidth: isRightEdge ? 0 : 1,
+              borderBottomWidth: isBottomRow ? 0 : 1,
               backgroundColor: pressed || isSelected ? theme.text : 'transparent'
             }
           ]}
@@ -164,7 +180,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
       );
     }
     return (
-      <View style={[styles.grid, { borderTopColor: theme.border, borderLeftColor: theme.border }]}>
+      <View style={[styles.grid, { borderTopColor: theme.border }]}>
         {cells}
       </View>
     );
@@ -176,6 +192,8 @@ export function TECalendar({ onSelect }: TECalendarProps) {
     for (let i = 0; i < 12; i++) {
       const year = yearPageStart + i;
       const isSelected = year === currentDate.getFullYear();
+      const isRightEdge = (i + 1) % 3 === 0;
+      const isBottomRow = i >= 9;
       cells.push(
         <Pressable
           key={`year-${year}`}
@@ -185,6 +203,8 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             { 
               borderRightColor: theme.border, 
               borderBottomColor: theme.border,
+              borderRightWidth: isRightEdge ? 0 : 1,
+              borderBottomWidth: isBottomRow ? 0 : 1,
               backgroundColor: pressed || isSelected ? theme.text : 'transparent'
             }
           ]}
@@ -205,16 +225,16 @@ export function TECalendar({ onSelect }: TECalendarProps) {
       );
     }
     return (
-      <View style={[styles.grid, { borderTopColor: theme.border, borderLeftColor: theme.border }]}>
+      <View style={[styles.grid, { borderTopColor: theme.border }]}>
         {cells}
       </View>
     );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundElement }]}>
+    <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable onPress={() => changePage(-1)} style={({ pressed }) => [styles.navButton, pressed && { opacity: 0.5 }]}>
           <ChevronLeft size={16} color={theme.text} />
         </Pressable>
@@ -267,6 +287,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
+    borderBottomWidth: 1, // Added missing bottom border to header
   },
   headerCenter: {
     flexDirection: 'row',
@@ -287,6 +308,7 @@ const styles = StyleSheet.create({
   },
   weekRow: {
     flexDirection: 'row',
+    borderBottomWidth: 1,
   },
   dowCell: {
     flex: 1,
@@ -301,12 +323,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    borderLeftWidth: 1,
-    borderTopWidth: 1,
+    // Removed borderLeftWidth to prevent double border with parent
   },
   cell: {
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

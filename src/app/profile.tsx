@@ -111,7 +111,7 @@ export default function ProfileScreen() {
 
         {/* Time Machine Section */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0 }]}>
-          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 16, marginBottom: 0, borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 4, marginBottom: 0 }]}>
             <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
           </View>
           
