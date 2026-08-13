@@ -1,8 +1,10 @@
-# FOLD
+
 
 <div align="center">
   <img src="assets/logo.svg" width="120" height="120" alt="Fold Logo" />
 </div>
+
+# FOLD
 
 > A private, offline-first memory engine. No cloud. No tracking. Everything on-device.
 
