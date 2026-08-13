@@ -7,7 +7,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TerminalButton } from '@/components/terminal-button';
+import { ActionLink } from '@/components/action-link';
+import { CleanInput } from '@/components/clean-input';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
@@ -63,36 +64,45 @@ export default function OnboardingDobScreen() {
         <View style={[styles.container, { backgroundColor: bg }]}>
           <GrainBackground />
           
-          <View style={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 }]}>
+          <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             
-            <View style={styles.header}>
-              <ThemedText style={[styles.title, { color: fg }]}>ACTIVATION</ThemedText>
-              <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                ENTER YOUR DATE OF BIRTH
+            {/* Easter Egg ASCII: Robot */}
+            <View style={styles.asciiContainer}>
+              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
+{`  .-------.
+  |  o o  |
+  |   ^   |
+  |  ___  |
+  '-------'`}
               </ThemedText>
             </View>
 
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: fg }]}
-                placeholder="DD.MM.YYYY"
-                placeholderTextColor={mutedText}
-                value={dob}
-                onChangeText={formatDOB}
-                keyboardType="number-pad"
-                maxLength={10} // DD.MM.YYYY = 10 chars
-                autoFocus
-                selectionColor={theme.accentWarm}
-              />
-              <View style={[styles.inputUnderline, { backgroundColor: fg }]} />
+            <View style={styles.centerSection}>
+              <View style={styles.header}>
+                <ThemedText style={[styles.title, { color: fg }]}>ACTIVATION</ThemedText>
+                <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+                  DATE OF BIRTH
+                </ThemedText>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <CleanInput
+                  value={dob}
+                  onChangeText={formatDOB}
+                  placeholder="DD.MM.YYYY"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  autoFocus
+                />
+              </View>
             </View>
 
-            <View style={styles.spacer} />
-
-            <TerminalButton 
-              text="INITIALIZE SYSTEM" 
-              onPress={handleComplete} 
-            />
+            <View style={styles.ctaContainer}>
+              <ActionLink 
+                text="INITIALIZE SYSTEM" 
+                onPress={handleComplete} 
+              />
+            </View>
 
           </View>
         </View>
@@ -108,39 +118,45 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  asciiContainer: {
+    position: 'absolute',
+    top: 100,
+    alignItems: 'center',
+    width: '100%',
+  },
+  asciiText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  centerSection: {
+    width: '100%',
+    alignItems: 'center',
   },
   header: {
-    marginTop: 40,
-    marginBottom: 60,
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 38,
-    letterSpacing: -1,
+    fontSize: 32,
+    letterSpacing: 4,
   },
   subtitle: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
+    fontSize: 12,
     letterSpacing: 2,
     marginTop: 8,
   },
   inputContainer: {
     width: '100%',
   },
-  input: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 32,
-    paddingVertical: 16,
-    textAlign: 'center',
-    letterSpacing: 4,
-  },
-  inputUnderline: {
-    height: 4,
-    width: '100%',
-    borderRadius: 2,
-    opacity: 0.1,
-  },
-  spacer: {
-    flex: 1,
+  ctaContainer: {
+    position: 'absolute',
+    bottom: 60,
   },
 });

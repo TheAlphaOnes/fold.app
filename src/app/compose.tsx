@@ -18,7 +18,9 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
+  Modal,
 } from 'react-native';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
@@ -396,9 +398,24 @@ export default function ComposeScreen() {
         <View style={{ height: insets.bottom }} />
       </KeyboardAvoidingView>
 
-        {/* Full-screen recording overlay */}
-      {recorderState.isRecording && (
+      {/* Full-screen recording overlay using Modal for guaranteed centering and top-level z-index */}
+      <Modal 
+        visible={recorderState.isRecording} 
+        transparent={true} 
+        animationType="fade"
+      >
         <View style={styles.recordingOverlay}>
+          <Svg style={StyleSheet.absoluteFill}>
+            <Defs>
+              <RadialGradient id="vignetteCompose" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
+                <Stop offset="0%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.4" />
+                <Stop offset="40%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.7" />
+                <Stop offset="100%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.95" />
+              </RadialGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#vignetteCompose)" />
+          </Svg>
+          
           <Pressable style={styles.recordingOverlayInner} onPress={handleRecordToggle}>
             <VinylRecord size={300} isRecording={true} isPlaying={false} />
             <ThemedText style={styles.recordingText}>Tap to stop</ThemedText>
@@ -407,7 +424,7 @@ export default function ComposeScreen() {
             </ThemedText>
           </Pressable>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -475,6 +492,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 13,
+    flexWrap: 'wrap',
+    rowGap: 8,
   },
   metaLeft: {
     flexDirection: 'row',
@@ -566,15 +585,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   recordingOverlay: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(127,127,127,0.1)',
-    zIndex: 100,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   recordingOverlayInner: {
     alignItems: 'center',

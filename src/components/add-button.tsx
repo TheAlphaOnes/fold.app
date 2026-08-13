@@ -16,9 +16,11 @@ import { DiagonalStripes } from '@/components/diagonal-stripes';
 interface AddButtonProps {
   onPress: () => void;
   onSwipeUp?: () => void;
+  onLongPressStart?: () => void;
+  onLongPressEnd?: () => void;
 }
 
-export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
+export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd }: AddButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
@@ -36,6 +38,14 @@ export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (onSwipeUp) onSwipeUp();
   }, [onSwipeUp]);
+
+  const fireLongPressStart = useCallback(() => {
+    if (onLongPressStart) onLongPressStart();
+  }, [onLongPressStart]);
+
+  const fireLongPressEnd = useCallback(() => {
+    if (onLongPressEnd) onLongPressEnd();
+  }, [onLongPressEnd]);
 
   const tapGesture = Gesture.Tap()
     .onBegin(() => {
@@ -62,6 +72,7 @@ export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
         stiffness: 160,
       });
       runOnJS(fireHaptic)();
+      runOnJS(fireLongPressStart)();
     })
     .onEnd(() => {
       scale.value = withSpring(1, {
@@ -69,7 +80,7 @@ export function AddButton({ onPress, onSwipeUp }: AddButtonProps) {
         stiffness: 200,
         mass: 0.6,
       });
-      runOnJS(firePress)();
+      runOnJS(fireLongPressEnd)();
     });
 
   const panGesture = Gesture.Pan()

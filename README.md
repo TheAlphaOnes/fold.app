@@ -1,92 +1,137 @@
-<div align="center">
-  <img src="assets/fold-logo.png" alt="Fold Logo" width="120" />
-  <h1>Fold</h1>
-  <p><strong>A spatial journal for messy, beautiful minds.</strong></p>
-</div>
+# FOLD
+
+> A private, offline-first memory engine. No cloud. No tracking. Everything on-device.
 
 ---
 
-## 📌 Vision
+## What is Fold?
 
-Most journals force your memories into rigid lines of text and perfectly aligned grids. But human memory doesn't work that way. Memories are visual, chaotic, and spatial. 
+Fold is a personal memory journal for iOS and Android, built with an uncompromising commitment to privacy. Every note, photo, audio recording, and thought you capture stays entirely on your device — never uploaded, never analyzed, never monetized.
 
-**Fold is a digital canvas that respects how you actually remember things.** 
-Instead of typing into a box, you drop photos, videos, and voice notes onto a free-form surface. You can drag them around, stack them, and arrange them exactly how the moment felt. It is a space designed to capture the raw, unfiltered reality of your days.
-
-We built Fold with a singular vision: to give you back ownership of your personal space. There are no algorithms, no social feeds, and no mandatory cloud syncs. Your canvas lives entirely on your device, locked behind your own biometrics.
+It's designed for people who want a place to keep the fragments of their life without giving them to a corporation.
 
 ---
 
-## 🚀 Features
+## Features
 
-- **Spatial Canvas**: Drag, drop, and place text, images, videos, and audio freely.
-- **Local-First Architecture**: Your data never leaves your device unless you export it.
-- **Biometric Security**: Secure your memories behind Face ID or Touch ID.
-- **Universal Capture**: Swipe up directly from the home screen to instantly capture a photo or video.
-- **Rich Insights**: Visualize your journaling habits with GitHub-style heatmaps and volume charts.
-- **Zero-Latency Interactions**: 60FPS gesture interactions using native UI thread worklets.
-
----
-
-## 🛠️ Tech Stack
-
-Fold is built for high performance and strict privacy:
-
-- **Framework**: [Expo](https://expo.dev) & React Native
-- **Navigation**: Expo Router (File-based routing)
-- **State Management**: [Zustand](https://github.com/pmndrs/zustand)
-- **Database**: `expo-sqlite` (Local, on-device persistence)
-- **Animations**: `react-native-reanimated` (Direct UI thread manipulation)
-- **Gestures**: `react-native-gesture-handler`
+- **Write** — Compose entries in 14 different typefaces, from system mono to handwriting fonts. The writing surface is minimal and distraction-free.
+- **Capture** — Attach photos and videos from your library, or shoot directly from the camera into a memory.
+- **Record Audio** — Voice notes attach directly to a memory, visualized by a vinyl record animation.
+- **Gallery** — Browse your archive in a clean card layout. Every memory is renderable as a shareable image.
+- **Export & Share** — Share any memory as a flat image, with the Fold mark stamped on it. Square corners, platform-agnostic.
+- **Biometric Lock** — Protect your journal behind Face ID or fingerprint. All or nothing.
+- **Dark & Light Mode** — A considered theme system that adapts to your system preference.
+- **Grain Texture** — Every surface has a subtle film grain. Because flat is boring.
 
 ---
 
-## 🏃 Getting Started
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [Expo](https://expo.dev) (SDK 57) + Expo Router |
+| Language | TypeScript |
+| State | Zustand |
+| Storage | expo-sqlite (on-device) |
+| Animation | React Native Reanimated 4 |
+| Gestures | React Native Gesture Handler |
+| UI | Lucide icons, expo-image, expo-video |
+| Audio | expo-audio |
+| Fonts | JetBrains Mono + 13 Google Fonts via expo-google-fonts |
+| Sharing | react-native-view-shot + expo-sharing |
+| Auth | expo-local-authentication (biometrics) |
+| Package Manager | pnpm |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or newer)
-- `npm` or `pnpm`
-- iOS Simulator or an physical device with [Expo Go](https://expo.dev/client).
 
-### Installation
+- Node.js 20+
+- pnpm (`npm install -g pnpm`)
+- Expo CLI (`npx expo`)
+- For iOS: Xcode + iOS Simulator or physical device
+- For Android: Android Studio or physical device
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/TheAlphaOnes/fold.app.git
-   cd fold.app
-   ```
+### Install
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-   *(Or `pnpm install` if you prefer).*
+```bash
+git clone https://github.com/your-username/fold.git
+cd fold
+pnpm install
+```
 
-3. **Start the development server**
-   ```bash
-   npm start
-   ```
+### Run
 
-4. **Launch the App**
-   - Press `i` to open in the iOS simulator.
-   - Or scan the QR code with the Expo Go app on your physical device.
+```bash
+# Start the dev server
+pnpm start
 
-> **Note**: Hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully.
+# Run on iOS simulator
+pnpm ios
+
+# Run on Android
+pnpm android
+```
+
+> **Note:** Some features (biometrics, camera, audio recording) require a physical device or a development build. They will not work in Expo Go.
+
+### Development Build
+
+For the full feature set, run a development build:
+
+```bash
+npx expo run:ios
+# or
+npx expo run:android
+```
 
 ---
 
-## 🔒 Privacy & Security
+## Project Structure
 
-Fold operates on a strict **local-first** principle.
-- No analytics trackers.
-- No background data harvesting.
-- Raw JSON exports available at any time.
-- Single-tap "Erase Everything" function.
-
-All sensitive actions tie directly into the native secure enclave (Face ID / Touch ID) via `expo-local-authentication`.
+```
+src/
+├── app/                    # Expo Router file-based routes
+│   ├── _layout.tsx         # Root layout, theme, auth gate
+│   ├── index.tsx           # Home / gallery
+│   ├── compose.tsx         # Write / compose screen
+│   ├── archive.tsx         # Archive view
+│   ├── camera.tsx          # Camera capture
+│   ├── profile.tsx         # User profile
+│   ├── settings.tsx        # App settings
+│   ├── memory/[id].tsx     # Individual memory view
+│   └── onboarding/         # Onboarding flow
+├── components/             # Reusable UI components
+├── hooks/                  # Zustand stores + custom hooks
+├── types/                  # Shared TypeScript types
+└── utils/                  # Pure utility functions
+```
 
 ---
 
-<div align="center">
-  <i>Built with care for those who want to remember.</i>
-</div>
+## Privacy
+
+Fold is built on a simple contract with the user:
+
+- **No accounts.** No sign-in, no email, no server.
+- **No network requests.** The app makes zero outbound connections. There is no backend.
+- **No analytics.** No tracking SDKs, no crash reporting that sends data off-device.
+- **No ads.** Ever.
+
+Your memories belong to you. Fold has no way to access them even if it wanted to.
+
+---
+
+## Design Philosophy
+
+Fold's aesthetic is inspired by Teenage Engineering's industrial hardware design — utilitarian, honest, minimal. Every pixel should feel intentional. The monospace typeface, the grain texture, the flat color palette — all of it is deliberate.
+
+The UI is built to get out of your way and let you write.
+
+---
+
+## License
+
+Private. All rights reserved.

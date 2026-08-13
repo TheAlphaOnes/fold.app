@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert } from 'react-native';
+import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Modal } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue,
@@ -20,13 +20,16 @@ import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
-import { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
+import { VinylRecord } from '@/components/vinyl-record';
+import { formatMillis } from '@/utils/format-date';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -95,9 +98,12 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { compositions, loading, refresh, updatePositions, setTargetDate } = useJournalStore();
+  const { compositions, loading, refresh, updatePositions, setTargetDate, addComposition } = useJournalStore();
   
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder, 100);
   
   // Handle incoming shared media (e.g. from Photos app, Chrome, etc.)
   useEffect(() => {
@@ -156,20 +162,79 @@ export default function HomeScreen() {
     router.push('/camera');
   };
 
+  const recordIntentRef = useRef(false);
+
+  const handleLongPressStart = async () => {
+    try {
+      recordIntentRef.current = true;
+      const { status } = await AudioModule.requestRecordingPermissionsAsync();
+      if (status !== 'granted') return;
+      
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await recorder.prepareToRecordAsync();
+      
+      // Check if user released while we were preparing
+      if (!recordIntentRef.current) {
+        return;
+      }
+      
+      await recorder.record();
+    } catch (err) {
+      console.error('Failed to start quick record', err);
+    }
+  };
+
+  const handleLongPressEnd = async () => {
+    try {
+      recordIntentRef.current = false;
+      // Use the recorder's live state rather than the React state which might be a tick behind
+      if (recorder.isRecording) {
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (uri) {
+          const newMedia = {
+            id: Math.random().toString(36).substring(2, 9),
+            uri,
+            type: 'audio' as const,
+            x_pos: 30 + Math.random() * (width - 150),
+            y_pos: 30 + Math.random() * (height - 150),
+          };
+          // Instant save as a memory
+          await addComposition({
+            textContent: '',
+            mediaElements: [newMedia],
+            fontFamily: 'JetBrainsMono-Regular',
+            fontSize: 16,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save quick record', err);
+    }
+  };
+
   const listRef = useRef<Animated.FlatList<Composition>>(null);
   const prevCount = useRef(compositions.length);
 
   // Auto-scroll to the bottom when a new item is added
   const [activeDate, setActiveDate] = useState(() => new Date());
 
-  const dateStr = useMemo(() => {
-    const date = activeDate || new Date();
+  const dateParts = useMemo(() => {
+    let date = activeDate;
+    // Check for Invalid Date
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      date = new Date();
+    }
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const day = days[date.getDay()];
     const d = String(date.getDate()).padStart(2, '0');
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const y = date.getFullYear();
-    return `${day} ${d}.${m}.${y}`;
+    return { day, fullDate: `${d}.${m}.${y}` };
   }, [activeDate]);
 
   const viewabilityConfig = useRef({
@@ -275,10 +340,42 @@ export default function HomeScreen() {
       {/* Floating bottom bar with Date and Add Button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dateContainer}>
-          <Text style={[styles.dateText, { color: theme.textMuted }]}>{dateStr}</Text>
+          <Text style={[styles.dateText, { color: theme.textMuted }]}>
+            {`${dateParts.day} ${dateParts.fullDate}`}
+          </Text>
         </View>
-        <AddButton onPress={handleAdd} onSwipeUp={handleSwipeUp} />
+        <AddButton 
+          onPress={handleAdd} 
+          onSwipeUp={handleSwipeUp}
+          onLongPressStart={handleLongPressStart}
+          onLongPressEnd={handleLongPressEnd}
+        />
       </View>
+
+      {/* Quick Record Overlay using Modal for guaranteed centering and top-level z-index */}
+      <Modal 
+        visible={recorderState.isRecording} 
+        transparent={true} 
+        animationType="fade"
+      >
+        <View style={styles.recordingOverlay}>
+          <Svg style={StyleSheet.absoluteFill}>
+            <Defs>
+              <RadialGradient id="vignette" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
+                <Stop offset="0%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.4" />
+                <Stop offset="40%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.7" />
+                <Stop offset="100%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.95" />
+              </RadialGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#vignette)" />
+          </Svg>
+          
+          <VinylRecord isPlaying={true} />
+          <Text style={[styles.recordingTime, { color: theme.text }]}>
+            {formatMillis(recorderState.durationMillis)}
+          </Text>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -293,8 +390,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingTop: 12,
-    zIndex: 100,
-    elevation: 10,
+    zIndex: 999,
+    elevation: 99,
     pointerEvents: 'box-none',
   },
   dateContainer: {
@@ -334,5 +431,18 @@ const styles = StyleSheet.create({
   carouselItem: {
     justifyContent: 'center',
     paddingHorizontal: 21,
+  },
+  recordingOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Removed the black background per user request, just a subtle shadow/tint to keep text legible if needed
+    backgroundColor: 'transparent',
+  },
+  recordingTime: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 24,
+    marginTop: 40,
+    letterSpacing: 2,
   },
 });

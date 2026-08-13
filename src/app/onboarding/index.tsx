@@ -7,7 +7,7 @@ import { ArrowRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TerminalButton } from '@/components/terminal-button';
+import { ActionLink } from '@/components/action-link';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -22,42 +22,34 @@ export default function OnboardingStartScreen() {
     <View style={[styles.container, { backgroundColor: bg }]}>
       <GrainBackground />
       
-      <View style={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 }]}>
+      <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         
-        {/* Mascot / Logo area */}
+        {/* Easter Egg ASCII: Retro Controller */}
         <View style={styles.mascotContainer}>
-          <ThemedText style={styles.mascotText}>
-{`.-----------.
-| .-------. |
-| |>_     | |
-| '-------' |
-|       ( ) |
-|   _       |
-| _| |_  (B)|
-||_   _|(A) |
-|  |_|      |
-'-----------'`}
+          <ThemedText style={[styles.mascotText, { color: fg }]}>
+{`  +--------------------+
+  |   +             _  |
+  | + + +    ;;    ( ) |
+  |   +      ;;   _    |
+  |              ( )   |
+  +--------------------+`}
           </ThemedText>
         </View>
 
         <View style={styles.textContainer}>
           <ThemedText style={[styles.title, { color: fg }]}>FOLD</ThemedText>
-          <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-            YOUR OFFLINE MEMORY ENGINE.
-          </ThemedText>
           <ThemedText style={[styles.description, { color: mutedText }]}>
-            A brutalist canvas for thoughts, visuals, and sounds. 
-            Everything stays on your device. Zero cloud. Zero tracking.
+            OFFLINE MEMORY ENGINE
           </ThemedText>
         </View>
 
-        <View style={styles.spacer} />
-
-        {/* CTA Button */}
-        <TerminalButton 
-          text="INITIALIZE" 
-          onPress={() => router.push('/onboarding/name')} 
-        />
+        {/* Minimalist CTA Link */}
+        <View style={styles.ctaContainer}>
+          <ActionLink 
+            text="INITIALIZE" 
+            onPress={() => router.push('/onboarding/name')} 
+          />
+        </View>
 
       </View>
     </View>
@@ -72,52 +64,36 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   mascotContainer: {
     alignItems: 'center',
-    marginBottom: 60,
-    marginTop: 40,
+    marginBottom: 40,
   },
   mascotText: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 16,
-    color: '#878787',
-    textAlign: 'left',
+    fontSize: 12,
+    lineHeight: 14,
+    textAlign: 'center',
   },
   textContainer: {
-    gap: 16,
+    alignItems: 'center',
+    marginBottom: 60,
   },
   title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 48,
-    letterSpacing: -2,
-  },
-  subtitle: {
-    fontFamily: 'JetBrainsMono-SemiBold',
-    fontSize: 16,
-    letterSpacing: 2,
+    letterSpacing: 8,
+    marginLeft: 8, // Optical compensation for letterSpacing
   },
   description: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 12,
+    letterSpacing: 4,
     marginTop: 8,
   },
-  spacer: {
-    flex: 1,
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 8,
-    gap: 12,
-  },
-  ctaText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-    letterSpacing: 2,
-  },
+  ctaContainer: {
+    position: 'absolute',
+    bottom: 60,
+  }
 });

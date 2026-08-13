@@ -15,6 +15,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Logo } from '@/components/logo';
 import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
 
 interface AnimatedSplashScreenProps {
   isAppReady: boolean;
@@ -22,6 +23,7 @@ interface AnimatedSplashScreenProps {
 }
 
 export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScreenProps) {
+  const theme = useTheme();
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const opacity = useSharedValue(1);
   const progress = useSharedValue(0);

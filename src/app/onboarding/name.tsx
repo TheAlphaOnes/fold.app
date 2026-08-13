@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TerminalButton } from '@/components/terminal-button';
+import { ActionLink } from '@/components/action-link';
+import { CleanInput } from '@/components/clean-input';
 
 export default function OnboardingNameScreen() {
   const theme = useTheme();
@@ -34,37 +35,41 @@ export default function OnboardingNameScreen() {
         <View style={[styles.container, { backgroundColor: bg }]}>
           <GrainBackground />
           
-          <View style={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 40 }]}>
+          <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             
-            <View style={styles.header}>
-              <ThemedText style={[styles.title, { color: fg }]}>IDENTIFY</ThemedText>
-              <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                WHAT IS YOUR DESIGNATION?
+            {/* Easter Egg ASCII: Master Sword */}
+            <View style={styles.asciiContainer}>
+              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
+{`o=={:::::::::::>`}
               </ThemedText>
             </View>
 
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { color: fg }]}
-                placeholder="Nollan"
-                placeholderTextColor={mutedText}
-                value={name}
-                onChangeText={setName}
-                autoCorrect={false}
-                autoCapitalize="words"
-                maxLength={30}
-                autoFocus
-                selectionColor={theme.accentWarm}
-              />
-              <View style={[styles.inputUnderline, { backgroundColor: fg }]} />
+            <View style={styles.centerSection}>
+              <View style={styles.header}>
+                <ThemedText style={[styles.title, { color: fg }]}>IDENTIFY</ThemedText>
+                <ThemedText style={[styles.subtitle, { color: mutedText }]}>
+                  WHAT IS YOUR DESIGNATION?
+                </ThemedText>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <CleanInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="NOLLAN"
+                  autoCapitalize="characters"
+                  maxLength={12}
+                  autoFocus
+                />
+              </View>
             </View>
 
-            <View style={styles.spacer} />
-
-            <TerminalButton 
-              text="CONTINUE" 
-              onPress={handleNext} 
-            />
+            <View style={styles.ctaContainer}>
+              <ActionLink 
+                text="CONTINUE" 
+                onPress={handleNext} 
+              />
+            </View>
 
           </View>
         </View>
@@ -80,38 +85,45 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  asciiContainer: {
+    position: 'absolute',
+    top: 100,
+    alignItems: 'center',
+    width: '100%',
+  },
+  asciiText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 14,
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  centerSection: {
+    width: '100%',
+    alignItems: 'center',
   },
   header: {
-    marginTop: 40,
-    marginBottom: 60,
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 42,
-    letterSpacing: -1,
+    fontSize: 32,
+    letterSpacing: 4,
   },
   subtitle: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
+    fontSize: 12,
     letterSpacing: 2,
     marginTop: 8,
   },
   inputContainer: {
     width: '100%',
   },
-  input: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 32,
-    paddingVertical: 16,
-    textAlign: 'center',
-  },
-  inputUnderline: {
-    height: 4,
-    width: '100%',
-    borderRadius: 2,
-    opacity: 0.1,
-  },
-  spacer: {
-    flex: 1,
+  ctaContainer: {
+    position: 'absolute',
+    bottom: 60,
   },
 });

@@ -24,9 +24,12 @@ interface DraggableStickerProps {
 export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: DraggableStickerProps) {
   const theme = useTheme();
 
+  const STICKER_WIDTH = 90;
+  const STICKER_HEIGHT = 120;
+
   // Clamp initial positions just in case they spawned out of bounds
-  const clampedStartX = Math.max(0, Math.min(media.x_pos, cardWidth - 90));
-  const clampedStartY = Math.max(0, Math.min(media.y_pos, cardHeight - 120));
+  const clampedStartX = Math.max(0, Math.min(media.x_pos, cardWidth - STICKER_WIDTH));
+  const clampedStartY = Math.max(0, Math.min(media.y_pos, cardHeight - STICKER_HEIGHT));
 
   const translateX = useSharedValue(clampedStartX);
   const translateY = useSharedValue(clampedStartY);
@@ -44,6 +47,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   const contextY = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
+    .hitSlop(40) // Massively increase touch target area beyond visual bounds
     .onStart(() => {
       isDragging.value = true;
       activeScale.value = withSpring(1.05, { damping: 25, stiffness: 400 });
@@ -51,8 +55,8 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
       contextY.value = translateY.value;
     })
     .onUpdate((event) => {
-      const maxX = cardWidth - 90;
-      const maxY = cardHeight - 120;
+      const maxX = cardWidth - STICKER_WIDTH;
+      const maxY = cardHeight - STICKER_HEIGHT;
       
       let nextX = contextX.value + event.translationX;
       let nextY = contextY.value + event.translationY;
@@ -68,6 +72,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     });
 
   const pinchGesture = Gesture.Pinch()
+    .hitSlop(40) // Massively increase touch target area for pinching
     .onUpdate((event) => {
       baseScale.value = Math.max(0.5, Math.min(savedBaseScale.value * event.scale, 3));
     })
@@ -100,9 +105,9 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
       <Animated.View style={[
         styles.sticker, 
         media.type !== 'audio' && { 
-          backgroundColor: theme.isDark ? '#111111' : '#F0F0F0',
-          borderColor: theme.isDark ? '#000000' : '#FFFFFF',
-          borderWidth: 4, 
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.borderStrong,
+          borderWidth: 3, 
         }, 
         media.type === 'audio' && {
           backgroundColor: 'transparent',
@@ -135,7 +140,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
 
 const styles = StyleSheet.create({
   sticker: {
-    width: 90, // Reduced size, 3:4 ratio
+    width: 90, // Reverted to default small size
     height: 120,
     shadowColor: '#000',
   },
