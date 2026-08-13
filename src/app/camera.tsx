@@ -231,11 +231,11 @@ export default function CameraScreen() {
         {isCinematic && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
             {/* Top Bar */}
-            <View style={{ width: '100%', height: height * 0.15, backgroundColor: '#000' }} />
+            <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
             {/* Warm Tint */}
-            <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
+            <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
             {/* Bottom Bar */}
-            <View style={{ width: '100%', height: height * 0.15, backgroundColor: '#000' }} />
+            <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
           </View>
         )}
 

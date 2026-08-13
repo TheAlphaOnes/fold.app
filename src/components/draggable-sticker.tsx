@@ -134,9 +134,9 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
           )}
           {media.isCinematic && media.type !== 'audio' && (
             <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
-              <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
-              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
+              <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
+              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
             </View>
           )}
         </View>
