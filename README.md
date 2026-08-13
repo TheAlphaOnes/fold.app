@@ -1,7 +1,7 @@
 # FOLD
 
 <div align="center">
-  <img src="assets/fold-logo.png" width="120" height="120" alt="Fold Logo" />
+  <img src="assets/logo.svg" width="120" height="120" alt="Fold Logo" />
 </div>
 
 > A private, offline-first memory engine. No cloud. No tracking. Everything on-device.
