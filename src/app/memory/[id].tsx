@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Trash2 } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -15,6 +15,7 @@ import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useJournalStore } from '@/hooks/use-journal';
 
 // --- Types ---
@@ -241,6 +242,35 @@ export default function MemoryDetailScreen() {
     );
   };
 
+  const handleSaveMedia = async (uri: string) => {
+    try {
+      if (Platform.OS === 'android') {
+        // Android: use StorageAccessFramework to let the user pick a folder and save directly (works in Expo Go)
+        const perms = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!perms.granted) return;
+
+        const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(uri);
+        const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+        const ext = isVideo ? 'mp4' : 'jpg';
+        const fileName = `fold_${Date.now()}.${ext}`;
+
+        const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          perms.directoryUri,
+          fileName,
+          mimeType
+        );
+        await FileSystem.copyAsync({ from: uri, to: destUri });
+        Alert.alert('Saved', 'Media saved to your chosen folder.');
+      } else {
+        // iOS Expo Go: fall back to share sheet, user taps "Save Image" from there
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) await Sharing.shareAsync(uri);
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to save media.');
+    }
+  };
 
   const handleShare = async (slidesList: SlideData[]) => {
     try {
@@ -347,6 +377,22 @@ export default function MemoryDetailScreen() {
           >
             <ShareIcon size={16} color={theme.text} />
           </Pressable>
+
+          {slides[currentIndex]?.type === 'media' && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionBtn,
+                {
+                  borderColor: theme.border,
+                  backgroundColor: theme.background,
+                  opacity: pressed ? 0.5 : 1,
+                }
+              ]}
+              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
+            >
+              <Download size={16} color={theme.text} />
+            </Pressable>
+          )}
 
           <Pressable 
             style={({ pressed }) => [
