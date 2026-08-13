@@ -137,7 +137,6 @@ export default function ComposeScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
         allowsMultipleSelection: true,
-        quality: 1,
       });
 
       if (!result.canceled) {
