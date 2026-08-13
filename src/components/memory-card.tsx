@@ -25,8 +25,6 @@ interface MemoryCardProps {
 export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const cardRef = useRef<View>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
   
   // Card has 21px padding on both sides based on the flatlist paddingHorizontal
   const cardWidth = width - 42;
@@ -47,34 +45,8 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
     onUpdatePositions(item.id, updatedMedia);
   };
 
-  const handleShare = async () => {
-    try {
-      setIsCapturing(true);
-      // Wait briefly for React to re-render and hide the share button
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      const uri = await captureRef(cardRef, {
-        format: 'png',
-        quality: 1,
-      });
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          dialogTitle: 'Share Memory Card',
-          mimeType: 'image/png',
-        });
-      }
-    } catch (e) {
-      console.error('Failed to capture memory card:', e);
-    } finally {
-      setIsCapturing(false);
-    }
-  };
-
   return (
     <View
-      ref={cardRef}
-      collapsable={false}
       style={[
         styles.card,
         {
@@ -156,19 +128,6 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
         <Text style={[styles.timeText, { color: theme.textMuted }]}>
           {formattedTime}
         </Text>
-        
-        {!isCapturing && (
-          <Pressable 
-            style={({ pressed }) => [
-              styles.shareBtn,
-              { opacity: pressed ? 0.5 : 1 }
-            ]}
-            onPress={handleShare}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Share size={16} color={theme.textMuted} />
-          </Pressable>
-        )}
       </View>
     </View>
   );

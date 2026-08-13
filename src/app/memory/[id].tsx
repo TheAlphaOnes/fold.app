@@ -18,6 +18,8 @@ import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
+import { captureRef } from 'react-native-view-shot';
+import { MemoryCard } from '@/components/memory-card';
 
 // --- Types ---
 type SlideData =
@@ -307,7 +309,30 @@ export default function MemoryDetailScreen() {
     }
   };
 
-  const handleShare = async (slidesList: SlideData[]) => {
+  const hiddenCardRef = useRef<View>(null);
+
+  const captureAndShareCard = async () => {
+    try {
+      // Small delay to ensure the offscreen card is rendered
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const uri = await captureRef(hiddenCardRef, {
+        format: 'png',
+        quality: 1,
+      });
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: 'Share Memory Card',
+          mimeType: 'image/png',
+        });
+      }
+    } catch (e) {
+      console.error('Failed to capture memory card:', e);
+      Alert.alert('Error', 'Failed to generate image.');
+    }
+  };
+
+  const shareRawContent = async (slidesList: SlideData[]) => {
     try {
       const current = slidesList[currentIndex];
       if (current.type === 'media') {
@@ -323,6 +348,27 @@ export default function MemoryDetailScreen() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleShare = async (slidesList: SlideData[]) => {
+    Alert.alert(
+      'Share Memory',
+      'How would you like to share this?',
+      [
+        {
+          text: 'Share Card as Image',
+          onPress: () => captureAndShareCard()
+        },
+        {
+          text: 'Share Original File/Text',
+          onPress: () => shareRawContent(slidesList)
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ]
+    );
   };
 
   useEffect(() => {
@@ -368,6 +414,17 @@ export default function MemoryDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Hidden card for capturing as image */}
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+        <View ref={hiddenCardRef} collapsable={false}>
+          <MemoryCard 
+            item={composition} 
+            height={400} 
+            onUpdatePositions={async () => {}} 
+          />
+        </View>
+      </View>
+
       <FlatList
         data={slides}
         keyExtractor={(item) => item.id}
