@@ -127,14 +127,17 @@ function RootLayoutNav() {
 }
 
 import { BiometricGate } from '@/components/biometric-gate';
+import { ShareIntentProvider } from 'expo-share-intent';
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppThemeProvider>
-        <RootLayoutNav />
-      </AppThemeProvider>
-    </GestureHandlerRootView>
+    <ShareIntentProvider options={{ debug: false, resetOnBackground: true }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AppThemeProvider>
+          <RootLayoutNav />
+        </AppThemeProvider>
+      </GestureHandlerRootView>
+    </ShareIntentProvider>
   );
 }
 

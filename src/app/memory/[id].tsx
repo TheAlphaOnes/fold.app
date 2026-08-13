@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause } from 'lucide-react-native';
+import { X, Play, Pause, MoreHorizontal, Share as ShareIcon, Download, Trash2 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -14,6 +14,9 @@ import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
+import { useJournalStore } from '@/hooks/use-journal';
 
 // --- Types ---
 type SlideData =
@@ -219,6 +222,58 @@ export default function MemoryDetailScreen() {
   }).current;
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+  const { removeComposition } = useJournalStore();
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Memory',
+      'Are you sure you want to delete this memory? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            await removeComposition(Number(id));
+            router.back();
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSaveMedia = async (uri: string) => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need access to your photos to save media.');
+        return;
+      }
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Saved', 'Media saved to your gallery.');
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to save media.');
+    }
+  };
+
+  const handleShare = async (slidesList: SlideData[]) => {
+    try {
+      const current = slidesList[currentIndex];
+      if (current.type === 'media') {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(current.media.uri);
+        } else {
+          Alert.alert('Error', 'Sharing is not available on this device.');
+        }
+      } else if (current.type === 'text') {
+        await Share.share({ message: current.text });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -275,21 +330,70 @@ export default function MemoryDetailScreen() {
         viewabilityConfig={viewabilityConfig}
       />
 
-      {/* Close Button */}
-      <Pressable 
-        style={({ pressed }) => [
-          styles.backButton, 
-          { 
-            top: insets.top + 16, 
-            borderColor: theme.border,
-            backgroundColor: theme.background,
-            opacity: pressed ? 0.5 : 1 
-          }
-        ]} 
-        onPress={() => router.back()}
-      >
-        <X size={16} color={theme.text} />
-      </Pressable>
+      {/* Top Action Bar */}
+      <View style={[styles.topActionBar, { top: insets.top + 16 }]}>
+        <View style={styles.leftActions}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.actionBtn, 
+              { 
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                opacity: pressed ? 0.5 : 1 
+              }
+            ]} 
+            onPress={() => router.back()}
+          >
+            <X size={16} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <View style={styles.rightActions}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.actionBtn, 
+              { 
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                opacity: pressed ? 0.5 : 1 
+              }
+            ]} 
+            onPress={() => handleShare(slides)}
+          >
+            <ShareIcon size={16} color={theme.text} />
+          </Pressable>
+
+          {slides[currentIndex]?.type === 'media' && (
+            <Pressable 
+              style={({ pressed }) => [
+                styles.actionBtn, 
+                { 
+                  borderColor: theme.border,
+                  backgroundColor: theme.background,
+                  opacity: pressed ? 0.5 : 1 
+                }
+              ]} 
+              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
+            >
+              <Download size={16} color={theme.text} />
+            </Pressable>
+          )}
+
+          <Pressable 
+            style={({ pressed }) => [
+              styles.actionBtn, 
+              { 
+                borderColor: 'rgba(255,59,48,0.3)',
+                backgroundColor: 'rgba(255,59,48,0.1)',
+                opacity: pressed ? 0.5 : 1 
+              }
+            ]} 
+            onPress={handleDelete}
+          >
+            <Trash2 size={16} color="#FF3B30" />
+          </Pressable>
+        </View>
+      </View>
 
       {/* Slide Indicator (TE Beads) */}
       {slides.length > 1 && (
@@ -325,13 +429,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 38,
   },
-  backButton: {
+  topActionBar: {
     position: 'absolute',
-    left: 21,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     zIndex: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  },
+  leftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
