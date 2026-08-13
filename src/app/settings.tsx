@@ -21,38 +21,64 @@ export default function SettingsScreen() {
   
   const [easterEggActive, setEasterEggActive] = useState(false);
 
-  const handleExport = async () => {
-    try {
-      const dataStr = JSON.stringify(compositions, null, 2);
-      const fileUri = `${FileSystem.documentDirectory}fold_export.json`;
-      await FileSystem.writeAsStringAsync(fileUri, dataStr);
-      
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-      } else {
-        Alert.alert("Export Error", "Sharing is not available on this device");
-      }
-    } catch (e) {
-      Alert.alert("Export Error", "Failed to export data");
+  // Shared helper — calls the action only after successful biometric auth.
+  // Falls back gracefully when hardware is absent (e.g. simulators).
+  const requireAuth = async (promptMessage: string, action: () => void) => {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+    if (!hasHardware || !isEnrolled) {
+      // No biometrics available — run the action anyway (device has no lock).
+      action();
+      return;
+    }
+
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage,
+      disableDeviceFallback: false,
+    });
+
+    if (result.success) {
+      action();
     }
   };
 
-  const handleDeleteAll = () => {
-    Alert.alert(
-      "ERASE SYSTEM MEMORY",
-      "Are you sure you want to permanently delete all compositions? This action cannot be undone.",
-      [
-        { text: "CANCEL", style: "cancel" },
-        { 
-          text: "ERASE", 
-          style: "destructive",
-          onPress: async () => {
-            await removeAllCompositions();
-            router.navigate('/');
-          }
+  const handleExport = async () => {
+    await requireAuth('Authenticate to export your memories', async () => {
+      try {
+        const dataStr = JSON.stringify(compositions, null, 2);
+        const fileUri = `${FileSystem.documentDirectory}fold_export.json`;
+        await FileSystem.writeAsStringAsync(fileUri, dataStr);
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri);
+        } else {
+          Alert.alert('Export Error', 'Sharing is not available on this device');
         }
-      ]
-    );
+      } catch (e) {
+        Alert.alert('Export Error', 'Failed to export data');
+      }
+    });
+  };
+
+  const handleDeleteAll = () => {
+    requireAuth('Authenticate to wipe all device memory', () => {
+      Alert.alert(
+        'ERASE SYSTEM MEMORY',
+        'Are you sure you want to permanently delete all compositions? This action cannot be undone.',
+        [
+          { text: 'CANCEL', style: 'cancel' },
+          { 
+            text: 'ERASE', 
+            style: 'destructive',
+            onPress: async () => {
+              await removeAllCompositions();
+              router.navigate('/');
+            }
+          }
+        ]
+      );
+    });
   };
 
   const cycleTheme = () => {

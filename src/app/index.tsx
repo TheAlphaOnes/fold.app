@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
@@ -20,7 +20,7 @@ import { useJournal } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
-import { useCallback, useRef, useEffect, useState } from 'react';
+import { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -35,7 +35,7 @@ interface CarouselItemProps {
   updatePositions: (id: number, media: any) => void;
 }
 
-function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
+const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
   
   const animatedStyle = useAnimatedStyle(() => {
@@ -77,7 +77,7 @@ function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePo
     });
 
   return (
-    <View style={{ height: snapInterval, justifyContent: 'center', paddingHorizontal: 21 }}>
+    <View style={[styles.carouselItem, { height: snapInterval }]}>
       <GestureDetector gesture={doubleTap}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
@@ -85,7 +85,7 @@ function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePo
       </GestureDetector>
     </View>
   );
-}
+});
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -176,7 +176,7 @@ export default function HomeScreen() {
     },
   });
 
-  const renderItem = ({ item, index }: { item: Composition; index: number }) => (
+  const renderItem = useCallback(({ item, index }: { item: Composition; index: number }) => (
     <CarouselItem
       item={item}
       index={index}
@@ -185,7 +185,7 @@ export default function HomeScreen() {
       scrollY={scrollY}
       updatePositions={updatePositions}
     />
-  );
+  ), [snapInterval, cardHeight, scrollY, updatePositions]);
 
   return (
     // Clean background
@@ -282,5 +282,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-  }
+  },
+  carouselItem: {
+    justifyContent: 'center',
+    paddingHorizontal: 21,
+  },
 });
