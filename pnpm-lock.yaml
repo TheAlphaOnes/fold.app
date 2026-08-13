@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@expo-google-fonts/amatic-sc':
+        specifier: ^0.4.2
+        version: 0.4.2
       '@expo-google-fonts/bebas-neue':
         specifier: ^0.4.1
         version: 0.4.1
@@ -29,9 +32,18 @@ importers:
       '@expo-google-fonts/inter':
         specifier: ^0.4.2
         version: 0.4.2
+      '@expo-google-fonts/pacifico':
+        specifier: ^0.4.1
+        version: 0.4.1
+      '@expo-google-fonts/permanent-marker':
+        specifier: ^0.4.0
+        version: 0.4.0
       '@expo-google-fonts/playfair-display':
         specifier: ^0.4.2
         version: 0.4.2
+      '@expo-google-fonts/press-start-2p':
+        specifier: ^0.4.1
+        version: 0.4.1
       '@expo-google-fonts/righteous':
         specifier: ^0.4.1
         version: 0.4.1
@@ -616,6 +628,9 @@ packages:
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
+  '@expo-google-fonts/amatic-sc@0.4.2':
+    resolution: {integrity: sha512-0eou07KvkvccWNaaYumHaXGps3d1OpE8wKFJxW1m9gJ3nQow1CxkvzbWHqqwYjmgjO1kBHJzXE5eyxb4Qs/jPg==}
+
   '@expo-google-fonts/bebas-neue@0.4.1':
     resolution: {integrity: sha512-Ibnf0EQgMUj01tT/ws64RlsMQmOvDP+UDFW93bld0C/WwaOaCGWKgNnqxNkKxmL73y2kpT8EB4dkSNUOyAOEJA==}
 
@@ -637,8 +652,17 @@ packages:
   '@expo-google-fonts/material-symbols@0.4.43':
     resolution: {integrity: sha512-jJzgVcbkJnl48X5iBFNaL5CQHwoBElJapl8unc2Ri8DnyuBR+gRiuAD4gu3ESZjjo3sknIoYIwloOsWzKbLknQ==}
 
+  '@expo-google-fonts/pacifico@0.4.1':
+    resolution: {integrity: sha512-w21ZIeNdwVWPH173HNszX8ML1deogOsHcxhJ0ghpbyBzr7R6PGSJ6yWL5jBixvWV/E34xDk28aNn/cX+gqzf3Q==}
+
+  '@expo-google-fonts/permanent-marker@0.4.0':
+    resolution: {integrity: sha512-yqKSFt3Wu/06XAGFNlT4z5iLmnjtAuSV/vkeumnM/2cgbEv3dQVKDbcdQnowW8N3vNOABGqWxbs4KEiewNOzqA==}
+
   '@expo-google-fonts/playfair-display@0.4.2':
     resolution: {integrity: sha512-mWhBV59RUjSS3aYpytUb7UyHHTnXcHh7epAn7gq+M4XAEh5PuMKUrP8eiUfkJLb6UwHZCi7EhQpUzxHu5OL96w==}
+
+  '@expo-google-fonts/press-start-2p@0.4.1':
+    resolution: {integrity: sha512-L6SjPh8qwQ9i34VRNa8XPHH0gYACE1AGcq2MDLGfmBpxDnJnbECuChv6pWO81F2XqPx+V7gUlvSL0rbgh/F6/w==}
 
   '@expo-google-fonts/righteous@0.4.1':
     resolution: {integrity: sha512-oWlxXmRNYRN5aHW2cLJopUTr7T+mNRGfKjBeQlYLbOIf1yn6UF5kcg9PqkD6gG8BG1pKxzT3jXzcRvFSRL1HKA==}
@@ -4701,6 +4725,8 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
+  '@expo-google-fonts/amatic-sc@0.4.2': {}
+
   '@expo-google-fonts/bebas-neue@0.4.1': {}
 
   '@expo-google-fonts/caveat@0.4.2': {}
@@ -4715,7 +4741,13 @@ snapshots:
 
   '@expo-google-fonts/material-symbols@0.4.43': {}
 
+  '@expo-google-fonts/pacifico@0.4.1': {}
+
+  '@expo-google-fonts/permanent-marker@0.4.0': {}
+
   '@expo-google-fonts/playfair-display@0.4.2': {}
+
+  '@expo-google-fonts/press-start-2p@0.4.1': {}
 
   '@expo-google-fonts/righteous@0.4.1': {}
 

@@ -30,6 +30,10 @@ import { Caveat_400Regular, Caveat_600SemiBold, Caveat_700Bold } from '@expo-goo
 import { DancingScript_400Regular } from '@expo-google-fonts/dancing-script';
 import { Righteous_400Regular } from '@expo-google-fonts/righteous';
 import { EBGaramond_400Regular } from '@expo-google-fonts/eb-garamond';
+import { AmaticSC_400Regular, AmaticSC_700Bold } from '@expo-google-fonts/amatic-sc';
+import { Pacifico_400Regular } from '@expo-google-fonts/pacifico';
+import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
+import { PermanentMarker_400Regular } from '@expo-google-fonts/permanent-marker';
 
 import { getDatabase } from '@/db';
 import { AppThemeProvider, useThemeContext } from '@/hooks/use-theme';
@@ -70,6 +74,11 @@ function RootLayoutNav() {
     DancingScript_400Regular,
     Righteous_400Regular,
     EBGaramond_400Regular,
+    AmaticSC_400Regular,
+    AmaticSC_700Bold,
+    Pacifico_400Regular,
+    PressStart2P_400Regular,
+    PermanentMarker_400Regular,
   });
 
   const isAppReady = dbReady && fontsLoaded;

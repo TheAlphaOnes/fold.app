@@ -96,12 +96,18 @@ export default function ComposeScreen() {
     { id: 'DancingScript_400Regular', name: 'DANCING' },
     { id: 'Righteous_400Regular', name: 'FUNKY' },
     { id: 'EBGaramond_400Regular', name: 'POETRY' },
+    { id: 'Pacifico_400Regular', name: 'PACIFICO' },
+    { id: 'PermanentMarker_400Regular', name: 'MARKER' },
+    { id: 'AmaticSC_700Bold', name: 'SKETCH' },
+    { id: 'PressStart2P_400Regular', name: 'RETRO' },
   ];
 
   const FONT_SIZES = [
     { id: 16, name: 'S' },
     { id: 21, name: 'M' },
     { id: 28, name: 'L' },
+    { id: 40, name: 'XL' },
+    { id: 56, name: 'XXL' },
   ];
 
   const cycleFont = () => {

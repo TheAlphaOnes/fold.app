@@ -89,6 +89,10 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   const [isPausedByUser, setIsPausedByUser] = React.useState(false);
   const theme = useTheme();
 
+  // Keep track of the scrub state
+  const isScrubbing = useSharedValue(false);
+  const scrubStartPos = useSharedValue(0);
+
   useEffect(() => {
     player.loop = true;
   }, [player]);
@@ -101,27 +105,43 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
     }
   }, [isActive, player, isPausedByUser]);
 
-  const handlePressIn = () => {
-    if (isActive) setIsPausedByUser(true);
+  const seekTo = (seconds: number) => {
+    player.seekTo(seconds);
   };
 
-  const handlePressOut = () => {
-    if (isActive) setIsPausedByUser(false);
-  };
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(setIsPausedByUser)(true);
+      isScrubbing.value = true;
+      scrubStartPos.value = status.currentTime; // status.currentTime is in seconds
+    })
+    .onUpdate((e) => {
+      // 20 pixels = 1 second of audio
+      const deltaSeconds = e.translationX / 20;
+      const targetSeconds = scrubStartPos.value + deltaSeconds;
+      const clamped = Math.max(0, Math.min(targetSeconds, status.duration));
+      
+      // Throttle seeking slightly by running on JS (already async)
+      runOnJS(seekTo)(clamped);
+    })
+    .onEnd(() => {
+      isScrubbing.value = false;
+      runOnJS(setIsPausedByUser)(false);
+    });
 
   const isActuallyPlaying = isActive && !isPausedByUser;
 
   return (
-    <Pressable 
-      style={{ width, height, justifyContent: 'center', alignItems: 'center' }}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
-      <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} />
+    <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={{ alignItems: 'center' }}>
+          <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} />
+        </Animated.View>
+      </GestureDetector>
       <Text style={[styles.textSlideContent, { color: theme.text, marginTop: 24, fontSize: 18, fontFamily: 'JetBrainsMono-Medium' }]}>
         {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
       </Text>
-    </Pressable>
+    </View>
   );
 }
 
