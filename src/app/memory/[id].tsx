@@ -15,6 +15,7 @@ import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 import { useJournalStore } from '@/hooks/use-journal';
 
 // --- Types ---
@@ -243,12 +244,13 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = async (uri: string) => {
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Error', 'Saving is not supported on this device.');
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Allow Fold to access your gallery to save media.');
         return;
       }
-      await Sharing.shareAsync(uri);
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('Saved', 'Saved to your gallery.');
     } catch (e) {
       console.error('Save failed:', e);
       Alert.alert('Error', 'Failed to save media.');
