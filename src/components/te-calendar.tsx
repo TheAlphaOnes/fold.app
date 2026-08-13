@@ -91,7 +91,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             key={`e-${i}`}
             style={[
               styles.dayCell,
-              { width: cellWidth, height: cellWidth },
+              { height: cellWidth },
               !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
               !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             ]}
@@ -109,7 +109,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           onPress={() => onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
           style={({ pressed }) => [
             styles.dayCell,
-            { width: cellWidth, height: cellWidth },
+            { height: cellWidth },
             !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
             !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             pressed && { backgroundColor: theme.text },
@@ -155,8 +155,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             <View 
               key={d} 
               style={[
-                styles.dowCell, 
-                { width: cellWidth },
+                styles.dowCell,
                 i < 6 && { borderRightWidth: 1, borderRightColor: theme.border }
               ]}
             >
@@ -359,6 +358,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   dowCell: {
+    width: '14.2857%',
     paddingVertical: 8,
     alignItems: 'center',
   },
@@ -376,6 +376,7 @@ const styles = StyleSheet.create({
 
   // --- Day cells ---
   dayCell: {
+    width: '14.2857%',
     justifyContent: 'center',
     alignItems: 'center',
   },
