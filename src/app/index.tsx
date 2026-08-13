@@ -27,7 +27,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -256,16 +255,12 @@ export default function HomeScreen() {
       )}
 
       {/* Floating bottom bar with Date and Add Button */}
-      <LinearGradient 
-        colors={['transparent', theme.background]}
-        locations={[0, 0.4]}
-        style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
-      >
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dateContainer}>
-          <Text style={[styles.dateText, { color: theme.text }]}>{dateStr}</Text>
+          <Text style={[styles.dateText, { color: theme.textMuted }]}>{dateStr}</Text>
         </View>
         <AddButton onPress={handleAdd} onSwipeUp={handleSwipeUp} />
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -279,20 +274,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 64, // extended padding top to give gradient room to fade in
-    pointerEvents: 'box-none',
+    paddingTop: 12,
   },
   dateContainer: {
     alignItems: 'center',
     marginBottom: 16, // Space between date and Add Button
   },
   dateText: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 14,
+    color: '#878787', // Technical gray
     letterSpacing: 1,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   profileButton: {
     position: 'absolute',
