@@ -1,24 +1,22 @@
 # Fold
 
-**Fold** is a minimalist, local-first journal and memory canvas built with React Native and Expo. Heavily inspired by the brutalist, highly tactile industrial design of Teenage Engineering, Fold rejects generic UI patterns in favor of a raw, physical, and highly aesthetic user experience.
+Most journals force your memories into rigid lines of text and perfectly aligned grids. But human memory doesn't work that way. Memories are messy, visual, and chaotic. 
 
-## Features
+Fold is a digital canvas that respects how you actually remember things. Instead of typing into a box, you drop photos, videos, and voice notes onto a free-form surface. You can drag them around, stack them, and arrange them exactly how the moment felt. It is a space designed to capture the raw, unfiltered reality of your days.
 
-- **The Memory Canvas:** Memories aren't just text. Drop photos, videos, and audio recordings onto a free-form canvas. Drag them around like physical stickers and place them exactly where you want them.
-- **Physical Interactions:** UI elements feel like physical hardware. The primary "Add" button features a heavy, spring-loaded drag-up gesture that instantly launches your device's camera.
-- **TE-Inspired Aesthetics:** A stark, high-contrast visual identity featuring monospace typography, dot-matrix heat maps, diagonal caution stripes, and a utilitarian layout. 
-- **Local-First & Offline:** Your memories belong to you. Everything is stored locally on your device via SQLite. Zero cloud sync by default.
-- **Biometric Security:** Sensitive operations (like wiping memory or exporting raw JSON data) are protected by native biometric gates (Face ID / Touch ID).
+We built Fold with a singular vision: to give you back ownership of your personal space. There are no algorithms, no social feeds, and no mandatory cloud syncs. Your canvas lives entirely on your device, locked behind your own biometrics. It is a tool built for you, and only you.
 
-## Tech Stack
+---
 
-- **Framework:** [Expo](https://expo.dev) & [React Native](https://reactnative.dev)
-- **Routing:** Expo Router (File-based routing)
-- **Database:** `expo-sqlite` (Local data persistence)
-- **Gestures & Animation:** `react-native-gesture-handler` & `react-native-reanimated`
-- **Media:** `expo-image`, `expo-video`, `expo-audio`, `expo-image-picker`
-- **Security:** `expo-local-authentication`
-- **Styling:** Native StyleSheet with a custom brutalist design system
+## Technical Architecture (Hackathon Details)
+
+While the product experience is designed to be as invisible and fluid as possible, the underlying architecture is built for high performance and strict privacy.
+
+- **Framework:** Built with React Native and Expo (using Expo Router for file-based navigation).
+- **Direct DOM Bypass:** To achieve 60fps when dragging media around the canvas, Fold completely bypasses React's render cycle during gestures, utilizing Reanimated's shared values and worklets running directly on the UI thread.
+- **Local-First Database:** The entire application runs offline. Data is persisted using `expo-sqlite`, ensuring absolute privacy and zero latency.
+- **Media Handling:** Camera captures are saved instantly to the device's persistent application directory. We leverage native media rendering (`expo-image`, `expo-video`, `expo-audio`) to handle heavy assets without blocking the main JavaScript thread.
+- **Security:** Sensitive actions, including raw JSON data exports and device memory wiping, are protected by `expo-local-authentication`, tying directly into the native secure enclave (Face ID / Touch ID).
 
 ## Getting Started
 
@@ -35,10 +33,4 @@
 3. **Open on your device:**
    Download the Expo Go app on your phone and scan the QR code, or press `i` to launch the iOS simulator.
 
-*(Note: Certain hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully).*
-
-## Architecture Highlights
-
-- **Direct DOM Bypass:** For high-performance 60fps dragging, stickers bypass React's render cycle using Reanimated's shared values and worklets.
-- **Media Optimization:** Videos and images use native caching and performant rendering (via `expo-image` and `expo-video`). Camera captures are moved from temporary storage to persistent device directories to prevent data loss.
-- **UI Render Guarding:** Large lists are protected with `React.memo` and `useCallback` to prevent virtual DOM thrashing during high-speed scrolling.
+*(Note: Hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully).*
