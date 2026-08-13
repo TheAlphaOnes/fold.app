@@ -160,15 +160,31 @@ export default function HomeScreen() {
   const prevCount = useRef(compositions.length);
 
   // Auto-scroll to the bottom when a new item is added
-  const [dateStr] = useState(() => {
-    const now = new Date();
+  const [activeDate, setActiveDate] = useState(() => new Date());
+
+  const dateStr = useMemo(() => {
+    const date = activeDate || new Date();
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    const day = days[now.getDay()];
-    const d = String(now.getDate()).padStart(2, '0');
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const y = now.getFullYear();
+    const day = days[date.getDay()];
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
     return `${day} ${d}.${m}.${y}`;
-  });
+  }, [activeDate]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems && viewableItems.length > 0) {
+      // Find the most visible item
+      const centerItem = viewableItems.find((v: any) => v.isViewable) || viewableItems[0];
+      if (centerItem && centerItem.item && centerItem.item.createdAt) {
+        setActiveDate(new Date(centerItem.item.createdAt));
+      }
+    }
+  }).current;
 
   useEffect(() => {
     if (compositions.length > prevCount.current) {
@@ -245,6 +261,8 @@ export default function HomeScreen() {
         // Smooth scroll animations tracking
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
           // Center cards perfectly in the absolute physical screen.
           // We add extra padding at the bottom so the user can overscroll past the floating bottom bar if needed.
           contentContainerStyle={{
