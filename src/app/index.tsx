@@ -120,10 +120,9 @@ export default function HomeScreen() {
   const prevCount = useRef(compositions.length);
 
   // Auto-scroll to the bottom when a new item is added
-  // Compute date synchronously so it never flashes empty
   const [dateStr] = useState(() => {
     const now = new Date();
-    const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const day = days[now.getDay()];
     const d = String(now.getDate()).padStart(2, '0');
     const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -242,7 +241,7 @@ const styles = StyleSheet.create({
     marginBottom: 16, // Space between date and Add Button
   },
   dateText: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 14,
     color: '#878787', // Technical gray
     letterSpacing: 1,

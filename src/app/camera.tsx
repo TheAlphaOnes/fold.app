@@ -186,6 +186,12 @@ export default function CameraScreen() {
     router.replace('/compose');
   };
 
+  const animatedBtnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+    backgroundColor: isRecording ? '#FF3B30' : '#FFFFFF',
+    borderRadius: isRecording ? 12 : 40,
+  }));
+
   // ─── Permission screens ───────────────────────────────────────────────────
   if (!cameraPermission || !micPermission) {
     return <View style={styles.container} />;
@@ -201,12 +207,6 @@ export default function CameraScreen() {
       </View>
     );
   }
-
-  const animatedBtnStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-    backgroundColor: isRecording ? '#FF3B30' : '#FFFFFF',
-    borderRadius: isRecording ? 12 : 40,
-  }));
 
   return (
     <View style={styles.container}>
