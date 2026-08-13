@@ -12,6 +12,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { MediaElement } from '@/types/journal';
 
+import { useTheme } from '@/hooks/use-theme';
+
 interface DraggableStickerProps {
   media: MediaElement;
   onDragEnd: (id: string, x: number, y: number) => void;
@@ -20,6 +22,8 @@ interface DraggableStickerProps {
 }
 
 export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: DraggableStickerProps) {
+  const theme = useTheme();
+
   // Clamp initial positions just in case they spawned out of bounds
   const clampedStartX = Math.max(0, Math.min(media.x_pos, cardWidth - 90));
   const clampedStartY = Math.max(0, Math.min(media.y_pos, cardHeight - 120));
@@ -78,7 +82,14 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.sticker, animatedStyle]}>
+      <Animated.View style={[
+        styles.sticker, 
+        { 
+          backgroundColor: theme.isDark ? '#111111' : '#F0F0F0',
+          borderColor: theme.isDark ? '#000000' : '#FFFFFF' 
+        }, 
+        animatedStyle
+      ]}>
         <View style={styles.innerFrame}>
           {media.type === 'audio' ? (
             <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
@@ -106,9 +117,7 @@ const styles = StyleSheet.create({
   sticker: {
     width: 90, // Reduced size, 3:4 ratio
     height: 120,
-    backgroundColor: '#F0F0F0',
     borderWidth: 4,
-    borderColor: '#FFFFFF', // Creates a Polaroid/sticker border effect
     shadowColor: '#000',
   },
   innerFrame: {

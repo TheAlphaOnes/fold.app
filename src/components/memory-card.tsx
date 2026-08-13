@@ -54,7 +54,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
     >
       {/* LAYER 1: Stripes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DiagonalStripes color="#D0D0D0" opacity={0.5} animated />
+        <DiagonalStripes color={theme.isDark ? "#2A2A2A" : "#D0D0D0"} opacity={0.5} animated />
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
