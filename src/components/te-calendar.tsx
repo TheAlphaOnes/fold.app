@@ -107,12 +107,14 @@ export function TECalendar({ onSelect }: TECalendarProps) {
         >
           {({ pressed }) => (
             <>
-              <ThemedText style={[
-                styles.dayText,
-                { color: pressed ? theme.background : (current ? theme.text : theme.textMuted) }
-              ]}>
-                {dayNum < 10 ? `0${dayNum}` : dayNum}
-              </ThemedText>
+              <View style={current ? [styles.todayIndicator, { borderColor: pressed ? theme.background : theme.text }] : null}>
+                <ThemedText style={[
+                  styles.dayText,
+                  { color: pressed ? theme.background : (current ? theme.text : theme.textMuted) }
+                ]}>
+                  {dayNum < 10 ? `0${dayNum}` : dayNum}
+                </ThemedText>
+              </View>
               {active && (
                 <View style={[
                   styles.dot,
@@ -355,10 +357,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
   },
+  todayIndicator: {
+    borderWidth: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
   dot: {
     width: 4,
     height: 4,
     position: 'absolute',
-    bottom: 8,
+    bottom: 4,
   }
 });
