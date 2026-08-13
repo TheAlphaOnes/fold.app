@@ -246,18 +246,28 @@ export default function MemoryDetailScreen() {
     try {
       const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(uri);
       const ext = isVideo ? 'mp4' : 'jpg';
+      const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
       const fileName = `fold_${Date.now()}.${ext}`;
 
       if (Platform.OS === 'android') {
-        const dest = `file:///sdcard/Download/${fileName}`;
-        await FileSystem.copyAsync({ from: uri, to: dest });
-        Alert.alert('Saved', `Saved to Downloads/${fileName}`);
+        // Point SAF directly at the Download folder — Android shows a simple Allow/Deny prompt
+        const downloadUri = FileSystem.StorageAccessFramework.getUriForDirectoryInRoot('Download');
+        const perms = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(downloadUri);
+        if (!perms.granted) return;
+
+        const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
+          perms.directoryUri,
+          fileName,
+          mimeType
+        );
+        await FileSystem.StorageAccessFramework.copyAsync({ from: uri, to: destUri });
+        Alert.alert('Saved', 'Saved to Downloads.');
       } else {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) await Sharing.shareAsync(uri);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Save failed:', e);
       Alert.alert('Error', 'Failed to save media.');
     }
   };
