@@ -111,14 +111,11 @@ export default function ProfileScreen() {
 
         {/* Time Machine Section */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0 }]}>
-          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 0 }]}>
+          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 16, marginBottom: 0, borderBottomWidth: 1, borderBottomColor: borderColor }]}>
             <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
           </View>
-          <ThemedText style={[styles.statLabel, { color: mutedText, marginBottom: 16, fontSize: 11, paddingHorizontal: 16 }]}>
-            Travel back to a specific date and explore the memories from that exact day across all years.
-          </ThemedText>
           
-          <View style={{ borderTopWidth: 1, borderTopColor: borderColor }}>
+          <View>
             <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
           </View>
         </View>
