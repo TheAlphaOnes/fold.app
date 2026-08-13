@@ -43,7 +43,6 @@
           "cameraPermission": "Allow Fold to access your camera to capture memories.",
           "microphonePermission": "Allow Fold to access your microphone to record audio for memories."
         }
-      ],
       ]
     ],
     "experiments": {
