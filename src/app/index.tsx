@@ -20,7 +20,7 @@ import { useJournal } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
-import { useCallback, useRef, useState, useMemo } from 'react';
+import { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
