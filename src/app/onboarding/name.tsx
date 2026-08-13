@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TacticalSlider } from '@/components/tactical-slider';
+import { TerminalButton } from '@/components/terminal-button';
 
 export default function OnboardingNameScreen() {
   const theme = useTheme();
@@ -61,9 +61,9 @@ export default function OnboardingNameScreen() {
 
             <View style={styles.spacer} />
 
-            <TacticalSlider 
-              text="SLIDE TO CONTINUE" 
-              onConfirm={handleNext} 
+            <TerminalButton 
+              text="CONTINUE" 
+              onPress={handleNext} 
             />
 
           </View>

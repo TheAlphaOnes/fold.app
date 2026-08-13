@@ -7,7 +7,7 @@ import { ArrowRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TacticalSlider } from '@/components/tactical-slider';
+import { TerminalButton } from '@/components/terminal-button';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -54,9 +54,9 @@ export default function OnboardingStartScreen() {
         <View style={styles.spacer} />
 
         {/* CTA Button */}
-        <TacticalSlider 
+        <TerminalButton 
           text="INITIALIZE" 
-          onConfirm={() => router.push('/onboarding/name')} 
+          onPress={() => router.push('/onboarding/name')} 
         />
 
       </View>

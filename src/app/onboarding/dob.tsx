@@ -7,7 +7,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TacticalSlider } from '@/components/tactical-slider';
+import { TerminalButton } from '@/components/terminal-button';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
@@ -89,9 +89,9 @@ export default function OnboardingDobScreen() {
 
             <View style={styles.spacer} />
 
-            <TacticalSlider 
+            <TerminalButton 
               text="INITIALIZE SYSTEM" 
-              onConfirm={handleComplete} 
+              onPress={handleComplete} 
             />
 
           </View>
