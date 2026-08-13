@@ -94,7 +94,7 @@ export default function CameraScreen() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   // Capture button scale animation
   const buttonScale = useSharedValue(1);
