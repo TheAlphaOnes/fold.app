@@ -5,7 +5,7 @@ import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, MoreHorizontal, Share as ShareIcon, Download, Trash2 } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Trash2 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -241,20 +241,6 @@ export default function MemoryDetailScreen() {
     );
   };
 
-  const handleSaveMedia = async (uri: string) => {
-    try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Error', 'Saving is not available on this device.');
-        return;
-      }
-      // expo-sharing opens the native share sheet — user can hit "Save to Photos" from there
-      await Sharing.shareAsync(uri, { dialogTitle: 'Save to your gallery' });
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to save media.');
-    }
-  };
 
   const handleShare = async (slidesList: SlideData[]) => {
     try {
@@ -361,22 +347,6 @@ export default function MemoryDetailScreen() {
           >
             <ShareIcon size={16} color={theme.text} />
           </Pressable>
-
-          {slides[currentIndex]?.type === 'media' && (
-            <Pressable 
-              style={({ pressed }) => [
-                styles.actionBtn, 
-                { 
-                  borderColor: theme.border,
-                  backgroundColor: theme.background,
-                  opacity: pressed ? 0.5 : 1 
-                }
-              ]} 
-              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
-            >
-              <Download size={16} color={theme.text} />
-            </Pressable>
-          )}
 
           <Pressable 
             style={({ pressed }) => [
