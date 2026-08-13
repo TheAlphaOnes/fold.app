@@ -73,9 +73,12 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
 
         {isSingleMedia && (
           <View style={styles.singleMediaContainer} pointerEvents="box-none">
-            <View style={styles.heroImageWrapper}>
+            <View style={[
+              styles.heroImageWrapper,
+              item.mediaElements[0].type === 'audio' && { borderWidth: 0 }
+            ]}>
               {item.mediaElements[0].type === 'audio' ? (
-                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
                   <VinylRecord size={120} isPlaying={false} isRecording={false} />
                 </View>
               ) : (
