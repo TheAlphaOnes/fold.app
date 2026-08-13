@@ -109,6 +109,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Heat Map (Activity Grid) */}
+        <ActivityGrid compositions={compositions} />
+
         {/* Time Machine Section */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
           <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 4, marginBottom: 0 }]}>
@@ -118,7 +121,6 @@ export default function ProfileScreen() {
         </View>
 
         {/* Charts */}
-        <ActivityGrid compositions={compositions} />
         <VolumeChart compositions={compositions} />
         <MomentumChart compositions={compositions} />
         <RecentAssets compositions={compositions} />
