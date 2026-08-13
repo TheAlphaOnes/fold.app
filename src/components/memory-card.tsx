@@ -136,10 +136,12 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
         </Text>
       </View>
       
-      {/* LAYER 4: Logo Watermark */}
-      <View style={styles.watermark} pointerEvents="none" collapsable={false}>
-        <Logo size={24} color={theme.textMuted} />
-      </View>
+      {/* LAYER 4: Logo Stamp (Only on Export) */}
+      {isExporting && (
+        <View style={styles.stamp} pointerEvents="none" collapsable={false}>
+          <Logo size={42} color={theme.isDark ? '#FFFFFF' : '#000000'} />
+        </View>
+      )}
     </View>
   );
 }
@@ -204,11 +206,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
-  watermark: {
+  stamp: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    opacity: 0.5,
+    opacity: 1, // Full opacity for stamp look
     zIndex: 10,
   },
 
