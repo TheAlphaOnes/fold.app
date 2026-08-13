@@ -275,6 +275,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingTop: 12,
+    zIndex: 100,
+    elevation: 10,
+    pointerEvents: 'box-none',
   },
   dateContainer: {
     alignItems: 'center',
