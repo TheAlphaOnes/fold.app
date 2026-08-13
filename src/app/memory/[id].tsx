@@ -244,25 +244,15 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = async (uri: string) => {
     try {
+      const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(uri);
+      const ext = isVideo ? 'mp4' : 'jpg';
+      const fileName = `fold_${Date.now()}.${ext}`;
+
       if (Platform.OS === 'android') {
-        // Android: use StorageAccessFramework to let the user pick a folder and save directly (works in Expo Go)
-        const perms = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!perms.granted) return;
-
-        const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(uri);
-        const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
-        const ext = isVideo ? 'mp4' : 'jpg';
-        const fileName = `fold_${Date.now()}.${ext}`;
-
-        const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
-          perms.directoryUri,
-          fileName,
-          mimeType
-        );
-        await FileSystem.copyAsync({ from: uri, to: destUri });
-        Alert.alert('Saved', 'Media saved to your chosen folder.');
+        const dest = `file:///sdcard/Download/${fileName}`;
+        await FileSystem.copyAsync({ from: uri, to: dest });
+        Alert.alert('Saved', `Saved to Downloads/${fileName}`);
       } else {
-        // iOS Expo Go: fall back to share sheet, user taps "Save Image" from there
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) await Sharing.shareAsync(uri);
       }
