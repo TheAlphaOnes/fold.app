@@ -394,14 +394,20 @@ export default function MemoryDetailScreen() {
     return <MediaSlide media={item.media} width={width} height={height} isActive={isActive} />;
   };
 
+  const cardHeight = Math.min(width * 1.618, height * 0.78);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Hidden card for capturing as image */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
-        <View ref={hiddenCardRef} collapsable={false}>
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
+        <View 
+          ref={hiddenCardRef} 
+          collapsable={false} 
+          style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
+        >
           <MemoryCard 
             item={composition} 
-            height={400} 
+            height={cardHeight} 
             onUpdatePositions={async () => {}} 
           />
         </View>
