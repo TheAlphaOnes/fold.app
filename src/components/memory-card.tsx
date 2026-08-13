@@ -7,6 +7,7 @@ import { DraggableSticker } from '@/components/draggable-sticker';
 import { Image } from 'expo-image';
 import { PlayCircle, Share } from 'lucide-react-native';
 import { VinylRecord } from '@/components/vinyl-record';
+import { Logo } from '@/components/logo';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
@@ -132,6 +133,11 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
           {formattedTime}
         </Text>
       </View>
+      
+      {/* LAYER 4: Logo Watermark */}
+      <View style={styles.watermark} pointerEvents="none" collapsable={false}>
+        <Logo size={24} color={theme.textMuted} />
+      </View>
     </View>
   );
 }
@@ -192,8 +198,16 @@ const styles = StyleSheet.create({
   shareBtn: {
     position: 'absolute',
     right: 21,
-    bottom: -5, // Aligned vertically with timeText via offset, since timeRow is items-centered
+    bottom: -5,
     padding: 4,
+  },
+
+  watermark: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    opacity: 0.5,
+    zIndex: 10,
   },
 
   // ─── Single Media Layout ───

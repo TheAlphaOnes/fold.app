@@ -20,7 +20,6 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
-import { Logo } from '@/components/logo';
 
 // --- Types ---
 type SlideData =
@@ -411,10 +410,6 @@ export default function MemoryDetailScreen() {
             height={cardHeight} 
             onUpdatePositions={async () => {}} 
           />
-          {/* Logo Watermark for Shared Image */}
-          <View style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 100, opacity: 0.5 }}>
-            <Logo size={48} color={theme.text} />
-          </View>
         </View>
       </View>
 
