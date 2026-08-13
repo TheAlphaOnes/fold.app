@@ -23,12 +23,12 @@ import { MemoryCard } from '@/components/memory-card';
 
 // --- Types ---
 type SlideData =
-  | { type: 'text'; text: string; id: string }
+  | { type: 'text'; text: string; id: string; fontFamily?: string; fontSize?: number }
   | { type: 'media'; media: MediaElement; id: string };
 
 // --- Components ---
 
-function TextSlide({ text, width }: { text: string; width: number }) {
+function TextSlide({ text, width, fontFamily, fontSize }: { text: string; width: number; fontFamily?: string; fontSize?: number }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -38,10 +38,21 @@ function TextSlide({ text, width }: { text: string; width: number }) {
         paddingTop: insets.top + 80, 
         paddingBottom: insets.bottom + 40,
         paddingHorizontal: 32,
+        flexGrow: 1,
+        justifyContent: 'center',
       }}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.textSlideContent, { color: theme.text }]}>
+      <Text style={[
+        styles.textSlideContent, 
+        { 
+          color: theme.text,
+          fontFamily: fontFamily || 'JetBrainsMono-Regular',
+          fontSize: fontSize || 24,
+          lineHeight: (fontSize || 24) * 1.5,
+          textAlign: 'center'
+        }
+      ]}>
         {text}
       </Text>
     </ScrollView>
@@ -377,7 +388,13 @@ export default function MemoryDetailScreen() {
   const hasMedia = composition.mediaElements.length > 0;
 
   if (hasText) {
-    slides.push({ type: 'text', text: composition.textContent, id: 'text-slide' });
+    slides.push({ 
+      type: 'text', 
+      text: composition.textContent, 
+      id: 'text-slide',
+      fontFamily: composition.fontFamily,
+      fontSize: composition.fontSize 
+    });
   }
 
   if (hasMedia) {
@@ -389,7 +406,7 @@ export default function MemoryDetailScreen() {
   const renderItem = ({ item, index }: { item: SlideData, index: number }) => {
     const isActive = index === currentIndex;
     if (item.type === 'text') {
-      return <TextSlide text={item.text} width={width} />;
+      return <TextSlide text={item.text} width={width} fontFamily={item.fontFamily} fontSize={item.fontSize} />;
     }
     return <MediaSlide media={item.media} width={width} height={height} isActive={isActive} />;
   };
