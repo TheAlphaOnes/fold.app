@@ -212,12 +212,16 @@ export default function CameraScreen() {
     <View style={styles.container}>
       <CameraView
         ref={cameraRef}
-        style={styles.camera}
+        style={StyleSheet.absoluteFill}
         facing="back"
         mode={mode}
         flash={flash}
         zoom={0}
-      >
+        pictureSize="1920x1080"
+      />
+
+      {/* ─── UI Overlay (Outside CameraView to prevent remounts) ─── */}
+      <View style={styles.overlay} pointerEvents="box-none">
         {/* Grid */}
         {showGrid && <CameraGrid />}
 
@@ -263,14 +267,16 @@ export default function CameraScreen() {
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
           >
-            <View style={styles.captureOuter}>
-              {/* Rotating arc sweep when recording */}
+            <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+              {/* Rotating arc sweep when recording (sibling to prevent clipping) */}
               {isRecording && <RotatingArc size={OUTER_SIZE + 14} />}
-              <Animated.View style={[styles.captureInner, animatedBtnStyle]} />
+              <View style={styles.captureOuter}>
+                <Animated.View style={[styles.captureInner, animatedBtnStyle]} />
+              </View>
             </View>
           </Pressable>
         </View>
-      </CameraView>
+      </View>
     </View>
   );
 }
@@ -281,6 +287,14 @@ const OUTER_SIZE = 90;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1, justifyContent: 'space-between' },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+  },
 
   // Header
   header: {
