@@ -62,7 +62,7 @@ export function DoubleDiagonalStripes({
       ]}
       pointerEvents="none"
     >
-      <Svg width="120%" height="120%">
+      <Svg key={patternId} width="120%" height="120%">
         <Defs>
           <Pattern
             id={patternId}

@@ -24,7 +24,7 @@ export function DiagonalStripes({
 
   return (
     <View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents="none">
-      <Svg width="100%" height="100%">
+      <Svg key={patternId} width="100%" height="100%">
         <Defs>
           <Pattern
             id={patternId}
