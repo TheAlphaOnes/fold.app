@@ -7,6 +7,7 @@ export interface MediaElement {
   width?: number;
   height?: number;
   scale?: number;
+  isCinematic?: boolean;
 }
 
 export interface CompositionRow {

@@ -75,6 +75,7 @@ export default function ComposeScreen() {
         y_pos: 30 + Math.random() * safeH,
         width: pendingMedia.width,
         height: pendingMedia.height,
+        isCinematic: pendingMedia.isCinematic,
       }];
     }
     return [];

@@ -132,6 +132,13 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
               <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
             </View>
           )}
+          {media.isCinematic && media.type !== 'audio' && (
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
+              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+              <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
+              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+            </View>
+          )}
         </View>
       </Animated.View>
     </GestureDetector>

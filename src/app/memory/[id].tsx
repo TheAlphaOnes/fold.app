@@ -92,6 +92,13 @@ function VideoSlide({ media, width, height, isActive }: { media: MediaElement; w
         contentFit="contain" 
         nativeControls={false}
       />
+      {media.isCinematic && (
+        <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
+          <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+          <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
+          <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -241,6 +248,13 @@ function MediaSlide({ media, width, height, isActive }: { media: MediaElement; w
             style={{ flex: 1 }} 
             contentFit="contain" 
           />
+          {media.isCinematic && (
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
+              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+              <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
+              <View style={{ width: '100%', height: '15%', backgroundColor: '#000' }} />
+            </View>
+          )}
         </Animated.View>
       </GestureDetector>
     </View>

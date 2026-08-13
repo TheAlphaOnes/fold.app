@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Pressable, Text, useWindowDimensions } from 'react-native';
 import { CameraView, useCameraPermissions, useMicrophonePermissions, type CameraMode, type FlashMode } from 'expo-camera';
 import { router } from 'expo-router';
-import { X, Zap, ZapOff, Grid } from 'lucide-react-native';
+import { X, Zap, ZapOff, Grid, Film } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import Animated, {
   useSharedValue,
@@ -88,6 +88,7 @@ export default function CameraScreen() {
   const [mode, setMode] = useState<CameraMode>('picture');
   const [flash, setFlash] = useState<FlashMode>('off');
   const [showGrid, setShowGrid] = useState(false);
+  const [isCinematic, setIsCinematic] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const isCapturing = useRef(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,7 +183,7 @@ export default function CameraScreen() {
     const ext = extMatch ? extMatch[1].toLowerCase() : type === 'video' ? 'mp4' : 'jpg';
     const dest = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
     await FileSystem.copyAsync({ from: uri, to: dest });
-    setPendingCameraMedia({ uri: dest, type, width: w || 1080, height: h || 1920 });
+    setPendingCameraMedia({ uri: dest, type, width: w || 1080, height: h || 1920, isCinematic });
     router.replace('/compose');
   };
 
@@ -225,6 +226,19 @@ export default function CameraScreen() {
 
       {/* ─── UI Overlay (Outside CameraView to prevent remounts) ─── */}
       <View style={styles.overlay} pointerEvents="box-none">
+        
+        {/* Cinematic Letterbox & Tint */}
+        {isCinematic && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
+            {/* Top Bar */}
+            <View style={{ width: '100%', height: height * 0.15, backgroundColor: '#000' }} />
+            {/* Warm Tint */}
+            <View style={{ flex: 1, backgroundColor: 'rgba(255, 170, 0, 0.15)' }} />
+            {/* Bottom Bar */}
+            <View style={{ width: '100%', height: height * 0.15, backgroundColor: '#000' }} />
+          </View>
+        )}
+
         {/* Grid */}
         {showGrid && <CameraGrid />}
 
@@ -252,6 +266,14 @@ export default function CameraScreen() {
               onPress={() => setShowGrid(g => !g)}
             >
               <Grid size={18} color={showGrid ? '#FF4B00' : '#FFF'} />
+            </Pressable>
+
+            {/* Cinematic toggle */}
+            <Pressable
+              style={[styles.iconBtn, isCinematic && styles.iconBtnActive]}
+              onPress={() => setIsCinematic(c => !c)}
+            >
+              <Film size={18} color={isCinematic ? '#FF4B00' : '#FFF'} />
             </Pressable>
           </View>
         </View>
