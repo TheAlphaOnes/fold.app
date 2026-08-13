@@ -8,7 +8,7 @@
  * All data stays on-device. Nothing is transmitted anywhere.
  */
 
-import { DefaultTheme, DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, DarkTheme, Stack, ThemeProvider, useSegments, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -45,6 +45,8 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   const [dbReady, setDbReady] = useState(false);
   const { isDark, colors } = useThemeContext();
+  const { settings, loading: settingsLoading } = useSettingsStore();
+  const segments = useSegments();
 
   const [fontsLoaded] = useFonts({
     'JetBrainsMono-Light': require('../../assets/fonts/JetBrainsMono-Light.ttf'),
@@ -81,7 +83,7 @@ function RootLayoutNav() {
     PermanentMarker_400Regular,
   });
 
-  const isAppReady = dbReady && fontsLoaded;
+  const isAppReady = dbReady && fontsLoaded && !settingsLoading;
   
   const BaseTheme = isDark ? DarkTheme : DefaultTheme;
   const FoldTheme = {
@@ -114,6 +116,17 @@ function RootLayoutNav() {
       });
   }, []);
 
+  useEffect(() => {
+    if (isAppReady) {
+      const inOnboarding = segments[0] === 'onboarding';
+      if (!settings.hasOnboarded && !inOnboarding) {
+        router.replace('/onboarding');
+      } else if (settings.hasOnboarded && inOnboarding) {
+        router.replace('/');
+      }
+    }
+  }, [isAppReady, settings.hasOnboarded, segments]);
+
   return (
     <ThemeProvider value={FoldTheme}>
       <AnimatedSplashScreen isAppReady={isAppReady}>
@@ -121,6 +134,7 @@ function RootLayoutNav() {
           <StatusBar hidden />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" />
             <Stack.Screen 
               name="compose" 
               options={{ 

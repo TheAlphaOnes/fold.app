@@ -9,6 +9,7 @@ export interface UserSettings {
   theme: ThemeMode;
   requireBiometrics: boolean;
   privacyScreen: boolean;
+  hasOnboarded: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -18,6 +19,7 @@ const defaultSettings: UserSettings = {
   theme: 'light',
   requireBiometrics: false,
   privacyScreen: false,
+  hasOnboarded: false,
 };
 
 interface SettingsState {
@@ -44,6 +46,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           theme: (stored.theme as ThemeMode) || 'light',
           requireBiometrics: stored.requireBiometrics === 'true',
           privacyScreen: stored.privacyScreen === 'true',
+          hasOnboarded: stored.hasOnboarded === 'true',
         },
         loading: false
       });
