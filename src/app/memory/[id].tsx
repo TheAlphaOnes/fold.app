@@ -17,9 +17,11 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { useJournalStore } from '@/hooks/use-journal';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
+import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { ActivityIndicator } from 'react-native';
 
 // --- Types ---
 type SlideData =
@@ -271,6 +273,7 @@ export default function MemoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -299,7 +302,42 @@ export default function MemoryDetailScreen() {
     );
   };
 
-  const handleSaveMedia = async (uri: string) => {
+  const processCinematicMediaIfNeeded = async (media: MediaElement): Promise<string> => {
+    if (!media.isCinematic) return media.uri;
+
+    const ext = media.type === 'video' ? 'mp4' : 'jpg';
+    const outUri = `${FileSystem.cacheDirectory}cinematic_export_${Date.now()}.${ext}`;
+    
+    // 31.25% letterboxing (3:2 ratio inside 16:9)
+    // We also add a subtle warm tint using colorbalance
+    const vf = `colorbalance=rm=0.08:gm=0.04:bm=-0.02, drawbox=y=0:color=black:width=iw:height=ih*0.3125:t=fill, drawbox=y=ih*0.6875:color=black:width=iw:height=ih*0.3125:t=fill`;
+    
+    let command = '';
+    if (media.type === 'video') {
+      command = `-i "${media.uri}" -vf "${vf}" -c:a copy -y "${outUri}"`;
+    } else {
+      command = `-i "${media.uri}" -vf "${vf}" -y "${outUri}"`;
+    }
+
+    try {
+      setIsProcessing(true);
+      const session = await FFmpegKit.execute(command);
+      const returnCode = await session.getReturnCode();
+      if (ReturnCode.isSuccess(returnCode)) {
+        return outUri;
+      } else {
+        console.error('FFmpeg process failed');
+        return media.uri;
+      }
+    } catch (e) {
+      console.error('FFmpeg error', e);
+      return media.uri;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSaveMedia = async (media: MediaElement) => {
     try {
       const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
       
@@ -311,8 +349,9 @@ export default function MemoryDetailScreen() {
             { 
               text: 'OK', 
               onPress: async () => {
+                const finalUri = await processCinematicMediaIfNeeded(media);
                 const isAvailable = await Sharing.isAvailableAsync();
-                if (isAvailable) await Sharing.shareAsync(uri);
+                if (isAvailable) await Sharing.shareAsync(finalUri);
               } 
             }
           ]
@@ -327,7 +366,8 @@ export default function MemoryDetailScreen() {
         return;
       }
       
-      await MediaLibrary.saveToLibraryAsync(uri);
+      const finalUri = await processCinematicMediaIfNeeded(media);
+      await MediaLibrary.saveToLibraryAsync(finalUri);
       Alert.alert('Saved', 'Saved to your gallery.');
     } catch (e) {
       console.error('Save failed:', e);
@@ -366,7 +406,8 @@ export default function MemoryDetailScreen() {
       if (current.type === 'media') {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          await Sharing.shareAsync(current.media.uri);
+          const finalUri = await processCinematicMediaIfNeeded(current.media);
+          await Sharing.shareAsync(finalUri);
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
         }
@@ -500,7 +541,7 @@ export default function MemoryDetailScreen() {
                   opacity: pressed ? 0.5 : 1,
                 }
               ]}
-              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
+              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media)}
             >
               <Download size={16} color={theme.text} />
             </Pressable>
@@ -581,6 +622,14 @@ export default function MemoryDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <View style={styles.processingOverlay}>
+          <ActivityIndicator size="large" color="#FF4B00" />
+          <Text style={styles.processingText}>Baking cinematic frame...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -681,5 +730,18 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
     marginTop: 2,
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  processingText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    color: '#FFF',
+    marginTop: 16,
+    fontSize: 14,
   },
 });

@@ -44,6 +44,7 @@
     "expo-system-ui": "~57.0.2",
     "expo-video": "~57.0.2",
     "expo-web-browser": "~57.0.2",
+    "ffmpeg-kit-react-native": "^6.0.2",
     "lucide-react-native": "^1.31.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
