@@ -17,6 +17,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 
 import * as Sharing from 'expo-sharing';
 import * as MediaLibrary from 'expo-media-library';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { useJournalStore } from '@/hooks/use-journal';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
 import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
