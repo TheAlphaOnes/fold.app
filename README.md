@@ -1,56 +1,44 @@
-# Welcome to your Expo app 👋
+# Fold
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Fold** is a minimalist, local-first journal and memory canvas built with React Native and Expo. Heavily inspired by the brutalist, highly tactile industrial design of Teenage Engineering, Fold rejects generic UI patterns in favor of a raw, physical, and highly aesthetic user experience.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **The Memory Canvas:** Memories aren't just text. Drop photos, videos, and audio recordings onto a free-form canvas. Drag them around like physical stickers and place them exactly where you want them.
+- **Physical Interactions:** UI elements feel like physical hardware. The primary "Add" button features a heavy, spring-loaded drag-up gesture that instantly launches your device's camera.
+- **TE-Inspired Aesthetics:** A stark, high-contrast visual identity featuring monospace typography, dot-matrix heat maps, diagonal caution stripes, and a utilitarian layout. 
+- **Local-First & Offline:** Your memories belong to you. Everything is stored locally on your device via SQLite. Zero cloud sync by default.
+- **Biometric Security:** Sensitive operations (like wiping memory or exporting raw JSON data) are protected by native biometric gates (Face ID / Touch ID).
 
+## Tech Stack
+
+- **Framework:** [Expo](https://expo.dev) & [React Native](https://reactnative.dev)
+- **Routing:** Expo Router (File-based routing)
+- **Database:** `expo-sqlite` (Local data persistence)
+- **Gestures & Animation:** `react-native-gesture-handler` & `react-native-reanimated`
+- **Media:** `expo-image`, `expo-video`, `expo-audio`, `expo-image-picker`
+- **Security:** `expo-local-authentication`
+- **Styling:** Native StyleSheet with a custom brutalist design system
+
+## Getting Started
+
+1. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. **Run the app:**
    ```bash
-   npx expo start
+   npm start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Open on your device:**
+   Download the Expo Go app on your phone and scan the QR code, or press `i` to launch the iOS simulator.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+*(Note: Certain hardware features like the camera swipe gesture and biometric authentication require a physical device or a properly configured simulator to test fully).*
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Architecture Highlights
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Direct DOM Bypass:** For high-performance 60fps dragging, stickers bypass React's render cycle using Reanimated's shared values and worklets.
+- **Media Optimization:** Videos and images use native caching and performant rendering (via `expo-image` and `expo-video`). Camera captures are moved from temporary storage to persistent device directories to prevent data loss.
+- **UI Render Guarding:** Large lists are protected with `React.memo` and `useCallback` to prevent virtual DOM thrashing during high-speed scrolling.
