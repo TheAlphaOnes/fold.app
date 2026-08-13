@@ -18,19 +18,18 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   ).slice(0, 4);
 
+  const hasAudio = (c: Composition) => c.mediaElements.some(m => m.type === 'audio');
+
   const formatSize = (c: Composition) => {
-    if (c.type === 'audio') {
-      const ms = c.duration || 0;
-      const secs = Math.round(ms / 1000);
-      return `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
+    if (hasAudio(c)) {
+      return '1:00'; // Placeholder since we don't store actual duration yet
     }
-    const words = c.text?.split(/\s+/).length || 0;
+    const words = c.textContent?.trim().split(/\s+/).filter(Boolean).length || 0;
     return `${words} W`;
   };
 
   const formatChange = (c: Composition) => {
-    // Fake data to match the UI: Audio is green, Text is red/grey just to look like crypto % changes
-    if (c.type === 'audio') {
+    if (hasAudio(c)) {
       return <ThemedText style={[styles.changeText, { color: '#00FF66' }]}>+12.25%</ThemedText>;
     }
     return <ThemedText style={[styles.changeText, { color: '#FF3B30' }]}>-5.2%</ThemedText>;
@@ -48,6 +47,11 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
           month: 'short', 
           day: 'numeric' 
         });
+        
+        const isAudio = hasAudio(c);
+        const previewTitle = c.textContent?.trim() || (isAudio ? 'Voice Memo' : 'Text Entry');
+        // truncated title
+        const title = previewTitle.length > 20 ? previewTitle.substring(0, 20) + '...' : previewTitle;
 
         return (
           <Pressable 
@@ -56,12 +60,12 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
             onPress={() => router.push(`/memory/${c.id}`)}
           >
             <View style={[styles.iconContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-              {c.type === 'audio' ? <Headphones size={14} color={theme.text} /> : <FileText size={14} color={theme.text} />}
+              {isAudio ? <Headphones size={14} color={theme.text} /> : <FileText size={14} color={theme.text} />}
             </View>
             
             <View style={styles.infoCol}>
               <ThemedText style={[styles.assetTitle, { color: theme.text }]}>
-                {c.title || (c.type === 'audio' ? 'Voice Memo' : 'Text Entry')}
+                {title}
               </ThemedText>
               <View style={styles.subInfoRow}>
                 <ThemedText style={styles.assetSub}>{dateStr}</ThemedText>
@@ -72,7 +76,7 @@ export function RecentAssets({ compositions }: RecentAssetsProps) {
             <View style={styles.sizeCol}>
               <ThemedText style={[styles.sizeTitle, { color: theme.text }]}>{formatSize(c)}</ThemedText>
               <ThemedText style={styles.sizeSub}>
-                {c.type === 'audio' ? 'AUDIO' : 'TEXT'}
+                {isAudio ? 'AUDIO' : 'TEXT'}
               </ThemedText>
             </View>
           </Pressable>

@@ -18,7 +18,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
@@ -97,7 +97,12 @@ export default function ArchiveScreen() {
     return isNaN(parsedTs) ? new Date() : new Date(parsedTs);
   }, [ts]);
 
-  const { compositions, loading, refresh, updatePositions } = useJournal(targetDate);
+  const { compositions, loading, setTargetDate, refresh, updatePositions } = useJournalStore();
+  
+  // When targetDate changes (from month view picker), update the store
+  useEffect(() => {
+    setTargetDate(targetDate);
+  }, [targetDate, setTargetDate]);
 
   useFocusEffect(
     useCallback(() => {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { create } from 'zustand';
 import { getSetting, setSetting as dbSetSetting, getAllSettings } from '@/db/settings-repository';
 import type { ThemeMode } from './use-theme';
 
@@ -20,56 +20,55 @@ const defaultSettings: UserSettings = {
   privacyScreen: false,
 };
 
-interface SettingsContextValue {
+interface SettingsState {
   settings: UserSettings;
-  updateSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => Promise<void>;
   loading: boolean;
+  
+  loadSettings: () => Promise<void>;
+  updateSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => Promise<void>;
 }
 
-const SettingsContext = createContext<SettingsContextValue | null>(null);
+export const useSettingsStore = create<SettingsState>((set, get) => ({
+  settings: defaultSettings,
+  loading: true,
 
-export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<UserSettings>(defaultSettings);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const stored = await getAllSettings();
-        setSettings({
+  loadSettings: async () => {
+    try {
+      set({ loading: true });
+      const stored = await getAllSettings();
+      set({
+        settings: {
           name: stored.name || '',
           dob: stored.dob || '',
           dataCollection: stored.dataCollection === 'true',
           theme: (stored.theme as ThemeMode) || 'light',
           requireBiometrics: stored.requireBiometrics === 'true',
           privacyScreen: stored.privacyScreen === 'true',
-        });
-      } catch (err) {
-        console.error('Failed to load settings', err);
-      } finally {
-        setLoading(false);
-      }
+        },
+        loading: false
+      });
+    } catch (err) {
+      console.error('Failed to load settings', err);
+      set({ loading: false });
     }
-    loadSettings();
-  }, []);
+  },
 
-  const updateSetting = useCallback(async <K extends keyof UserSettings,>(key: K, value: UserSettings[K]) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+  updateSetting: async <K extends keyof UserSettings,>(key: K, value: UserSettings[K]) => {
+    // Optimistic UI update
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        [key]: value
+      }
+    }));
+    
+    // Persist to SQLite
     const strValue = typeof value === 'boolean' ? String(value) : String(value);
     await dbSetSetting(key, strValue);
-  }, []);
-
-  return (
-    <SettingsContext.Provider value={{ settings, updateSetting, loading }}>
-      {children}
-    </SettingsContext.Provider>
-  );
-}
-
-export function useSettings() {
-  const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error('useSettings must be used within SettingsProvider');
   }
-  return context;
+}));
+
+// Provide backward compatibility for existing imports during refactor
+export function useSettings() {
+  return useSettingsStore();
 }

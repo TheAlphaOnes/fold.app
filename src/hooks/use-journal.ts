@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { create } from 'zustand';
 import { 
   getAllCompositions, 
   getOnThisDayCompositions,
@@ -10,65 +10,72 @@ import {
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 
-export function useJournal(targetDate: Date = new Date()) {
-  const [compositions, setCompositions] = useState<Composition[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  // We memoize the month and date to avoid unnecessary re-fetches
-  // if the exact timestamp changes but the day doesn't.
-  const targetMonth = targetDate.getMonth() + 1; // 1-12
-  const targetDay = targetDate.getDate();
-
-  const refresh = useCallback(async () => {
-    try {
-      setLoading(true);
-      const items = await getOnThisDayCompositions(targetMonth, targetDay);
-      setCompositions(items);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setLoading(false);
-    }
-  }, [targetMonth, targetDay]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refresh();
-  }, [refresh]);
-
-  const addComposition = useCallback(async (input: CreateCompositionInput) => {
-    await createComposition(input);
-    await refresh();
-  }, [refresh]);
-
-  const updatePositions = useCallback(async (id: number, newMediaElements: MediaElement[]) => {
-    // Optimistic
-    setCompositions(prev => prev.map(comp => 
-      comp.id === id ? { ...comp, mediaElements: newMediaElements } : comp
-    ));
-    await updateMediaPositions({ id, mediaElements: newMediaElements });
-  }, []);
-
-  const removeComposition = useCallback(async (id: number) => {
-    // Optimistic
-    setCompositions(prev => prev.filter(comp => comp.id !== id));
-    await deleteComposition(id);
-  }, []);
-  const removeAllCompositions = useCallback(async () => {
-    setCompositions([]);
-    await deleteAllCompositions();
-  }, []);
-
-  return {
-    compositions,
-    loading,
-    error,
-    refresh,
-    addComposition,
-    updatePositions,
-    removeComposition,
-    removeAllCompositions,
-  };
+interface JournalState {
+  compositions: Composition[];
+  loading: boolean;
+  error: Error | null;
+  targetDate: Date;
+  
+  setTargetDate: (date: Date) => void;
+  refresh: () => Promise<void>;
+  addComposition: (input: CreateCompositionInput) => Promise<void>;
+  updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
+  removeComposition: (id: number) => Promise<void>;
+  removeAllCompositions: () => Promise<void>;
 }
+
+export const useJournalStore = create<JournalState>((set, get) => ({
+  compositions: [],
+  loading: true,
+  error: null,
+  targetDate: new Date(),
+
+  setTargetDate: (date: Date) => {
+    set({ targetDate: date });
+    get().refresh();
+  },
+
+  refresh: async () => {
+    try {
+      set({ loading: true, error: null });
+      const date = get().targetDate;
+      const targetMonth = date.getMonth() + 1;
+      const targetDay = date.getDate();
+      const items = await getOnThisDayCompositions(targetMonth, targetDay);
+      set({ compositions: items, loading: false });
+    } catch (err) {
+      set({ 
+        error: err instanceof Error ? err : new Error(String(err)), 
+        loading: false 
+      });
+    }
+  },
+
+  addComposition: async (input: CreateCompositionInput) => {
+    await createComposition(input);
+    await get().refresh();
+  },
+
+  updatePositions: async (id: number, newMediaElements: MediaElement[]) => {
+    // Optimistic UI update
+    set((state) => ({
+      compositions: state.compositions.map(comp => 
+        comp.id === id ? { ...comp, mediaElements: newMediaElements } : comp
+      )
+    }));
+    await updateMediaPositions({ id, mediaElements: newMediaElements });
+  },
+
+  removeComposition: async (id: number) => {
+    // Optimistic UI update
+    set((state) => ({
+      compositions: state.compositions.filter(comp => comp.id !== id)
+    }));
+    await deleteComposition(id);
+  },
+
+  removeAllCompositions: async () => {
+    set({ compositions: [] });
+    await deleteAllCompositions();
+  }
+}));

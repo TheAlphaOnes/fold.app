@@ -33,7 +33,7 @@ import { EBGaramond_400Regular } from '@expo-google-fonts/eb-garamond';
 
 import { getDatabase } from '@/db';
 import { AppThemeProvider, useThemeContext } from '@/hooks/use-theme';
-import { SettingsProvider } from '@/hooks/use-settings';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { AnimatedSplashScreen } from '@/components/splash-screen';
 
 SplashScreen.preventAutoHideAsync();
@@ -95,9 +95,12 @@ function RootLayoutNav() {
 
   useEffect(() => {
     getDatabase()
-      .then(() => setDbReady(true))
+      .then(async () => {
+        await useSettingsStore.getState().loadSettings();
+        setDbReady(true);
+      })
       .catch((err) => {
-        console.error('Database initialization failed:', err);
+        console.error('Initialization failed:', err);
         setDbReady(true);
       });
   }, []);
@@ -128,11 +131,9 @@ import { BiometricGate } from '@/components/biometric-gate';
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SettingsProvider>
-        <AppThemeProvider>
-          <RootLayoutNav />
-        </AppThemeProvider>
-      </SettingsProvider>
+      <AppThemeProvider>
+        <RootLayoutNav />
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AddButton } from '@/components/add-button';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
@@ -93,7 +93,14 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { compositions, loading, refresh, updatePositions } = useJournal();
+  const { compositions, loading, refresh, updatePositions, setTargetDate } = useJournalStore();
+  
+  // Ensure we are viewing today's data on the home screen
+  useFocusEffect(
+    useCallback(() => {
+      setTargetDate(new Date());
+    }, [setTargetDate])
+  );
 
   useFocusEffect(
     useCallback(() => {

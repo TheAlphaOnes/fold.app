@@ -8,7 +8,7 @@ import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournalStore } from '@/hooks/use-journal';
 import { useSettings } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { compositions, removeAllCompositions } = useJournal();
+  const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting } = useSettings();
   
   const [easterEggActive, setEasterEggActive] = useState(false);

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournalStore } from '@/hooks/use-journal';
 import { useSettings } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
@@ -18,17 +18,17 @@ import { TECalendar } from '@/components/te-calendar';
 export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { compositions } = useJournal();
+  const { compositions } = useJournalStore();
   const { settings } = useSettings();
 
   // Aggregate fake "Portfolio" data from real compositions
   const totalDuration = useMemo(() => {
-    const ms = compositions.filter(c => c.type === 'audio').reduce((acc, c) => acc + (c.duration || 0), 0);
-    return Math.round(ms / 60000); // Minutes
+    // We don't have exact durations in the media element yet, but if we did, we'd sum them here.
+    return 0; // Minutes
   }, [compositions]);
 
   const totalWords = useMemo(() => {
-    return compositions.filter(c => c.type === 'text').reduce((acc, c) => acc + (c.text?.split(/\s+/).length || 0), 0);
+    return compositions.reduce((acc, c) => acc + (c.textContent?.trim().split(/\s+/).filter(Boolean).length || 0), 0);
   }, [compositions]);
 
   // We now use theme colors instead of hardcoded terminal dark mode

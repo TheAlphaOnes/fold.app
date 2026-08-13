@@ -20,7 +20,7 @@ export function VolumeChart({ compositions }: VolumeChartProps) {
   const data = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const now = new Date();
-    const result = [];
+    const result: { label: string, text: number, audio: number, month: number, year: number }[] = [];
     
     for (let i = 4; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -40,8 +40,11 @@ export function VolumeChart({ compositions }: VolumeChartProps) {
       
       const bucket = result.find(b => b.month === m && b.year === y);
       if (bucket) {
-        if (c.type === 'text') bucket.text++;
-        if (c.type === 'audio') bucket.audio++;
+        if (c.mediaElements.some(m => m.type === 'audio')) {
+          bucket.audio++;
+        } else {
+          bucket.text++;
+        }
       }
     });
 
@@ -51,6 +54,9 @@ export function VolumeChart({ compositions }: VolumeChartProps) {
   const maxVal = Math.max(...data.map(d => Math.max(d.text, d.audio)), 5);
   const barWidth = 8;
   const groupSpacing = chartWidth / data.length;
+
+  const audioCount = compositions.filter(c => c.mediaElements.some(m => m.type === 'audio')).length;
+  const textCount = compositions.length - audioCount;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -70,14 +76,14 @@ export function VolumeChart({ compositions }: VolumeChartProps) {
           <ThemedText style={styles.statLabel}>Text Ratio</ThemedText>
           <ThemedText style={[styles.statValue, { color: theme.text }]}>
             {compositions.length > 0 
-              ? Math.round((compositions.filter(c => c.type === 'text').length / compositions.length) * 100) 
+              ? Math.round((textCount / compositions.length) * 100) 
               : 0}%
           </ThemedText>
         </View>
         <View style={styles.statCol}>
           <ThemedText style={styles.statLabel}>Net Audio</ThemedText>
           <ThemedText style={[styles.statValue, { color: '#00FF66' }]}>
-            +{compositions.filter(c => c.type === 'audio').length}
+            +{audioCount}
           </ThemedText>
         </View>
       </View>

@@ -69,7 +69,7 @@ export function MomentumChart({ compositions }: MomentumChartProps) {
       <View 
         style={styles.chartContainer}
         onPointerMove={(e) => {
-          const x = e.nativeEvent.locationX;
+          const x = (e.nativeEvent as any).locationX || (e.nativeEvent as any).x;
           const index = Math.round((x / chartWidth) * (data.length - 1));
           setActiveIndex(Math.max(0, Math.min(data.length - 1, index)));
         }}

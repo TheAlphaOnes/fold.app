@@ -22,7 +22,7 @@ import {
 import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
-import { useJournal } from '@/hooks/use-journal';
+import { useJournalStore } from '@/hooks/use-journal';
 import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 import { useSettings } from '@/hooks/use-settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -80,7 +80,7 @@ export default function ComposeScreen() {
   const [fontFamily, setFontFamily] = useState('JetBrainsMono-Medium');
   const [fontSize, setFontSize] = useState(21);
   
-  const { addComposition } = useJournal();
+  const { addComposition } = useJournalStore();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
