@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/fold-logo.png" alt="Fold Logo" width="200" />
+</div>
+
 # Fold
 
 Most journals force your memories into rigid lines of text and perfectly aligned grids. But human memory doesn't work that way. Memories are messy, visual, and chaotic. 
