@@ -19,10 +19,11 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useJournal } from '@/hooks/use-journal';
+import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 import { useSettings } from '@/hooks/use-settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GrainBackground } from '@/components/grain-background';
@@ -57,28 +58,21 @@ export default function ComposeScreen() {
   
   const [body, setBody] = useState('');
   
-  // Read any initial media passed from routing (e.g. from camera swipe gesture)
-  const params = useLocalSearchParams<{ 
-    initialMediaUri?: string; 
-    initialMediaType?: 'image' | 'video';
-    initialMediaWidth?: string;
-    initialMediaHeight?: string;
-  }>();
-
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
-    if (params.initialMediaUri) {
+    const pendingMedia = consumePendingCameraMedia();
+    if (pendingMedia) {
       const stickerSize = 120;
       const safeW = screenWidth - 60 - stickerSize;
       const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
       
       return [{
         id: Math.random().toString(36).substring(2, 9),
-        uri: params.initialMediaUri,
-        type: params.initialMediaType === 'video' ? 'video' : 'image',
+        uri: pendingMedia.uri,
+        type: pendingMedia.type,
         x_pos: 30 + Math.random() * safeW,
         y_pos: 30 + Math.random() * safeH,
-        width: params.initialMediaWidth ? parseInt(params.initialMediaWidth, 10) : 800,
-        height: params.initialMediaHeight ? parseInt(params.initialMediaHeight, 10) : 800,
+        width: pendingMedia.width,
+        height: pendingMedia.height,
       }];
     }
     return [];

@@ -24,6 +24,7 @@ import { useCallback, useRef, useState, useMemo, useEffect } from 'react';
 import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -128,15 +129,14 @@ export default function HomeScreen() {
         const destUri = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
         await FileSystem.copyAsync({ from: originalUri, to: destUri });
 
-        router.push({
-          pathname: '/compose',
-          params: {
-            initialMediaUri: destUri,
-            initialMediaType: asset.type === 'video' ? 'video' : 'image',
-            initialMediaWidth: asset.width,
-            initialMediaHeight: asset.height,
-          }
+        setPendingCameraMedia({
+          uri: destUri,
+          type: asset.type === 'video' ? 'video' : 'image',
+          width: asset.width,
+          height: asset.height,
         });
+
+        router.push('/compose');
       }
     } catch (error) {
       console.error('Failed to launch camera:', error);
