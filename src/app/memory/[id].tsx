@@ -92,6 +92,10 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   // Keep track of the scrub state
   const isScrubbing = useSharedValue(false);
   const scrubStartPos = useSharedValue(0);
+  
+  // Track visual rotation offset
+  const scrubRotationOffset = useSharedValue(0);
+  const scrubStartRotation = useSharedValue(0);
 
   useEffect(() => {
     player.loop = true;
@@ -114,8 +118,12 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
       runOnJS(setIsPausedByUser)(true);
       isScrubbing.value = true;
       scrubStartPos.value = status.currentTime; // status.currentTime is in seconds
+      scrubStartRotation.value = scrubRotationOffset.value;
     })
     .onUpdate((e) => {
+      // Rotate the vinyl visually
+      scrubRotationOffset.value = scrubStartRotation.value + e.translationX * 1.5;
+
       // 20 pixels = 1 second of audio
       const deltaSeconds = e.translationX / 20;
       const targetSeconds = scrubStartPos.value + deltaSeconds;
@@ -135,7 +143,7 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={{ alignItems: 'center' }}>
-          <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} />
+          <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} scrubOffset={scrubRotationOffset} />
         </Animated.View>
       </GestureDetector>
       <Text style={[styles.textSlideContent, { color: theme.text, marginTop: 24, fontSize: 18, fontFamily: 'JetBrainsMono-Medium' }]}>

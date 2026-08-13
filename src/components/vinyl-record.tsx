@@ -12,6 +12,8 @@ import { useTheme } from '@/hooks/use-theme';
 
 import { GrainBackground } from '@/components/grain-background';
 
+import type { SharedValue } from 'react-native-reanimated';
+
 interface VinylRecordProps {
   /** If true, the wheel spins and the orange dot pulses (recording mode). If false, it just spins (playback mode) */
   isRecording?: boolean;
@@ -19,12 +21,14 @@ interface VinylRecordProps {
   isPlaying?: boolean;
   /** Size of the wheel */
   size?: number;
+  /** Optional offset applied to rotation (for scrubbing) */
+  scrubOffset?: SharedValue<number>;
 }
 
 /**
  * Redesigned from a classic vinyl to the Teenage Engineering TP-7 Field Recorder wheel.
  */
-export function VinylRecord({ isRecording = false, isPlaying = false, size = 200 }: VinylRecordProps) {
+export function VinylRecord({ isRecording = false, isPlaying = false, size = 200, scrubOffset }: VinylRecordProps) {
   const theme = useTheme();
   const rotation = useSharedValue(0);
   const pulse = useSharedValue(1);
@@ -62,9 +66,12 @@ export function VinylRecord({ isRecording = false, isPlaying = false, size = 200
     }
   }, [isRecording, pulse]);
 
-  const spinStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateZ: `${rotation.value}deg` }],
-  }));
+  const spinStyle = useAnimatedStyle(() => {
+    const offset = scrubOffset ? scrubOffset.value : 0;
+    return {
+      transform: [{ rotateZ: `${rotation.value + offset}deg` }],
+    };
+  });
 
   const pulseStyle = useAnimatedStyle(() => ({
     opacity: pulse.value,
