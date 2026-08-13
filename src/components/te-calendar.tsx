@@ -91,7 +91,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             key={`e-${i}`}
             style={[
               styles.dayCell,
-              { height: cellWidth },
+              { width: cellWidth, height: cellWidth },
               !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
               !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             ]}
@@ -109,7 +109,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           onPress={() => onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
           style={({ pressed }) => [
             styles.dayCell,
-            { height: cellWidth },
+            { width: cellWidth, height: cellWidth },
             !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
             !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
             pressed && { backgroundColor: theme.text },
@@ -152,7 +152,14 @@ export function TECalendar({ onSelect }: TECalendarProps) {
       <>
         <View style={[styles.dowRow, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
           {DOW_LABELS.map((d, i) => (
-            <View key={d} style={[styles.dowCell, i < 6 && { borderRightWidth: 1, borderRightColor: theme.border }]}>
+            <View 
+              key={d} 
+              style={[
+                styles.dowCell, 
+                { width: cellWidth },
+                i < 6 && { borderRightWidth: 1, borderRightColor: theme.border }
+              ]}
+            >
               <ThemedText style={[styles.dowText, { color: theme.textMuted }]}>{d}</ThemedText>
             </View>
           ))}
@@ -352,7 +359,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   dowCell: {
-    flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
   },
@@ -370,7 +376,6 @@ const styles = StyleSheet.create({
 
   // --- Day cells ---
   dayCell: {
-    width: '14.2857%', // 1/7
     justifyContent: 'center',
     alignItems: 'center',
   },
