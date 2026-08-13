@@ -1,12 +1,14 @@
-import React from 'react';
-import { StyleSheet, View, Text, Platform, useWindowDimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, View, Text, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import type { Composition, MediaElement } from '@/types/journal';
 import { DraggableSticker } from '@/components/draggable-sticker';
 import { Image } from 'expo-image';
-import { PlayCircle } from 'lucide-react-native';
+import { PlayCircle, Share } from 'lucide-react-native';
 import { VinylRecord } from '@/components/vinyl-record';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 
 interface MemoryCardProps {
   item: Composition;
@@ -23,6 +25,9 @@ interface MemoryCardProps {
 export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
+  const cardRef = useRef<View>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  
   // Card has 21px padding on both sides based on the flatlist paddingHorizontal
   const cardWidth = width - 42;
 
@@ -42,8 +47,34 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
     onUpdatePositions(item.id, updatedMedia);
   };
 
+  const handleShare = async () => {
+    try {
+      setIsCapturing(true);
+      // Wait briefly for React to re-render and hide the share button
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const uri = await captureRef(cardRef, {
+        format: 'png',
+        quality: 1,
+      });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: 'Share Memory Card',
+          mimeType: 'image/png',
+        });
+      }
+    } catch (e) {
+      console.error('Failed to capture memory card:', e);
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
   return (
     <View
+      ref={cardRef}
+      collapsable={false}
       style={[
         styles.card,
         {
@@ -55,13 +86,13 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
     >
       {/* LAYER 1: Stripes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DiagonalStripes color={theme.isDark ? "#000000" : "#D0D0D0"} opacity={theme.isDark ? 0.12 : 0.5} animated />
+        <DiagonalStripes color={theme.isDark ? theme.border : "#D0D0D0"} opacity={theme.isDark ? 0.12 : 0.5} animated />
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
       <View style={{ flex: 1, zIndex: 1 }}>
         {!hasMedia && (
-          <View style={styles.textWrapperAbsolute}>
+          <View style={styles.textWrapperAbsolute} pointerEvents="box-none">
             <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
               {hasText ? item.textContent.trim() : '[NO TEXT SAVED]'}
             </Text>
@@ -69,7 +100,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
         )}
 
         {isSingleMedia && (
-          <View style={styles.singleMediaContainer}>
+          <View style={styles.singleMediaContainer} pointerEvents="box-none">
             <View style={styles.heroImageWrapper}>
               {item.mediaElements[0].type === 'audio' ? (
                 <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' }]}>
@@ -100,7 +131,7 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
         )}
 
         {hasMedia && !isSingleMedia && (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }} pointerEvents="box-none">
             <View style={styles.textWrapperAbsolute} pointerEvents="none">
               <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
                 {item.textContent.trim()}
@@ -121,10 +152,23 @@ export function MemoryCard({ item, height, onUpdatePositions }: MemoryCardProps)
       </View>
 
       {/* LAYER 3: Time (Bottom) */}
-      <View style={styles.timeRow} pointerEvents="none">
+      <View style={styles.timeRow} pointerEvents="box-none">
         <Text style={[styles.timeText, { color: theme.textMuted }]}>
           {formattedTime}
         </Text>
+        
+        {!isCapturing && (
+          <Pressable 
+            style={({ pressed }) => [
+              styles.shareBtn,
+              { opacity: pressed ? 0.5 : 1 }
+            ]}
+            onPress={handleShare}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Share size={16} color={theme.textMuted} />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -181,6 +225,13 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 13,
     letterSpacing: 0.5,
+  },
+
+  shareBtn: {
+    position: 'absolute',
+    right: 21,
+    bottom: -5, // Aligned vertically with timeText via offset, since timeRow is items-centered
+    padding: 4,
   },
 
   // ─── Single Media Layout ───
