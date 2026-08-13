@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Modal } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2 } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -245,6 +245,7 @@ export default function MemoryDetailScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -313,6 +314,7 @@ export default function MemoryDetailScreen() {
 
   const captureAndShareCard = async () => {
     try {
+      setIsShareMenuVisible(false);
       // Small delay to ensure the offscreen card is rendered
       await new Promise(resolve => setTimeout(resolve, 50));
       const uri = await captureRef(hiddenCardRef, {
@@ -334,6 +336,7 @@ export default function MemoryDetailScreen() {
 
   const shareRawContent = async (slidesList: SlideData[]) => {
     try {
+      setIsShareMenuVisible(false);
       const current = slidesList[currentIndex];
       if (current.type === 'media') {
         const isAvailable = await Sharing.isAvailableAsync();
@@ -348,27 +351,6 @@ export default function MemoryDetailScreen() {
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const handleShare = async (slidesList: SlideData[]) => {
-    Alert.alert(
-      'Share Memory',
-      'How would you like to share this?',
-      [
-        {
-          text: 'Share Card as Image',
-          onPress: () => captureAndShareCard()
-        },
-        {
-          text: 'Share Original File/Text',
-          onPress: () => shareRawContent(slidesList)
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
   };
 
   useEffect(() => {
@@ -465,7 +447,7 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={() => handleShare(slides)}
+            onPress={() => setIsShareMenuVisible(true)}
           >
             <ShareIcon size={16} color={theme.text} />
           </Pressable>
@@ -523,6 +505,44 @@ export default function MemoryDetailScreen() {
           })}
         </View>
       )}
+
+      {/* Custom Share Menu */}
+      <Modal visible={isShareMenuVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsShareMenuVisible(false)} />
+          <View style={[styles.shareMenu, { backgroundColor: theme.backgroundElement, borderColor: theme.border, paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
+            <View style={[styles.shareMenuHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.shareMenuTitle, { color: theme.textMuted }]}>SHARE OPTIONS</Text>
+            </View>
+            
+            <Pressable 
+              style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
+              onPress={captureAndShareCard}
+            >
+              <ImageIcon size={20} color={theme.text} />
+              <View style={styles.shareOptionText}>
+                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Card as Image</Text>
+                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>Generates a styled snapshot</Text>
+              </View>
+            </Pressable>
+            
+            <Pressable 
+              style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
+              onPress={() => shareRawContent(slides)}
+            >
+              {slides[currentIndex]?.type === 'media' ? (
+                <Download size={20} color={theme.text} />
+              ) : (
+                <FileText size={20} color={theme.text} />
+              )}
+              <View style={styles.shareOptionText}>
+                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Original File</Text>
+                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>Raw media or text content</Text>
+              </View>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -584,5 +604,44 @@ const styles = StyleSheet.create({
   beadInactive: {
     width: 6, // Small square for inactive
     opacity: 0.3,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  shareMenu: {
+    marginHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  shareMenuHeader: {
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+  },
+  shareMenuTitle: {
+    fontFamily: 'JetBrainsMono-SemiBold',
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 16,
+  },
+  shareOptionText: {
+    flex: 1,
+  },
+  shareOptionTitle: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 16,
+  },
+  shareOptionDesc: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 12,
+    marginTop: 2,
   },
 });
