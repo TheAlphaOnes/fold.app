@@ -109,7 +109,12 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
           animatedStyle,
           { width: 140, height: 180 }
         ]}>
-          <Image source={{ uri: media.metadata.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
+          <View style={styles.musicVerticalArtContainer}>
+            <Image source={{ uri: media.metadata.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
+            <View style={styles.musicVerticalIcon}>
+              <Music size={12} color="#FFFFFF" />
+            </View>
+          </View>
           <View style={styles.musicVerticalTextContainer}>
             <Text style={styles.musicVerticalTitle} numberOfLines={1}>{media.metadata.title}</Text>
             <Text style={styles.musicVerticalArtist} numberOfLines={1}>{media.metadata.artist}</Text>
@@ -187,41 +192,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   musicVerticalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 8,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.15,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 6 },
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  musicVerticalArtContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    overflow: 'hidden',
   },
   musicVerticalArt: {
-    width: 124,
-    height: 124,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    width: '100%',
+    height: '100%',
+  },
+  musicVerticalIcon: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 4,
+    borderRadius: 4,
   },
   musicVerticalTextContainer: {
-    flex: 1,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 8,
   },
   musicVerticalTitle: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 12,
+    fontSize: 13,
     color: '#000',
     textAlign: 'center',
+    textShadowColor: 'rgba(255,255,255,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   musicVerticalArtist: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#666',
+    fontSize: 10,
+    color: '#333',
     textAlign: 'center',
     marginTop: 2,
+    textShadowColor: 'rgba(255,255,255,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
