@@ -348,9 +348,10 @@ export default function HomeScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           // Center cards perfectly in the absolute physical screen.
           // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
+          // We use symmetricPadding for both to ensure every card perfectly snaps to the physical center of the screen.
           contentContainerStyle={{
             paddingBottom: symmetricPadding, // visual top
-            paddingTop: symmetricPadding + insets.bottom + 90, // visual bottom (clear bottom bar)
+            paddingTop: symmetricPadding, // visual bottom
           }}
         />
       )}
