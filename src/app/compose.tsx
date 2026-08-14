@@ -715,6 +715,7 @@ const styles = StyleSheet.create({
   },
   metaDate: {
     fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 12,
     letterSpacing: 0.3,
   },
   metaDot: {
