@@ -12,6 +12,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { usePathname } from 'expo-router';
 import type { MediaElement } from '@/types/journal';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { useTheme } from '@/hooks/use-theme';
@@ -36,24 +37,31 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle, composition
   const autoPlayMusic = useSettingsStore(s => s.settings.autoPlayMusic);
   const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
+  const pathname = usePathname();
+  const isHomeScreen = pathname === '/';
 
   useEffect(() => {
     autoPlayMusicRef.current = autoPlayMusic;
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId) {
+    if (activeCompositionId === compositionId && isHomeScreen) {
       if (autoPlayMusicRef.current && isFirstAudio && !hasAutoPlayed.current && !isPlaying) {
         hasAutoPlayed.current = true;
         player.play();
       }
     } else {
-      hasAutoPlayed.current = false; // Reset when scrolled away
+      if (!isHomeScreen) {
+        hasAutoPlayed.current = false;
+      } else {
+        hasAutoPlayed.current = false; // Reset when scrolled away
+      }
+      
       if (isPlaying) {
         player.pause();
       }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player, isFirstAudio]);
+  }, [activeCompositionId, compositionId, isPlaying, player, isFirstAudio, isHomeScreen]);
 
   useEffect(() => {
     return () => {

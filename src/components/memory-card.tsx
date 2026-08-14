@@ -12,6 +12,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { usePathname } from 'expo-router';
 
 interface MemoryCardProps {
   item: Composition;
@@ -31,24 +32,31 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
   const autoPlayMusic = useSettingsStore(s => s.settings.autoPlayMusic);
   const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
+  const pathname = usePathname();
+  const isHomeScreen = pathname === '/';
 
   useEffect(() => {
     autoPlayMusicRef.current = autoPlayMusic;
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId) {
+    if (activeCompositionId === compositionId && isHomeScreen) {
       if (autoPlayMusicRef.current && !hasAutoPlayed.current && !isPlaying) {
         hasAutoPlayed.current = true;
         player.play();
       }
     } else {
-      hasAutoPlayed.current = false; // Reset when scrolled away
+      if (!isHomeScreen) {
+        hasAutoPlayed.current = false;
+      } else {
+        hasAutoPlayed.current = false; // Reset when scrolled away
+      }
+      
       if (isPlaying) {
         player.pause();
       }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player]);
+  }, [activeCompositionId, compositionId, isPlaying, player, isHomeScreen]);
 
   useEffect(() => {
     return () => {
