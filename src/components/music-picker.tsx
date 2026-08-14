@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useAudioPlayer } from 'expo-audio';
+import * as Localization from 'expo-localization';
 
 export interface MusicTrack {
   trackId: number;
@@ -64,7 +65,8 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
+        const country = Localization.getLocales()[0]?.regionCode || 'US';
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15&country=${country}`);
         const data = await response.json();
         setResults(data.results.filter((t: any) => t.previewUrl)); // Only tracks with previews
       } catch (e) {
