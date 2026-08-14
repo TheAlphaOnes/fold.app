@@ -1,6 +1,6 @@
 import { getDatabase } from './client';
 import { mapRow } from './schema';
-import type { Composition, CompositionRow, MediaElement } from '@/types/journal';
+import type { Composition, CompositionRow, MediaElement, LocationData } from '@/types/journal';
 
 export interface CreateCompositionInput {
   textContent: string;
@@ -23,6 +23,18 @@ function rowToComposition(row: CompositionRow): Composition {
   } catch (e) {
     console.error('Failed to parse media_elements for composition', row.id, e);
   }
+  let location: LocationData | undefined = undefined;
+  if (row.location_coords) {
+    try {
+      location = JSON.parse(row.location_coords);
+      if (row.location_name && location) {
+        location.name = row.location_name;
+      }
+    } catch(e) {}
+  } else if (row.location_name) {
+    location = { latitude: 0, longitude: 0, name: row.location_name };
+  }
+
   return {
     id: row.id,
     textContent: row.text_content,
@@ -30,7 +42,7 @@ function rowToComposition(row: CompositionRow): Composition {
     createdAt: row.created_at,
     fontFamily: row.font_family,
     fontSize: row.font_size,
-    location: row.location_coords ? JSON.parse(row.location_coords) : undefined,
+    location,
   };
 }
 
@@ -88,6 +100,18 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     input.locationName || null,
     input.locationCoords || null
   );
+  let location: LocationData | undefined = undefined;
+  if (input.locationCoords) {
+    try {
+      location = JSON.parse(input.locationCoords);
+      if (input.locationName && location) {
+        location.name = input.locationName;
+      }
+    } catch(e) {}
+  } else if (input.locationName) {
+    location = { latitude: 0, longitude: 0, name: input.locationName };
+  }
+
   return {
     id: result.lastInsertRowId as number,
     textContent: input.textContent,
@@ -95,7 +119,7 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     createdAt: now,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
-    location: input.locationCoords ? JSON.parse(input.locationCoords) : undefined,
+    location,
   };
 }
 

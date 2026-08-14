@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Modal, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
@@ -425,6 +425,17 @@ export default function MemoryDetailScreen() {
 
   const cardHeight = Math.min(width * 1.618, height * 0.78);
 
+  const handleOpenLocation = () => {
+    const loc = composition.location;
+    if (!loc) return;
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?ll=${loc.latitude},${loc.longitude}&q=${encodeURIComponent(loc.name || 'Location')}`,
+      android: `geo:${loc.latitude},${loc.longitude}?q=${loc.latitude},${loc.longitude}(${encodeURIComponent(loc.name || 'Location')})`
+    }) || `https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`;
+    
+    Linking.openURL(url).catch(err => console.error("Couldn't open map", err));
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Hidden card for capturing as image */}
@@ -523,12 +534,15 @@ export default function MemoryDetailScreen() {
       {/* Bottom Bar: Location & Slide Indicator */}
       <View style={[styles.bottomBar, { bottom: insets.bottom + 24 }]}>
         {composition.location?.name && (
-          <View style={styles.locationBadge}>
+          <Pressable 
+            style={({ pressed }) => [styles.locationBadge, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={handleOpenLocation}
+          >
             <MapPin size={12} color={theme.textMuted} />
             <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
               {composition.location.name.toUpperCase()}
             </Text>
-          </View>
+          </Pressable>
         )}
         
         {slides.length > 1 && (

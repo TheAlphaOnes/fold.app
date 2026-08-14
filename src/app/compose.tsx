@@ -29,7 +29,7 @@ import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 import { useSettings } from '@/hooks/use-settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GrainBackground } from '@/components/grain-background';
-import { X, Image as ImageIcon, PlayCircle, Mic, Type } from 'lucide-react-native';
+import { X, Image as ImageIcon, PlayCircle, Mic, Type, MapPin } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -40,6 +40,7 @@ import type { MediaElement } from '@/types/journal';
 import { formatMillis } from '@/utils/format-date';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { TextInputWrapper } from 'expo-paste-input';
+import { usePostHog } from 'posthog-react-native';
 
 function ComposeMediaPreview({ m, theme, onRemove }: { m: MediaElement, theme: any, onRemove: () => void }) {
   const isVideo = m.type === 'video';
@@ -123,37 +124,44 @@ export default function ComposeScreen() {
   
   const { addComposition } = useJournalStore();
   const { settings } = useSettings();
+  const posthog = usePostHog();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
 
   const [locationName, setLocationName] = useState<string>();
   const [locationCoords, setLocationCoords] = useState<{lat: number, lng: number}>();
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  const fetchLocation = async () => {
+    setIsFetchingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setIsFetchingLocation(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      const geocode = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude
+      });
+      if (geocode && geocode.length > 0) {
+        const place = geocode[0];
+        const name = place.city || place.subregion || place.region || place.country;
+        if (name) setLocationName(name);
+      }
+    } catch (e) {
+      console.log('Failed to fetch location', e);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
 
   useEffect(() => {
     if (settings.autoLocationTagging) {
-      (async () => {
-        try {
-          const { status } = await Location.getForegroundPermissionsAsync();
-          if (status !== 'granted') return;
-          
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-          
-          const geocode = await Location.reverseGeocodeAsync({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          });
-          
-          if (geocode && geocode.length > 0) {
-            const place = geocode[0];
-            const name = place.city || place.subregion || place.region;
-            if (name) setLocationName(name);
-          }
-        } catch (e) {
-          console.log('Failed to fetch location', e);
-        }
-      })();
+      fetchLocation();
     }
   }, [settings.autoLocationTagging]);
 
@@ -256,6 +264,16 @@ export default function ComposeScreen() {
         locationName,
         locationCoords: locationCoords ? JSON.stringify(locationCoords) : undefined,
       });
+
+      if (settings.dataCollection) {
+        posthog?.capture('Memory Created', {
+          hasMedia: mediaElements.length > 0,
+          mediaCount: mediaElements.length,
+          fontFamily,
+          hasLocation: !!locationName
+        });
+      }
+
       router.back();
     } catch (error) {
       console.error('Failed to save composition:', error);
@@ -398,7 +416,7 @@ export default function ComposeScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Date + time + media attach metadata — monospace, industrial readout */}
-          <View style={styles.metaRow}>
+          <View style={styles.metaContainer}>
             <View style={styles.metaLeft}>
               <ThemedText style={styles.metaDate} themeColor="textMuted">
                 {dateString}
@@ -409,12 +427,12 @@ export default function ComposeScreen() {
               </ThemedText>
             </View>
             
-            <View style={styles.metaRight}>
+            <View style={styles.metaActionsRow}>
               <Pressable 
                 onPress={handleRecordToggle}
                 style={({ pressed }) => [
                   styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1, marginRight: 8 }
+                  { opacity: pressed ? 0.5 : 1 }
                 ]}
               >
                 <Mic size={18} color={theme.textMuted} />
@@ -435,8 +453,35 @@ export default function ComposeScreen() {
                   Attach
                 </ThemedText>
               </Pressable>
+
+              {!settings.autoLocationTagging && !locationName && (
+                <Pressable 
+                  onPress={fetchLocation}
+                  disabled={isFetchingLocation}
+                  style={({ pressed }) => [
+                    styles.attachButton,
+                    { opacity: pressed || isFetchingLocation ? 0.5 : 1 }
+                  ]}
+                >
+                  <MapPin size={18} color={theme.textMuted} />
+                  <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                    {isFetchingLocation ? 'Locating' : 'Location'}
+                  </ThemedText>
+                </Pressable>
+              )}
+
+              {locationName && (
+                <View style={styles.locationBadge}>
+                  <MapPin size={12} color={theme.textMuted} />
+                  <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
+                    {locationName.toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
             </View>
           </View>
+
+
 
           {/* Divider — thin, quiet */}
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -593,13 +638,16 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     flexGrow: 1,
   },
-  metaRow: {
+  metaContainer: {
+    flexDirection: 'column',
+    gap: 12,
+    marginBottom: 16,
+  },
+  metaActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 13,
+    gap: 8,
     flexWrap: 'wrap',
-    rowGap: 8,
   },
   metaLeft: {
     flexDirection: 'row',
@@ -634,6 +682,20 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 12,
     letterSpacing: 0.3,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+  },
+  locationText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 12,
+    maxWidth: 150,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

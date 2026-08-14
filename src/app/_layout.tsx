@@ -39,8 +39,22 @@ import { getDatabase } from '@/db';
 import { AppThemeProvider, useThemeContext } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { AnimatedSplashScreen } from '@/components/splash-screen';
+import { PostHogProvider, usePostHog } from 'posthog-react-native';
 
 SplashScreen.preventAutoHideAsync();
+
+function PostHogSync() {
+  const posthog = usePostHog();
+  const { settings } = useSettingsStore();
+  
+  useEffect(() => {
+    // Always ensure telemetry is on for bare-minimum growth tracking (app opens/views).
+    // This undoes the previous optOut state so we can track growth anonymously.
+    posthog?.optIn();
+  }, [posthog]);
+  
+  return null;
+}
 
 function RootLayoutNav() {
   const [dbReady, setDbReady] = useState(false);
@@ -132,24 +146,32 @@ function RootLayoutNav() {
   }, [isAppReady, settings.hasOnboarded, segments]);
 
   return (
-    <ThemeProvider value={FoldTheme}>
-      <AnimatedSplashScreen isAppReady={isAppReady}>
-        <BiometricGate>
-          <StatusBar hidden />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen 
-              name="compose" 
-              options={{ 
-                headerShown: false,
-                animation: 'slide_from_right'
-              }} 
-            />
-          </Stack>
-        </BiometricGate>
-      </AnimatedSplashScreen>
-    </ThemeProvider>
+    <PostHogProvider 
+      apiKey="phc_AKV5YBb3G838EHFrSUyauGYK6CZYZpNNFsdCdrssx9Uy" 
+      options={{
+        host: 'https://us.i.posthog.com'
+      }}
+    >
+      <ThemeProvider value={FoldTheme}>
+        <PostHogSync />
+        <AnimatedSplashScreen isAppReady={isAppReady}>
+          <BiometricGate>
+            <StatusBar hidden />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen 
+                name="compose" 
+                options={{ 
+                  headerShown: false,
+                  animation: 'slide_from_right'
+                }} 
+              />
+            </Stack>
+          </BiometricGate>
+        </AnimatedSplashScreen>
+      </ThemeProvider>
+    </PostHogProvider>
   );
 }
 

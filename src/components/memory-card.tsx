@@ -140,17 +140,19 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
 
       {/* LAYER 3: Time (Bottom) */}
       <View style={styles.timeRow} pointerEvents="box-none">
-        {item.location?.name && (
-          <View style={styles.locationBadge}>
-            <MapPin size={10} color={theme.textMuted} />
-            <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4, marginRight: 6 }]} numberOfLines={1}>
-              {item.location.name.toUpperCase()} •
-            </Text>
-          </View>
-        )}
-        <Text style={[styles.timeText, { color: theme.textMuted }]}>
-          {formattedTime}
-        </Text>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={[styles.timeText, { color: theme.textMuted, marginBottom: item.location?.name ? 2 : 0 }]}>
+            {formattedTime}
+          </Text>
+          {item.location?.name && (
+            <View style={styles.locationBadge}>
+              <MapPin size={10} color={theme.textMuted} />
+              <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4 }]} numberOfLines={1}>
+                {item.location.name.toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
       
       {/* LAYER 4: Logo Stamp (Only on Export) */}
@@ -196,15 +198,15 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 
-  // Time pinned to the bottom of the card
   timeRow: {
     position: 'absolute',
     bottom: 13,
     left: 20,
     right: 20,
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 2,
     zIndex: 20, // Above stickers
     ...Platform.select({
       android: { elevation: 20 },

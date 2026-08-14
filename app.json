@@ -76,7 +76,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Fold to use your location to automatically tag memories."
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
