@@ -29,11 +29,16 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
   const isPlaying = status.playing;
   const activeCompositionId = useJournalStore(s => s.activeCompositionId);
   const autoPlayMusic = useSettingsStore(s => s.settings.autoPlayMusic);
+  const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
 
   useEffect(() => {
+    autoPlayMusicRef.current = autoPlayMusic;
+  }, [autoPlayMusic]);
+
+  useEffect(() => {
     if (activeCompositionId === compositionId) {
-      if (autoPlayMusic && !hasAutoPlayed.current && !isPlaying) {
+      if (autoPlayMusicRef.current && !hasAutoPlayed.current && !isPlaying) {
         hasAutoPlayed.current = true;
         player.play();
       }
@@ -43,7 +48,7 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
         player.pause();
       }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player, autoPlayMusic]);
+  }, [activeCompositionId, compositionId, isPlaying, player]);
 
   useEffect(() => {
     return () => {
