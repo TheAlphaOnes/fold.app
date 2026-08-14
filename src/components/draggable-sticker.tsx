@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, type LayoutChangeEvent } from 'react-native';
 import { Image } from 'expo-image';
-import { PlayCircle, Music } from 'lucide-react-native';
+import { Play, Music } from 'lucide-react-native';
 import { VinylRecord } from '@/components/vinyl-record';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -131,9 +131,8 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
         styles.sticker, 
         media.type !== 'audio' && { 
           backgroundColor: theme.backgroundElement,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: 'rgba(0,0,0,0.05)',
+          borderColor: theme.borderStrong,
+          borderWidth: 3, 
         }, 
         media.type === 'audio' && {
           backgroundColor: 'transparent',
@@ -161,7 +160,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
 
           {media.type === 'video' && (
             <View style={styles.videoOverlay}>
-              <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
+              <Play size={24} color="#FFF" fill="#FFF" />
             </View>
           )}
         </View>
@@ -178,7 +177,6 @@ const styles = StyleSheet.create({
   innerFrame: {
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 11, // Slightly less than the outer card to fit perfectly inside the border
   },
   image: {
     width: '100%',
@@ -190,9 +188,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   musicVerticalCard: {
     alignItems: 'center',
