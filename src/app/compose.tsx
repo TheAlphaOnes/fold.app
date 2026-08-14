@@ -447,6 +447,79 @@ export default function ComposeScreen() {
                 {timeString}
               </ThemedText>
             </View>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.metaActionsRow}
+              style={{ marginTop: 12, marginHorizontal: -24 }}
+            >
+              <View style={{ width: 24 }} /> {/* left padding spacer for scroll */}
+              <Pressable 
+                onPress={handleRecordToggle}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 }
+                ]}
+              >
+                <Mic size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Record
+                </ThemedText>
+              </Pressable>
+
+              <Pressable 
+                onPress={handleAttachMedia}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 }
+                ]}
+              >
+                <ImageIcon size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Attach
+                </ThemedText>
+              </Pressable>
+
+              <Pressable 
+                onPress={() => setIsMusicPickerVisible(true)}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 }
+                ]}
+              >
+                <Music size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Music
+                </ThemedText>
+              </Pressable>
+
+              {!settings.autoLocationTagging && !locationName && (
+                <Pressable 
+                  onPress={fetchLocation}
+                  disabled={isFetchingLocation}
+                  style={({ pressed }) => [
+                    styles.attachButton,
+                    { opacity: pressed || isFetchingLocation ? 0.5 : 1 }
+                  ]}
+                >
+                  <MapPin size={16} color={theme.textMuted} />
+                  <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                    {isFetchingLocation ? 'Locating' : 'Location'}
+                  </ThemedText>
+                </Pressable>
+              )}
+
+              {locationName && (
+                <View style={styles.locationBadge}>
+                  <MapPin size={14} color={theme.textMuted} />
+                  <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
+                    {locationName.toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
+              <View style={{ width: 24 }} /> {/* right padding spacer for scroll */}
+            </ScrollView>
           </View>
 
           {/* Divider — thin, quiet */}
@@ -511,33 +584,7 @@ export default function ComposeScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.bottomToolbar, { borderTopColor: theme.border }]}>
-          <View style={styles.bottomToolbarActions}>
-            <Pressable onPress={handleRecordToggle} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
-              <Mic size={22} color={theme.textMuted} />
-            </Pressable>
-            <Pressable onPress={handleAttachMedia} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
-              <ImageIcon size={22} color={theme.textMuted} />
-            </Pressable>
-            <Pressable onPress={() => setIsMusicPickerVisible(true)} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
-              <Music size={22} color={theme.textMuted} />
-            </Pressable>
-            {!settings.autoLocationTagging && !locationName && (
-              <Pressable onPress={fetchLocation} disabled={isFetchingLocation} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed || isFetchingLocation ? 0.5 : 1 }]}>
-                <MapPin size={22} color={theme.textMuted} />
-              </Pressable>
-            )}
-          </View>
-          
-          {locationName && (
-            <View style={styles.locationBadge}>
-              <MapPin size={12} color={theme.textMuted} />
-              <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
-                {locationName.toUpperCase()}
-              </ThemedText>
-            </View>
-          )}
-        </View>
+
 
         {/* Bottom safe area pad */}
         <View style={{ height: insets.bottom || 12 }} />
@@ -648,6 +695,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  metaActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(128,128,128,0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  attachText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 13,
+  },
   metaDate: {
     fontFamily: 'JetBrainsMono-Medium',
     letterSpacing: 0.3,
@@ -748,23 +813,5 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: '#878787',
-  },
-  bottomToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  bottomToolbarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  bottomToolbarButton: {
-    padding: 8,
-    backgroundColor: 'rgba(128,128,128,0.08)',
-    borderRadius: 12,
   },
 });
