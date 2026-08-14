@@ -156,45 +156,30 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
 
   return (
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-      {media.metadata ? (
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={[{ 
-            backgroundColor: theme.backgroundElement, 
-            borderRadius: 32, 
-            padding: 32, 
-            width: width - 64, 
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.05,
-            shadowRadius: 20,
-            shadowOffset: { width: 0, height: 10 }
-          }]}>
-            <Image 
-              source={{ uri: media.metadata.artwork.replace('100x100', '600x600') }} 
-              style={{ width: 200, height: 200, borderRadius: 16, marginBottom: 32 }} 
-              contentFit="cover"
-            />
-            <Text style={{ color: theme.text, fontSize: 24, fontFamily: 'JetBrainsMono-Bold', textAlign: 'center' }}>
-              {media.metadata.title}
-            </Text>
-            <Text style={{ color: theme.textMuted, fontSize: 16, fontFamily: 'JetBrainsMono-Regular', marginTop: 8, marginBottom: 32 }}>
-              {media.metadata.artist}
-            </Text>
-            <Text style={{ color: theme.text, fontSize: 16, fontFamily: 'JetBrainsMono-Medium' }}>
-              {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
-            </Text>
-          </Animated.View>
-        </GestureDetector>
-      ) : (
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={{ alignItems: 'center' }}>
-            <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} scrubOffset={scrubRotationOffset} />
-            <Text style={[styles.textSlideContent, { color: theme.text, marginTop: 24, fontSize: 18, fontFamily: 'JetBrainsMono-Medium' }]}>
-              {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
-            </Text>
-          </Animated.View>
-        </GestureDetector>
-      )}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={{ alignItems: 'center' }}>
+          <VinylRecord 
+            size={320} 
+            isRecording={false} 
+            isPlaying={isActuallyPlaying} 
+            scrubOffset={scrubRotationOffset}
+            imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
+          />
+          {media.metadata && (
+            <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 32 }}>
+              <Text style={{ color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>
+                {media.metadata.title}
+              </Text>
+              <Text style={{ color: theme.textMuted, fontSize: 16, fontWeight: '500', marginTop: 6, textAlign: 'center' }}>
+                {media.metadata.artist}
+              </Text>
+            </View>
+          )}
+          <Text style={{ color: theme.textMuted, marginTop: media.metadata ? 32 : 24, fontSize: 14, fontWeight: '500', letterSpacing: 1 }}>
+            {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
+          </Text>
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
