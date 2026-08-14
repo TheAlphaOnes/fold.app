@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   runOnJS,
 } from 'react-native-reanimated';
 import type { MediaElement } from '@/types/journal';
@@ -51,7 +52,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     .hitSlop(40) // Massively increase touch target area beyond visual bounds
     .onStart(() => {
       isDragging.value = true;
-      activeScale.value = withSpring(1.05, { damping: 25, stiffness: 400 });
+      activeScale.value = withTiming(1.02, { duration: 150 });
       contextX.value = translateX.value;
       contextY.value = translateY.value;
     })
@@ -68,7 +69,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     })
     .onEnd(() => {
       isDragging.value = false;
-      activeScale.value = withSpring(1, { damping: 25, stiffness: 400 });
+      activeScale.value = withTiming(1, { duration: 150 });
       runOnJS(onDragEnd)(media.id, translateX.value, translateY.value, baseScale.value);
     });
 
