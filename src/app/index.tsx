@@ -267,7 +267,8 @@ export default function HomeScreen() {
   useEffect(() => {
     if (compositions.length > prevCount.current) {
       setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: true });
+        // Since the list is inverted and data is reversed, index 0 (the newest item) is at offset 0 (the bottom).
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 300); // Wait for render
     }
     prevCount.current = compositions.length;
@@ -325,27 +326,28 @@ export default function HomeScreen() {
       ) : (
         <Animated.FlatList
           ref={listRef}
-          data={compositions}
+          data={[...compositions].reverse()}
+          inverted={true}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           // Perfect mathematical snapping
           snapToOffsets={compositions.map((_, i) => i * snapInterval)}
-        decelerationRate="fast"
-        disableIntervalMomentum
-        // iOS specific fixes
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        // Smooth scroll animations tracking
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        viewabilityConfig={viewabilityConfig}
-        onViewableItemsChanged={onViewableItemsChanged}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          // iOS specific fixes
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          // Smooth scroll animations tracking
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
           // Center cards perfectly in the absolute physical screen.
-          // We add extra padding at the bottom so the user can overscroll past the floating bottom bar if needed.
+          // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
           contentContainerStyle={{
-            paddingTop: symmetricPadding,
-            paddingBottom: symmetricPadding + insets.bottom + 90,
+            paddingBottom: symmetricPadding, // visual top
+            paddingTop: symmetricPadding + insets.bottom + 90, // visual bottom (clear bottom bar)
           }}
         />
       )}
