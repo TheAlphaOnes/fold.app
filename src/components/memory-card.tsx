@@ -89,21 +89,14 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
               item.mediaElements[0].type === 'audio' && { borderWidth: 0 }
             ]}>
               {item.mediaElements[0].type === 'audio' ? (
-                item.mediaElements[0].metadata ? (
-                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
-                    <View style={styles.musicSticker}>
-                      <Image source={{ uri: item.mediaElements[0].metadata.artwork }} style={styles.musicArt} />
-                      <View style={styles.musicTextContainer}>
-                        <Text style={styles.musicTitle} numberOfLines={1}>{item.mediaElements[0].metadata.title}</Text>
-                        <Text style={styles.musicArtist} numberOfLines={1}>{item.mediaElements[0].metadata.artist}</Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
-                    <VinylRecord size={120} isPlaying={false} isRecording={false} />
-                  </View>
-                )
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
+                  <VinylRecord 
+                    size={120} 
+                    isPlaying={false} 
+                    isRecording={false} 
+                    imageUrl={item.mediaElements[0].metadata?.artwork}
+                  />
+                </View>
               ) : (
               <Image 
                   source={{ uri: singleMediaIsVideo && videoThumbnailUri ? videoThumbnailUri : item.mediaElements[0].uri }} 
@@ -298,38 +291,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  musicSticker: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    width: 220,
-  },
-  musicArt: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-  },
-  musicTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  musicTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-    color: '#000',
-  },
-  musicArtist: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 12,
-    color: '#666',
-  },
-
   // ─── Canvas Layout ───
 });

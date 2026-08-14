@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -23,12 +23,14 @@ interface VinylRecordProps {
   size?: number;
   /** Optional offset applied to rotation (for scrubbing) */
   scrubOffset?: SharedValue<number>;
+  /** Optional image URL to display as the center label of the record */
+  imageUrl?: string;
 }
 
 /**
  * Redesigned from a classic vinyl to the Teenage Engineering TP-7 Field Recorder wheel.
  */
-export function VinylRecord({ isRecording = false, isPlaying = false, size = 200, scrubOffset }: VinylRecordProps) {
+export function VinylRecord({ isRecording = false, isPlaying = false, size = 200, scrubOffset, imageUrl }: VinylRecordProps) {
   const theme = useTheme();
   const rotation = useSharedValue(0);
   const pulse = useSharedValue(1);
@@ -106,14 +108,22 @@ export function VinylRecord({ isRecording = false, isPlaying = false, size = 200
            <Text style={[styles.wheelText, { fontSize }]}>3 ◯ M</Text>
         </View>
 
-        {/* Center Metal Cap */}
-        <View style={[styles.centerCap, { width: centerHoleSize, height: centerHoleSize, borderRadius: centerHoleSize / 2 }]}>
-          <View style={styles.capInner}>
-             {/* 3 small mechanical divots/screws */}
-             <View style={[styles.screw, { top: '15%' }]} />
-             <View style={[styles.screw, { bottom: '20%', left: '20%' }]} />
-             <View style={[styles.screw, { bottom: '20%', right: '20%' }]} />
-          </View>
+        {/* Center Metal Cap or Album Art */}
+        <View style={[styles.centerCap, { width: centerHoleSize, height: centerHoleSize, borderRadius: centerHoleSize / 2, overflow: 'hidden' }]}>
+          {imageUrl ? (
+            <Image 
+              source={{ uri: imageUrl }} 
+              style={{ width: '100%', height: '100%' }}
+              // Don't use expo-image if it's not imported in this file, use react-native Image
+            />
+          ) : (
+            <View style={styles.capInner}>
+               {/* 3 small mechanical divots/screws */}
+               <View style={[styles.screw, { top: '15%' }]} />
+               <View style={[styles.screw, { bottom: '20%', left: '20%' }]} />
+               <View style={[styles.screw, { bottom: '20%', right: '20%' }]} />
+            </View>
+          )}
         </View>
       </Animated.View>
 

@@ -157,18 +157,23 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   return (
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
       {media.metadata ? (
-        <Animated.View style={{ alignItems: 'center' }}>
-          <Image 
-            source={{ uri: media.metadata.artwork.replace('100x100', '600x600') }} // Request larger artwork if possible
-            style={{ width: 280, height: 280, borderRadius: 16, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }} 
-          />
-          <Text style={{ color: theme.text, fontSize: 24, fontFamily: 'JetBrainsMono-Bold', textAlign: 'center', paddingHorizontal: 24 }}>
-            {media.metadata.title}
-          </Text>
-          <Text style={{ color: theme.textMuted, fontSize: 16, fontFamily: 'JetBrainsMono-Regular', marginTop: 8 }}>
-            {media.metadata.artist}
-          </Text>
-        </Animated.View>
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={{ alignItems: 'center' }}>
+            <VinylRecord 
+              size={300} 
+              isRecording={false} 
+              isPlaying={isActuallyPlaying} 
+              scrubOffset={scrubRotationOffset} 
+              imageUrl={media.metadata.artwork.replace('100x100', '600x600')} 
+            />
+            <Text style={{ color: theme.text, fontSize: 24, fontFamily: 'JetBrainsMono-Bold', textAlign: 'center', paddingHorizontal: 24, marginTop: 32 }}>
+              {media.metadata.title}
+            </Text>
+            <Text style={{ color: theme.textMuted, fontSize: 16, fontFamily: 'JetBrainsMono-Regular', marginTop: 8 }}>
+              {media.metadata.artist}
+            </Text>
+          </Animated.View>
+        </GestureDetector>
       ) : (
         <GestureDetector gesture={panGesture}>
           <Animated.View style={{ alignItems: 'center' }}>

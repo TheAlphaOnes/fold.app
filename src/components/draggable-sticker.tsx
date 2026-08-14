@@ -101,24 +101,6 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     };
   });
 
-  if (media.type === 'audio' && media.metadata) {
-    return (
-      <GestureDetector gesture={composed}>
-        <Animated.View style={[
-          styles.musicSticker,
-          animatedStyle,
-          { width: 160, height: 52 }
-        ]}>
-          <Image source={{ uri: media.metadata.artwork }} style={styles.musicArt} />
-          <View style={styles.musicTextContainer}>
-            <Text style={styles.musicTitle} numberOfLines={1}>{media.metadata.title}</Text>
-            <Text style={styles.musicArtist} numberOfLines={1}>{media.metadata.artist}</Text>
-          </View>
-        </Animated.View>
-      </GestureDetector>
-    );
-  }
-
   return (
     <GestureDetector gesture={composed}>
       <Animated.View style={[
@@ -137,7 +119,12 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
         <View style={styles.innerFrame}>
           {media.type === 'audio' ? (
             <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
-              <VinylRecord size={70} isPlaying={false} isRecording={false} />
+              <VinylRecord 
+                size={90} 
+                isPlaying={false} 
+                isRecording={false} 
+                imageUrl={media.metadata?.artwork}
+              />
             </View>
           ) : (
             <Image
@@ -157,7 +144,6 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     </GestureDetector>
   );
 }
-
 const styles = StyleSheet.create({
   sticker: {
     width: 90, // Reverted to default small size
@@ -181,36 +167,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  musicSticker: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 16,
-    padding: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  musicArt: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-  },
-  musicTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  musicTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 11,
-    color: '#000',
-  },
-  musicArtist: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#666',
   },
 });
