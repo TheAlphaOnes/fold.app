@@ -111,6 +111,8 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   // Track visual rotation offset
   const scrubRotationOffset = useSharedValue(0);
   const scrubStartRotation = useSharedValue(0);
+  const previousAngle = useSharedValue(0);
+  const totalAngleDiff = useSharedValue(0);
 
   useEffect(() => {
     player.loop = true;
@@ -129,18 +131,35 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   };
 
   const panGesture = Gesture.Pan()
-    .onStart(() => {
+    .onStart((e) => {
       runOnJS(setIsPausedByUser)(true);
       isScrubbing.value = true;
       scrubStartPos.value = status.currentTime; // status.currentTime is in seconds
       scrubStartRotation.value = scrubRotationOffset.value;
+      
+      // Calculate initial angle relative to the center of the 320x320 VinylRecord
+      previousAngle.value = Math.atan2(e.y - 160, e.x - 160);
+      totalAngleDiff.value = 0;
     })
     .onUpdate((e) => {
-      // Rotate the vinyl visually
-      scrubRotationOffset.value = scrubStartRotation.value + e.translationX * 1.5;
+      const currentAngle = Math.atan2(e.y - 160, e.x - 160);
+      let diff = currentAngle - previousAngle.value;
+      
+      // Handle the wrap-around at -PI and PI
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      if (diff < -Math.PI) diff += 2 * Math.PI;
+      
+      totalAngleDiff.value += diff;
+      previousAngle.value = currentAngle;
 
-      // 20 pixels = 1 second of audio
-      const deltaSeconds = e.translationX / 20;
+      // Convert radians to degrees
+      const degrees = totalAngleDiff.value * (180 / Math.PI);
+      
+      // Rotate the vinyl visually
+      scrubRotationOffset.value = scrubStartRotation.value + degrees;
+
+      // 20 degrees = 1 second of audio (360 degrees = 18 seconds)
+      const deltaSeconds = degrees / 20;
       const targetSeconds = scrubStartPos.value + deltaSeconds;
       const clamped = Math.max(0, Math.min(targetSeconds, status.duration));
       
@@ -156,30 +175,32 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
 
   return (
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={{ alignItems: 'center' }}>
-          <VinylRecord 
-            size={320} 
-            isRecording={false} 
-            isPlaying={isActuallyPlaying} 
-            scrubOffset={scrubRotationOffset}
-            imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
-          />
-          {media.metadata ? (
-            <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 32 }}>
-              <Text style={{ color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>
-                {media.metadata.title}
-              </Text>
-              <Text style={{ color: theme.textMuted, fontSize: 16, fontWeight: '500', marginTop: 6, textAlign: 'center' }}>
-                {media.metadata.artist}
-              </Text>
-            </View>
-          ) : null}
-          <Text style={{ color: theme.textMuted, marginTop: media.metadata ? 32 : 24, fontSize: 14, fontWeight: '500', letterSpacing: 1 }}>
-            {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
-          </Text>
-        </Animated.View>
-      </GestureDetector>
+      <Animated.View style={{ alignItems: 'center' }}>
+        <GestureDetector gesture={panGesture}>
+          <View>
+            <VinylRecord 
+              size={320} 
+              isRecording={false} 
+              isPlaying={isActuallyPlaying} 
+              scrubOffset={scrubRotationOffset}
+              imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
+            />
+          </View>
+        </GestureDetector>
+        {media.metadata ? (
+          <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 32 }}>
+            <Text style={{ color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>
+              {media.metadata.title}
+            </Text>
+            <Text style={{ color: theme.textMuted, fontSize: 16, fontWeight: '500', marginTop: 6, textAlign: 'center' }}>
+              {media.metadata.artist}
+            </Text>
+          </View>
+        ) : null}
+        <Text style={{ color: theme.textMuted, marginTop: media.metadata ? 32 : 24, fontSize: 14, fontWeight: '500', letterSpacing: 1 }}>
+          {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
+        </Text>
+      </Animated.View>
     </View>
   );
 }
