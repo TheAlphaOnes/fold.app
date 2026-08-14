@@ -22,12 +22,13 @@ interface DraggableStickerProps {
   cardWidth: number;
   cardHeight: number;
   compositionId: number;
+  isFirstAudio?: boolean;
 }
 
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 
-function CanvasAudioSticker({ media, composedGesture, animatedStyle, compositionId }: { media: MediaElement, composedGesture: any, animatedStyle: any, compositionId: number }) {
+function CanvasAudioSticker({ media, composedGesture, animatedStyle, compositionId, isFirstAudio = true }: { media: MediaElement, composedGesture: any, animatedStyle: any, compositionId: number, isFirstAudio?: boolean }) {
   const player = useAudioPlayer(media.uri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
@@ -42,7 +43,7 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle, composition
 
   useEffect(() => {
     if (activeCompositionId === compositionId) {
-      if (autoPlayMusicRef.current && !hasAutoPlayed.current && !isPlaying) {
+      if (autoPlayMusicRef.current && isFirstAudio && !hasAutoPlayed.current && !isPlaying) {
         hasAutoPlayed.current = true;
         player.play();
       }
@@ -52,7 +53,7 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle, composition
         player.pause();
       }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player]);
+  }, [activeCompositionId, compositionId, isPlaying, player, isFirstAudio]);
 
   useEffect(() => {
     return () => {
@@ -98,7 +99,7 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle, composition
   );
 }
 
-export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight, compositionId }: DraggableStickerProps) {
+export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight, compositionId, isFirstAudio }: DraggableStickerProps) {
   const theme = useTheme();
   const videoThumbnailUri = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
 
@@ -179,7 +180,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight, comp
   });
 
   if (media.type === 'audio' && media.metadata) {
-    return <CanvasAudioSticker media={media} composedGesture={composed} animatedStyle={animatedStyle} compositionId={compositionId} />;
+    return <CanvasAudioSticker media={media} composedGesture={composed} animatedStyle={animatedStyle} compositionId={compositionId} isFirstAudio={isFirstAudio} />;
   }
 
   return (

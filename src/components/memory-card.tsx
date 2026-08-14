@@ -196,6 +196,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
                 cardWidth={cardWidth} 
                 cardHeight={height} 
                 compositionId={item.id}
+                isFirstAudio={m.id === (item.mediaElements.find(media => media.type === 'audio')?.id)}
               />
             ))}
           </View>
