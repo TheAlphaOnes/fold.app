@@ -98,25 +98,18 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Add Music</Text>
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Search artists, songs..."
+            placeholderTextColor={theme.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+            selectionColor={theme.text}
+          />
           <Pressable onPress={onClose} style={styles.closeBtn}>
-            <X size={20} color={theme.text} />
+            <X size={24} color={theme.text} />
           </Pressable>
-        </View>
-
-        <View style={styles.searchWrapper}>
-          <View style={styles.searchContainer}>
-            <Search size={16} color={theme.textMuted} />
-            <TextInput
-              style={[styles.input, { color: theme.text }]}
-              placeholder="Search artists, songs..."
-              placeholderTextColor={theme.textMuted}
-              value={query}
-              onChangeText={setQuery}
-              autoFocus
-              clearButtonMode="while-editing"
-            />
-          </View>
         </View>
 
         {loading && results.length === 0 ? (
@@ -189,39 +182,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 32,
+    paddingBottom: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  headerTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-  },
-  searchWrapper: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-    gap: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 15,
-    height: '100%',
+    fontSize: 22,
+    height: 40,
+    marginRight: 16,
   },
   closeBtn: {
-    padding: 8,
-    marginRight: -8,
+    padding: 4,
   },
   list: {
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   trackItem: {
@@ -232,11 +208,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   artworkContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 0,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.2)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   artwork: {
     width: '100%',
@@ -258,12 +236,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   trackName: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 15,
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
   },
   artistName: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 13,
+    fontSize: 14,
   },
   actionSlot: {
     width: 70,
@@ -272,7 +250,9 @@ const styles = StyleSheet.create({
   chooseButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   chooseButtonText: {
     fontFamily: 'JetBrainsMono-Bold',
