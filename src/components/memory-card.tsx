@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { DiagonalStripes } from '@/components/diagonal-stripes';
@@ -11,12 +11,56 @@ import { Logo } from '@/components/logo';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 interface MemoryCardProps {
   item: Composition;
   height: number;
   onUpdatePositions: (id: number, updatedMedia: MediaElement[]) => void;
   isExporting?: boolean;
+}
+
+function SingleAudioCard({ media, cardWidth, theme }: { media: MediaElement, cardWidth: number, theme: any }) {
+  const player = useAudioPlayer(media.uri);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = status.playing;
+
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause();
+      } catch (e) {}
+    };
+  }, [player]);
+
+  const handlePress = () => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      player.play();
+    }
+  };
+
+  return (
+    <Pressable style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }} onPress={handlePress}>
+      <VinylRecord 
+        size={cardWidth - 80} 
+        isPlaying={isPlaying} 
+        isRecording={false} 
+        imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
+      />
+      {media.metadata ? (
+        <View style={{ alignItems: 'center', marginTop: 24, paddingHorizontal: 16 }}>
+          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+            {media.metadata.title}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 15, fontWeight: '500', marginTop: 4, textAlign: 'center' }} numberOfLines={1}>
+            {media.metadata.artist}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
 }
 
 /**
@@ -85,24 +129,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
         {isSingleMedia && (
           <View style={styles.singleMediaContainer} pointerEvents="box-none">
             {item.mediaElements[0].type === 'audio' ? (
-              <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-                <VinylRecord 
-                  size={cardWidth - 80} 
-                  isPlaying={false} 
-                  isRecording={false} 
-                  imageUrl={item.mediaElements[0].metadata?.artwork?.replace('100x100', '600x600')} 
-                />
-                {item.mediaElements[0].metadata ? (
-                  <View style={{ alignItems: 'center', marginTop: 24, paddingHorizontal: 16 }}>
-                    <Text style={{ color: theme.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
-                      {item.mediaElements[0].metadata.title}
-                    </Text>
-                    <Text style={{ color: theme.textMuted, fontSize: 15, fontWeight: '500', marginTop: 4, textAlign: 'center' }} numberOfLines={1}>
-                      {item.mediaElements[0].metadata.artist}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
+              <SingleAudioCard media={item.mediaElements[0]} cardWidth={cardWidth} theme={theme} />
             ) : (
               <View style={styles.heroImageWrapper}>
                 <Image 

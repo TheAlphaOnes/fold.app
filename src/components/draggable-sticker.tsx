@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, type LayoutChangeEvent } from 'react-native';
 import { Image } from 'expo-image';
-import { Play, Music } from 'lucide-react-native';
+import { Play, Music, Pause } from 'lucide-react-native';
 import { VinylRecord } from '@/components/vinyl-record';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import type { MediaElement } from '@/types/journal';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,6 +21,56 @@ interface DraggableStickerProps {
   onDragEnd: (id: string, x: number, y: number, scale?: number) => void;
   cardWidth: number;
   cardHeight: number;
+}
+
+function CanvasAudioSticker({ media, composedGesture, animatedStyle }: { media: MediaElement, composedGesture: any, animatedStyle: any }) {
+  const player = useAudioPlayer(media.uri);
+  const status = useAudioPlayerStatus(player);
+  const isPlaying = status.playing;
+
+  useEffect(() => {
+    return () => {
+      try {
+        player.pause();
+      } catch (e) {}
+    };
+  }, [player]);
+
+  const tapGesture = Gesture.Tap()
+    .onStart(() => {
+      if (isPlaying) {
+        player.pause();
+      } else {
+        player.play();
+      }
+    });
+
+  const finalGesture = Gesture.Simultaneous(composedGesture, tapGesture);
+
+  return (
+    <GestureDetector gesture={finalGesture}>
+      <Animated.View style={[
+        styles.musicVerticalCard,
+        animatedStyle,
+        { width: 140, height: 180 }
+      ]}>
+        <View style={styles.musicVerticalArtContainer}>
+          <Image source={{ uri: media.metadata!.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
+          <View style={styles.musicVerticalIcon}>
+            {isPlaying ? (
+              <Pause size={12} color="#FFFFFF" fill="#FFFFFF" />
+            ) : (
+              <Play size={12} color="#FFFFFF" fill="#FFFFFF" />
+            )}
+          </View>
+        </View>
+        <View style={styles.musicVerticalTextContainer}>
+          <Text style={styles.musicVerticalTitle} numberOfLines={1}>{media.metadata!.title}</Text>
+          <Text style={styles.musicVerticalArtist} numberOfLines={1}>{media.metadata!.artist}</Text>
+        </View>
+      </Animated.View>
+    </GestureDetector>
+  );
 }
 
 export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: DraggableStickerProps) {
@@ -103,26 +154,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   });
 
   if (media.type === 'audio' && media.metadata) {
-    return (
-      <GestureDetector gesture={composed}>
-        <Animated.View style={[
-          styles.musicVerticalCard,
-          animatedStyle,
-          { width: 140, height: 180 }
-        ]}>
-          <View style={styles.musicVerticalArtContainer}>
-            <Image source={{ uri: media.metadata.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
-            <View style={styles.musicVerticalIcon}>
-              <Music size={12} color="#FFFFFF" />
-            </View>
-          </View>
-          <View style={styles.musicVerticalTextContainer}>
-            <Text style={styles.musicVerticalTitle} numberOfLines={1}>{media.metadata.title}</Text>
-            <Text style={styles.musicVerticalArtist} numberOfLines={1}>{media.metadata.artist}</Text>
-          </View>
-        </Animated.View>
-      </GestureDetector>
-    );
+    return <CanvasAudioSticker media={media} composedGesture={composed} animatedStyle={animatedStyle} />;
   }
 
   return (
