@@ -84,33 +84,40 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
 
         {isSingleMedia && (
           <View style={styles.singleMediaContainer} pointerEvents="box-none">
-            <View style={[
-              styles.heroImageWrapper,
-              item.mediaElements[0].type === 'audio' && { borderWidth: 0 }
-            ]}>
-              {item.mediaElements[0].type === 'audio' ? (
-                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
-                  <Image 
-                    source={{ uri: item.mediaElements[0].metadata?.artwork.replace('100x100', '600x600') }} 
-                    style={StyleSheet.absoluteFill} 
-                    contentFit="cover" 
-                  />
-                </View>
-              ) : (
+            {item.mediaElements[0].type === 'audio' ? (
+              <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                <VinylRecord 
+                  size={cardWidth - 80} 
+                  isPlaying={false} 
+                  isRecording={false} 
+                  imageUrl={item.mediaElements[0].metadata?.artwork?.replace('100x100', '600x600')} 
+                />
+                {item.mediaElements[0].metadata && (
+                  <View style={{ alignItems: 'center', marginTop: 24, paddingHorizontal: 16 }}>
+                    <Text style={{ color: theme.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+                      {item.mediaElements[0].metadata.title}
+                    </Text>
+                    <Text style={{ color: theme.textMuted, fontSize: 15, fontWeight: '500', marginTop: 4, textAlign: 'center' }} numberOfLines={1}>
+                      {item.mediaElements[0].metadata.artist}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.heroImageWrapper}>
                 <Image 
                   source={{ uri: singleMediaIsVideo && videoThumbnailUri ? videoThumbnailUri : item.mediaElements[0].uri }} 
                   style={StyleSheet.absoluteFill} 
                   contentFit="cover" 
                 />
-              )}
-
-              {item.mediaElements[0].type === 'video' && (
-                <View style={styles.videoBadge}>
-                  <Text style={styles.videoBadgeText}>VIDEO</Text>
-                  <PlayCircle size={10} color="#FFFFFF" />
-                </View>
-              )}
-            </View>
+                {item.mediaElements[0].type === 'video' && (
+                  <View style={styles.videoBadge}>
+                    <Text style={styles.videoBadgeText}>VIDEO</Text>
+                    <PlayCircle size={10} color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+            )}
             {hasText && (
               <View style={{ flexShrink: 1, width: '100%' }}>
                 <Text style={[styles.singleMediaText, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 18, lineHeight: (item.fontSize || 18) * 1.4 }]} numberOfLines={8} ellipsizeMode="tail">
