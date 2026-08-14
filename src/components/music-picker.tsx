@@ -48,6 +48,14 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
 
   // Debounced search
   useEffect(() => {
+    if (!visible) {
+      setPreviewingTrack(null);
+      setQuery('');
+      setResults([]);
+    }
+  }, [visible]);
+
+  useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
       return;
