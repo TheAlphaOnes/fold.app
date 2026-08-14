@@ -5,12 +5,25 @@ import { Search, X, Music } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { useAudioPlayer } from 'expo-audio';
+
 export interface MusicTrack {
   trackId: number;
   trackName: string;
   artistName: string;
   artworkUrl100: string;
   previewUrl: string;
+}
+
+function TrackPreviewPlayer({ url }: { url: string }) {
+  const player = useAudioPlayer(url);
+  useEffect(() => {
+    player.play();
+    return () => {
+      player.pause();
+    };
+  }, [player]);
+  return null;
 }
 
 interface MusicPickerProps {
@@ -27,6 +40,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [results, setResults] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
 
   // Debounced search
   useEffect(() => {
@@ -68,15 +82,30 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     }
   };
 
+  const handleRowPress = (track: MusicTrack) => {
+    if (previewingTrack?.trackId === track.trackId) {
+      setPreviewingTrack(null); // Stop preview
+    } else {
+      setPreviewingTrack(track); // Start preview
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Add Music</Text>
+          <Pressable onPress={onClose} style={styles.closeBtn}>
+            <X size={20} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Search size={16} color={theme.textMuted} />
             <TextInput
               style={[styles.input, { color: theme.text }]}
-              placeholder="Search music..."
+              placeholder="Search artists, songs..."
               placeholderTextColor={theme.textMuted}
               value={query}
               onChangeText={setQuery}
@@ -84,9 +113,6 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
               clearButtonMode="while-editing"
             />
           </View>
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <X size={20} color={theme.text} />
-          </Pressable>
         </View>
 
         {loading && results.length === 0 ? (
@@ -97,27 +123,45 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
             keyExtractor={item => item.trackId.toString()}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable 
-                style={({ pressed }) => [styles.trackItem, { backgroundColor: pressed ? theme.border : 'transparent' }]}
-                onPress={() => handleSelect(item)}
-              >
-                <Image source={{ uri: item.artworkUrl100 }} style={styles.artwork} />
-                <View style={styles.trackInfo}>
-                  <Text style={[styles.trackName, { color: theme.text }]} numberOfLines={1}>
-                    {item.trackName}
-                  </Text>
-                  <Text style={[styles.artistName, { color: theme.textMuted }]} numberOfLines={1}>
-                    {item.artistName}
-                  </Text>
-                </View>
-                {downloading === item.trackId ? (
-                  <ActivityIndicator size="small" color={theme.textMuted} />
-                ) : (
-                  <Music size={16} color={theme.textMuted} style={{ opacity: 0.5 }} />
-                )}
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const isPreviewing = previewingTrack?.trackId === item.trackId;
+              const isDownloading = downloading === item.trackId;
+
+              return (
+                <Pressable 
+                  style={({ pressed }) => [styles.trackItem, { backgroundColor: pressed || isPreviewing ? 'rgba(0,0,0,0.03)' : 'transparent' }]}
+                  onPress={() => handleRowPress(item)}
+                >
+                  <View style={styles.artworkContainer}>
+                    <Image source={{ uri: item.artworkUrl100 }} style={styles.artwork} />
+                    {isPreviewing && !isDownloading && (
+                      <View style={styles.playingOverlay}>
+                        <Music size={20} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.trackInfo}>
+                    <Text style={[styles.trackName, { color: theme.text }]} numberOfLines={1}>
+                      {item.trackName}
+                    </Text>
+                    <Text style={[styles.artistName, { color: theme.textMuted }]} numberOfLines={1}>
+                      {item.artistName}
+                    </Text>
+                  </View>
+                  
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color={theme.textMuted} style={styles.actionSlot} />
+                  ) : isPreviewing ? (
+                    <Pressable 
+                      style={[styles.chooseButton, { backgroundColor: theme.text }]}
+                      onPress={() => handleSelect(item)}
+                    >
+                      <Text style={[styles.chooseButtonText, { color: theme.background }]}>Choose</Text>
+                    </Pressable>
+                  ) : null}
+                </Pressable>
+              );
+            }}
             ListEmptyComponent={() => (
               query.length > 2 && !loading ? (
                 <Text style={[styles.emptyText, { color: theme.textMuted }]}>No songs found</Text>
@@ -125,6 +169,8 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
             )}
           />
         )}
+
+        {previewingTrack && <TrackPreviewPlayer url={previewingTrack.previewUrl} />}
       </View>
     </Modal>
   );
@@ -137,47 +183,70 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  headerTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
   searchContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 40,
+    height: 44,
     gap: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 16,
+    fontSize: 15,
     height: '100%',
   },
   closeBtn: {
     padding: 8,
-    marginLeft: 8,
+    marginRight: -8,
   },
   list: {
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 40,
   },
   trackItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     gap: 16,
   },
-  artwork: {
-    width: 48,
-    height: 48,
+  artworkContainer: {
+    width: 52,
+    height: 52,
     borderRadius: 8,
+    overflow: 'hidden',
     backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  artwork: {
+    width: '100%',
+    height: '100%',
+  },
+  playingOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   trackInfo: {
     flex: 1,
@@ -191,6 +260,19 @@ const styles = StyleSheet.create({
   artistName: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 13,
+  },
+  actionSlot: {
+    width: 70,
+    alignItems: 'flex-end',
+  },
+  chooseButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  chooseButtonText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 12,
   },
   emptyText: {
     textAlign: 'center',
