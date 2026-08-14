@@ -29,7 +29,7 @@ import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 import { useSettings } from '@/hooks/use-settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GrainBackground } from '@/components/grain-background';
-import { X, Image as ImageIcon, PlayCircle, Mic, Type, MapPin } from 'lucide-react-native';
+import { X, Image as ImageIcon, PlayCircle, Mic, Type, MapPin, Music } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -41,6 +41,7 @@ import { formatMillis } from '@/utils/format-date';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { TextInputWrapper } from 'expo-paste-input';
 import { usePostHog } from 'posthog-react-native';
+import { MusicPicker, MusicTrack } from '@/components/music-picker';
 
 function ComposeMediaPreview({ m, theme, onRemove }: { m: MediaElement, theme: any, onRemove: () => void }) {
   const isVideo = m.type === 'video';
@@ -132,6 +133,7 @@ export default function ComposeScreen() {
   const [locationName, setLocationName] = useState<string>();
   const [locationCoords, setLocationCoords] = useState<{lat: number, lng: number}>();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isMusicPickerVisible, setIsMusicPickerVisible] = useState(false);
 
   const fetchLocation = async () => {
     setIsFetchingLocation(true);
@@ -249,6 +251,25 @@ export default function ComposeScreen() {
     } catch (error) {
       console.error('Failed to pick media:', error);
     }
+  };
+
+  const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
+    const stickerSize = 120;
+    const safeW = screenWidth - 60 - stickerSize;
+    const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+    
+    setMediaElements(prev => [...prev, {
+      id: Math.random().toString(36).substring(2, 9),
+      uri: localUri,
+      type: 'audio',
+      x_pos: 30 + Math.random() * safeW,
+      y_pos: 30 + Math.random() * safeH,
+      metadata: {
+        title: track.trackName,
+        artist: track.artistName,
+        artwork: track.artworkUrl100
+      }
+    }]);
   };
 
   const handleSave = async () => {
@@ -454,6 +475,19 @@ export default function ComposeScreen() {
                 </ThemedText>
               </Pressable>
 
+              <Pressable 
+                onPress={() => setIsMusicPickerVisible(true)}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 }
+                ]}
+              >
+                <Music size={18} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Music
+                </ThemedText>
+              </Pressable>
+
               {!settings.autoLocationTagging && !locationName && (
                 <Pressable 
                   onPress={fetchLocation}
@@ -576,6 +610,12 @@ export default function ComposeScreen() {
           </Pressable>
         </View>
       </Modal>
+
+      <MusicPicker 
+        visible={isMusicPickerVisible}
+        onClose={() => setIsMusicPickerVisible(false)}
+        onSelect={handleAttachMusic}
+      />
     </View>
   );
 }

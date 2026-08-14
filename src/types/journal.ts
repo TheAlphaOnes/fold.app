@@ -7,6 +7,11 @@ export interface MediaElement {
   width?: number;
   height?: number;
   scale?: number;
+  metadata?: {
+    title: string;
+    artist: string;
+    artwork: string;
+  };
 }
 
 export interface LocationData {

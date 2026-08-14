@@ -156,11 +156,26 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
 
   return (
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-      <GestureDetector gesture={panGesture}>
+      {media.metadata ? (
         <Animated.View style={{ alignItems: 'center' }}>
-          <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} scrubOffset={scrubRotationOffset} />
+          <Image 
+            source={{ uri: media.metadata.artwork.replace('100x100', '600x600') }} // Request larger artwork if possible
+            style={{ width: 280, height: 280, borderRadius: 16, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } }} 
+          />
+          <Text style={{ color: theme.text, fontSize: 24, fontFamily: 'JetBrainsMono-Bold', textAlign: 'center', paddingHorizontal: 24 }}>
+            {media.metadata.title}
+          </Text>
+          <Text style={{ color: theme.textMuted, fontSize: 16, fontFamily: 'JetBrainsMono-Regular', marginTop: 8 }}>
+            {media.metadata.artist}
+          </Text>
         </Animated.View>
-      </GestureDetector>
+      ) : (
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={{ alignItems: 'center' }}>
+            <VinylRecord size={300} isRecording={false} isPlaying={isActuallyPlaying} scrubOffset={scrubRotationOffset} />
+          </Animated.View>
+        </GestureDetector>
+      )}
       <Text style={[styles.textSlideContent, { color: theme.text, marginTop: 24, fontSize: 18, fontFamily: 'JetBrainsMono-Medium' }]}>
         {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
       </Text>
