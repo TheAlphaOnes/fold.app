@@ -92,7 +92,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
                   isRecording={false} 
                   imageUrl={item.mediaElements[0].metadata?.artwork?.replace('100x100', '600x600')} 
                 />
-                {item.mediaElements[0].metadata && (
+                {item.mediaElements[0].metadata ? (
                   <View style={{ alignItems: 'center', marginTop: 24, paddingHorizontal: 16 }}>
                     <Text style={{ color: theme.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
                       {item.mediaElements[0].metadata.title}
@@ -101,7 +101,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
                       {item.mediaElements[0].metadata.artist}
                     </Text>
                   </View>
-                )}
+                ) : null}
               </View>
             ) : (
               <View style={styles.heroImageWrapper}>
