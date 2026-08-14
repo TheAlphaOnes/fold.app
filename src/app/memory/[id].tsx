@@ -12,8 +12,9 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { VinylRecord } from '@/components/vinyl-record';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
+import { usePostHog } from 'posthog-react-native';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
@@ -103,6 +104,8 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   const status = useAudioPlayerStatus(player);
   const [isPausedByUser, setIsPausedByUser] = React.useState(false);
   const theme = useTheme();
+  // Guard: only attempt play when player has fully loaded the source
+  const isLoaded = status.isLoaded;
 
   // Keep track of the scrub state
   const isScrubbing = useSharedValue(false);
@@ -119,16 +122,18 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
   }, [player]);
 
   useEffect(() => {
+    if (!isLoaded) return; // Wait for player to be ready
     if (isActive && !isPausedByUser) {
-      player.play();
+      try { player.play(); } catch (e) {}
     } else {
-      player.pause();
+      try { player.pause(); } catch (e) {}
     }
-  }, [isActive, player, isPausedByUser]);
+  }, [isActive, isLoaded, player, isPausedByUser]);
 
   const seekTo = (seconds: number) => {
-    player.seekTo(seconds);
+    try { player.seekTo(seconds); } catch (e) {}
   };
+
 
   const panGesture = Gesture.Pan()
     .onStart((e) => {
@@ -294,6 +299,7 @@ export default function MemoryDetailScreen() {
   const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const posthog = usePostHog();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
 
@@ -387,6 +393,7 @@ export default function MemoryDetailScreen() {
           dialogTitle: 'Share Memory Card',
           mimeType: 'image/png',
         });
+        posthog?.capture('Memory Shared', { method: 'card' });
       }
     } catch (e) {
       console.error('Failed to capture memory card:', e);
@@ -402,11 +409,13 @@ export default function MemoryDetailScreen() {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(current.media.uri);
+          posthog?.capture('Memory Shared', { method: 'raw_media' });
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
         }
       } else if (current.type === 'text') {
         await Share.share({ message: current.text });
+        posthog?.capture('Memory Shared', { method: 'raw_text' });
       }
     } catch (e) {
       console.error(e);

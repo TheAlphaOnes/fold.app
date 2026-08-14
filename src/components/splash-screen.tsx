@@ -16,6 +16,7 @@ import { Logo } from '@/components/logo';
 import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useJournalStore } from '@/hooks/use-journal';
 
 interface AnimatedSplashScreenProps {
   isAppReady: boolean;
@@ -24,6 +25,7 @@ interface AnimatedSplashScreenProps {
 
 export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScreenProps) {
   const theme = useTheme();
+  const setAppVisible = useJournalStore((s) => s.setAppVisible);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const opacity = useSharedValue(1);
   const progress = useSharedValue(0);
@@ -69,6 +71,12 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
     return d;
   }, [width, height, baseY]);
 
+  const handleAnimationComplete = () => {
+    setIsAnimationComplete(true);
+    // Signal to the app that it's now safe to auto-play audio
+    setAppVisible(true);
+  };
+
   useEffect(() => {
     if (isAppReady) {
       // Hide the native splash screen immediately, revealing this identical RN component
@@ -83,7 +91,7 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
         if (finished) {
           // Fade out the entire splash screen after the dot crosses
           opacity.value = withTiming(0, { duration: 500 }, (f) => {
-            if (f) runOnJS(setIsAnimationComplete)(true);
+            if (f) runOnJS(handleAnimationComplete)();
           });
         }
       });

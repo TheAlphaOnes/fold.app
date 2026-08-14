@@ -1,6 +1,10 @@
-import { create } from 'zustand';
-import { getSetting, setSetting as dbSetSetting, getAllSettings } from '@/db/settings-repository';
-import type { ThemeMode } from './use-theme';
+import { create } from "zustand";
+import {
+  getSetting,
+  setSetting as dbSetSetting,
+  getAllSettings,
+} from "@/db/settings-repository";
+import type { ThemeMode } from "./use-theme";
 
 export interface UserSettings {
   name: string;
@@ -15,10 +19,10 @@ export interface UserSettings {
 }
 
 const defaultSettings: UserSettings = {
-  name: '',
-  dob: '',
+  name: "",
+  dob: "",
   dataCollection: false,
-  theme: 'light',
+  theme: "system",
   requireBiometrics: false,
   privacyScreen: false,
   hasOnboarded: false,
@@ -29,9 +33,12 @@ const defaultSettings: UserSettings = {
 interface SettingsState {
   settings: UserSettings;
   loading: boolean;
-  
+
   loadSettings: () => Promise<void>;
-  updateSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => Promise<void>;
+  updateSetting: <K extends keyof UserSettings>(
+    key: K,
+    value: UserSettings[K],
+  ) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -44,37 +51,40 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const stored = await getAllSettings();
       set({
         settings: {
-          name: stored.name || '',
-          dob: stored.dob || '',
-          dataCollection: stored.dataCollection === 'true',
-          theme: (stored.theme as ThemeMode) || 'light',
-          requireBiometrics: stored.requireBiometrics === 'true',
-          privacyScreen: stored.privacyScreen === 'true',
-          hasOnboarded: stored.hasOnboarded === 'true',
-          autoLocationTagging: stored.autoLocationTagging === 'true',
-          autoPlayMusic: stored.autoPlayMusic === 'true',
+          name: stored.name || "",
+          dob: stored.dob || "",
+          dataCollection: stored.dataCollection === "true",
+          theme: (stored.theme as ThemeMode) || "light",
+          requireBiometrics: stored.requireBiometrics === "true",
+          privacyScreen: stored.privacyScreen === "true",
+          hasOnboarded: stored.hasOnboarded === "true",
+          autoLocationTagging: stored.autoLocationTagging === "true",
+          autoPlayMusic: stored.autoPlayMusic === "true",
         },
-        loading: false
+        loading: false,
       });
     } catch (err) {
-      console.error('Failed to load settings', err);
+      console.error("Failed to load settings", err);
       set({ loading: false });
     }
   },
 
-  updateSetting: async <K extends keyof UserSettings,>(key: K, value: UserSettings[K]) => {
+  updateSetting: async <K extends keyof UserSettings>(
+    key: K,
+    value: UserSettings[K],
+  ) => {
     // Optimistic UI update
     set((state) => ({
       settings: {
         ...state.settings,
-        [key]: value
-      }
+        [key]: value,
+      },
     }));
-    
+
     // Persist to SQLite
-    const strValue = typeof value === 'boolean' ? String(value) : String(value);
+    const strValue = typeof value === "boolean" ? String(value) : String(value);
     await dbSetSetting(key, strValue);
-  }
+  },
 }));
 
 // Provide backward compatibility for existing imports during refactor

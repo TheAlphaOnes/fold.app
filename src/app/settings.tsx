@@ -329,6 +329,36 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
+        {/* About & Support Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>ABOUT & SUPPORT</ThemedText>
+          <View style={[styles.divider, { backgroundColor: theme.text }]} />
+
+          <Pressable 
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => router.push('/feedback' as any)}
+          >
+            <ThemedText style={[styles.settingText, { color: theme.text }]}>SUBMIT FEEDBACK</ThemedText>
+          </Pressable>
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <Pressable 
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => router.push('/privacy' as any)}
+          >
+            <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY POLICY</ThemedText>
+          </Pressable>
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <Pressable 
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => router.push('/legal' as any)}
+          >
+            <ThemedText style={[styles.settingText, { color: theme.text }]}>LEGAL TERMS</ThemedText>
+          </Pressable>
+        </View>
+
+
         {/* ASCII System Core Mascot */}
         <View style={styles.mascotContainer}>
           <ThemedText style={[styles.mascotText, { color: theme.textMuted }]}>

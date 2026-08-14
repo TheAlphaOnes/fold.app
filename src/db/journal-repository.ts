@@ -1,6 +1,32 @@
 import { getDatabase } from './client';
 import { mapRow } from './schema';
 import type { Composition, CompositionRow, MediaElement, LocationData } from '@/types/journal';
+import * as FileSystem from 'expo-file-system/legacy';
+
+/**
+ * Re-anchors a stored absolute file URI to the current app container path.
+ *
+ * iOS changes the app sandbox container UUID on every fresh install/update.
+ * All absolute URIs stored in SQLite become invalid after this happens.
+ *
+ * Strategy: extract just the filename (everything after the last `/`)
+ * and re-prefix with the live FileSystem.documentDirectory.
+ * Files stored in sub-folders of documentDirectory are handled by
+ * preserving the path relative to the last "Documents/" segment.
+ */
+function resolveDocumentUri(uri: string): string {
+  if (!uri) return uri;
+  // Only patch file:// URIs that point into a Documents folder
+  if (!uri.startsWith('file://') || !uri.includes('/Documents/')) return uri;
+
+  const currentBase = FileSystem.documentDirectory ?? '';
+  // Extract the path relative to /Documents/ (e.g. "picked_xxx.m4a")
+  const afterDocuments = uri.split('/Documents/').pop();
+  if (!afterDocuments) return uri;
+
+  return `${currentBase}${afterDocuments}`;
+}
+
 
 export interface CreateCompositionInput {
   textContent: string;
@@ -19,7 +45,13 @@ export interface UpdateMediaPositionsInput {
 function rowToComposition(row: CompositionRow): Composition {
   let mediaElements: MediaElement[] = [];
   try {
-    mediaElements = JSON.parse(row.media_elements);
+    const parsed: MediaElement[] = JSON.parse(row.media_elements);
+    // Re-anchor any stored URIs whose app container path has become stale
+    // (happens on every iOS fresh install/simulator reinstall).
+    mediaElements = parsed.map((m) => ({
+      ...m,
+      uri: resolveDocumentUri(m.uri),
+    }));
   } catch (e) {
     console.error('Failed to parse media_elements for composition', row.id, e);
   }

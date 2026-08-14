@@ -1,18 +1,26 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Platform, useWindowDimensions, Pressable } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
-import { DiagonalStripes } from '@/components/diagonal-stripes';
-import type { Composition, MediaElement } from '@/types/journal';
-import { DraggableSticker } from '@/components/draggable-sticker';
-import { Image } from 'expo-image';
-import { PlayCircle, Share, MapPin } from 'lucide-react-native';
-import { VinylRecord } from '@/components/vinyl-record';
-import { Logo } from '@/components/logo';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
-import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { usePathname } from 'expo-router';
+import React, { useRef, useState, useEffect } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  Platform,
+  useWindowDimensions,
+  Pressable,
+} from "react-native";
+import { useTheme } from "@/hooks/use-theme";
+import { DiagonalStripes } from "@/components/diagonal-stripes";
+import type { Composition, MediaElement } from "@/types/journal";
+import { DraggableSticker } from "@/components/draggable-sticker";
+import { Image } from "expo-image";
+import { PlayCircle, Share, MapPin } from "lucide-react-native";
+import { VinylRecord } from "@/components/vinyl-record";
+import { Logo } from "@/components/logo";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
+import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { usePathname } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 
 interface MemoryCardProps {
   item: Composition;
@@ -21,19 +29,53 @@ interface MemoryCardProps {
   isExporting?: boolean;
 }
 
-import { useJournalStore } from '@/hooks/use-journal';
-import { useSettingsStore } from '@/hooks/use-settings';
+import { useJournalStore } from "@/hooks/use-journal";
+import { useSettingsStore } from "@/hooks/use-settings";
 
-function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: MediaElement, cardWidth: number, theme: any, compositionId: number }) {
+function SingleAudioCard({
+  media,
+  cardWidth,
+  theme,
+  compositionId,
+}: {
+  media: MediaElement;
+  cardWidth: number;
+  theme: any;
+  compositionId: number;
+}) {
   const player = useAudioPlayer(media.uri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
-  const activeCompositionId = useJournalStore(s => s.activeCompositionId);
-  const autoPlayMusic = useSettingsStore(s => s.settings.autoPlayMusic);
+  // Guard: only attempt play when player has fully loaded the source
+  const isLoaded = status.isLoaded;
+  const activeCompositionId = useJournalStore((s) => s.activeCompositionId);
+  const isAppVisible = useJournalStore((s) => s.isAppVisible);
+  const autoPlayMusic = useSettingsStore((s) => s.settings.autoPlayMusic);
   const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
   const pathname = usePathname();
-  const isHomeScreen = pathname === '/';
+  const isHomeScreen = pathname === "/";
+  const posthog = usePostHog();
+  const hasTrackedPlay = React.useRef(false);
+
+  // Detect when the track has ended naturally (not paused, not playing, at end)
+  const duration = status.duration ?? 0;
+  const currentTime = status.currentTime ?? 0;
+  const hasEnded =
+    isLoaded && !isPlaying && duration > 0 && currentTime >= duration - 0.5;
+
+  // Safe play — seek to start first if track has ended, then play
+  const safeTryPlay = React.useCallback(() => {
+    if (!isLoaded) return;
+    try {
+      const dur = player.duration ?? 0;
+      const cur = player.currentTime ?? 0;
+      if (dur > 0 && cur >= dur - 0.5) {
+        player.seekTo(0);
+      }
+      player.play();
+    } catch (e) {}
+  }, [isLoaded, player]);
 
   useEffect(() => {
     autoPlayMusicRef.current = autoPlayMusic;
@@ -41,9 +83,22 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
 
   useEffect(() => {
     if (activeCompositionId === compositionId && isHomeScreen) {
-      if (autoPlayMusicRef.current && !hasAutoPlayed.current && !isPlaying) {
+      if (
+        isAppVisible &&
+        autoPlayMusicRef.current &&
+        !hasAutoPlayed.current &&
+        !isPlaying &&
+        isLoaded
+      ) {
         hasAutoPlayed.current = true;
-        player.play();
+        safeTryPlay();
+        if (!hasTrackedPlay.current) {
+          posthog?.capture("Audio Played", {
+            context: "single_audio_card",
+            auto_play: true,
+          });
+          hasTrackedPlay.current = true;
+        }
       }
     } else {
       if (!isHomeScreen) {
@@ -51,12 +106,22 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
       } else {
         hasAutoPlayed.current = false; // Reset when scrolled away
       }
-      
+
       if (isPlaying) {
-        player.pause();
+        try {
+          player.pause();
+        } catch (e) {}
       }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player, isHomeScreen]);
+  }, [
+    activeCompositionId,
+    compositionId,
+    isPlaying,
+    isLoaded,
+    player,
+    isHomeScreen,
+    safeTryPlay,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -68,26 +133,66 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
 
   const handlePress = () => {
     if (isPlaying) {
-      player.pause();
+      try {
+        player.pause();
+      } catch (e) {}
     } else {
-      player.play();
+      // If track ended naturally, reset hasAutoPlayed so it can play again
+      if (hasEnded) {
+        hasAutoPlayed.current = false;
+      }
+      safeTryPlay();
+      if (!hasTrackedPlay.current) {
+        posthog?.capture("Audio Played", {
+          context: "single_audio_card",
+          auto_play: false,
+        });
+        hasTrackedPlay.current = true;
+      }
     }
   };
 
   return (
-    <Pressable style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }} onPress={handlePress}>
-      <VinylRecord 
-        size={cardWidth - 80} 
-        isPlaying={isPlaying} 
-        isRecording={false} 
-        imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
+    <Pressable
+      style={{
+        flex: 1,
+        width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      onPress={handlePress}
+    >
+      <VinylRecord
+        size={cardWidth - 80}
+        isPlaying={isPlaying}
+        isRecording={false}
+        imageUrl={media.metadata?.artwork?.replace("100x100", "600x600")}
       />
       {media.metadata ? (
-        <View style={{ alignItems: 'center', marginTop: 24, paddingHorizontal: 16 }}>
-          <Text style={{ color: theme.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>
+        <View
+          style={{ alignItems: "center", marginTop: 24, paddingHorizontal: 16 }}
+        >
+          <Text
+            style={{
+              color: theme.text,
+              fontSize: 20,
+              fontWeight: "700",
+              textAlign: "center",
+            }}
+            numberOfLines={1}
+          >
             {media.metadata.title}
           </Text>
-          <Text style={{ color: theme.textMuted, fontSize: 15, fontWeight: '500', marginTop: 4, textAlign: 'center' }} numberOfLines={1}>
+          <Text
+            style={{
+              color: theme.textMuted,
+              fontSize: 15,
+              fontWeight: "500",
+              marginTop: 4,
+              textAlign: "center",
+            }}
+            numberOfLines={1}
+          >
             {media.metadata.artist}
           </Text>
         </View>
@@ -102,32 +207,52 @@ function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: Me
  * 2. Single Media: Hero image framed with text below.
  * 3. Canvas Mode (Multi-Media): Text centered, multiple media stickers freely draggable around it.
  */
-export function MemoryCard({ item, height, onUpdatePositions, isExporting }: MemoryCardProps) {
+export function MemoryCard({
+  item,
+  height,
+  onUpdatePositions,
+  isExporting,
+}: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  
+
   // Card has 21px padding on both sides based on the flatlist paddingHorizontal
   const cardWidth = width - 42;
-  const isDark = theme.background === '#000000' || theme.background === '#111111';
+  const isDark =
+    theme.background === "#0F0F0F" ||
+    theme.background === "#000000" ||
+    theme.background === "#111111";
 
-  const formattedTime = new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
+  const formattedTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(item.createdAt));
 
   const hasMedia = Boolean(item.mediaElements && item.mediaElements.length > 0);
-  const isSingleMedia = Boolean(item.mediaElements && item.mediaElements.length === 1);
-  const hasText = Boolean(item.textContent && item.textContent.trim().length > 0);
-
-  // Generate video thumbnail for single-media video cards
-  const singleMediaIsVideo = isSingleMedia && item.mediaElements[0].type === 'video';
-  const videoThumbnailUri = useVideoThumbnail(
-    singleMediaIsVideo ? item.mediaElements[0].uri : undefined
+  const isSingleMedia = Boolean(
+    item.mediaElements && item.mediaElements.length === 1,
+  );
+  const hasText = Boolean(
+    item.textContent && item.textContent.trim().length > 0,
   );
 
-  const handleDragEnd = (mediaId: string, newX: number, newY: number, newScale?: number) => {
+  // Generate video thumbnail for single-media video cards
+  const singleMediaIsVideo =
+    isSingleMedia && item.mediaElements[0].type === "video";
+  const videoThumbnailUri = useVideoThumbnail(
+    singleMediaIsVideo ? item.mediaElements[0].uri : undefined,
+  );
+
+  const handleDragEnd = (
+    mediaId: string,
+    newX: number,
+    newY: number,
+    newScale?: number,
+  ) => {
     const updatedMedia = item.mediaElements.map((m) =>
-      m.id === mediaId ? { ...m, x_pos: newX, y_pos: newY, scale: newScale ?? m.scale ?? 1 } : m
+      m.id === mediaId
+        ? { ...m, x_pos: newX, y_pos: newY, scale: newScale ?? m.scale ?? 1 }
+        : m,
     );
     onUpdatePositions(item.id, updatedMedia);
   };
@@ -146,31 +271,57 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
     >
       {/* LAYER 1: Stripes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DiagonalStripes color={isDark ? theme.border : "#D0D0D0"} opacity={isDark ? 0.12 : 0.5} animated />
+        <DiagonalStripes
+          color={isDark ? theme.border : "#D0D0D0"}
+          opacity={isDark ? 0.12 : 0.5}
+          animated
+        />
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
       <View style={{ flex: 1, zIndex: 1 }}>
         {!hasMedia && (
           <View style={styles.textWrapperAbsolute} pointerEvents="box-none">
-            <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
-              {hasText ? item.textContent.trim() : '[NO TEXT SAVED]'}
+            <Text
+              style={[
+                styles.textContent,
+                {
+                  color: theme.text,
+                  fontFamily: item.fontFamily || "JetBrainsMono-Regular",
+                  fontSize: item.fontSize || 21,
+                  lineHeight: (item.fontSize || 21) * 1.5,
+                },
+              ]}
+              numberOfLines={13}
+              ellipsizeMode="tail"
+            >
+              {hasText ? item.textContent.trim() : "[NO TEXT SAVED]"}
             </Text>
           </View>
         )}
 
         {isSingleMedia && (
           <View style={styles.singleMediaContainer} pointerEvents="box-none">
-            {item.mediaElements[0].type === 'audio' ? (
-              <SingleAudioCard media={item.mediaElements[0]} cardWidth={cardWidth} theme={theme} compositionId={item.id} />
+            {item.mediaElements[0].type === "audio" ? (
+              <SingleAudioCard
+                media={item.mediaElements[0]}
+                cardWidth={cardWidth}
+                theme={theme}
+                compositionId={item.id}
+              />
             ) : (
               <View style={styles.heroImageWrapper}>
-                <Image 
-                  source={{ uri: singleMediaIsVideo && videoThumbnailUri ? videoThumbnailUri : item.mediaElements[0].uri }} 
-                  style={StyleSheet.absoluteFill} 
-                  contentFit="cover" 
+                <Image
+                  source={{
+                    uri:
+                      singleMediaIsVideo && videoThumbnailUri
+                        ? videoThumbnailUri
+                        : item.mediaElements[0].uri,
+                  }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
                 />
-                {item.mediaElements[0].type === 'video' && (
+                {item.mediaElements[0].type === "video" && (
                   <View style={styles.videoBadge}>
                     <Text style={styles.videoBadgeText}>VIDEO</Text>
                     <PlayCircle size={10} color="#FFFFFF" />
@@ -179,8 +330,20 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
               </View>
             )}
             {hasText && (
-              <View style={{ flexShrink: 1, width: '100%' }}>
-                <Text style={[styles.singleMediaText, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 18, lineHeight: (item.fontSize || 18) * 1.4 }]} numberOfLines={8} ellipsizeMode="tail">
+              <View style={{ flexShrink: 1, width: "100%" }}>
+                <Text
+                  style={[
+                    styles.singleMediaText,
+                    {
+                      color: theme.text,
+                      fontFamily: item.fontFamily || "JetBrainsMono-Regular",
+                      fontSize: item.fontSize || 18,
+                      lineHeight: (item.fontSize || 18) * 1.4,
+                    },
+                  ]}
+                  numberOfLines={8}
+                  ellipsizeMode="tail"
+                >
                   {item.textContent.trim()}
                 </Text>
               </View>
@@ -191,20 +354,35 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
         {hasMedia && !isSingleMedia && (
           <View style={{ flex: 1 }} pointerEvents="box-none">
             <View style={styles.textWrapperAbsolute} pointerEvents="none">
-              <Text style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 21, lineHeight: (item.fontSize || 21) * 1.5 }]} numberOfLines={13} ellipsizeMode="tail">
+              <Text
+                style={[
+                  styles.textContent,
+                  {
+                    color: theme.text,
+                    fontFamily: item.fontFamily || "JetBrainsMono-Regular",
+                    fontSize: item.fontSize || 21,
+                    lineHeight: (item.fontSize || 21) * 1.5,
+                  },
+                ]}
+                numberOfLines={13}
+                ellipsizeMode="tail"
+              >
                 {item.textContent.trim()}
               </Text>
             </View>
-            
+
             {item.mediaElements.map((m) => (
-              <DraggableSticker 
-                key={m.id} 
-                media={m} 
-                onDragEnd={handleDragEnd} 
-                cardWidth={cardWidth} 
-                cardHeight={height} 
+              <DraggableSticker
+                key={m.id}
+                media={m}
+                onDragEnd={handleDragEnd}
+                cardWidth={cardWidth}
+                cardHeight={height}
                 compositionId={item.id}
-                isFirstAudio={m.id === (item.mediaElements.find(media => media.type === 'audio')?.id)}
+                isFirstAudio={
+                  m.id ===
+                  item.mediaElements.find((media) => media.type === "audio")?.id
+                }
               />
             ))}
           </View>
@@ -213,21 +391,35 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
 
       {/* LAYER 3: Time (Bottom) */}
       <View style={styles.timeRow} pointerEvents="box-none">
-        <View style={{ alignItems: 'center' }}>
-          <Text style={[styles.timeText, { color: theme.textMuted, marginBottom: item.location?.name ? 2 : 0 }]}>
+        <View style={{ alignItems: "center" }}>
+          <Text
+            style={[
+              styles.timeText,
+              {
+                color: theme.textMuted,
+                marginBottom: item.location?.name ? 2 : 0,
+              },
+            ]}
+          >
             {formattedTime}
           </Text>
           {item.location?.name && (
             <View style={styles.locationBadge}>
               <MapPin size={10} color={theme.textMuted} />
-              <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4 }]} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.timeText,
+                  { color: theme.textMuted, marginLeft: 4 },
+                ]}
+                numberOfLines={1}
+              >
                 {item.location.name.toUpperCase()}
               </Text>
             </View>
           )}
         </View>
       </View>
-      
+
       {/* LAYER 4: Logo Stamp (Only on Export) */}
       {isExporting && (
         <View style={styles.stamp} pointerEvents="none" collapsable={false}>
@@ -240,12 +432,12 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%',
+    width: "100%",
     borderRadius: 34,
     borderWidth: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
 
-    shadowColor: '#000000',
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
     shadowRadius: 12,
@@ -254,31 +446,31 @@ const styles = StyleSheet.create({
 
   // Strict absolute inset wrapper to enforce centering regardless of flex engine bugs
   textWrapperAbsolute: {
-    position: 'absolute',
+    position: "absolute",
     top: 24,
     bottom: 24,
     left: 24,
     right: 24,
-    justifyContent: 'center',
+    justifyContent: "center",
     zIndex: 1,
   },
 
   textContent: {
-    fontFamily: 'JetBrainsMono-Regular',
+    fontFamily: "JetBrainsMono-Regular",
     fontSize: 21,
     lineHeight: 34,
-    textAlign: 'center',
-    color: '#000000',
+    textAlign: "center",
+    color: "#000000",
   },
 
   timeRow: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 13,
     left: 20,
     right: 20,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
     gap: 2,
     zIndex: 20, // Above stickers
     ...Platform.select({
@@ -288,25 +480,25 @@ const styles = StyleSheet.create({
   },
 
   timeText: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: "JetBrainsMono-Medium",
     fontSize: 11,
     letterSpacing: 0.5,
   },
   locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flexShrink: 1,
   },
 
   shareBtn: {
-    position: 'absolute',
+    position: "absolute",
     right: 21,
     bottom: -5,
     padding: 4,
   },
 
   stamp: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 24,
     right: 24,
     opacity: 1, // Full opacity for stamp look
@@ -319,44 +511,44 @@ const styles = StyleSheet.create({
     padding: 21,
     paddingTop: 34,
     paddingBottom: 40, // Room for timestamp
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 21,
     zIndex: 1,
   },
   heroImageWrapper: {
     flex: 1,
-    width: '100%',
+    width: "100%",
     minHeight: 200,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: "rgba(0,0,0,0.1)",
   },
   singleMediaText: {
-    fontFamily: 'JetBrainsMono-Regular',
+    fontFamily: "JetBrainsMono-Regular",
     fontSize: 18,
-    textAlign: 'center',
-    color: '#000000',
+    textAlign: "center",
+    color: "#000000",
   },
   videoBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: "rgba(255,255,255,0.2)",
   },
   videoBadgeText: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: "JetBrainsMono-Bold",
     fontSize: 8,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     letterSpacing: 0.5,
   },
   // ─── Canvas Layout ───

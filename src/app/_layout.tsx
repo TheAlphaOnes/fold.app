@@ -8,7 +8,7 @@
  * All data stays on-device. Nothing is transmitted anywhere.
  */
 
-import { DefaultTheme, DarkTheme, Stack, ThemeProvider, useSegments, router } from 'expo-router';
+import { DefaultTheme, DarkTheme, Stack, ThemeProvider, useSegments, router, usePathname, useGlobalSearchParams } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -46,11 +46,40 @@ SplashScreen.preventAutoHideAsync();
 function PostHogSync() {
   const posthog = usePostHog();
   const { settings } = useSettingsStore();
+  const pathname = usePathname();
+  const params = useGlobalSearchParams();
   
   useEffect(() => {
     // Always ensure telemetry is on for bare-minimum growth tracking (app opens/views).
     // This undoes the previous optOut state so we can track growth anonymously.
     posthog?.optIn();
+  }, [posthog]);
+
+  // Track screen views
+  useEffect(() => {
+    if (posthog && pathname) {
+      posthog.screen(pathname, params as Record<string, any>);
+    }
+  }, [posthog, pathname, params]);
+
+  // Global Error Handler
+  useEffect(() => {
+    if (posthog) {
+      const defaultHandler = (ErrorUtils.getGlobalHandler && ErrorUtils.getGlobalHandler()) || ErrorUtils.getGlobalHandler();
+      
+      ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
+        posthog.capture('uncaught_exception', {
+          error_message: error.message,
+          error_name: error.name,
+          error_stack: error.stack,
+          is_fatal: isFatal ?? false
+        });
+        
+        if (defaultHandler) {
+          defaultHandler(error, isFatal);
+        }
+      });
+    }
   }, [posthog]);
   
   return null;
