@@ -20,7 +20,11 @@ function TrackPreviewPlayer({ url }: { url: string }) {
   useEffect(() => {
     player.play();
     return () => {
-      player.pause();
+      try {
+        player.pause();
+      } catch (e) {
+        // Ignored: The native shared object might have already been released
+      }
     };
   }, [player]);
   return null;
