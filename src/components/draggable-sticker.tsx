@@ -21,12 +21,22 @@ interface DraggableStickerProps {
   onDragEnd: (id: string, x: number, y: number, scale?: number) => void;
   cardWidth: number;
   cardHeight: number;
+  compositionId: number;
 }
 
-function CanvasAudioSticker({ media, composedGesture, animatedStyle }: { media: MediaElement, composedGesture: any, animatedStyle: any }) {
+import { useJournalStore } from '@/hooks/use-journal';
+
+function CanvasAudioSticker({ media, composedGesture, animatedStyle, compositionId }: { media: MediaElement, composedGesture: any, animatedStyle: any, compositionId: number }) {
   const player = useAudioPlayer(media.uri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
+  const activeCompositionId = useJournalStore(s => s.activeCompositionId);
+
+  useEffect(() => {
+    if (activeCompositionId !== compositionId && isPlaying) {
+      player.pause();
+    }
+  }, [activeCompositionId, compositionId, isPlaying, player]);
 
   useEffect(() => {
     return () => {
@@ -74,7 +84,7 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle }: { media: 
   );
 }
 
-export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: DraggableStickerProps) {
+export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight, compositionId }: DraggableStickerProps) {
   const theme = useTheme();
   const videoThumbnailUri = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
 
@@ -155,7 +165,7 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
   });
 
   if (media.type === 'audio' && media.metadata) {
-    return <CanvasAudioSticker media={media} composedGesture={composed} animatedStyle={animatedStyle} />;
+    return <CanvasAudioSticker media={media} composedGesture={composed} animatedStyle={animatedStyle} compositionId={compositionId} />;
   }
 
   return (

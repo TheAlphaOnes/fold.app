@@ -15,8 +15,10 @@ interface JournalState {
   loading: boolean;
   error: Error | null;
   targetDate: Date;
+  activeCompositionId: number | null;
   
   setTargetDate: (date: Date) => void;
+  setActiveCompositionId: (id: number | null) => void;
   refresh: () => Promise<void>;
   addComposition: (input: CreateCompositionInput) => Promise<void>;
   updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
@@ -29,10 +31,15 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   loading: true,
   error: null,
   targetDate: new Date(),
+  activeCompositionId: null,
 
   setTargetDate: (date: Date) => {
     set({ targetDate: date });
     get().refresh();
+  },
+
+  setActiveCompositionId: (id: number | null) => {
+    set({ activeCompositionId: id });
   },
 
   refresh: async () => {

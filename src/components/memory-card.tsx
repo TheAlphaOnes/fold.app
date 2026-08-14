@@ -20,10 +20,19 @@ interface MemoryCardProps {
   isExporting?: boolean;
 }
 
-function SingleAudioCard({ media, cardWidth, theme }: { media: MediaElement, cardWidth: number, theme: any }) {
+import { useJournalStore } from '@/hooks/use-journal';
+
+function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: MediaElement, cardWidth: number, theme: any, compositionId: number }) {
   const player = useAudioPlayer(media.uri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
+  const activeCompositionId = useJournalStore(s => s.activeCompositionId);
+
+  useEffect(() => {
+    if (activeCompositionId !== compositionId && isPlaying) {
+      player.pause();
+    }
+  }, [activeCompositionId, compositionId, isPlaying, player]);
 
   useEffect(() => {
     return () => {
@@ -129,7 +138,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
         {isSingleMedia && (
           <View style={styles.singleMediaContainer} pointerEvents="box-none">
             {item.mediaElements[0].type === 'audio' ? (
-              <SingleAudioCard media={item.mediaElements[0]} cardWidth={cardWidth} theme={theme} />
+              <SingleAudioCard media={item.mediaElements[0]} cardWidth={cardWidth} theme={theme} compositionId={item.id} />
             ) : (
               <View style={styles.heroImageWrapper}>
                 <Image 
@@ -170,6 +179,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
                 onDragEnd={handleDragEnd} 
                 cardWidth={cardWidth} 
                 cardHeight={height} 
+                compositionId={item.id}
               />
             ))}
           </View>

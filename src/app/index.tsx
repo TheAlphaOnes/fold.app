@@ -98,7 +98,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { compositions, loading, refresh, updatePositions, setTargetDate, addComposition } = useJournalStore();
+  const { compositions, loading, refresh, updatePositions, setTargetDate, addComposition, setActiveCompositionId } = useJournalStore();
   
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
@@ -254,11 +254,14 @@ export default function HomeScreen() {
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
       const centerItem = viewableItems.find((v: any) => v.isViewable) || viewableItems[0];
-      if (centerItem && centerItem.item && centerItem.item.createdAt) {
-        const parsed = new Date(centerItem.item.createdAt);
-        // Only update if the parsed date is actually valid
-        if (!isNaN(parsed.getTime())) {
-          setActiveDate(parsed);
+      if (centerItem && centerItem.item) {
+        setActiveCompositionId(centerItem.item.id);
+        if (centerItem.item.createdAt) {
+          const parsed = new Date(centerItem.item.createdAt);
+          // Only update if the parsed date is actually valid
+          if (!isNaN(parsed.getTime())) {
+            setActiveDate(parsed);
+          }
         }
       }
     }
