@@ -447,75 +447,7 @@ export default function ComposeScreen() {
                 {timeString}
               </ThemedText>
             </View>
-            
-            <View style={styles.metaActionsRow}>
-              <Pressable 
-                onPress={handleRecordToggle}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 }
-                ]}
-              >
-                <Mic size={18} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Record
-                </ThemedText>
-              </Pressable>
-
-              <Pressable 
-                onPress={handleAttachMedia}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 }
-                ]}
-              >
-                <ImageIcon size={18} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Attach
-                </ThemedText>
-              </Pressable>
-
-              <Pressable 
-                onPress={() => setIsMusicPickerVisible(true)}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 }
-                ]}
-              >
-                <Music size={18} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Music
-                </ThemedText>
-              </Pressable>
-
-              {!settings.autoLocationTagging && !locationName && (
-                <Pressable 
-                  onPress={fetchLocation}
-                  disabled={isFetchingLocation}
-                  style={({ pressed }) => [
-                    styles.attachButton,
-                    { opacity: pressed || isFetchingLocation ? 0.5 : 1 }
-                  ]}
-                >
-                  <MapPin size={18} color={theme.textMuted} />
-                  <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                    {isFetchingLocation ? 'Locating' : 'Location'}
-                  </ThemedText>
-                </Pressable>
-              )}
-
-              {locationName && (
-                <View style={styles.locationBadge}>
-                  <MapPin size={12} color={theme.textMuted} />
-                  <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
-                    {locationName.toUpperCase()}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
           </View>
-
-
 
           {/* Divider — thin, quiet */}
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
@@ -579,8 +511,36 @@ export default function ComposeScreen() {
           )}
         </ScrollView>
 
+        <View style={[styles.bottomToolbar, { borderTopColor: theme.border }]}>
+          <View style={styles.bottomToolbarActions}>
+            <Pressable onPress={handleRecordToggle} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
+              <Mic size={22} color={theme.textMuted} />
+            </Pressable>
+            <Pressable onPress={handleAttachMedia} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
+              <ImageIcon size={22} color={theme.textMuted} />
+            </Pressable>
+            <Pressable onPress={() => setIsMusicPickerVisible(true)} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed ? 0.5 : 1 }]}>
+              <Music size={22} color={theme.textMuted} />
+            </Pressable>
+            {!settings.autoLocationTagging && !locationName && (
+              <Pressable onPress={fetchLocation} disabled={isFetchingLocation} style={({ pressed }) => [styles.bottomToolbarButton, { opacity: pressed || isFetchingLocation ? 0.5 : 1 }]}>
+                <MapPin size={22} color={theme.textMuted} />
+              </Pressable>
+            )}
+          </View>
+          
+          {locationName && (
+            <View style={styles.locationBadge}>
+              <MapPin size={12} color={theme.textMuted} />
+              <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
+                {locationName.toUpperCase()}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+
         {/* Bottom safe area pad */}
-        <View style={{ height: insets.bottom }} />
+        <View style={{ height: insets.bottom || 12 }} />
       </KeyboardAvoidingView>
 
       {/* Full-screen recording overlay using Modal for guaranteed centering and top-level z-index */}
@@ -683,33 +643,13 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  metaActionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
   metaLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  attachButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-  },
-  attachText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 12,
-  },
   metaDate: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 12,
     letterSpacing: 0.3,
   },
   metaDot: {
@@ -808,5 +748,23 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: '#878787',
+  },
+  bottomToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  bottomToolbarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  bottomToolbarButton: {
+    padding: 8,
+    backgroundColor: 'rgba(128,128,128,0.08)',
+    borderRadius: 12,
   },
 });
