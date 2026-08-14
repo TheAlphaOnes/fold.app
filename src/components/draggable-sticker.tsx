@@ -131,8 +131,9 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
         styles.sticker, 
         media.type !== 'audio' && { 
           backgroundColor: theme.backgroundElement,
-          borderColor: theme.borderStrong,
-          borderWidth: 3, 
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: 'rgba(0,0,0,0.05)',
         }, 
         media.type === 'audio' && {
           backgroundColor: 'transparent',
@@ -177,6 +178,7 @@ const styles = StyleSheet.create({
   innerFrame: {
     flex: 1,
     overflow: 'hidden',
+    borderRadius: 11, // Slightly less than the outer card to fit perfectly inside the border
   },
   image: {
     width: '100%',
