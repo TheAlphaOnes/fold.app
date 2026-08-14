@@ -107,9 +107,9 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
     minute: '2-digit',
   }).format(new Date(item.createdAt));
 
-  const hasMedia = item.mediaElements && item.mediaElements.length > 0;
-  const isSingleMedia = item.mediaElements && item.mediaElements.length === 1;
-  const hasText = item.textContent && item.textContent.trim().length > 0;
+  const hasMedia = Boolean(item.mediaElements && item.mediaElements.length > 0);
+  const isSingleMedia = Boolean(item.mediaElements && item.mediaElements.length === 1);
+  const hasText = Boolean(item.textContent && item.textContent.trim().length > 0);
 
   // Generate video thumbnail for single-media video cards
   const singleMediaIsVideo = isSingleMedia && item.mediaElements[0].type === 'video';
