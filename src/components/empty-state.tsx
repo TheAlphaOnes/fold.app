@@ -18,20 +18,20 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-// Clean, minimal ASCII card — no box-drawing chars that break across fonts.
-// Pure ASCII only, evokes a blank card waiting to be filled.
-const ASCII_ART = `
-  .-----------------------------.
-  |                             |
-  |                             |
-  |       - - - - - - - -       |
-  |       - - - - - - - -       |
-  |       - - - - - - - -       |
-  |                             |
-  |            . . .            |
-  |                             |
-  '-----------------------------'
-`.trim();
+// Clean, minimal ASCII card — uses only basic ASCII that renders
+// consistently across ALL Android font configurations.
+const ASCII_ART = [
+  '  .----------------------------.',
+  '  |                            |',
+  '  |                            |',
+  '  |      - - - - - - - -      |',
+  '  |      - - - - - - - -      |',
+  '  |      - - - - - - - -      |',
+  '  |                            |',
+  '  |           . . .            |',
+  '  |                            |',
+  "  '----------------------------'",
+].join('\n');
 
 export function EmptyState() {
   // Staggered fade-in animations at different rates

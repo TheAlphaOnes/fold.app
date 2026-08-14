@@ -11,7 +11,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import type { MediaElement } from '@/types/journal';
-
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { useTheme } from '@/hooks/use-theme';
 
 interface DraggableStickerProps {
@@ -23,6 +23,7 @@ interface DraggableStickerProps {
 
 export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: DraggableStickerProps) {
   const theme = useTheme();
+  const videoThumbnailUri = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
 
   const STICKER_WIDTH = 90;
   const STICKER_HEIGHT = 120;
@@ -122,21 +123,15 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
             </View>
           ) : (
             <Image
-              source={{ uri: media.uri }}
+              source={{ uri: media.type === 'video' && videoThumbnailUri ? videoThumbnailUri : media.uri }}
               style={styles.image}
               contentFit="cover"
             />
           )}
+
           {media.type === 'video' && (
             <View style={styles.videoOverlay}>
               <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
-            </View>
-          )}
-          {media.isCinematic && media.type !== 'audio' && (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-              <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
-              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
             </View>
           )}
         </View>

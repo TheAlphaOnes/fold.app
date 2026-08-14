@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS compositions (
   media_elements TEXT    NOT NULL, -- JSON string
   created_at     INTEGER NOT NULL,
   font_family    TEXT    DEFAULT 'JetBrainsMono-Regular',
-  font_size      INTEGER DEFAULT 21
+  font_size      INTEGER DEFAULT 21,
+  location_name  TEXT,
+  location_coords TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_compositions_created_at
@@ -37,6 +39,18 @@ export async function initSchema(db: SQLiteDatabase): Promise<void> {
   } catch (e: any) {
     if (!e.message?.includes('duplicate column name')) throw e;
   }
+
+  try {
+    await db.execAsync("ALTER TABLE compositions ADD COLUMN location_name TEXT;");
+  } catch (e: any) {
+    if (!e.message?.includes('duplicate column name')) throw e;
+  }
+
+  try {
+    await db.execAsync("ALTER TABLE compositions ADD COLUMN location_coords TEXT;");
+  } catch (e: any) {
+    if (!e.message?.includes('duplicate column name')) throw e;
+  }
 }
 
 export function mapRow(row: unknown): CompositionRow {
@@ -48,5 +62,7 @@ export function mapRow(row: unknown): CompositionRow {
     created_at: Number(r.created_at),
     font_family: r.font_family ? String(r.font_family) : 'JetBrainsMono-Regular',
     font_size: r.font_size ? Number(r.font_size) : 21,
+    location_name: r.location_name ? String(r.location_name) : undefined,
+    location_coords: r.location_coords ? String(r.location_coords) : undefined,
   };
 }

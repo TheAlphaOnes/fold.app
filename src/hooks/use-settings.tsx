@@ -10,6 +10,7 @@ export interface UserSettings {
   requireBiometrics: boolean;
   privacyScreen: boolean;
   hasOnboarded: boolean;
+  autoLocationTagging: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -20,6 +21,7 @@ const defaultSettings: UserSettings = {
   requireBiometrics: false,
   privacyScreen: false,
   hasOnboarded: false,
+  autoLocationTagging: false,
 };
 
 interface SettingsState {
@@ -47,6 +49,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           requireBiometrics: stored.requireBiometrics === 'true',
           privacyScreen: stored.privacyScreen === 'true',
           hasOnboarded: stored.hasOnboarded === 'true',
+          autoLocationTagging: stored.autoLocationTagging === 'true',
         },
         loading: false
       });

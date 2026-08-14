@@ -15,7 +15,6 @@ export interface PendingMedia {
   type: 'image' | 'video';
   width: number;
   height: number;
-  isCinematic?: boolean;
 }
 
 let _pending: PendingMedia | null = null;

@@ -9,9 +9,10 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 
-interface CleanInputProps extends TextInputProps {
+interface CleanInputProps extends Omit<TextInputProps, 'style'> {
   value: string;
   placeholder?: string;
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
 }
 
 export function CleanInput({ value, placeholder, style, onFocus, onBlur, ...props }: CleanInputProps) {

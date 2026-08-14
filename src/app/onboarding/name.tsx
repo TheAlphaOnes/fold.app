@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
@@ -37,14 +38,16 @@ export default function OnboardingNameScreen() {
           
           <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             
-            {/* Easter Egg ASCII: Master Sword */}
-            <View style={styles.asciiContainer}>
-              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
-{`o=={:::::::::::>`}
-              </ThemedText>
-            </View>
+            <View style={styles.topSpacer} />
 
-            <View style={styles.centerSection}>
+            {/* Easter Egg ASCII: Master Sword */}
+            <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
+              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
+{`o=={::::::::::>`}
+              </ThemedText>
+            </Animated.View>
+
+            <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
               <View style={styles.header}>
                 <ThemedText style={[styles.title, { color: fg }]}>IDENTIFY</ThemedText>
                 <ThemedText style={[styles.subtitle, { color: mutedText }]}>
@@ -62,14 +65,16 @@ export default function OnboardingNameScreen() {
                   autoFocus
                 />
               </View>
-            </View>
+            </Animated.View>
 
-            <View style={styles.ctaContainer}>
+            <View style={styles.bottomSpacer} />
+
+            <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
               <ActionLink 
                 text="CONTINUE" 
                 onPress={handleNext} 
               />
-            </View>
+            </Animated.View>
 
           </View>
         </View>
@@ -85,13 +90,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
     alignItems: 'center',
   },
+  topSpacer: {
+    flex: 1,
+  },
+  bottomSpacer: {
+    flex: 1.5,
+  },
   asciiContainer: {
-    position: 'absolute',
-    top: 100,
     alignItems: 'center',
+    marginBottom: 40,
     width: '100%',
   },
   asciiText: {
@@ -111,6 +120,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 32,
+    lineHeight: 44,
     letterSpacing: 4,
   },
   subtitle: {
@@ -123,7 +133,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ctaContainer: {
-    position: 'absolute',
-    bottom: 60,
+    marginBottom: 60,
   },
 });

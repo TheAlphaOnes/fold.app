@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import Svg, { Line, Defs, Pattern, Rect } from 'react-native-svg';
+import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 
 interface DoubleDiagonalStripesProps {
   /** Stroke color for the lines */
@@ -71,25 +71,25 @@ export function DoubleDiagonalStripes({
             width="15"
             height="15"
             patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-45)"
           >
-            {/* First line in the pair (shifted by 1 to prevent edge clipping) */}
-            <Line
-              x1="1"
-              y1="0"
-              x2="1"
-              y2="15"
+            {/* 
+              Using pre-calculated 45-degree paths instead of rotated <Line>s 
+              fixes aliasing / stitching artifacts on iOS CoreGraphics.
+              Direction is \ (top-left to bottom-right).
+              Line 1: y = x, Line 2: y = x - 6.
+            */}
+            <Path
+              d="
+                M-2,-2 L17,17
+                M13,-2 L17,2
+                M-2,13 L2,17
+                
+                M4,-2 L17,11
+                M-2,7 L8,17
+              "
               stroke={color}
               strokeWidth="1"
-            />
-            {/* Second line in the pair (5px gap) */}
-            <Line
-              x1="7"
-              y1="0"
-              x2="7"
-              y2="15"
-              stroke={color}
-              strokeWidth="1"
+              strokeLinecap="square"
             />
           </Pattern>
         </Defs>

@@ -7,7 +7,12 @@ export interface MediaElement {
   width?: number;
   height?: number;
   scale?: number;
-  isCinematic?: boolean;
+}
+
+export interface LocationData {
+  latitude: number;
+  longitude: number;
+  name?: string; // e.g. city or neighborhood name
 }
 
 export interface CompositionRow {
@@ -17,6 +22,8 @@ export interface CompositionRow {
   created_at: number;
   font_family: string;
   font_size: number;
+  location_name?: string;
+  location_coords?: string; // JSON string of LocationData
 }
 
 export interface Composition {
@@ -26,4 +33,5 @@ export interface Composition {
   createdAt: number;
   fontFamily: string;
   fontSize: number;
+  location?: LocationData;
 }

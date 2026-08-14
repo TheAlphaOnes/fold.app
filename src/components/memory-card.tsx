@@ -5,11 +5,12 @@ import { DiagonalStripes } from '@/components/diagonal-stripes';
 import type { Composition, MediaElement } from '@/types/journal';
 import { DraggableSticker } from '@/components/draggable-sticker';
 import { Image } from 'expo-image';
-import { PlayCircle, Share } from 'lucide-react-native';
+import { PlayCircle, Share, MapPin } from 'lucide-react-native';
 import { VinylRecord } from '@/components/vinyl-record';
 import { Logo } from '@/components/logo';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 
 interface MemoryCardProps {
   item: Composition;
@@ -30,6 +31,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
   
   // Card has 21px padding on both sides based on the flatlist paddingHorizontal
   const cardWidth = width - 42;
+  const isDark = theme.background === '#000000' || theme.background === '#111111';
 
   const formattedTime = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
@@ -39,6 +41,12 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
   const hasMedia = item.mediaElements && item.mediaElements.length > 0;
   const isSingleMedia = item.mediaElements && item.mediaElements.length === 1;
   const hasText = item.textContent && item.textContent.trim().length > 0;
+
+  // Generate video thumbnail for single-media video cards
+  const singleMediaIsVideo = isSingleMedia && item.mediaElements[0].type === 'video';
+  const videoThumbnailUri = useVideoThumbnail(
+    singleMediaIsVideo ? item.mediaElements[0].uri : undefined
+  );
 
   const handleDragEnd = (mediaId: string, newX: number, newY: number, newScale?: number) => {
     const updatedMedia = item.mediaElements.map((m) =>
@@ -61,7 +69,7 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
     >
       {/* LAYER 1: Stripes */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <DiagonalStripes color={theme.isDark ? theme.border : "#D0D0D0"} opacity={theme.isDark ? 0.12 : 0.5} animated />
+        <DiagonalStripes color={isDark ? theme.border : "#D0D0D0"} opacity={isDark ? 0.12 : 0.5} animated />
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
@@ -85,12 +93,13 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
                   <VinylRecord size={120} isPlaying={false} isRecording={false} />
                 </View>
               ) : (
-                <Image 
-                  source={{ uri: item.mediaElements[0].uri }} 
+              <Image 
+                  source={{ uri: singleMediaIsVideo && videoThumbnailUri ? videoThumbnailUri : item.mediaElements[0].uri }} 
                   style={StyleSheet.absoluteFill} 
                   contentFit="cover" 
                 />
               )}
+
               {item.mediaElements[0].type === 'video' && (
                 <View style={styles.videoBadge}>
                   <Text style={styles.videoBadgeText}>VIDEO</Text>
@@ -131,6 +140,14 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
 
       {/* LAYER 3: Time (Bottom) */}
       <View style={styles.timeRow} pointerEvents="box-none">
+        {item.location?.name && (
+          <View style={styles.locationBadge}>
+            <MapPin size={10} color={theme.textMuted} />
+            <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4, marginRight: 6 }]} numberOfLines={1}>
+              {item.location.name.toUpperCase()} •
+            </Text>
+          </View>
+        )}
         <Text style={[styles.timeText, { color: theme.textMuted }]}>
           {formattedTime}
         </Text>
@@ -183,8 +200,10 @@ const styles = StyleSheet.create({
   timeRow: {
     position: 'absolute',
     bottom: 13,
-    left: 0,
-    right: 0,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20, // Above stickers
     ...Platform.select({
@@ -195,8 +214,13 @@ const styles = StyleSheet.create({
 
   timeText: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 13,
+    fontSize: 11,
     letterSpacing: 0.5,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
   },
 
   shareBtn: {

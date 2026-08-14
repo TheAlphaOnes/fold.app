@@ -6,6 +6,7 @@ import { X, Share, Trash2, Moon, Sun, Smartphone } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as Location from 'expo-location';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
@@ -206,6 +207,29 @@ export default function SettingsScreen() {
             <Switch
               value={settings.dataCollection}
               onValueChange={(val) => updateSetting('dataCollection', val)}
+              trackColor={{ false: theme.border, true: '#FF4B00' }}
+              thumbColor={theme.background}
+            />
+          </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingRowLeft}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO LOCATION TAGGING</ThemedText>
+            </View>
+            <Switch
+              value={settings.autoLocationTagging}
+              onValueChange={async (val) => {
+                if (val) {
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  if (status !== 'granted') {
+                    Alert.alert('Permission Denied', 'Location permission is required for auto tagging.');
+                    return;
+                  }
+                }
+                updateSetting('autoLocationTagging', val);
+              }}
               trackColor={{ false: theme.border, true: '#FF4B00' }}
               thumbColor={theme.background}
             />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, TextInput, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
@@ -66,8 +67,10 @@ export default function OnboardingDobScreen() {
           
           <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             
+            <View style={styles.topSpacer} />
+
             {/* Easter Egg ASCII: Robot */}
-            <View style={styles.asciiContainer}>
+            <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
               <ThemedText style={[styles.asciiText, { color: mutedText }]}>
 {`  .-------.
   |  o o  |
@@ -75,9 +78,9 @@ export default function OnboardingDobScreen() {
   |  ___  |
   '-------'`}
               </ThemedText>
-            </View>
+            </Animated.View>
 
-            <View style={styles.centerSection}>
+            <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
               <View style={styles.header}>
                 <ThemedText style={[styles.title, { color: fg }]}>ACTIVATION</ThemedText>
                 <ThemedText style={[styles.subtitle, { color: mutedText }]}>
@@ -95,14 +98,16 @@ export default function OnboardingDobScreen() {
                   autoFocus
                 />
               </View>
-            </View>
+            </Animated.View>
 
-            <View style={styles.ctaContainer}>
+            <View style={styles.bottomSpacer} />
+
+            <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
               <ActionLink 
                 text="INITIALIZE SYSTEM" 
                 onPress={handleComplete} 
               />
-            </View>
+            </Animated.View>
 
           </View>
         </View>
@@ -118,13 +123,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
     alignItems: 'center',
   },
+  topSpacer: {
+    flex: 1,
+  },
+  bottomSpacer: {
+    flex: 1.5,
+  },
   asciiContainer: {
-    position: 'absolute',
-    top: 100,
     alignItems: 'center',
+    marginBottom: 40,
     width: '100%',
   },
   asciiText: {
@@ -144,6 +153,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 32,
+    lineHeight: 44,
     letterSpacing: 4,
   },
   subtitle: {
@@ -156,7 +166,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   ctaContainer: {
-    position: 'absolute',
-    bottom: 60,
+    marginBottom: 60,
   },
 });

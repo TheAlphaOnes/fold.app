@@ -196,12 +196,19 @@ export default function HomeScreen() {
         await recorder.stop();
         const uri = recorder.uri;
         if (uri) {
+          // Copy to safe document directory
+          const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+          const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
+          const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+          
+          await FileSystem.copyAsync({ from: uri, to: dest });
+
           const newMedia = {
             id: Math.random().toString(36).substring(2, 9),
-            uri,
+            uri: dest,
             type: 'audio' as const,
             x_pos: 30 + Math.random() * (width - 150),
-            y_pos: 30 + Math.random() * (height - 150),
+            y_pos: 30 + Math.random() * (height - 200),
           };
           // Instant save as a memory
           await addComposition({
@@ -223,19 +230,22 @@ export default function HomeScreen() {
   // Auto-scroll to the bottom when a new item is added
   const [activeDate, setActiveDate] = useState(() => new Date());
 
-  const dateParts = useMemo(() => {
+  // Compute the date string to display. Use activeDate if valid, else today.
+  // This is a plain function, not useMemo, to guarantee it always produces output.
+  const getDateString = (): string => {
     let date = activeDate;
-    // Check for Invalid Date
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       date = new Date();
     }
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const day = days[date.getDay()];
-    const d = String(date.getDate()).padStart(2, '0');
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const y = date.getFullYear();
-    return { day, fullDate: `${d}.${m}.${y}` };
-  }, [activeDate]);
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(date.getFullYear()); // Explicit String() cast
+    return `${day}  ${dd}.${mm}.${yyyy}`;
+  };
+
+  const dateDisplayString = getDateString();
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -243,10 +253,13 @@ export default function HomeScreen() {
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
-      // Find the most visible item
       const centerItem = viewableItems.find((v: any) => v.isViewable) || viewableItems[0];
       if (centerItem && centerItem.item && centerItem.item.createdAt) {
-        setActiveDate(new Date(centerItem.item.createdAt));
+        const parsed = new Date(centerItem.item.createdAt);
+        // Only update if the parsed date is actually valid
+        if (!isNaN(parsed.getTime())) {
+          setActiveDate(parsed);
+        }
       }
     }
   }).current;
@@ -340,8 +353,12 @@ export default function HomeScreen() {
       {/* Floating bottom bar with Date and Add Button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dateContainer}>
-          <Text style={[styles.dateText, { color: theme.textMuted }]}>
-            {`${dateParts.day} ${dateParts.fullDate}`}
+          <Text 
+            style={[styles.dateText, { color: theme.textMuted }]}
+            numberOfLines={1}
+            allowFontScaling={false}
+          >
+            {dateDisplayString}
           </Text>
         </View>
         <AddButton 
@@ -401,8 +418,9 @@ const styles = StyleSheet.create({
   dateText: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 14,
-    color: '#878787', // Technical gray
-    letterSpacing: 1,
+    color: '#878787',
+    minWidth: 200, // Guarantees enough width for "fri  14.08.2026" to never clip
+    textAlign: 'center',
   },
   tabB: {
     position: 'absolute',

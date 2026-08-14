@@ -5,7 +5,7 @@ import { getCompositionById } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText, MapPin } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -15,14 +15,12 @@ import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
-import { FFmpegKit, ReturnCode } from 'ffmpeg-kit-react-native';
-import * as FileSystem from 'expo-file-system/legacy';
-import { ActivityIndicator } from 'react-native';
 
 // --- Types ---
 type SlideData =
@@ -95,13 +93,7 @@ function VideoSlide({ media, width, height, isActive }: { media: MediaElement; w
         contentFit="contain" 
         nativeControls={false}
       />
-      {media.isCinematic && (
-        <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-          <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-          <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
-          <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-        </View>
-      )}
+
     </Pressable>
   );
 }
@@ -251,13 +243,6 @@ function MediaSlide({ media, width, height, isActive }: { media: MediaElement; w
             style={{ flex: 1 }} 
             contentFit="contain" 
           />
-          {media.isCinematic && (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-              <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
-              <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-            </View>
-          )}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -274,8 +259,6 @@ export default function MemoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const hiddenPhotoRef = useRef<View>(null);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -304,58 +287,7 @@ export default function MemoryDetailScreen() {
     );
   };
 
-  const processCinematicMediaIfNeeded = async (media: MediaElement): Promise<string> => {
-    if (!media.isCinematic) return media.uri;
-
-    const ext = media.type === 'video' ? 'mp4' : 'jpg';
-    
-    // For images, we can use the clever captureRef trick instantly
-    if (media.type === 'image' && hiddenPhotoRef.current) {
-      try {
-        setIsProcessing(true);
-        // Ensure it's rendered
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const uri = await captureRef(hiddenPhotoRef, {
-          format: 'jpg',
-          quality: 1,
-        });
-        return uri;
-      } catch (e) {
-        console.error('Failed to capture cinematic photo:', e);
-        return media.uri;
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-
-    // For videos, we must use FFmpeg
-    const outUri = `${FileSystem.cacheDirectory}cinematic_export_${Date.now()}.${ext}`;
-    
-    // 31.25% letterboxing (3:2 ratio inside 16:9)
-    // We also add a subtle warm tint using colorbalance
-    const vf = `colorbalance=rm=0.08:gm=0.04:bm=-0.02, drawbox=y=0:color=black:width=iw:height=ih*0.3125:t=fill, drawbox=y=ih*0.6875:color=black:width=iw:height=ih*0.3125:t=fill`;
-    
-    const command = `-i "${media.uri}" -vf "${vf}" -c:a copy -y "${outUri}"`;
-
-    try {
-      setIsProcessing(true);
-      const session = await FFmpegKit.execute(command);
-      const returnCode = await session.getReturnCode();
-      if (ReturnCode.isSuccess(returnCode)) {
-        return outUri;
-      } else {
-        console.error('FFmpeg process failed');
-        return media.uri;
-      }
-    } catch (e) {
-      console.error('FFmpeg error', e);
-      return media.uri;
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSaveMedia = async (media: MediaElement) => {
+  const handleSaveMedia = async (uri: string) => {
     try {
       const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
       
@@ -367,9 +299,8 @@ export default function MemoryDetailScreen() {
             { 
               text: 'OK', 
               onPress: async () => {
-                const finalUri = await processCinematicMediaIfNeeded(media);
                 const isAvailable = await Sharing.isAvailableAsync();
-                if (isAvailable) await Sharing.shareAsync(finalUri);
+                if (isAvailable) await Sharing.shareAsync(uri);
               } 
             }
           ]
@@ -384,8 +315,17 @@ export default function MemoryDetailScreen() {
         return;
       }
       
-      const finalUri = await processCinematicMediaIfNeeded(media);
-      await MediaLibrary.saveToLibraryAsync(finalUri);
+      // Check if file exists first (old memories might have used temp URIs that got cleared)
+      const fileInfo = await FileSystem.getInfoAsync(uri);
+      if (!fileInfo.exists) {
+        Alert.alert(
+          'File Unavailable',
+          'The original high-resolution file is no longer available on this device. This can happen with older memories where the temporary file was cleared by the OS.'
+        );
+        return;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Saved', 'Saved to your gallery.');
     } catch (e) {
       console.error('Save failed:', e);
@@ -424,8 +364,7 @@ export default function MemoryDetailScreen() {
       if (current.type === 'media') {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          const finalUri = await processCinematicMediaIfNeeded(current.media);
-          await Sharing.shareAsync(finalUri);
+          await Sharing.shareAsync(current.media.uri);
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
         }
@@ -489,7 +428,7 @@ export default function MemoryDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Hidden card for capturing as image */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, left: -9999, width, height: cardHeight }}>
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
         <View 
           ref={hiddenCardRef} 
           collapsable={false} 
@@ -502,26 +441,6 @@ export default function MemoryDetailScreen() {
             isExporting={true}
           />
         </View>
-      </View>
-
-      {/* Hidden view for capturing cinematic photos instantly */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -101, left: -9999, width: 1080, height: 1920 }}>
-        {slides[currentIndex]?.type === 'media' && (slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.type === 'image' && (
-          <View ref={hiddenPhotoRef} collapsable={false} style={{ width: 1080, height: 1920, backgroundColor: '#000' }}>
-            <Image 
-              source={{ uri: (slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri }} 
-              style={{ flex: 1 }} 
-              contentFit="cover" 
-            />
-            {(slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.isCinematic && (
-              <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-                <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-                <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
-                <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-              </View>
-            )}
-          </View>
-        )}
       </View>
 
       <FlatList
@@ -579,7 +498,7 @@ export default function MemoryDetailScreen() {
                   opacity: pressed ? 0.5 : 1,
                 }
               ]}
-              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media)}
+              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
             >
               <Download size={16} color={theme.text} />
             </Pressable>
@@ -601,27 +520,38 @@ export default function MemoryDetailScreen() {
         </View>
       </View>
 
-      {/* Slide Indicator (TE Beads) */}
-      {slides.length > 1 && (
-        <View style={[styles.indicatorContainer, { bottom: insets.bottom + 24 }]}>
-          {slides.map((_, index) => {
-            const isActive = index === currentIndex;
-            return (
-              <View 
-                key={index} 
-                style={[
-                  styles.bead, 
-                  isActive ? styles.beadActive : styles.beadInactive,
-                  { 
-                    backgroundColor: isActive ? theme.accent : 'transparent',
-                    borderColor: isActive ? theme.accent : theme.text 
-                  }
-                ]} 
-              />
-            );
-          })}
-        </View>
-      )}
+      {/* Bottom Bar: Location & Slide Indicator */}
+      <View style={[styles.bottomBar, { bottom: insets.bottom + 24 }]}>
+        {composition.location?.name && (
+          <View style={styles.locationBadge}>
+            <MapPin size={12} color={theme.textMuted} />
+            <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
+              {composition.location.name.toUpperCase()}
+            </Text>
+          </View>
+        )}
+        
+        {slides.length > 1 && (
+          <View style={styles.indicatorContainer}>
+            {slides.map((_, index) => {
+              const isActive = index === currentIndex;
+              return (
+                <View 
+                  key={index} 
+                  style={[
+                    styles.bead, 
+                    isActive ? styles.beadActive : styles.beadInactive,
+                    { 
+                      backgroundColor: isActive ? theme.accent : 'transparent',
+                      borderColor: isActive ? theme.accent : theme.text 
+                    }
+                  ]} 
+                />
+              );
+            })}
+          </View>
+        )}
+      </View>
 
       {/* Custom Share Menu */}
       <Modal visible={isShareMenuVisible} transparent animationType="fade">
@@ -660,14 +590,6 @@ export default function MemoryDetailScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Processing Overlay */}
-      {isProcessing && (
-        <View style={styles.processingOverlay}>
-          <ActivityIndicator size="large" color="#FF4B00" />
-          <Text style={styles.processingText}>Baking cinematic frame...</Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -708,10 +630,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  indicatorContainer: {
+  bottomBar: {
     position: 'absolute',
     alignSelf: 'center',
     zIndex: 10,
+    alignItems: 'center',
+    gap: 12,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+  },
+  locationText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    letterSpacing: 1,
+  },
+  indicatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -768,18 +705,5 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
     marginTop: 2,
-  },
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999,
-  },
-  processingText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    color: '#FFF',
-    marginTop: 16,
-    fontSize: 14,
   },
 });

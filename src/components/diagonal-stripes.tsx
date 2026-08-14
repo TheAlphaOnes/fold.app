@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Line, Defs, Pattern, Rect } from 'react-native-svg';
+import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 
 interface DiagonalStripesProps {
   /** Stroke color for the lines */
@@ -30,18 +30,24 @@ export function DiagonalStripes({
             id={patternId}
             x="0"
             y="0"
-            width="5"
-            height="5"
+            width="8"
+            height="8"
             patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-55)"
           >
-            <Line
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="5"
+            {/* 
+              Using a pre-calculated 45-degree path instead of a rotated <Line> 
+              fixes aliasing / stitching artifacts on iOS CoreGraphics.
+              Direction is \ (top-left to bottom-right)
+            */}
+            <Path
+              d="
+                M-2,-2 L10,10
+                M6,-2 L10,2
+                M-2,6 L2,10
+              "
               stroke={color}
               strokeWidth="1.5"
+              strokeLinecap="square"
             />
           </Pattern>
         </Defs>

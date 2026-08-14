@@ -8,7 +8,7 @@
  *   monospace metadata, flat industrial UI, golden ratio spacing.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   TextInput,
@@ -33,9 +33,48 @@ import { X, Image as ImageIcon, PlayCircle, Mic, Type } from 'lucide-react-nativ
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Location from 'expo-location';
 import { VinylRecord } from '@/components/vinyl-record';
 import type { MediaElement } from '@/types/journal';
 import { formatMillis } from '@/utils/format-date';
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { TextInputWrapper } from 'expo-paste-input';
+
+function ComposeMediaPreview({ m, theme, onRemove }: { m: MediaElement, theme: any, onRemove: () => void }) {
+  const isVideo = m.type === 'video';
+  const videoThumbnailUri = useVideoThumbnail(isVideo ? m.uri : undefined);
+
+  return (
+    <View style={styles.mediaPreviewWrapper}>
+      {m.type === 'audio' ? (
+        <View style={[styles.mediaPreviewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.backgroundElement }]}>
+          <Mic size={24} color={theme.text} />
+        </View>
+      ) : (
+        <Image 
+          source={{ uri: isVideo && videoThumbnailUri ? videoThumbnailUri : m.uri }} 
+          style={styles.mediaPreviewImage} 
+          contentFit="cover" 
+        />
+      )}
+
+      {isVideo && (
+        <View style={[styles.videoOverlay, { position: 'absolute', width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }]}>
+           <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
+        </View>
+      )}
+
+      {/* Small X button to remove this specific media */}
+      <Pressable 
+        style={styles.removeMediaButton}
+        onPress={onRemove}
+      >
+        <X size={12} color="#FFF" />
+      </Pressable>
+    </View>
+  );
+}
 
 function formatComposeDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -75,7 +114,6 @@ export default function ComposeScreen() {
         y_pos: 30 + Math.random() * safeH,
         width: pendingMedia.width,
         height: pendingMedia.height,
-        isCinematic: pendingMedia.isCinematic,
       }];
     }
     return [];
@@ -84,9 +122,40 @@ export default function ComposeScreen() {
   const [fontSize, setFontSize] = useState(21);
   
   const { addComposition } = useJournalStore();
+  const { settings } = useSettings();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
+
+  const [locationName, setLocationName] = useState<string>();
+  const [locationCoords, setLocationCoords] = useState<{lat: number, lng: number}>();
+
+  useEffect(() => {
+    if (settings.autoLocationTagging) {
+      (async () => {
+        try {
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (status !== 'granted') return;
+          
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          setLocationCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          
+          const geocode = await Location.reverseGeocodeAsync({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          });
+          
+          if (geocode && geocode.length > 0) {
+            const place = geocode[0];
+            const name = place.city || place.subregion || place.region;
+            if (name) setLocationName(name);
+          }
+        } catch (e) {
+          console.log('Failed to fetch location', e);
+        }
+      })();
+    }
+  }, [settings.autoLocationTagging]);
 
   const AVAILABLE_FONTS = [
     { id: 'JetBrainsMono-Medium', name: 'SYS.MONO' },
@@ -143,23 +212,29 @@ export default function ComposeScreen() {
       });
 
       if (!result.canceled) {
-        const newMedia: MediaElement[] = result.assets.map((asset) => {
+        const newMedia: MediaElement[] = await Promise.all(result.assets.map(async (asset) => {
           // Generate a random initial layout position. 
-          // Assuming card is roughly the screen size, we spawn stickers near the center area.
           const stickerSize = 120;
           const safeW = screenWidth - 60 - stickerSize;
           const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
           
+          // Determine extension and copy to safe document directory
+          const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+          const ext = extMatch ? extMatch[1].toLowerCase() : asset.type === 'video' ? 'mp4' : 'jpg';
+          const dest = `${FileSystem.documentDirectory}picked_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+          
+          await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
           return {
             id: Math.random().toString(36).substring(2, 9),
-            uri: asset.uri,
+            uri: dest,
             type: asset.type === 'video' ? 'video' : 'image',
             x_pos: 30 + Math.random() * safeW,
             y_pos: 30 + Math.random() * safeH,
             width: asset.width,
             height: asset.height,
           };
-        });
+        }));
 
         setMediaElements((prev) => [...prev, ...newMedia]);
       }
@@ -173,7 +248,14 @@ export default function ComposeScreen() {
 
     setIsSaving(true);
     try {
-      await addComposition({ textContent: body.trim(), mediaElements, fontFamily, fontSize });
+      await addComposition({ 
+        textContent: body.trim(), 
+        mediaElements, 
+        fontFamily, 
+        fontSize,
+        locationName,
+        locationCoords: locationCoords ? JSON.stringify(locationCoords) : undefined,
+      });
       router.back();
     } catch (error) {
       console.error('Failed to save composition:', error);
@@ -192,9 +274,16 @@ export default function ComposeScreen() {
         await recorder.stop();
         const uri = recorder.uri;
         if (uri) {
+          // Copy to safe document directory
+          const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+          const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
+          const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+          
+          await FileSystem.copyAsync({ from: uri, to: dest });
+
           const newMedia: MediaElement = {
             id: Math.random().toString(36).substring(2, 9),
-            uri,
+            uri: dest,
             type: 'audio',
             x_pos: 30 + Math.random() * (screenWidth - 150),
             y_pos: 30 + Math.random() * (screenHeight - 150),
@@ -353,43 +442,59 @@ export default function ComposeScreen() {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           {/* Body text input — the main writing area */}
-          <TextInput
-            style={[styles.bodyInput, { color: theme.text, fontFamily, fontSize }]}
-            placeholder="What's on your mind?"
-            placeholderTextColor={theme.textMuted}
-            multiline
-            autoFocus
-            value={body}
-            onChangeText={setBody}
-            selectionColor={theme.border}
-            cursorColor={theme.text}
-            textAlignVertical="top"
-            scrollEnabled={false}
-          />
+          <TextInputWrapper
+            onPaste={async (payload) => {
+              if (payload.type === 'images') {
+                const newMedia: MediaElement[] = await Promise.all(payload.uris.map(async (uri) => {
+                  const stickerSize = 120;
+                  const safeW = screenWidth - 60 - stickerSize;
+                  const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+                  
+                  const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+                  const ext = extMatch ? extMatch[1].toLowerCase() : 'gif';
+                  const dest = `${FileSystem.documentDirectory}pasted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+                  
+                  await FileSystem.copyAsync({ from: uri, to: dest });
+
+                  return {
+                    id: Math.random().toString(36).substring(2, 9),
+                    uri: dest,
+                    type: 'image',
+                    x_pos: 30 + Math.random() * safeW,
+                    y_pos: 30 + Math.random() * safeH,
+                  };
+                }));
+                setMediaElements((prev) => [...prev, ...newMedia]);
+              } else if (payload.type === 'text') {
+                 setBody(prev => prev + payload.value);
+              }
+            }}
+          >
+            <TextInput
+              style={[styles.bodyInput, { color: theme.text, fontFamily, fontSize, lineHeight: Math.round(fontSize * 1.5) }]}
+              placeholder="What's on your mind?"
+              placeholderTextColor={theme.textMuted}
+              multiline
+              autoFocus
+              value={body}
+              onChangeText={setBody}
+              selectionColor={theme.border}
+              cursorColor={theme.text}
+              textAlignVertical="top"
+              scrollEnabled={false}
+            />
+          </TextInputWrapper>
 
           {/* Previews of attached media */}
           {mediaElements.length > 0 && (
             <View style={styles.mediaPreviewsContainer}>
               {mediaElements.map((m) => (
-                <View key={m.id} style={styles.mediaPreviewWrapper}>
-                  {m.type === 'audio' ? (
-                    <View style={[styles.mediaPreviewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.backgroundElement }]}>
-                      <Mic size={24} color={theme.text} />
-                    </View>
-                  ) : (
-                    <Image source={{ uri: m.uri }} style={styles.mediaPreviewImage} contentFit="cover" />
-                  )}
-                  {m.type === 'video' && (
-                    <View style={styles.videoOverlay} />
-                  )}
-                  {/* Small X button to remove this specific media */}
-                  <Pressable 
-                    style={styles.removeMediaButton}
-                    onPress={() => setMediaElements(prev => prev.filter(x => x.id !== m.id))}
-                  >
-                    <X size={12} color="#FFF" />
-                  </Pressable>
-                </View>
+                <ComposeMediaPreview 
+                  key={m.id} 
+                  m={m} 
+                  theme={theme} 
+                  onRemove={() => setMediaElements(prev => prev.filter(x => x.id !== m.id))} 
+                />
               ))}
             </View>
           )}
@@ -538,7 +643,6 @@ const styles = StyleSheet.create({
   bodyInput: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 21,
-    lineHeight: 34,
     minHeight: 200,
   },
   mediaPreviewsContainer: {

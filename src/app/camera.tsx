@@ -1,8 +1,8 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, Text, useWindowDimensions } from 'react-native';
-import { CameraView, useCameraPermissions, useMicrophonePermissions, type CameraMode, type FlashMode } from 'expo-camera';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, Pressable, Text, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { X, Zap, ZapOff, Grid, Film } from 'lucide-react-native';
+import { X, Zap, ZapOff, Grid, SwitchCamera } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import Animated, {
   useSharedValue,
@@ -17,6 +17,19 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import { captureRef } from 'react-native-view-shot';
+import { Alert } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
+
+import { 
+  Camera, 
+  useCameraDevice, 
+  useCameraPermission,
+  useMicrophonePermission,
+  usePhotoOutput,
+  useVideoOutput
+} from 'react-native-vision-camera';
 
 // ─── Rotating arc indicator — sweeps clockwise while recording ───
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -25,7 +38,6 @@ function RotatingArc({ size }: { size: number }) {
   const rotation = useSharedValue(0);
   const radius = (size - 6) / 2;
   const circumference = 2 * Math.PI * radius;
-  // Arc covers ~65% of the circle
   const arcLength = circumference * 0.65;
   const gap = circumference - arcLength;
 
@@ -71,10 +83,8 @@ function RotatingArc({ size }: { size: number }) {
 function CameraGrid() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Vertical lines */}
       <View style={[styles.gridLine, styles.gridVertical, { left: '33.33%' }]} />
       <View style={[styles.gridLine, styles.gridVertical, { left: '66.66%' }]} />
-      {/* Horizontal lines */}
       <View style={[styles.gridLine, styles.gridHorizontal, { top: '33.33%' }]} />
       <View style={[styles.gridLine, styles.gridHorizontal, { top: '66.66%' }]} />
     </View>
@@ -82,95 +92,167 @@ function CameraGrid() {
 }
 
 export default function CameraScreen() {
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [micPermission, requestMicPermission] = useMicrophonePermissions();
+  const { hasPermission: hasCamPermission, requestPermission: requestCamPermission } = useCameraPermission();
+  const { hasPermission: hasMicPermission, requestPermission: requestMicPermission } = useMicrophonePermission();
+  
+  const [cameraPosition, setCameraPosition] = useState<'back' | 'front'>('back');
+  const device = useCameraDevice(cameraPosition);
+  
   const [isRecording, setIsRecording] = useState(false);
-  const [mode, setMode] = useState<CameraMode>('picture');
-  const [flash, setFlash] = useState<FlashMode>('off');
+  const [flash, setFlash] = useState<'on' | 'off'>('off');
   const [showGrid, setShowGrid] = useState(false);
-  const [isCinematic, setIsCinematic] = useState(false);
-  const cameraRef = useRef<CameraView>(null);
+  
+  const photoOutput = usePhotoOutput();
+  const videoOutput = useVideoOutput({ enableAudio: true });
+
+  const cameraRef = useRef<any>(null);
+  const containerRef = useRef<View>(null);
+  const recorderRef = useRef<any>(null);
   const isCapturing = useRef(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-
-  // Capture button scale animation
   const buttonScale = useSharedValue(1);
-  const buttonBg = useSharedValue(1);
+
+  // ─── Focus state ───
+  const focusPoint = useSharedValue({ x: 0, y: 0 });
+  const focusOpacity = useSharedValue(0);
+  const focusScale = useSharedValue(1.2);
+
+  const handleFocus = useCallback((x: number, y: number) => {
+    if (cameraRef.current) {
+      cameraRef.current.focus({ x, y }).catch((e: any) => console.log('Focus error', e));
+    }
+  }, []);
+
+  const tapGesture = useMemo(
+    () =>
+      Gesture.Tap().onEnd((e) => {
+        runOnJS(handleFocus)(e.x, e.y);
+        focusPoint.value = { x: e.x, y: e.y };
+        focusOpacity.value = 1;
+        focusScale.value = 1.2;
+        focusScale.value = withSpring(1, { damping: 10, stiffness: 200 });
+        focusOpacity.value = withSequence(
+          withTiming(1, { duration: 1500 }),
+          withTiming(0, { duration: 300 })
+        );
+      }),
+    [handleFocus]
+  );
+
+  const focusAnimStyle = useAnimatedStyle(() => ({
+    opacity: focusOpacity.value,
+    transform: [
+      { translateX: focusPoint.value.x - 30 },
+      { translateY: focusPoint.value.y - 30 },
+      { scale: focusScale.value },
+    ],
+  }));
 
   useEffect(() => {
-    if (!cameraPermission?.granted) requestCameraPermission();
-    if (!micPermission?.granted) requestMicPermission();
-  }, [cameraPermission, micPermission]);
+    if (!hasCamPermission) requestCamPermission();
+    if (!hasMicPermission) requestMicPermission();
+  }, [hasCamPermission, hasMicPermission]);
+
+  // NOTE: useSkiaFrameProcessor was removed in Vision Camera v4/v5.
+  // We cannot natively burn video frames in JS anymore. For now, video returns raw.
+  const frameProcessor = undefined;
 
   // ── Photo capture ─────────────────────────────────────────────────────────
   const handleCapturePhoto = useCallback(async () => {
-    if (!cameraRef.current || isCapturing.current) return;
-    if (mode !== 'picture') return;
+    if (isCapturing.current) return;
     isCapturing.current = true;
 
-    // Shutter flash animation
     buttonScale.value = withSequence(
       withTiming(0.88, { duration: 60 }),
       withSpring(1, { damping: 12 })
     );
 
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
-      if (photo) await saveAndNavigate(photo.uri, 'image', photo.width, photo.height);
+      if (!photoOutput) {
+        console.warn('photoOutput not available, falling back to captureRef');
+        if (containerRef.current) {
+          const uri = await captureRef(containerRef, {
+            format: 'jpg',
+            quality: 1,
+          });
+          await saveAndNavigate(uri, 'image', 1080, 1920);
+        } else {
+          Alert.alert('Not Supported', 'Camera capture is not supported on this device or simulator.');
+        }
+        return;
+      }
+
+      // V5 Photo Capture API — capturePhotoToFile(settings, callbacks)
+      const photoFile = await photoOutput.capturePhotoToFile(
+        { flashMode: flash === 'on' ? 'on' : 'off' },
+        {}
+      );
+      
+      // PhotoFile only exposes `filePath` (filesystem path, not file:// URL)
+      let uri = photoFile.filePath;
+      if (!uri.startsWith('file://')) uri = `file://${uri}`;
+
+      await saveAndNavigate(uri, 'image', 0, 0);
     } catch (e) {
       console.error('Photo capture failed:', e);
     } finally {
       isCapturing.current = false;
     }
-  }, [mode]);
+  }, [flash, photoOutput]);
 
   // ── Video recording ───────────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
-    if (!cameraRef.current) return;
-    setMode('video');
+    if (!videoOutput) {
+      Alert.alert('Not Supported', 'Video recording is not supported on this device or simulator.');
+      return;
+    }
+
     setIsRecording(true);
     buttonScale.value = withSpring(0.75, { damping: 14 });
 
-    // Small delay to let mode switch settle before recording
-    await new Promise(r => setTimeout(r, 150));
     try {
-      const video = await cameraRef.current.recordAsync();
-      if (video) await saveAndNavigate(video.uri, 'video');
+      // V5 Video Recording API
+      const recorder = await videoOutput.createRecorder({});
+      recorderRef.current = recorder;
+
+      await recorder.startRecording(
+        (filePath: string, reason: string) => {
+          let uri = filePath;
+          if (!uri.startsWith('file://')) uri = `file://${uri}`;
+          saveAndNavigate(uri, 'video', 1080, 1920);
+        },
+        (error: Error) => {
+          console.error('Video recording failed:', error);
+          setIsRecording(false);
+          buttonScale.value = withSpring(1);
+        }
+      );
     } catch (e) {
-      console.error('Video record failed:', e);
-    } finally {
+      console.error('Video start failed:', e);
       setIsRecording(false);
-      setMode('picture');
       buttonScale.value = withSpring(1);
     }
-  }, []);
+  }, [videoOutput]);
 
-  const stopRecording = useCallback(() => {
-    if (!cameraRef.current || !isRecording) return;
-    cameraRef.current.stopRecording();
+  const stopRecording = useCallback(async () => {
+    if (!recorderRef.current || !isRecording) return;
+    try {
+      await recorderRef.current.stopRecording();
+      recorderRef.current = null;
+    } catch (e) {
+      console.error('Stop recording error:', e);
+    }
+    setIsRecording(false);
+    buttonScale.value = withSpring(1);
   }, [isRecording]);
 
-  // ── Press handling (short = photo, long = video) ──────────────────────────
-  const handlePressIn = useCallback(() => {
-    longPressTimer.current = setTimeout(() => {
-      startRecording();
-    }, 350);
-  }, [startRecording]);
-
   const handlePressOut = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
     if (isRecording) {
       stopRecording();
-    } else {
-      handleCapturePhoto();
     }
-  }, [isRecording, stopRecording, handleCapturePhoto]);
+  }, [isRecording, stopRecording]);
 
   // ── File save + navigate ──────────────────────────────────────────────────
   const saveAndNavigate = async (
@@ -183,7 +265,7 @@ export default function CameraScreen() {
     const ext = extMatch ? extMatch[1].toLowerCase() : type === 'video' ? 'mp4' : 'jpg';
     const dest = `${FileSystem.documentDirectory}camera_${Date.now()}.${ext}`;
     await FileSystem.copyAsync({ from: uri, to: dest });
-    setPendingCameraMedia({ uri: dest, type, width: w || 1080, height: h || 1920, isCinematic });
+    setPendingCameraMedia({ uri: dest, type, width: w || 1080, height: h || 1920 });
     router.replace('/compose');
   };
 
@@ -194,15 +276,17 @@ export default function CameraScreen() {
   }));
 
   // ─── Permission screens ───────────────────────────────────────────────────
-  if (!cameraPermission || !micPermission) {
-    return <View style={styles.container} />;
-  }
-
-  if (!cameraPermission.granted) {
+  if (!hasCamPermission || !hasMicPermission) {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Camera access is needed to capture memories.</Text>
-        <Pressable style={styles.permissionBtn} onPress={requestCameraPermission}>
+        <Text style={styles.permissionText}>Camera & Mic access is needed to capture memories.</Text>
+        <Pressable 
+          style={styles.permissionBtn} 
+          onPress={() => {
+            requestCamPermission();
+            requestMicPermission();
+          }}
+        >
           <Text style={styles.permissionBtnText}>Grant Access</Text>
         </Pressable>
       </View>
@@ -211,34 +295,32 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        mode={mode}
-        flash={flash}
-        zoom={0}
-        pictureSize="1920x1080"
-        videoQuality="1080p"
-        ratio="16:9"
-        videoStabilizationMode="off"
-      />
+      {device ? (
+        <View ref={containerRef} style={StyleSheet.absoluteFill}>
+          <GestureDetector gesture={tapGesture}>
+            <View style={StyleSheet.absoluteFill}>
+              <Camera
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={true}
+                outputs={[photoOutput, videoOutput].filter(Boolean)}
+              />
+              <Animated.View style={[styles.focusSquare, focusAnimStyle]} pointerEvents="none" />
+            </View>
+          </GestureDetector>
+        </View>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'JetBrainsMono-Medium' }}>
+            SIMULATOR: NO CAMERA DEVICE
+          </Text>
+        </View>
+      )}
 
       {/* ─── UI Overlay (Outside CameraView to prevent remounts) ─── */}
       <View style={styles.overlay} pointerEvents="box-none">
         
-        {/* Cinematic Letterbox & Tint */}
-        {isCinematic && (
-          <View style={[StyleSheet.absoluteFill, { justifyContent: 'space-between' }]} pointerEvents="none">
-            {/* Top Bar */}
-            <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-            {/* Warm Tint */}
-            <View style={{ flex: 1, backgroundColor: 'rgba(255, 190, 100, 0.08)' }} />
-            {/* Bottom Bar */}
-            <View style={{ width: '100%', height: '31.25%', backgroundColor: '#000' }} />
-          </View>
-        )}
-
         {/* Grid */}
         {showGrid && <CameraGrid />}
 
@@ -249,7 +331,6 @@ export default function CameraScreen() {
           </Pressable>
 
           <View style={styles.headerRight}>
-            {/* Flash toggle */}
             <Pressable
               style={[styles.iconBtn, flash !== 'off' && styles.iconBtnActive]}
               onPress={() => setFlash(f => (f === 'off' ? 'on' : 'off'))}
@@ -260,7 +341,6 @@ export default function CameraScreen() {
               }
             </Pressable>
 
-            {/* Grid toggle */}
             <Pressable
               style={[styles.iconBtn, showGrid && styles.iconBtnActive]}
               onPress={() => setShowGrid(g => !g)}
@@ -268,12 +348,11 @@ export default function CameraScreen() {
               <Grid size={18} color={showGrid ? '#FF4B00' : '#FFF'} />
             </Pressable>
 
-            {/* Cinematic toggle */}
             <Pressable
-              style={[styles.iconBtn, isCinematic && styles.iconBtnActive]}
-              onPress={() => setIsCinematic(c => !c)}
+              style={styles.iconBtn}
+              onPress={() => setCameraPosition(p => (p === 'back' ? 'front' : 'back'))}
             >
-              <Film size={18} color={isCinematic ? '#FF4B00' : '#FFF'} />
+              <SwitchCamera size={18} color="#FFF" />
             </Pressable>
           </View>
         </View>
@@ -289,11 +368,12 @@ export default function CameraScreen() {
         {/* Controls */}
         <View style={[styles.controls, { paddingBottom: insets.bottom + 40 }]}>
           <Pressable
-            onPressIn={handlePressIn}
+            onPress={handleCapturePhoto}
+            onLongPress={startRecording}
             onPressOut={handlePressOut}
+            delayLongPress={300}
           >
             <View style={{ justifyContent: 'center', alignItems: 'center' }}>
-              {/* Rotating arc sweep when recording (sibling to prevent clipping) */}
               {isRecording && <RotatingArc size={OUTER_SIZE + 14} />}
               <View style={styles.captureOuter}>
                 <Animated.View style={[styles.captureInner, animatedBtnStyle]} />
@@ -302,6 +382,7 @@ export default function CameraScreen() {
           </Pressable>
         </View>
       </View>
+
     </View>
   );
 }
@@ -311,7 +392,6 @@ const OUTER_SIZE = 90;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  camera: { flex: 1, justifyContent: 'space-between' },
   overlay: {
     position: 'absolute',
     top: 0,
@@ -320,8 +400,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'space-between',
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -346,8 +424,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderColor: 'rgba(255,255,255,0.4)',
   },
-
-  // Mode hint
   modeHint: {
     alignSelf: 'center',
     marginBottom: 0,
@@ -364,8 +440,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#FF3B30',
   },
-
-  // Controls
   controls: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -385,18 +459,6 @@ const styles = StyleSheet.create({
     borderRadius: CAPTURE_SIZE / 2,
     backgroundColor: '#FFF',
   },
-
-  // Ripple rings
-  ripple: {
-    position: 'absolute',
-    width: OUTER_SIZE,
-    height: OUTER_SIZE,
-    borderRadius: OUTER_SIZE / 2,
-    borderWidth: 2,
-    borderColor: '#FF3B30',
-  },
-
-  // Grid overlay
   gridLine: {
     position: 'absolute',
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -411,8 +473,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-
-  // Permissions
+  focusSquare: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 60,
+    height: 60,
+    borderWidth: 1.5,
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',

@@ -56,7 +56,7 @@ export function ActionLink({ onPress, text }: ActionLinkProps) {
         </Animated.Text>
         <Animated.View style={arrowStyle}>
           <Animated.Text style={[styles.arrow, { color: theme.text }]}>
-            ->
+            {"->"}
           </Animated.Text>
         </Animated.View>
       </Animated.View>
