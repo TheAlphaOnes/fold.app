@@ -101,6 +101,24 @@ export function DraggableSticker({ media, onDragEnd, cardWidth, cardHeight }: Dr
     };
   });
 
+  if (media.type === 'audio' && media.metadata) {
+    return (
+      <GestureDetector gesture={composed}>
+        <Animated.View style={[
+          styles.musicVerticalCard,
+          animatedStyle,
+          { width: 140, height: 180 }
+        ]}>
+          <Image source={{ uri: media.metadata.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
+          <View style={styles.musicVerticalTextContainer}>
+            <Text style={styles.musicVerticalTitle} numberOfLines={1}>{media.metadata.title}</Text>
+            <Text style={styles.musicVerticalArtist} numberOfLines={1}>{media.metadata.artist}</Text>
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    );
+  }
+
   return (
     <GestureDetector gesture={composed}>
       <Animated.View style={[
@@ -167,5 +185,43 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  musicVerticalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 6 },
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  musicVerticalArt: {
+    width: 124,
+    height: 124,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  musicVerticalTextContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  musicVerticalTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 12,
+    color: '#000',
+    textAlign: 'center',
+  },
+  musicVerticalArtist: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

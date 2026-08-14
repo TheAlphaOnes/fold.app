@@ -90,15 +90,14 @@ export function MemoryCard({ item, height, onUpdatePositions, isExporting }: Mem
             ]}>
               {item.mediaElements[0].type === 'audio' ? (
                 <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
-                  <VinylRecord 
-                    size={120} 
-                    isPlaying={false} 
-                    isRecording={false} 
-                    imageUrl={item.mediaElements[0].metadata?.artwork}
+                  <Image 
+                    source={{ uri: item.mediaElements[0].metadata?.artwork.replace('100x100', '600x600') }} 
+                    style={StyleSheet.absoluteFill} 
+                    contentFit="cover" 
                   />
                 </View>
               ) : (
-              <Image 
+                <Image 
                   source={{ uri: singleMediaIsVideo && videoThumbnailUri ? videoThumbnailUri : item.mediaElements[0].uri }} 
                   style={StyleSheet.absoluteFill} 
                   contentFit="cover" 
