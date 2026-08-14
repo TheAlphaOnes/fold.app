@@ -165,7 +165,7 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
             scrubOffset={scrubRotationOffset}
             imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
           />
-          {media.metadata && (
+          {media.metadata ? (
             <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 32 }}>
               <Text style={{ color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>
                 {media.metadata.title}
@@ -174,7 +174,7 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
                 {media.metadata.artist}
               </Text>
             </View>
-          )}
+          ) : null}
           <Text style={{ color: theme.textMuted, marginTop: media.metadata ? 32 : 24, fontSize: 14, fontWeight: '500', letterSpacing: 1 }}>
             {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
           </Text>
