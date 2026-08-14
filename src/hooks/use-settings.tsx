@@ -11,6 +11,7 @@ export interface UserSettings {
   privacyScreen: boolean;
   hasOnboarded: boolean;
   autoLocationTagging: boolean;
+  autoPlayMusic: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -22,6 +23,7 @@ const defaultSettings: UserSettings = {
   privacyScreen: false,
   hasOnboarded: false,
   autoLocationTagging: false,
+  autoPlayMusic: false,
 };
 
 interface SettingsState {
@@ -50,6 +52,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           privacyScreen: stored.privacyScreen === 'true',
           hasOnboarded: stored.hasOnboarded === 'true',
           autoLocationTagging: stored.autoLocationTagging === 'true',
+          autoPlayMusic: stored.autoPlayMusic === 'true',
         },
         loading: false
       });

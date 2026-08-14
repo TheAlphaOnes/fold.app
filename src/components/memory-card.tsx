@@ -21,18 +21,29 @@ interface MemoryCardProps {
 }
 
 import { useJournalStore } from '@/hooks/use-journal';
+import { useSettingsStore } from '@/hooks/use-settings';
 
 function SingleAudioCard({ media, cardWidth, theme, compositionId }: { media: MediaElement, cardWidth: number, theme: any, compositionId: number }) {
   const player = useAudioPlayer(media.uri);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
   const activeCompositionId = useJournalStore(s => s.activeCompositionId);
+  const autoPlayMusic = useSettingsStore(s => s.settings.autoPlayMusic);
+  const hasAutoPlayed = React.useRef(false);
 
   useEffect(() => {
-    if (activeCompositionId !== compositionId && isPlaying) {
-      player.pause();
+    if (activeCompositionId === compositionId) {
+      if (autoPlayMusic && !hasAutoPlayed.current && !isPlaying) {
+        hasAutoPlayed.current = true;
+        player.play();
+      }
+    } else {
+      hasAutoPlayed.current = false; // Reset when scrolled away
+      if (isPlaying) {
+        player.pause();
+      }
     }
-  }, [activeCompositionId, compositionId, isPlaying, player]);
+  }, [activeCompositionId, compositionId, isPlaying, player, autoPlayMusic]);
 
   useEffect(() => {
     return () => {

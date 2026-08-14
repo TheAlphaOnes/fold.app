@@ -198,6 +198,22 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          <View style={styles.settingRow}>
+            <View style={styles.settingRowLeft}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO-PLAY MUSIC</ThemedText>
+              <ThemedText style={[styles.settingSubtext, { color: theme.textMuted }]}>
+                Play audio cards automatically when they appear on screen.
+              </ThemedText>
+            </View>
+            <Switch
+              value={settings.autoPlayMusic}
+              onValueChange={(val) => updateSetting('autoPlayMusic', val)}
+              trackColor={{ false: theme.border, true: theme.text }}
+              thumbColor={settings.autoPlayMusic ? theme.background : theme.text}
+              ios_backgroundColor={theme.border}
+            />
+          </View>
+
 
 
           <View style={styles.settingRow}>
@@ -411,9 +427,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   settingText: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 16,
+    letterSpacing: -0.3,
+  },
+  settingSubtext: {
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
-    letterSpacing: 1,
+    letterSpacing: -0.2,
+    marginTop: 4,
   },
   themeBtn: {
     flexDirection: 'row',
