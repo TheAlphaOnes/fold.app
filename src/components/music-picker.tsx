@@ -98,18 +98,25 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <TextInput
-            style={[styles.input, { color: theme.text }]}
-            placeholder="Search artists, songs..."
-            placeholderTextColor={theme.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoFocus
-            selectionColor={theme.text}
-          />
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <X size={24} color={theme.text} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Add Music</Text>
+          <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: theme.border }]}>
+            <X size={18} color={theme.text} />
           </Pressable>
+        </View>
+
+        <View style={styles.searchWrapper}>
+          <View style={styles.searchContainer}>
+            <Search size={16} color={theme.textMuted} />
+            <TextInput
+              style={[styles.input, { color: theme.text }]}
+              placeholder="Search artists, songs..."
+              placeholderTextColor={theme.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoFocus
+              clearButtonMode="while-editing"
+            />
+          </View>
         </View>
 
         {loading && results.length === 0 ? (
@@ -182,22 +189,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 22,
-    height: 40,
-    marginRight: 16,
+    fontSize: 15,
+    height: '100%',
   },
   closeBtn: {
-    padding: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   list: {
-    paddingTop: 16,
+    paddingTop: 0,
     paddingBottom: 40,
   },
   trackItem: {
