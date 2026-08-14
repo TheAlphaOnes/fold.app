@@ -78,13 +78,11 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle, composition
       ]}>
         <View style={styles.musicVerticalArtContainer}>
           <Image source={{ uri: media.metadata!.artwork.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
-          <View style={styles.musicVerticalIcon}>
-            {isPlaying ? (
+          {isPlaying && (
+            <View style={styles.musicVerticalIcon}>
               <Pause size={36} color="#FFFFFF" fill="#FFFFFF" />
-            ) : (
-              <Play size={36} color="#FFFFFF" fill="#FFFFFF" />
-            )}
-          </View>
+            </View>
+          )}
         </View>
         <View style={styles.musicVerticalTextContainer}>
           <Text style={styles.musicVerticalTitle} numberOfLines={1}>{media.metadata!.title}</Text>
