@@ -198,8 +198,10 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
           <View style={styles.settingRow}>
-            <View style={styles.settingRowLeft}>
+            <View style={[styles.settingRowLeft, { flexDirection: 'column', alignItems: 'flex-start', gap: 4, flex: 1, paddingRight: 16 }]}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO-PLAY MUSIC</ThemedText>
               <ThemedText style={[styles.settingSubtext, { color: theme.textMuted }]}>
                 Play audio cards automatically when they appear on screen.
@@ -214,7 +216,7 @@ export default function SettingsScreen() {
             />
           </View>
 
-
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
 
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
