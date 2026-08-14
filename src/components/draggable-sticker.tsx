@@ -43,7 +43,8 @@ function CanvasAudioSticker({ media, composedGesture, animatedStyle }: { media: 
       } else {
         player.play();
       }
-    });
+    })
+    .runOnJS(true);
 
   const finalGesture = Gesture.Simultaneous(composedGesture, tapGesture);
 
