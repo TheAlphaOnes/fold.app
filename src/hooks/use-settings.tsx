@@ -21,7 +21,7 @@ export interface UserSettings {
 const defaultSettings: UserSettings = {
   name: "",
   dob: "",
-  dataCollection: false,
+  dataCollection: true,
   theme: "system",
   requireBiometrics: false,
   privacyScreen: false,
