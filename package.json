@@ -87,7 +87,8 @@
       "@expo/ngrok": "npm:expo-cloudflared@^4.2.1"
     },
     "patchedDependencies": {
-      "expo-paste-input": "patches/expo-paste-input.patch"
+      "expo-paste-input": "patches/expo-paste-input.patch",
+      "expo-sqlite@57.0.1": "patches/expo-sqlite@57.0.1.patch"
     }
   },
   "private": true

@@ -1,0 +1,15 @@
+diff --git a/ios/ExpoSQLite.podspec b/ios/ExpoSQLite.podspec
+index 46338662d6f2f90a8cb6b224ff82b3909964fd2a..a8403a1e6640e26327221962844ea796ecdd9706 100644
+--- a/ios/ExpoSQLite.podspec
++++ b/ios/ExpoSQLite.podspec
+@@ -31,6 +31,10 @@ Pod::Spec.new do |s|
+     files.each do |file|
+       source = File.join(__dir__, '..', 'vendor', vendor_src, file)
+       destination = File.join(__dir__, '..', 'ios', file)
++      begin
++        FileUtils.chmod('u+w', File.join(__dir__, '..', 'ios'))
++      rescue
++      end
+       FileUtils.cp(source, destination)
+     end
+   end
