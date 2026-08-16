@@ -59,7 +59,7 @@ export function MomentumChart({ compositions }: MomentumChartProps) {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.header}>
-        <ThemedText style={[styles.title, { color: theme.text }]}>Journaling Momentum</ThemedText>
+        <ThemedText style={[styles.title, { color: theme.text }]}>Momentum</ThemedText>
         <View style={[styles.badge, { borderColor: theme.border }]}>
           <ThemedText style={styles.badgeText}>10D</ThemedText>
         </View>

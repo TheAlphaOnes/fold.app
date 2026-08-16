@@ -107,7 +107,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <ThemedText style={[styles.title, { color: theme.text }]}>Transactions Heatmap</ThemedText>
+          <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
           <ThemedText style={styles.scrollHint}>{'<<< SCROLL'}</ThemedText>
         </View>
         <View style={[styles.badge, { borderColor: theme.border }]}>

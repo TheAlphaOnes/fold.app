@@ -29,12 +29,12 @@ export default function PrivacyScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ThemedText style={[styles.heading, { color: theme.text }]}>1. Data Collection</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          Fold is designed with privacy as a core principle. All of your memories, media, and journal entries are stored entirely locally on your device. We do not have access to your personal data.
+          Fold is designed with privacy as a core principle. All of your memories, media, and entries are stored entirely locally on your device. We do not have access to your personal data.
         </ThemedText>
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>2. Analytics & Telemetry</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          To help us improve Fold, we collect anonymous usage data and crash reports using PostHog. This data includes screen views, feature usage (like when a memory is created or shared), and stack traces for app crashes. This data is strictly anonymous and cannot be traced back to your personal identity or your journal contents. You can opt out of non-essential analytics in the Settings menu.
+          To help us improve Fold, we collect anonymous usage data and crash reports using PostHog. This data includes screen views, feature usage (like when a memory is created or shared), and stack traces for app crashes. This data is strictly anonymous and cannot be traced back to your personal identity or your contents. You can opt out of non-essential analytics in the Settings menu.
         </ThemedText>
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>3. Third-Party Services</ThemedText>

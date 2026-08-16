@@ -34,7 +34,7 @@ export default function LegalScreen() {
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>2. User Content</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          You retain all rights to any content you create using Fold. We do not claim ownership of your memories, media, or journal entries. Since data is stored locally, you are solely responsible for backing up your content.
+          You retain all rights to any content you create using Fold. We do not claim ownership of your memories, media, or entries. Since data is stored locally, you are solely responsible for backing up your content.
         </ThemedText>
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>3. Limitation of Liability</ThemedText>
