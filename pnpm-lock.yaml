@@ -7,6 +7,11 @@ settings:
 overrides:
   '@expo/ngrok': npm:expo-cloudflared@^4.2.1
 
+patchedDependencies:
+  expo-paste-input:
+    hash: 0e66608779dc4a5eb5d682b38a5b80cd1cff959b3b290da93511ccb682b9cf20
+    path: patches/expo-paste-input.patch
+
 importers:
 
   .:
@@ -106,7 +111,7 @@ importers:
         version: 57.0.2(expo@57.0.12)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-paste-input:
         specifier: ^0.2.2
-        version: 0.2.2(expo@57.0.12)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+        version: 0.2.2(patch_hash=0e66608779dc4a5eb5d682b38a5b80cd1cff959b3b290da93511ccb682b9cf20)(expo@57.0.12)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-router:
         specifier: ~57.0.12
         version: 57.0.12(8989c4ca98b673634f2bfd5700c9d2ba)
@@ -7220,7 +7225,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  expo-paste-input@0.2.2(expo@57.0.12)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
+  expo-paste-input@0.2.2(patch_hash=0e66608779dc4a5eb5d682b38a5b80cd1cff959b3b290da93511ccb682b9cf20)(expo@57.0.12)(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
     dependencies:
       expo: 57.0.12(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.9)(expo-router@57.0.12)(react-dom@19.2.3(react@19.2.3))(react-native-web@0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-native-worklets@0.10.1(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.2(@babel/core@7.29.7)(@react-native/metro-config@0.86.2(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
       react: 19.2.3

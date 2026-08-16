@@ -85,6 +85,9 @@
   "pnpm": {
     "overrides": {
       "@expo/ngrok": "npm:expo-cloudflared@^4.2.1"
+    },
+    "patchedDependencies": {
+      "expo-paste-input": "patches/expo-paste-input.patch"
     }
   },
   "private": true
