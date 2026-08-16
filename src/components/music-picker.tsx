@@ -47,7 +47,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [downloading, setDownloading] = useState<number | null>(null);
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
 
-  // Debounced search
+  // Clear state when closing
   useEffect(() => {
     if (!visible) {
       setPreviewingTrack(null);
@@ -56,17 +56,18 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     }
   }, [visible]);
 
+  // Search or load defaults
   useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
+    if (!visible) return;
+
+    const isDefault = query.trim().length < 2;
+    const searchTerm = isDefault ? 'lofi chill' : query.trim();
     
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
         const country = Localization.getLocales()[0]?.regionCode || 'US';
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15&country=${country}`);
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=15&country=${country}`);
         const data = await response.json();
         setResults(data.results.filter((t: any) => t.previewUrl)); // Only tracks with previews
       } catch (e) {
@@ -74,10 +75,10 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, isDefault ? 0 : 500);
 
     return () => clearTimeout(timeout);
-  }, [query]);
+  }, [query, visible]);
 
   const handleSelect = async (track: MusicTrack) => {
     if (downloading) return;
