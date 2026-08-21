@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AddButton } from '@/components/add-button';
-import { CelebrationBurst } from '@/components/celebration-burst';
+import { ScannerSweep } from '@/components/scanner-sweep';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
@@ -53,7 +53,7 @@ interface CarouselItemProps {
 const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
   const hiddenCardRef = useRef<View>(null);
-  const [shareBurstKey, setShareBurstKey] = useState(0);
+  const [scanKey, setScanKey] = useState(0);
   const { width } = useWindowDimensions();
   const theme = useTheme();
   
@@ -84,13 +84,14 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
 
   const triggerShareFeedback = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setShareBurstKey(prev => prev + 1);
+    setScanKey(prev => prev + 1);
   };
 
   const captureAndShareCard = async () => {
     try {
-      // Small delay to ensure the offscreen card is rendered
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Wait for the scanner to finish its 600ms sweep before actually popping the share sheet
+      // to let the user enjoy the animation.
+      await new Promise(resolve => setTimeout(resolve, 600));
       const uri = await captureRef(hiddenCardRef, {
         format: 'png',
         quality: 1,
@@ -159,7 +160,7 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-          {shareBurstKey > 0 && <CelebrationBurst key={`share-burst-${shareBurstKey}`} color={theme.text} />}
+          {scanKey > 0 && <ScannerSweep key={`scan-${scanKey}`} color={theme.text} />}
         </Animated.View>
       </GestureDetector>
     </View>
