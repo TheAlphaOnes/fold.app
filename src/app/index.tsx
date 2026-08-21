@@ -1,5 +1,7 @@
+import * as Device from 'expo-device';
+import * as Haptics from 'expo-haptics';
 import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Modal } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Modal, Platform } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue,
@@ -74,9 +76,11 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     .numberOfTaps(2)
     .onStart(() => {
       pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
     })
     .onEnd(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       runOnJS(navigateToDetail)();
     })
     .onFinalize(() => {
@@ -158,8 +162,57 @@ export default function HomeScreen() {
     router.push('/compose');
   };
 
-  const handleSwipeUp = async () => {
-    router.push('/camera');
+  const isCameraOpenRef = useRef(false);
+
+  const handleSwipeUp = async (type: 'photo' | 'video') => {
+    if (isCameraOpenRef.current) return;
+    try {
+      isCameraOpenRef.current = true;
+      if (type === 'video' && !Device.isDevice && Platform.OS === 'ios') {
+        Alert.alert(
+          'Simulator Unsupported',
+          'Video capture is not supported on the iOS Simulator. Please test this on a physical device.'
+        );
+        return;
+      }
+
+      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      if (camStatus !== 'granted') return;
+
+      if (type === 'video') {
+        const { status: micStatus } = await AudioModule.requestRecordingPermissionsAsync();
+        if (micStatus !== 'granted') return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: type === 'video' ? ['videos'] : ['images'],
+        allowsEditing: false,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        
+        // Copy to safe document directory
+        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mp4' : 'jpg');
+        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+        
+        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+        setPendingCameraMedia({
+          uri: dest,
+          type: asset.type === 'video' ? 'video' : 'image',
+          width: asset.width,
+          height: asset.height
+        });
+        
+        router.push('/compose');
+      }
+    } catch (error) {
+      console.error('Failed to launch camera:', error);
+    } finally {
+      isCameraOpenRef.current = false;
+    }
   };
 
   const recordIntentRef = useRef(false);
@@ -318,7 +371,10 @@ export default function HomeScreen() {
             borderColor: theme.border 
           }
         ]}
-        onPress={() => router.push('/profile')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push('/profile');
+        }}
       >
         <User size={16} color={theme.text} strokeWidth={2.5} />
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
