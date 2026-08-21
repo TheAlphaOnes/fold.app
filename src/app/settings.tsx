@@ -307,7 +307,7 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={async () => {
               await updateSetting('hasOnboarded', false);
-              router.replace('/onboarding');
+              router.replace('/');
             }}
           >
             <View style={styles.settingRowLeft}>

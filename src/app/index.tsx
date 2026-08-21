@@ -4,7 +4,7 @@ import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from '
 import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Modal, Platform } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
-  useSharedValue,
+  useSharedValue, FadeOut,
   useAnimatedStyle,
   interpolate,
   Extrapolation,
@@ -23,6 +23,7 @@ import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { User } from 'lucide-react-native';
+import { useSettingsStore } from '@/hooks/use-settings';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
@@ -109,6 +110,13 @@ export default function HomeScreen() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 100);
   
+  const { settings, updateSetting } = useSettingsStore();
+  const markOnboarded = async () => {
+    if (!settings.hasOnboarded) {
+      await updateSetting('hasOnboarded', true);
+    }
+  };
+  
   // Handle incoming shared media (e.g. from Photos app, Chrome, etc.)
   useEffect(() => {
     if (error) {
@@ -159,12 +167,14 @@ export default function HomeScreen() {
   );
 
   const handleAdd = () => {
+    markOnboarded();
     router.push('/compose');
   };
 
   const isCameraOpenRef = useRef(false);
 
   const handleSwipeUp = async (type: 'photo' | 'video') => {
+    markOnboarded();
     if (isCameraOpenRef.current) return;
     try {
       isCameraOpenRef.current = true;
@@ -218,6 +228,7 @@ export default function HomeScreen() {
   const recordIntentRef = useRef(false);
 
   const handleLongPressStart = async () => {
+    markOnboarded();
     try {
       recordIntentRef.current = true;
       const { status } = await AudioModule.requestRecordingPermissionsAsync();
@@ -360,6 +371,19 @@ export default function HomeScreen() {
   return (
     // Clean background
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {!settings.hasOnboarded && (
+        <Animated.View 
+          exiting={FadeOut.duration(400)}
+          style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 900, justifyContent: 'center', alignItems: 'center' }]}
+        >
+          <Text style={{ fontFamily: 'JetBrainsMono-Regular', color: '#FFFFFF', fontSize: 18, textAlign: 'center', lineHeight: 32, paddingBottom: 120 }}>
+            swipe up to capture.{"\n"}
+            press and hold to record.{"\n"}
+            tap to write.
+          </Text>
+        </Animated.View>
+      )}
+
       <GrainBackground />
 
       <Pressable 

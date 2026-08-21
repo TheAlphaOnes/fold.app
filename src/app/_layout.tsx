@@ -211,21 +211,6 @@ function RootLayoutNav() {
       });
   }, []);
 
-  useEffect(() => {
-    if (isAppReady) {
-      const inOnboarding = segments[0] === "onboarding";
-      if (!settings.hasOnboarded && !inOnboarding) {
-        setTimeout(() => {
-          router.replace("/onboarding");
-        }, 0);
-      } else if (settings.hasOnboarded && inOnboarding) {
-        setTimeout(() => {
-          router.replace("/");
-        }, 0);
-      }
-    }
-  }, [isAppReady, settings.hasOnboarded, segments]);
-
   return (
     <PostHogProvider
       apiKey="phc_AKV5YBb3G838EHFrSUyauGYK6CZYZpNNFsdCdrssx9Uy"
@@ -240,7 +225,6 @@ function RootLayoutNav() {
             <StatusBar hidden />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
-              <Stack.Screen name="onboarding" />
               <Stack.Screen
                 name="compose"
                 options={{
