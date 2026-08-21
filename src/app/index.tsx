@@ -110,6 +110,10 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
 
   const [apertureKey, setApertureKey] = useState(0);
 
+  const triggerApertureAndNavigate = () => {
+    setApertureKey(prev => prev + 1);
+  };
+
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
@@ -119,8 +123,7 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     .onEnd(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-      // Trigger the lens aperture effect before navigating
-      runOnJS(setApertureKey)(prev => prev + 1);
+      runOnJS(triggerApertureAndNavigate)();
     })
     .onFinalize(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
