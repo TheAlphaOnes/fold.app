@@ -56,7 +56,8 @@ import { formatMillis } from "@/utils/format-date";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { TextInputWrapper } from "expo-paste-input";
 import { usePostHog } from "posthog-react-native";
-import { MusicPicker, MusicTrack } from "@/components/music-picker";
+import { MusicPicker } from "@/components/music-picker";
+import type { MusicTrack } from "@/hooks/use-music-store";
 
 function ComposeMediaPreview({
   m,

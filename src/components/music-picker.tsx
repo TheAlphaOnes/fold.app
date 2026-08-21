@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, Modal, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { Search, X, Music } from 'lucide-react-native';
+import { Search, X, Music, Heart } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useAudioPlayer } from 'expo-audio';
 import * as Localization from 'expo-localization';
 
-export interface MusicTrack {
-  trackId: number;
-  trackName: string;
-  artistName: string;
-  artworkUrl100: string;
-  previewUrl: string;
-}
+import { useMusicStore, type MusicTrack } from '@/hooks/use-music-store';
+
 
 function TrackPreviewPlayer({ url }: { url: string }) {
   const player = useAudioPlayer(url);
@@ -42,6 +37,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const insets = useSafeAreaInsets();
   
   const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'search' | 'saved'>('search');
   const [results, setResults] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,6 +47,8 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
   const [defaultSearch, setDefaultSearch] = useState('viral hits');
 
+  const { savedTracks, recentSearches, init, saveTrack, removeTrack, addRecentSearch } = useMusicStore();
+
   const PAGE_SIZE = 25;
 
   const DEFAULT_TERMS = [
@@ -58,6 +56,10 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     'piano ambient', 'synthwave', 'indie pop', 'jazz vibes', 
     'cinematic', 'electronic chill', 'trending pop', 'r&b'
   ];
+
+  useEffect(() => {
+    init();
+  }, []);
 
   // Clear state when closing, pick a new random default when opening
   useEffect(() => {
@@ -67,12 +69,17 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       setResults([]);
       setPage(0);
       setHasMore(true);
+      setActiveTab('search');
     } else {
-      // Pick a random term every time they open the music picker
-      const randomTerm = DEFAULT_TERMS[Math.floor(Math.random() * DEFAULT_TERMS.length)];
+      // Create a pool of default terms, heavily weighting recent searches to act as a basic recommendation engine
+      let pool = [...DEFAULT_TERMS];
+      if (recentSearches.length > 0) {
+        pool = [...pool, ...recentSearches, ...recentSearches, ...recentSearches]; // 3x weight
+      }
+      const randomTerm = pool[Math.floor(Math.random() * pool.length)];
       setDefaultSearch(randomTerm);
     }
-  }, [visible]);
+  }, [visible, recentSearches]);
 
   // Initial search or when query changes
   useEffect(() => {
@@ -140,6 +147,12 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     if (downloading) return;
     setDownloading(track.trackId);
     try {
+      if (query.trim().length > 2) {
+        addRecentSearch(query.trim());
+      } else if (defaultSearch) {
+        addRecentSearch(defaultSearch);
+      }
+
       const ext = track.previewUrl.split('?')[0].split('.').pop() || 'm4a';
       const dest = `${FileSystem.documentDirectory}music_${track.trackId}_${Date.now()}.${ext}`;
       
@@ -186,11 +199,20 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
           </View>
         </View>
 
-        {loading && results.length === 0 ? (
+        <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
+          <Pressable style={[styles.tab, activeTab === 'search' && { borderBottomColor: theme.text }]} onPress={() => setActiveTab('search')}>
+            <Text style={[styles.tabText, { color: activeTab === 'search' ? theme.text : theme.textMuted }]}>Discover</Text>
+          </Pressable>
+          <Pressable style={[styles.tab, activeTab === 'saved' && { borderBottomColor: theme.text }]} onPress={() => setActiveTab('saved')}>
+            <Text style={[styles.tabText, { color: activeTab === 'saved' ? theme.text : theme.textMuted }]}>Saved</Text>
+          </Pressable>
+        </View>
+
+        {loading && results.length === 0 && activeTab === 'search' ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={theme.text} />
         ) : (
           <FlatList
-            data={results}
+            data={activeTab === 'search' ? results : savedTracks}
             keyExtractor={item => item.trackId.toString()}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
@@ -220,24 +242,42 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
                     </Text>
                   </View>
                   
-                  {isDownloading ? (
-                    <ActivityIndicator size="small" color={theme.textMuted} style={styles.actionSlot} />
-                  ) : isPreviewing ? (
-                    <Pressable 
-                      style={[styles.chooseButton, { backgroundColor: theme.text }]}
-                      onPress={() => handleSelect(item)}
-                    >
-                      <Text style={[styles.chooseButtonText, { color: theme.background }]}>Choose</Text>
-                    </Pressable>
-                  ) : null}
+                  <View style={styles.actionContainer}>
+                    {!isDownloading && !isPreviewing && (
+                      <Pressable 
+                        style={styles.saveBtn}
+                        onPress={() => savedTracks.some(t => t.trackId === item.trackId) ? removeTrack(item.trackId) : saveTrack(item)}
+                        hitSlop={15}
+                      >
+                        <Heart 
+                          size={20} 
+                          color={theme.text} 
+                          fill={savedTracks.some(t => t.trackId === item.trackId) ? theme.text : 'transparent'} 
+                        />
+                      </Pressable>
+                    )}
+                    {isDownloading ? (
+                      <ActivityIndicator size="small" color={theme.textMuted} style={styles.actionSlot} />
+                    ) : isPreviewing ? (
+                      <Pressable 
+                        style={[styles.chooseButton, { backgroundColor: theme.text }]}
+                        onPress={() => handleSelect(item)}
+                      >
+                        <Text style={[styles.chooseButtonText, { color: theme.background }]}>Choose</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </Pressable>
               );
             }}
-            ListEmptyComponent={() => (
-              query.length > 2 && !loading ? (
+            ListEmptyComponent={() => {
+              if (activeTab === 'saved') {
+                return <Text style={[styles.emptyText, { color: theme.textMuted }]}>No saved music yet{'\n'}Tap the heart on any song</Text>;
+              }
+              return query.length > 2 && !loading ? (
                 <Text style={[styles.emptyText, { color: theme.textMuted }]}>No songs found</Text>
-              ) : null
-            )}
+              ) : null;
+            }}
             onEndReached={loadMore}
             onEndReachedThreshold={0.5}
             ListFooterComponent={() => (
@@ -367,5 +407,33 @@ const styles = StyleSheet.create({
     marginTop: 40,
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 15,
-  }
+  },
+  tabs: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 13,
+    letterSpacing: 0.5,
+  },
+  actionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  saveBtn: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });
