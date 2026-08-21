@@ -51,7 +51,7 @@ interface CarouselItemProps {
 
 const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
-  const shareFlashOpacity = useSharedValue(0);
+  const pulseAnim = useSharedValue(0);
   const hiddenCardRef = useRef<View>(null);
   const { width } = useWindowDimensions();
   const theme = useTheme();
@@ -77,9 +77,12 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     };
   });
 
-  const flashStyle = useAnimatedStyle(() => ({
-    opacity: shareFlashOpacity.value,
-  }));
+  const pulseStyle = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(pulseAnim.value, [0, 0.1, 1], [0, 1, 0]),
+      transform: [{ scale: interpolate(pulseAnim.value, [0, 1], [0.96, 1.08]) }],
+    };
+  });
 
   const navigateToDetail = () => {
     router.push(`/memory/${item.id}`);
@@ -87,10 +90,8 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
 
   const triggerShareFeedback = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    shareFlashOpacity.value = withSequence(
-      withTiming(0.6, { duration: 50 }),
-      withTiming(0, { duration: 400 })
-    );
+    pulseAnim.value = 0;
+    pulseAnim.value = withTiming(1, { duration: 600 });
   };
 
   const captureAndShareCard = async () => {
@@ -165,9 +166,18 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-          {/* Flash overlay for share trigger */}
+          {/* Signal Pulse overlay for share trigger */}
           <Animated.View 
-            style={[StyleSheet.absoluteFill, { backgroundColor: theme.text, borderRadius: 24, zIndex: 10 }, flashStyle]} 
+            style={[
+              StyleSheet.absoluteFill, 
+              { 
+                borderWidth: 2,
+                borderColor: theme.text,
+                borderRadius: 24, 
+                zIndex: -1 
+              }, 
+              pulseStyle
+            ]} 
             pointerEvents="none" 
           />
         </Animated.View>
