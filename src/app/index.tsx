@@ -23,6 +23,8 @@ import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { User } from 'lucide-react-native';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { useSettingsStore } from '@/hooks/use-settings';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -47,6 +49,8 @@ interface CarouselItemProps {
 
 const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
+  const hiddenCardRef = useRef<View>(null);
+  const { width } = useWindowDimensions();
   
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
@@ -73,6 +77,27 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     router.push(`/memory/${item.id}`);
   };
 
+  const captureAndShareCard = async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      // Small delay to ensure the offscreen card is rendered
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const uri = await captureRef(hiddenCardRef, {
+        format: 'png',
+        quality: 1,
+      });
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: 'Share Memory Card',
+          mimeType: 'image/png',
+        });
+      }
+    } catch (e) {
+      console.error('Failed to capture memory card:', e);
+    }
+  };
+
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
@@ -88,9 +113,41 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     });
 
+  const longPress = Gesture.LongPress()
+    .minDuration(500)
+    .onStart(() => {
+      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+    })
+    .onEnd(() => {
+      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      runOnJS(captureAndShareCard)();
+    })
+    .onFinalize(() => {
+      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+    });
+
+  const composed = Gesture.Exclusive(doubleTap, longPress);
+
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
-      <GestureDetector gesture={doubleTap}>
+      {/* Hidden card for capturing as image */}
+      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
+        <View 
+          ref={hiddenCardRef} 
+          collapsable={false} 
+          style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
+        >
+          <MemoryCard 
+            item={item} 
+            height={cardHeight} 
+            onUpdatePositions={() => {}} 
+            isExporting={true}
+          />
+        </View>
+      </View>
+
+      <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
         </Animated.View>
