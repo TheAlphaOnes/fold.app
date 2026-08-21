@@ -37,6 +37,8 @@ import {
   Type,
   MapPin,
   Music,
+  Camera,
+  Video,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
@@ -318,6 +320,85 @@ export default function ComposeScreen() {
     }
   };
 
+  const handleCapturePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') return;
+      
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const stickerSize = 120;
+        const safeW = screenWidth - 60 - stickerSize;
+        const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+
+        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
+        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+        setMediaElements((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(2, 9),
+            uri: dest,
+            type: "image",
+            x_pos: 30 + Math.random() * safeW,
+            y_pos: 30 + Math.random() * safeH,
+            width: asset.width,
+            height: asset.height,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to capture photo:", error);
+    }
+  };
+
+  const handleCaptureVideo = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') return;
+      
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['videos'],
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const stickerSize = 120;
+        const safeW = screenWidth - 60 - stickerSize;
+        const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+
+        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : "mp4";
+        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+        setMediaElements((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(2, 9),
+            uri: dest,
+            type: "video",
+            x_pos: 30 + Math.random() * safeW,
+            y_pos: 30 + Math.random() * safeH,
+            width: asset.width,
+            height: asset.height,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to capture video:", error);
+    }
+  };
+
   const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
     const stickerSize = 120;
     const safeW = screenWidth - 60 - stickerSize;
@@ -585,6 +666,34 @@ export default function ComposeScreen() {
                   style={[styles.attachText, { color: theme.textMuted }]}
                 >
                   Record
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={handleCapturePhoto}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Camera size={16} color={theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: theme.textMuted }]}
+                >
+                  Capture
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={handleCaptureVideo}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Video size={16} color={theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: theme.textMuted }]}
+                >
+                  Video
                 </ThemedText>
               </Pressable>
               <Pressable
