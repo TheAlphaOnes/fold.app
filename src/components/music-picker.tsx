@@ -49,10 +49,17 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [hasMore, setHasMore] = useState(true);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
+  const [defaultSearch, setDefaultSearch] = useState('viral hits');
 
   const PAGE_SIZE = 25;
 
-  // Clear state when closing
+  const DEFAULT_TERMS = [
+    'viral hits', 'top hits', 'lofi chill', 'acoustic', 
+    'piano ambient', 'synthwave', 'indie pop', 'jazz vibes', 
+    'cinematic', 'electronic chill', 'trending pop', 'r&b'
+  ];
+
+  // Clear state when closing, pick a new random default when opening
   useEffect(() => {
     if (!visible) {
       setPreviewingTrack(null);
@@ -60,6 +67,10 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       setResults([]);
       setPage(0);
       setHasMore(true);
+    } else {
+      // Pick a random term every time they open the music picker
+      const randomTerm = DEFAULT_TERMS[Math.floor(Math.random() * DEFAULT_TERMS.length)];
+      setDefaultSearch(randomTerm);
     }
   }, [visible]);
 
@@ -71,7 +82,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     setHasMore(true);
 
     const isDefault = query.trim().length < 2;
-    const searchTerm = isDefault ? 'lofi chill' : query.trim();
+    const searchTerm = isDefault ? defaultSearch : query.trim();
     
     const timeout = setTimeout(async () => {
       setLoading(true);
@@ -96,7 +107,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     if (!visible || loading || loadingMore || !hasMore) return;
 
     const isDefault = query.trim().length < 2;
-    const searchTerm = isDefault ? 'lofi chill' : query.trim();
+    const searchTerm = isDefault ? defaultSearch : query.trim();
     const nextPage = page + 1;
 
     setLoadingMore(true);
