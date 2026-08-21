@@ -156,7 +156,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
 
   // Track style
   const trackStyle = useAnimatedStyle(() => {
-    const isVisible = isActive.value || translateY.value < -10;
+    const isVisible = translateY.value < -2;
     const progress = withTiming(isVisible ? 1 : 0, { duration: 250 });
     
     return {
@@ -169,7 +169,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
 
   const photoIconStyle = useAnimatedStyle(() => {
     const active = swipeStage.value === 1;
-    const isVisible = isActive.value || translateY.value < -10;
+    const isVisible = translateY.value < -2;
     return {
       opacity: withTiming(isVisible ? (active ? 1 : 0.4) : 0, { duration: 150 }),
       transform: [{ scale: withSpring(active ? 1.2 : 1) }]
@@ -178,7 +178,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
 
   const videoIconStyle = useAnimatedStyle(() => {
     const active = swipeStage.value === 2;
-    const isVisible = isActive.value || translateY.value < -10;
+    const isVisible = translateY.value < -2;
     return {
       opacity: withTiming(isVisible ? (active ? 1 : 0.4) : 0, { duration: 150 }),
       transform: [{ scale: withSpring(active ? 1.2 : 1) }]
@@ -186,7 +186,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
   });
 
   const detentsStyle = useAnimatedStyle(() => {
-    const isVisible = isActive.value || translateY.value < -10;
+    const isVisible = translateY.value < -2;
     return {
       opacity: withTiming(isVisible ? 1 : 0, { duration: 250 })
     };
