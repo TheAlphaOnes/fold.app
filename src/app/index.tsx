@@ -9,6 +9,8 @@ import Animated, {
   interpolate,
   Extrapolation,
   withSpring,
+  withSequence,
+  withTiming,
   runOnJS,
   type SharedValue
 } from 'react-native-reanimated';
@@ -49,8 +51,10 @@ interface CarouselItemProps {
 
 const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
+  const shareFlashOpacity = useSharedValue(0);
   const hiddenCardRef = useRef<View>(null);
   const { width } = useWindowDimensions();
+  const theme = useTheme();
   
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
@@ -73,13 +77,24 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     };
   });
 
+  const flashStyle = useAnimatedStyle(() => ({
+    opacity: shareFlashOpacity.value,
+  }));
+
   const navigateToDetail = () => {
     router.push(`/memory/${item.id}`);
   };
 
+  const triggerShareFeedback = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    shareFlashOpacity.value = withSequence(
+      withTiming(0.6, { duration: 50 }),
+      withTiming(0, { duration: 400 })
+    );
+  };
+
   const captureAndShareCard = async () => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       // Small delay to ensure the offscreen card is rendered
       await new Promise(resolve => setTimeout(resolve, 50));
       const uri = await captureRef(hiddenCardRef, {
@@ -117,11 +132,11 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     .minDuration(500)
     .onStart(() => {
       pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+      runOnJS(triggerShareFeedback)();
+      runOnJS(captureAndShareCard)();
     })
     .onEnd(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-      runOnJS(captureAndShareCard)();
     })
     .onFinalize(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
@@ -150,6 +165,11 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
+          {/* Flash overlay for share trigger */}
+          <Animated.View 
+            style={[StyleSheet.absoluteFill, { backgroundColor: theme.text, borderRadius: 24, zIndex: 10 }, flashStyle]} 
+            pointerEvents="none" 
+          />
         </Animated.View>
       </GestureDetector>
     </View>
