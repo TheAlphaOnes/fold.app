@@ -23,7 +23,13 @@ import { StatusBar } from "expo-status-bar";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Localization from "expo-localization";
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, LogBox } from "react-native";
+
+LogBox.ignoreLogs([
+  'PostHogFetchNetworkError',
+  'Error while flushing PostHog',
+  'Network error while fetching PostHog'
+]);
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   useFonts,

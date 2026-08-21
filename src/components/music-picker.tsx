@@ -81,7 +81,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
         const data = await response.json();
         const tracks = data.results.filter((t: any) => t.previewUrl);
         setResults(tracks);
-        setHasMore(tracks.length === PAGE_SIZE);
+        setHasMore(data.results.length === PAGE_SIZE);
       } catch (e) {
         console.error('Failed to search music', e);
       } finally {
@@ -112,8 +112,8 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
           const unique = Array.from(new Map(combined.map(item => [item.trackId, item])).values());
           return unique;
         });
-        setPage(nextPage);
       }
+      setPage(nextPage);
       
       if (data.results.length < PAGE_SIZE) {
         setHasMore(false);
