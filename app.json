@@ -70,7 +70,21 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-share-intent",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
+            "NSExtensionActivationSupportsImageWithMaxCount": 10,
+            "NSExtensionActivationSupportsMovieWithMaxCount": 5,
+            "NSExtensionActivationSupportsFileWithMaxCount": 10
+          },
+          "androidIntentFilters": ["image/*", "video/*", "audio/*", "text/*", "*/*"],
+          "androidMultiIntentFilters": ["image/*", "video/*", "*/*"],
+          "iosAppGroupIdentifier": "group.com.fold.app"
+        }
+      ],
       [
         "expo-location",
         {

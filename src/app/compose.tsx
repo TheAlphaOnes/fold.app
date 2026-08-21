@@ -21,7 +21,7 @@ import {
   Modal,
 } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemedText } from "@/components/themed-text";
 import { useJournalStore } from "@/hooks/use-journal";
@@ -141,8 +141,9 @@ export default function ComposeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { sharedText } = useLocalSearchParams<{ sharedText?: string }>();
 
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(sharedText ?? "");
 
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
     const pendingMedia = consumePendingCameraMedia();

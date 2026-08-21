@@ -179,39 +179,52 @@ export default function HomeScreen() {
   
   const { settings, updateSetting } = useSettingsStore();
   
-  // Handle incoming shared media (e.g. from Photos app, Chrome, etc.)
+  // Handle incoming shared media (e.g. from Photos app, Chrome, Files, etc.)
   useEffect(() => {
     if (error) {
       console.error('Share Intent Error:', error);
       return;
     }
     
-    if (hasShareIntent && shareIntent.files && shareIntent.files.length > 0) {
-      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-      
-      if (isExpoGo) {
-        Alert.alert(
-          'Expo Go Limitation',
-          'Receiving shared media from other apps is disabled in Expo Go. It WILL work seamlessly in your final built app.',
-          [{ text: 'OK', onPress: () => resetShareIntent() }]
-        );
-        return;
-      }
-      
+    if (!hasShareIntent) return;
+
+    const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+    if (isExpoGo) {
+      Alert.alert(
+        'Expo Go Limitation',
+        'Receiving shared media from other apps requires a development build. It works seamlessly in your final built app.',
+        [{ text: 'OK', onPress: () => resetShareIntent() }]
+      );
+      return;
+    }
+
+    // Handle shared files (images, videos, audio, docs)
+    if (shareIntent.files && shareIntent.files.length > 0) {
       const file = shareIntent.files[0];
-      const isVideo = file.mimeType?.startsWith('video/') || file.path.endsWith('.mp4');
-      const ext = isVideo ? 'mp4' : 'jpg';
+      const mime = file.mimeType || '';
+      const isVideo = mime.startsWith('video/') || file.path?.endsWith('.mp4') || file.path?.endsWith('.mov');
+      const isAudio = mime.startsWith('audio/');
+      const ext = isVideo ? 'mp4' : isAudio ? 'm4a' : 'jpg';
       
-      // We must copy the file to our document directory to ensure we own it before navigating to compose
       const dest = `${FileSystem.documentDirectory}shared_${Date.now()}.${ext}`;
-      FileSystem.copyAsync({ from: file.path, to: dest }).then(() => {
-        setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : 'image', width: 1080, height: 1920 });
-        resetShareIntent();
-        router.push('/compose');
-      }).catch(err => {
-        console.error('Failed to copy shared file', err);
-        resetShareIntent();
-      });
+      FileSystem.copyAsync({ from: file.path, to: dest })
+        .then(() => {
+          setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : 'image', width: 1080, height: 1920 });
+          resetShareIntent();
+          router.push('/compose');
+        })
+        .catch(err => {
+          console.error('Failed to copy shared file', err);
+          resetShareIntent();
+        });
+      return;
+    }
+
+    // Handle shared text / URL — open compose with the text pre-filled
+    if (shareIntent.text || shareIntent.webUrl) {
+      const sharedText = shareIntent.webUrl || shareIntent.text || '';
+      resetShareIntent();
+      router.push({ pathname: '/compose', params: { sharedText } });
     }
   }, [hasShareIntent, shareIntent, error]);
 
