@@ -1,28 +1,27 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing, withSequence, withSpring, runOnJS } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing, runOnJS } from 'react-native-reanimated';
 
 export function LensAperture({ color, onComplete }: { color: string, onComplete?: () => void }) {
   const aperture = useSharedValue(0);
 
   useEffect(() => {
-    // The aperture closes quickly (shutter click) and then opens
+    // 1. Snap closed fast (120ms, no bounce)
+    // 2. Fire onComplete the instant the iris is fully shut — screen transitions behind it
+    // 3. Flash back open (80ms) — user already sees the new screen
     aperture.value = withSequence(
-      withSpring(1, { damping: 15, stiffness: 400 }),
-      withTiming(0, { duration: 150, easing: Easing.inOut(Easing.cubic) }, (finished) => {
+      withTiming(1, { duration: 120, easing: Easing.out(Easing.cubic) }, (finished) => {
         if (finished && onComplete) {
           runOnJS(onComplete)();
         }
-      })
+      }),
+      withTiming(0, { duration: 80, easing: Easing.in(Easing.cubic) })
     );
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
-    // 0 = fully open (no border), 1 = fully closed (solid circle in middle)
-    const size = 800; // Large enough to cover the card
+    const size = 800;
     const borderWidth = aperture.value * (size / 2);
-    
     return {
       position: 'absolute',
       width: size,
@@ -34,7 +33,7 @@ export function LensAperture({ color, onComplete }: { color: string, onComplete?
       borderRadius: size / 2,
       borderColor: color,
       borderWidth: borderWidth,
-      opacity: aperture.value > 0 ? 0.9 : 0,
+      opacity: aperture.value > 0 ? 0.85 : 0,
     };
   });
 
