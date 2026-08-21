@@ -669,34 +669,6 @@ export default function ComposeScreen() {
                 </ThemedText>
               </Pressable>
               <Pressable
-                onPress={handleCapturePhoto}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Camera size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
-                  Capture
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={handleCaptureVideo}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Video size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
-                  Video
-                </ThemedText>
-              </Pressable>
-              <Pressable
                 onPress={handleAttachMedia}
                 style={({ pressed }) => [
                   styles.attachButton,
@@ -753,6 +725,34 @@ export default function ComposeScreen() {
                   </ThemedText>
                 </View>
               )}
+              <Pressable
+                onPress={handleCapturePhoto}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Camera size={16} color={theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: theme.textMuted }]}
+                >
+                  Capture
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={handleCaptureVideo}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Video size={16} color={theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: theme.textMuted }]}
+                >
+                  Video
+                </ThemedText>
+              </Pressable>
               <View style={{ width: 24 }} />{" "}
               {/* right padding spacer for scroll */}
             </ScrollView>
