@@ -45,11 +45,8 @@ export default function OnboardingDobScreen() {
     const finalDob = dob.trim() || '0x4a7B...Cef1';
     await updateSetting('dob', finalDob);
     
-    // Mark as onboarded
-    await updateSetting('hasOnboarded', true);
-    
-    // Route to main app
-    router.replace('/');
+    // Route to guide screen to finish onboarding
+    router.push('/onboarding/guide');
   };
 
   const bg = theme.background;

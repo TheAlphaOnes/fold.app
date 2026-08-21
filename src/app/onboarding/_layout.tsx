@@ -15,6 +15,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="index" options={{ animation: 'fade' }} />
       <Stack.Screen name="name" />
       <Stack.Screen name="dob" />
+      <Stack.Screen name="guide" options={{ animation: 'fade' }} />
     </Stack>
   );
 }
