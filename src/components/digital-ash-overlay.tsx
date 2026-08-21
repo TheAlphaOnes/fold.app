@@ -7,7 +7,8 @@ import Animated, {
   withSequence,
   withDelay,
   Easing,
-  runOnJS 
+  runOnJS,
+  type SharedValue
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -88,7 +89,7 @@ export function DigitalAshOverlay({ color, onComplete }: { color: string, onComp
   );
 }
 
-function AshParticle({ index, color, scanlineY, screenHeight, screenWidth }: { index: number, color: string, scanlineY: Animated.SharedValue<number>, screenHeight: number, screenWidth: number }) {
+function AshParticle({ index, color, scanlineY, screenHeight, screenWidth }: { index: number, color: string, scanlineY: SharedValue<number>, screenHeight: number, screenWidth: number }) {
   const x = Math.random() * screenWidth;
   const initialY = screenHeight * (0.1 + Math.random() * 0.9);
   
