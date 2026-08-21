@@ -18,10 +18,12 @@ interface JournalState {
   activeCompositionId: number | null;
   /** True once the splash screen animation has fully completed. Guards audio auto-play. */
   isAppVisible: boolean;
+  justAddedId: number | null;
 
   setTargetDate: (date: Date) => void;
   setActiveCompositionId: (id: number | null) => void;
   setAppVisible: (visible: boolean) => void;
+  setJustAddedId: (id: number | null) => void;
   refresh: () => Promise<void>;
   addComposition: (input: CreateCompositionInput) => Promise<void>;
   updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
@@ -36,6 +38,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   targetDate: new Date(),
   activeCompositionId: null,
   isAppVisible: false,
+  justAddedId: null,
 
   setTargetDate: (date: Date) => {
     set({ targetDate: date });
@@ -48,6 +51,10 @@ export const useJournalStore = create<JournalState>((set, get) => ({
 
   setAppVisible: (visible: boolean) => {
     set({ isAppVisible: visible });
+  },
+
+  setJustAddedId: (id: number | null) => {
+    set({ justAddedId: id });
   },
 
   refresh: async () => {
@@ -67,7 +74,8 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   },
 
   addComposition: async (input: CreateCompositionInput) => {
-    await createComposition(input);
+    const newComp = await createComposition(input);
+    set({ justAddedId: newComp.id });
     await get().refresh();
   },
 
