@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AddButton } from '@/components/add-button';
+import { CelebrationBurst } from '@/components/celebration-burst';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
@@ -51,8 +52,8 @@ interface CarouselItemProps {
 
 const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
-  const pulseAnim = useSharedValue(0);
   const hiddenCardRef = useRef<View>(null);
+  const [shareBurstKey, setShareBurstKey] = useState(0);
   const { width } = useWindowDimensions();
   const theme = useTheme();
   
@@ -77,21 +78,13 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     };
   });
 
-  const pulseStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(pulseAnim.value, [0, 0.1, 1], [0, 1, 0]),
-      transform: [{ scale: interpolate(pulseAnim.value, [0, 1], [0.96, 1.08]) }],
-    };
-  });
-
   const navigateToDetail = () => {
     router.push(`/memory/${item.id}`);
   };
 
   const triggerShareFeedback = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    pulseAnim.value = 0;
-    pulseAnim.value = withTiming(1, { duration: 600 });
+    setShareBurstKey(prev => prev + 1);
   };
 
   const captureAndShareCard = async () => {
@@ -166,20 +159,7 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-          {/* Signal Pulse overlay for share trigger */}
-          <Animated.View 
-            style={[
-              StyleSheet.absoluteFill, 
-              { 
-                borderWidth: 2,
-                borderColor: theme.text,
-                borderRadius: 24, 
-                zIndex: -1 
-              }, 
-              pulseStyle
-            ]} 
-            pointerEvents="none" 
-          />
+          {shareBurstKey > 0 && <CelebrationBurst key={`share-burst-${shareBurstKey}`} color={theme.text} />}
         </Animated.View>
       </GestureDetector>
     </View>
