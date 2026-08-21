@@ -6,16 +6,13 @@ export function LensAperture({ color, onComplete }: { color: string, onComplete?
   const aperture = useSharedValue(0);
 
   useEffect(() => {
-    // 1. Snap closed fast (120ms, no bounce)
-    // 2. Fire onComplete the instant the iris is fully shut — screen transitions behind it
-    // 3. Flash back open (80ms) — user already sees the new screen
     aperture.value = withSequence(
-      withTiming(1, { duration: 120, easing: Easing.out(Easing.cubic) }, (finished) => {
+      withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }, (finished) => {
         if (finished && onComplete) {
           runOnJS(onComplete)();
         }
       }),
-      withTiming(0, { duration: 80, easing: Easing.in(Easing.cubic) })
+      withTiming(0, { duration: 120, easing: Easing.in(Easing.cubic) })
     );
   }, []);
 
