@@ -21,6 +21,7 @@ import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AddButton } from '@/components/add-button';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
+import { LensAperture } from '@/components/lens-aperture';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
@@ -107,6 +108,8 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     }
   };
 
+  const [apertureKey, setApertureKey] = useState(0);
+
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
@@ -116,7 +119,8 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
     .onEnd(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-      runOnJS(navigateToDetail)();
+      // Trigger the lens aperture effect before navigating
+      runOnJS(setApertureKey)(prev => prev + 1);
     })
     .onFinalize(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
@@ -160,6 +164,7 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
           {scanKey > 0 && <LogoUploadFlight key={`scan-${scanKey}`} color={theme.text} />}
+          {apertureKey > 0 && <LensAperture key={`aperture-${apertureKey}`} color={theme.background} onComplete={navigateToDetail} />}
         </Animated.View>
       </GestureDetector>
     </View>

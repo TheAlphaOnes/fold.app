@@ -251,7 +251,7 @@ export function DraggableSticker({
   const contextY = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
-    .hitSlop(40) // Massively increase touch target area beyond visual bounds
+    .hitSlop(40)
     .onStart(() => {
       isDragging.value = true;
       activeScale.value = withTiming(1.02, { duration: 150 });
@@ -265,13 +265,12 @@ export function DraggableSticker({
       let nextX = contextX.value + event.translationX;
       let nextY = contextY.value + event.translationY;
 
-      // Physically prevent dragging outside the card boundaries
       translateX.value = Math.max(0, Math.min(nextX, maxX));
       translateY.value = Math.max(0, Math.min(nextY, maxY));
     })
     .onEnd(() => {
       isDragging.value = false;
-      activeScale.value = withTiming(1, { duration: 150 });
+      activeScale.value = withTiming(1, { duration: 200 });
       runOnJS(onDragEnd)(
         media.id,
         translateX.value,
