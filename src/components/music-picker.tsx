@@ -44,8 +44,13 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [downloading, setDownloading] = useState<number | null>(null);
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
+
+  const PAGE_SIZE = 25;
 
   // Clear state when closing
   useEffect(() => {
@@ -53,12 +58,17 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       setPreviewingTrack(null);
       setQuery('');
       setResults([]);
+      setPage(0);
+      setHasMore(true);
     }
   }, [visible]);
 
-  // Search or load defaults
+  // Initial search or when query changes
   useEffect(() => {
     if (!visible) return;
+
+    setPage(0);
+    setHasMore(true);
 
     const isDefault = query.trim().length < 2;
     const searchTerm = isDefault ? 'lofi chill' : query.trim();
@@ -67,9 +77,11 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       setLoading(true);
       try {
         const country = Localization.getLocales()[0]?.regionCode || 'US';
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=15&country=${country}`);
+        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=${PAGE_SIZE}&offset=0&country=${country}`);
         const data = await response.json();
-        setResults(data.results.filter((t: any) => t.previewUrl)); // Only tracks with previews
+        const tracks = data.results.filter((t: any) => t.previewUrl);
+        setResults(tracks);
+        setHasMore(tracks.length === PAGE_SIZE);
       } catch (e) {
         console.error('Failed to search music', e);
       } finally {
@@ -79,6 +91,39 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
 
     return () => clearTimeout(timeout);
   }, [query, visible]);
+
+  const loadMore = async () => {
+    if (!visible || loading || loadingMore || !hasMore) return;
+
+    const isDefault = query.trim().length < 2;
+    const searchTerm = isDefault ? 'lofi chill' : query.trim();
+    const nextPage = page + 1;
+
+    setLoadingMore(true);
+    try {
+      const country = Localization.getLocales()[0]?.regionCode || 'US';
+      const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=${PAGE_SIZE}&offset=${nextPage * PAGE_SIZE}&country=${country}`);
+      const data = await response.json();
+      const newTracks = data.results.filter((t: any) => t.previewUrl);
+      
+      if (newTracks.length > 0) {
+        setResults(prev => {
+          const combined = [...prev, ...newTracks];
+          const unique = Array.from(new Map(combined.map(item => [item.trackId, item])).values());
+          return unique;
+        });
+        setPage(nextPage);
+      }
+      
+      if (data.results.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+    } catch (e) {
+      console.error('Failed to load more music', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleSelect = async (track: MusicTrack) => {
     if (downloading) return;
@@ -180,6 +225,15 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
             ListEmptyComponent={() => (
               query.length > 2 && !loading ? (
                 <Text style={[styles.emptyText, { color: theme.textMuted }]}>No songs found</Text>
+              ) : null
+            )}
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={() => (
+              loadingMore ? (
+                <View style={{ paddingVertical: 20 }}>
+                  <ActivityIndicator color={theme.text} />
+                </View>
               ) : null
             )}
           />
