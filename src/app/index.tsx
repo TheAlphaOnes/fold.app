@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AddButton } from '@/components/add-button';
-import { LogoStamp } from '@/components/logo-stamp';
+import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { router, useFocusEffect } from 'expo-router';
@@ -89,8 +89,8 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
 
   const captureAndShareCard = async () => {
     try {
-      // Small wait to let the stamp animation resolve
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait to let the flight animation resolve upwards
+      await new Promise(resolve => setTimeout(resolve, 600));
       const uri = await captureRef(hiddenCardRef, {
         format: 'png',
         quality: 1,
@@ -159,7 +159,7 @@ const CarouselItem = memo(function CarouselItem({ item, index, snapInterval, car
       <GestureDetector gesture={composed}>
         <Animated.View style={animatedStyle}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-          {scanKey > 0 && <LogoStamp key={`scan-${scanKey}`} color={theme.text} />}
+          {scanKey > 0 && <LogoUploadFlight key={`scan-${scanKey}`} color={theme.text} />}
         </Animated.View>
       </GestureDetector>
     </View>
