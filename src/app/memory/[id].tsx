@@ -22,6 +22,7 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
+import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 
 // --- Types ---
 type SlideData =
@@ -311,6 +312,7 @@ export default function MemoryDetailScreen() {
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
   const { removeComposition } = useJournalStore();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = () => {
     Alert.alert(
@@ -321,13 +323,17 @@ export default function MemoryDetailScreen() {
         { 
           text: 'Delete', 
           style: 'destructive',
-          onPress: async () => {
-            await removeComposition(Number(id));
-            router.back();
+          onPress: () => {
+            setIsDeleting(true);
           }
         }
       ]
     );
+  };
+
+  const finalizeDelete = async () => {
+    await removeComposition(Number(id));
+    router.back();
   };
 
   const handleSaveMedia = async (uri: string) => {
@@ -650,6 +656,7 @@ export default function MemoryDetailScreen() {
           </View>
         </View>
       </Modal>
+      {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
     </View>
   );
 }
