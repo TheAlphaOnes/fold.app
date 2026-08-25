@@ -19,20 +19,21 @@ export function LogoUploadFlight({ color }: { color: string }) {
   const scale = useSharedValue(0.4);
 
   useEffect(() => {
-    // 1. Fade in subtly at the center
-    opacity.value = withTiming(1, { duration: 200 });
-    scale.value = withSpring(1, { damping: 14, stiffness: 200 });
+    // 1. Fade in and scale up subtly at the center
+    opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
+    scale.value = withSpring(1, { damping: 14, stiffness: 100 }); // Softer spring
 
-    // 2. Smoothly accelerate upwards off the screen
+    // 2. HANG in the center so the user sees it, THEN accelerate upwards
+    // Changed delay from 150ms to 700ms. Slowed duration from 600ms to 1000ms.
     flightY.value = withDelay(
-       150, 
-       withTiming(-800, { duration: 600, easing: Easing.in(Easing.cubic) })
+       700, 
+       withTiming(-900, { duration: 1000, easing: Easing.in(Easing.cubic) })
     );
     
     // 3. Fade out as it leaves the top of the screen
     opacity.value = withDelay(
-       400,
-       withTiming(0, { duration: 250 })
+       1300, // Starts fading out late in the flight
+       withTiming(0, { duration: 400 })
     );
   }, []);
 
@@ -45,8 +46,8 @@ export function LogoUploadFlight({ color }: { color: string }) {
       ],
       shadowColor: color,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 15,
+      shadowOpacity: 0.8,
+      shadowRadius: 20,
       zIndex: 10,
     };
   });
@@ -71,22 +72,22 @@ function DataParticle({ index, color }: { index: number, color: string }) {
   
   // Randomize the particle's X offset to create a "stream" width
   const offsetX = (Math.random() - 0.5) * 40;
-  // Increase delay so they follow behind the logo in a trail
-  const delay = 150 + (index * 35) + (Math.random() * 20);
+  // Increase base delay so they wait for the logo to start flying (700ms)
+  const delay = 700 + (index * 45) + (Math.random() * 30);
   // Randomize length to look like data streams
-  const height = 8 + Math.random() * 16;
+  const height = 12 + Math.random() * 20;
 
   useEffect(() => {
     // Fade in and out quickly like a glowing streak
     opacity.value = withDelay(delay, withSequence(
-      withTiming(0.8, { duration: 150 }),
-      withTiming(0, { duration: 350 })
+      withTiming(0.8, { duration: 200 }),
+      withTiming(0, { duration: 400 })
     ));
 
     // Follow the same upward trajectory
     particleY.value = withDelay(
       delay,
-      withTiming(-800, { duration: 600, easing: Easing.in(Easing.cubic) })
+      withTiming(-900, { duration: 1000, easing: Easing.in(Easing.cubic) })
     );
   }, []);
 

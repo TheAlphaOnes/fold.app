@@ -15,6 +15,7 @@ import Animated, {
   withTiming,
   withDelay,
   withSequence,
+  withRepeat,
   Easing,
 } from 'react-native-reanimated';
 
@@ -43,12 +44,14 @@ export function EmptyState() {
 
   // Staggered fade-in animations at different rates
   const artOpacity = useSharedValue(0);
-  const artTranslateY = useSharedValue(8);
+  const artTranslateY = useSharedValue(8); // Handles the initial entrance slide
+  const floatOffset = useSharedValue(0);   // Handles the infinite float
+  const artRotation = useSharedValue(0);   // Handles the subtle twisting
   const labelOpacity = useSharedValue(0);
   const labelTranslateY = useSharedValue(6);
 
   useEffect(() => {
-    // Art fades in first — slow and deliberate
+    // Art fades and slides in first
     artOpacity.value = withDelay(
       200,
       withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) })
@@ -57,8 +60,33 @@ export function EmptyState() {
       200,
       withTiming(0, { duration: 900, easing: Easing.out(Easing.cubic) })
     );
+    
+    // Start the continuous float right after the entrance finishes
+    floatOffset.value = withDelay(
+      1100,
+      withRepeat(
+        withTiming(-12, { duration: 2500, easing: Easing.inOut(Easing.sin) }),
+        -1, // Infinite loop
+        true // Yoyo (reverse on each repeat)
+      )
+    );
 
-    // Label arrives second — slightly faster
+    // Subtle twist/rotation (out of phase with the float for a natural drifting feel)
+    artRotation.value = withDelay(
+      1100,
+      withSequence(
+        // Smoothly tilt to the right first (half duration)
+        withTiming(1.5, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        // Then start an infinite sweep from right to left to right
+        withRepeat(
+          withTiming(-1.5, { duration: 3600, easing: Easing.inOut(Easing.sin) }),
+          -1,
+          true
+        )
+      )
+    );
+
+    // Label arrives second
     labelOpacity.value = withDelay(
       600,
       withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) })
@@ -67,11 +95,14 @@ export function EmptyState() {
       600,
       withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) })
     );
-  }, [artOpacity, artTranslateY, labelOpacity, labelTranslateY]);
+  }, [artOpacity, artTranslateY, floatOffset, artRotation, labelOpacity, labelTranslateY]);
 
   const artStyle = useAnimatedStyle(() => ({
     opacity: artOpacity.value,
-    transform: [{ translateY: artTranslateY.value }],
+    transform: [
+      { translateY: artTranslateY.value + floatOffset.value },
+      { rotate: `${artRotation.value}deg` }
+    ],
   }));
 
   const labelStyle = useAnimatedStyle(() => ({

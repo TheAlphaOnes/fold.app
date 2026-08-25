@@ -226,7 +226,7 @@ export function MemoryCard({
       // Clear it after the burst finishes so it doesn't replay on re-renders
       const timer = setTimeout(() => {
         setJustAddedId(null);
-      }, 1500);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [isNewlyAdded, setJustAddedId]);

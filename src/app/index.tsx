@@ -411,7 +411,7 @@ export default function HomeScreen() {
       setTimeout(() => {
         // Since the list is inverted and data is reversed, index 0 (the newest item) is at offset 0 (the bottom).
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }, 300); // Wait for render
+      }, 300); // Snappier wait for screen transition
     }
     prevCount.current = compositions.length;
   }, [compositions.length]);
