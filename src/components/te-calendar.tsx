@@ -388,9 +388,9 @@ const styles = StyleSheet.create({
 
   // Today: a thin ring wrapping the number, centered
   todayRing: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   // Memory dot: absolute at cell bottom
   memoryDot: {
     position: 'absolute',
-    bottom: 3,
+    bottom: 5,
     width: 4,
     height: 4,
     borderRadius: 2,

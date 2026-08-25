@@ -2,13 +2,13 @@
  * EmptyState — shown when there are no memories yet.
  *
  * Teenage Engineering-inspired ASCII art with monospace typography.
- * Minimal, industrial, intentional. Like reading a product manual
- * for a device that hasn't been used yet.
+ * Minimal, industrial, intentional.
  */
 
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,28 +18,34 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-// Clean, minimal ASCII card — uses only basic ASCII that renders
-// consistently across ALL Android font configurations.
+// A classic, highly-detailed top-down open book.
+// Exact ASCII art requested from asciiart.eu
 const ASCII_ART = [
-  '  .----------------------------.',
-  '  |                            |',
-  '  |                            |',
-  '  |      - - - - - - - -      |',
-  '  |      - - - - - - - -      |',
-  '  |      - - - - - - - -      |',
-  '  |                            |',
-  '  |           . . .            |',
-  '  |                            |',
-  "  '----------------------------'",
+  '    __________________   __________________',
+  '.-/|                  \\ /                  |\\-.',
+  '||||                   |                   ||||',
+  '||||                   |       ~~*~~       ||||',
+  '||||    --==*==--      |                   ||||',
+  '||||                   |                   ||||',
+  '||||                   |                   ||||',
+  '||||                   |     --==*==--     ||||',
+  '||||                   |                   ||||',
+  '||||                   |                   ||||',
+  '||||                   |                   ||||',
+  '||||                   |                   ||||',
+  '||||__________________ | __________________||||',
+  '||/===================\\|/===================\\||',
+  '`--------------------~___~-------------------\'\'',
 ].join('\n');
 
 export function EmptyState() {
+  const theme = useTheme();
+
   // Staggered fade-in animations at different rates
   const artOpacity = useSharedValue(0);
   const artTranslateY = useSharedValue(8);
   const labelOpacity = useSharedValue(0);
   const labelTranslateY = useSharedValue(6);
-  const hintOpacity = useSharedValue(0);
 
   useEffect(() => {
     // Art fades in first — slow and deliberate
@@ -61,17 +67,7 @@ export function EmptyState() {
       600,
       withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) })
     );
-
-    // Hint blinks in last — like a cursor
-    hintOpacity.value = withDelay(
-      1100,
-      withSequence(
-        withTiming(1, { duration: 400 }),
-        withTiming(0.4, { duration: 600 }),
-        withTiming(0.7, { duration: 500 })
-      )
-    );
-  }, [artOpacity, artTranslateY, labelOpacity, labelTranslateY, hintOpacity]);
+  }, [artOpacity, artTranslateY, labelOpacity, labelTranslateY]);
 
   const artStyle = useAnimatedStyle(() => ({
     opacity: artOpacity.value,
@@ -83,33 +79,19 @@ export function EmptyState() {
     transform: [{ translateY: labelTranslateY.value }],
   }));
 
-  const hintStyle = useAnimatedStyle(() => ({
-    opacity: hintOpacity.value,
-  }));
-
   return (
     <View style={styles.container}>
-      {/* ASCII art card outline */}
+      {/* ASCII art */}
       <Animated.View style={artStyle}>
-        <ThemedText
-          style={styles.ascii}
-          themeColor="textMuted"
-        >
+        <ThemedText style={styles.ascii} themeColor="textMuted">
           {ASCII_ART}
         </ThemedText>
       </Animated.View>
 
-      {/* Status label — like a device readout */}
+      {/* Status label */}
       <Animated.View style={[styles.labelRow, labelStyle]}>
         <ThemedText style={styles.label} themeColor="textMuted">
-          MEMORY_BANK : EMPTY
-        </ThemedText>
-      </Animated.View>
-
-      {/* Subtle prompt — like a terminal cursor line */}
-      <Animated.View style={hintStyle}>
-        <ThemedText style={styles.hint} themeColor="textMuted">
-          {'> tap to begin _'}
+          TAP TO CAPTURE YOURSELF
         </ThemedText>
       </Animated.View>
     </View>
@@ -126,10 +108,10 @@ const styles = StyleSheet.create({
   },
   ascii: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 10,
+    lineHeight: 10, // Force tight vertical packing so | connects perfectly
     letterSpacing: 0,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   labelRow: {
     marginTop: 8,
@@ -138,12 +120,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     letterSpacing: 1.5,
-    textAlign: 'center',
-  },
-  hint: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 11,
-    letterSpacing: 0.5,
     textAlign: 'center',
   },
 });

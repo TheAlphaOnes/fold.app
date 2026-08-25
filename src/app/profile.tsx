@@ -12,9 +12,8 @@ import type { Composition } from '@/types/journal';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActivityGrid } from '@/components/activity-grid';
-import { VolumeChart } from '@/components/volume-chart';
-import { MomentumChart } from '@/components/momentum-chart';
-import { RecentAssets } from '@/components/recent-assets';
+import { ProfileStats } from '@/components/profile-stats';
+import { StreakCard } from '@/components/streak-card';
 import { TECalendar } from '@/components/te-calendar';
 
 export default function ProfileScreen() {
@@ -135,10 +134,9 @@ export default function ProfileScreen() {
           <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
         </View>
 
-        {/* Charts */}
-        <VolumeChart compositions={compositions} />
-        <MomentumChart compositions={compositions} />
-        <RecentAssets compositions={compositions} />
+        {/* Stats */}
+        <StreakCard compositions={compositions} />
+        <ProfileStats compositions={compositions} />
 
         {/* ASCII Easter Egg Mascot */}
         <View style={styles.mascotContainer}>

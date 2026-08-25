@@ -120,7 +120,12 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
           horizontal 
           showsHorizontalScrollIndicator={false} 
           contentContainerStyle={styles.scrollContent}
-          contentOffset={selectedYear === today.getFullYear() ? { x: 10000, y: 0 } : undefined}
+          ref={(ref) => {
+            // Wait for layout then scroll to end
+            setTimeout(() => {
+              ref?.scrollToEnd({ animated: false });
+            }, 0);
+          }}
         >
           <View style={styles.grid}>
             {weeks.map((week, wIdx) => (
