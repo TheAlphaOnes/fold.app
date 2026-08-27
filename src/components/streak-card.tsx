@@ -165,7 +165,7 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
 const s = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 24,
   },
@@ -183,7 +183,7 @@ const s = StyleSheet.create({
     gap: 14,
   },
   hugeNumber: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'BitcountGridDouble-Regular',
     fontSize: 72,
     lineHeight: 72,
     includeFontPadding: false,
@@ -234,8 +234,8 @@ const s = StyleSheet.create({
     height: 28,
   },
   metricNum: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 18,
+    fontFamily: 'BitcountGridDouble-Regular',
+    fontSize: 20,
   },
   metricLabel: {
     fontFamily: 'JetBrainsMono-Regular',
