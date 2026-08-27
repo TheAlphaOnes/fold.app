@@ -58,7 +58,7 @@ export default function OnboardingGuideScreen() {
         withTiming(1, { duration: 150 })
       );
 
-      // Advance after brief pause
+      // Advance after a longer pause so the user can read the success state
       setTimeout(() => {
         setIsSuccess(false);
         if (phase === 3) {
@@ -66,7 +66,7 @@ export default function OnboardingGuideScreen() {
         } else {
           setPhase(phase + 1);
         }
-      }, 400);
+      }, 1000);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
