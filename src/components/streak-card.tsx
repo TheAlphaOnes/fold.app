@@ -108,6 +108,7 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
   const milestone = getMilestoneProgress(currentStreak);
   const isActive = currentStreak > 0;
   const RING_SIZE = 56;
+  const streakFormatted = String(currentStreak).padStart(2, '0');
 
   return (
     <View style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -115,11 +116,13 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
       {/* ── Hero row: number + labels on left, flame ring on right ── */}
       <View style={s.heroRow}>
         <View style={s.numberBlock}>
-          <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
-            {currentStreak}
-          </ThemedText>
+          <View style={[s.hugeNumberContainer, { borderBottomColor: theme.text }]}>
+            <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+              {streakFormatted}
+            </ThemedText>
+          </View>
           <View style={s.labelStack}>
-            <ThemedText style={[s.dayStreakLabel, { color: theme.textMuted }]}>day streak</ThemedText>
+            <ThemedText style={[s.dayStreakLabel, { color: theme.textMuted }]}>DAYS</ThemedText>
             <ThemedText style={[s.rankBadge, { color: isActive ? flameColor : theme.textMuted }]}>
               {rank.toUpperCase()}
             </ThemedText>
@@ -175,39 +178,43 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   numberBlock: {
     flexDirection: 'row',
-    alignItems: 'center', // Changed from flex-end to center for optical alignment
+    alignItems: 'center',
     gap: 16,
   },
+  hugeNumberContainer: {
+    borderBottomWidth: 2,
+    paddingBottom: 2,
+  },
   hugeNumber: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 100,
-    lineHeight: 100,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 56,
+    lineHeight: 64,
     includeFontPadding: false,
-    marginBottom: -16, // Optical adjustment for baseline
-    marginTop: -8,
   } as any,
   labelStack: {
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 4,
-    paddingTop: 4,
   },
   dayStreakLabel: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 13,
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 18,
+    letterSpacing: 2,
+    lineHeight: 24,
   },
   rankBadge: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 10,
-    letterSpacing: 2.5,
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 18,
+    letterSpacing: 2,
+    lineHeight: 24,
   },
   ringWrap: {
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   ringBox: {
     justifyContent: 'center',
@@ -229,7 +236,7 @@ const s = StyleSheet.create({
   metricItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   metricDivider: {
     width: StyleSheet.hairlineWidth,
@@ -237,12 +244,12 @@ const s = StyleSheet.create({
   },
   metricNum: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
-    marginBottom: -4,
+    fontSize: 24,
+    lineHeight: 32,
   },
   metricLabel: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: 1.5,
   },
 });
