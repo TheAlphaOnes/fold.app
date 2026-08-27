@@ -23,68 +23,9 @@ import type { Composition } from '@/types/journal';
 import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
 
+import { CarouselItem } from '@/components/carousel-item';
+
 const CARD_GAP = 21;
-
-interface CarouselItemProps {
-  item: Composition;
-  index: number;
-  snapInterval: number;
-  cardHeight: number;
-  scrollY: SharedValue<number>;
-  updatePositions: (id: number, media: any) => void;
-}
-
-function CarouselItem({ item, index, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
-  const pressedScale = useSharedValue(1);
-  
-  const animatedStyle = useAnimatedStyle(() => {
-    const inputRange = [
-      (index - 2) * snapInterval,
-      (index - 1) * snapInterval,
-      index * snapInterval,
-      (index + 1) * snapInterval,
-      (index + 2) * snapInterval,
-    ];
-
-    const scrollScale = interpolate(
-      scrollY.value,
-      inputRange,
-      [0.92, 0.95, 1, 0.95, 0.92],
-      Extrapolation.CLAMP
-    );
-
-    return {
-      transform: [{ scale: scrollScale * pressedScale.value }],
-    };
-  });
-
-  const navigateToDetail = () => {
-    router.push(`/memory/${item.id}`);
-  };
-
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onStart(() => {
-      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
-    })
-    .onEnd(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-      runOnJS(navigateToDetail)();
-    })
-    .onFinalize(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-    });
-
-  return (
-    <View style={{ height: snapInterval, justifyContent: 'center', paddingHorizontal: 21 }}>
-      <GestureDetector gesture={doubleTap}>
-        <Animated.View style={animatedStyle}>
-          <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-        </Animated.View>
-      </GestureDetector>
-    </View>
-  );
-}
 
 export default function ArchiveScreen() {
   const { ts } = useLocalSearchParams<{ ts: string }>();
@@ -139,7 +80,7 @@ export default function ArchiveScreen() {
   const renderItem = ({ item, index }: { item: Composition; index: number }) => (
     <CarouselItem
       item={item}
-      index={index}
+      itemOffset={index * snapInterval}
       snapInterval={snapInterval}
       cardHeight={cardHeight}
       scrollY={scrollY}

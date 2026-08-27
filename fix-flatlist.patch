@@ -1,0 +1,47 @@
+--- src/app/index.tsx
++++ src/app/index.tsx
+@@ -367,6 +367,19 @@
+     },
+   });
+ 
++  const renderItem = useCallback(({ item }: { item: TimelineItemType }) => {
++    if (item.type === 'separator') {
++      return <DateSeparator date={item.date} timelineMode={item.mode} />;
++    }
++    return (
++      <CarouselItem
++        item={item.item}
++        itemOffset={item.offset}
++        snapInterval={snapInterval}
++        cardHeight={cardHeight}
++        scrollY={scrollY}
++        updatePositions={updatePositions}
++      />
++    );
++  }, [snapInterval, cardHeight, scrollY, updatePositions]);
++
+   return (
+     // Clean background
+     <View style={[styles.container, { backgroundColor: theme.background }]}>
+@@ -391,24 +404,24 @@
+         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
+       </Pressable>
+ 
+-      {timelineData.items.length === 0 && !loading ? (
++      {timelineData.items.length === 0 && !loading ? (
+         <EmptyState />
+       ) : (
+         <Animated.FlatList
+           ref={listRef}
+-          data={timelineData.items}
++          data={timelineData.items}
+           inverted={true}
+           keyExtractor={(item) => item.id.toString()}
+           renderItem={renderItem}
+           showsVerticalScrollIndicator={false}
+           // Perfect mathematical snapping
+-          snapToOffsets={timelineData.items.map((_, i) => i * snapInterval)}
++          snapToOffsets={timelineData.offsets}
+           decelerationRate="fast"
+           disableIntervalMomentum
+           // iOS specific fixes

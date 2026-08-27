@@ -6,6 +6,8 @@ import {
 } from "@/db/settings-repository";
 import type { ThemeMode } from "./use-theme";
 
+export type TimelineMode = 'yearly' | 'monthly' | 'infinite';
+
 export interface UserSettings {
   name: string;
   dob: string;
@@ -16,6 +18,7 @@ export interface UserSettings {
   hasOnboarded: boolean;
   autoLocationTagging: boolean;
   autoPlayMusic: boolean;
+  timelineMode: TimelineMode;
 }
 
 const defaultSettings: UserSettings = {
@@ -28,6 +31,7 @@ const defaultSettings: UserSettings = {
   hasOnboarded: false,
   autoLocationTagging: false,
   autoPlayMusic: false,
+  timelineMode: 'yearly',
 };
 
 interface SettingsState {
@@ -60,6 +64,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           hasOnboarded: stored.hasOnboarded === "true",
           autoLocationTagging: stored.autoLocationTagging === "true",
           autoPlayMusic: stored.autoPlayMusic === "true",
+          timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
         },
         loading: false,
       });

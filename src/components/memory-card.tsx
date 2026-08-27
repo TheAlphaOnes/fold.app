@@ -13,7 +13,8 @@ import { DiagonalStripes } from "@/components/diagonal-stripes";
 import type { Composition, MediaElement } from "@/types/journal";
 import { DraggableSticker } from "@/components/draggable-sticker";
 import { Image } from "expo-image";
-import { PlayCircle, Share, MapPin } from "lucide-react-native";
+import { PlayCircle, Share, MapPin, Book } from "lucide-react-native";
+import { useStoriesStore } from "@/hooks/use-stories";
 import { VinylRecord } from "@/components/vinyl-record";
 import { Logo } from "@/components/logo";
 import { captureRef } from "react-native-view-shot";
@@ -216,7 +217,7 @@ export function MemoryCard({
 }: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  
+  const story = useStoriesStore(s => s.stories.find(st => item.storyIds?.includes(st.id)));
   const justAddedId = useJournalStore(s => s.justAddedId);
   const setJustAddedId = useJournalStore(s => s.setJustAddedId);
   const isNewlyAdded = justAddedId === item.id;
@@ -238,10 +239,31 @@ export function MemoryCard({
     theme.background === "#000000" ||
     theme.background === "#111111";
 
-  const formattedTime = new Intl.DateTimeFormat("en-US", {
+  const itemDate = new Date(item.createdAt);
+  const today = new Date();
+  
+  const isToday = 
+    itemDate.getDate() === today.getDate() &&
+    itemDate.getMonth() === today.getMonth() &&
+    itemDate.getFullYear() === today.getFullYear();
+    
+  const isThisYear = itemDate.getFullYear() === today.getFullYear();
+
+  const timeStr = new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(item.createdAt));
+  }).format(itemDate);
+
+  let formattedTime = timeStr;
+  if (!isToday) {
+    const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
+    const day = itemDate.getDate();
+    if (isThisYear) {
+      formattedTime = `${month} ${day} • ${timeStr}`;
+    } else {
+      formattedTime = `${month} ${day}, ${itemDate.getFullYear()} • ${timeStr}`;
+    }
+  }
 
   const hasMedia = Boolean(item.mediaElements && item.mediaElements.length > 0);
   const isSingleMedia = Boolean(
@@ -413,24 +435,29 @@ export function MemoryCard({
               styles.timeText,
               {
                 color: theme.textMuted,
-                marginBottom: item.location?.name ? 2 : 0,
               },
             ]}
           >
             {formattedTime}
           </Text>
-          {item.location?.name && (
-            <View style={styles.locationBadge}>
-              <MapPin size={10} color={theme.textMuted} />
-              <Text
-                style={[
-                  styles.timeText,
-                  { color: theme.textMuted, marginLeft: 4 },
-                ]}
-                numberOfLines={1}
-              >
-                {item.location.name.toUpperCase()}
-              </Text>
+          {(item.location?.name || story) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+              {story && (
+                <View style={styles.locationBadge}>
+                  <Book size={10} color={theme.textMuted} />
+                  <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4 }]} numberOfLines={1}>
+                    {story.title.toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              {item.location?.name && (
+                <View style={styles.locationBadge}>
+                  <MapPin size={10} color={theme.textMuted} />
+                  <Text style={[styles.timeText, { color: theme.textMuted, marginLeft: 4 }]} numberOfLines={1}>
+                    {item.location.name.toUpperCase()}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>

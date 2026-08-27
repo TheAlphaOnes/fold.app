@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Flame, Trophy, Target } from 'lucide-react-native';
+import { View, StyleSheet, Text } from 'react-native';
+import { Flame } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { Composition } from '@/types/journal';
 import { ThemedText } from './themed-text';
@@ -8,6 +8,9 @@ import { useTheme } from '@/hooks/use-theme';
 
 interface StreakCardProps {
   compositions: Composition[];
+  todayCount?: number;
+  totalWords?: number;
+  audioCount?: number;
 }
 
 const MILESTONES = [3, 7, 14, 30, 60, 100, 365];
@@ -53,10 +56,11 @@ function ProgressRing({
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <Svg width={size} height={size} style={styles.ringAbsolute}>
+    <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
       <Circle
         cx={size / 2} cy={size / 2} r={radius}
         stroke={trackColor} strokeWidth={strokeWidth} fill="none"
+        opacity={0.4}
       />
       <Circle
         cx={size / 2} cy={size / 2} r={radius}
@@ -71,7 +75,7 @@ function ProgressRing({
   );
 }
 
-export function StreakCard({ compositions }: StreakCardProps) {
+export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audioCount = 0 }: StreakCardProps) {
   const theme = useTheme();
 
   const { currentStreak, longestStreak } = useMemo(() => {
@@ -124,123 +128,143 @@ export function StreakCard({ compositions }: StreakCardProps) {
   const milestone = getMilestoneProgress(currentStreak);
   const isActive = currentStreak > 0;
 
-  const RING_SIZE = 80;
+  const RING_SIZE = 64;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.ringWrapper, { width: 56, height: 56 }]}>
-            <ProgressRing
-              progress={milestone.progress}
-              size={56}
-              strokeWidth={2.5}
-              color={flameColor}
-              trackColor={theme.border}
-            />
-            <View style={styles.ringContent}>
-              <Flame size={20} color={flameColor} />
-            </View>
-          </View>
-          
-          <View style={styles.headerText}>
-            <View style={styles.streakValueRow}>
-              <ThemedText style={[styles.streakNumber, { color: isActive ? flameColor : theme.text }]}>
-                {currentStreak}
-              </ThemedText>
-              <ThemedText style={[styles.streakLabel, { color: theme.textMuted }]}>
-                DAY STREAK
-              </ThemedText>
-            </View>
-            <ThemedText style={[styles.rankTitle, { color: isActive ? flameColor : theme.textMuted }]}>
+    <View style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+      
+      {/* ── Row 1 ── */}
+      <View style={s.topRow}>
+        <View style={[s.ringBox, { width: RING_SIZE, height: RING_SIZE }]}>
+          <ProgressRing
+            progress={milestone.progress}
+            size={RING_SIZE}
+            strokeWidth={2}
+            color={flameColor}
+            trackColor={theme.border}
+          />
+          <Flame size={24} color={flameColor} />
+        </View>
+
+        <View style={s.topRight}>
+          <View style={s.textCol}>
+            <ThemedText style={[s.streakUnit, { color: theme.textMuted }]}>
+              day streak
+            </ThemedText>
+            <ThemedText style={[s.rankText, { color: isActive ? flameColor : theme.textMuted }]}>
               {rank.title}
             </ThemedText>
           </View>
-        </View>
-        
-        <View style={[styles.bestBadge, { backgroundColor: theme.border }]}>
-          <Trophy size={12} color="#E45B00" />
-          <ThemedText style={[styles.bestText, { color: theme.text }]}>
-            {longestStreak}
+          <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+            {currentStreak}
           </ThemedText>
         </View>
       </View>
 
-      <ThemedText style={[styles.message, { color: theme.textMuted }]}>
-        {rank.message}
-      </ThemedText>
+      {/* ── Row 2 ── */}
+      <View style={s.bottomRow}>
+        {longestStreak > 0 ? (
+          <View style={[s.bestPill, { backgroundColor: theme.border }]}>
+            <ThemedText style={[s.bestText, { color: theme.text }]}>
+              BEST {longestStreak}
+            </ThemedText>
+          </View>
+        ) : (
+          <View />
+        )}
+
+        <View style={s.metricsRow}>
+          <Text>
+            <ThemedText style={[s.metricNum, { color: theme.text }]}>{todayCount}</ThemedText>
+            <ThemedText style={[s.metricUnit, { color: theme.textMuted }]}> today</ThemedText>
+          </Text>
+          <Text>
+            <ThemedText style={[s.metricNum, { color: theme.text }]}>{totalWords.toLocaleString()}</ThemedText>
+            <ThemedText style={[s.metricUnit, { color: theme.textMuted }]}> words</ThemedText>
+          </Text>
+          <Text>
+            <ThemedText style={[s.metricNum, { color: theme.text }]}>{audioCount}</ThemedText>
+            <ThemedText style={[s.metricUnit, { color: theme.textMuted }]}> clips</ThemedText>
+          </Text>
+        </View>
+      </View>
+
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
+const s = StyleSheet.create({
+  card: {
     borderWidth: 1,
-    borderRadius: 4,
-    gap: 16,
+    borderRadius: 12, // match other UI elements better
+    padding: 24,
+    gap: 28, // slight reduction from 32
     marginBottom: 24,
   },
-  header: {
+  topRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  ringWrapper: {
+  ringBox: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ringAbsolute: {
-    position: 'absolute',
-  },
-  ringContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerText: {
-    gap: 4,
-  },
-  streakValueRow: {
+  topRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12, // slightly tighter gap to the number
   },
-  streakNumber: {
+  textCol: {
+    alignItems: 'flex-end',
+    gap: 2, // tighter line spacing
+    marginTop: 4, // optical adjustment to center nicely with the big number
+  },
+  streakUnit: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 14,
+  },
+  rankText: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 24,
-    lineHeight: 28,
-  },
-  streakLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 12,
-    marginTop: 2, // optical alignment
-  },
-  rankTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 11,
+    fontSize: 11, // slightly smaller rank
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
-  bestBadge: {
+  hugeNumber: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 64,
+    lineHeight: 72,
+  },
+  bottomRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center', // Center aligns the pill with the text blocks natively
+  },
+  bestPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6, // tighter vertical padding
+    borderRadius: 6,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
   },
   bestText: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 12,
+    fontSize: 14, // scaled down to be proportionate to the metrics
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
-  message: {
+  metricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  metricNum: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
+  },
+  metricUnit: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
-    lineHeight: 18,
+    opacity: 0.7, // slightly more visible
   },
 });

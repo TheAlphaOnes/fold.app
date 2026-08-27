@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Settings as SettingsIcon } from 'lucide-react-native';
+import { X, Settings as SettingsIcon, Book, ChevronRight } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
@@ -92,36 +92,31 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Portfolio Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-          <View style={styles.portfolioHeader}>
-            <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Portfolio</ThemedText>
-          </View>
+        {/* Combined Dashboard Card */}
+        <StreakCard 
+          compositions={compositions} 
+          todayCount={todayCount}
+          totalWords={totalWords}
+          audioCount={audioCount}
+        />
 
-          <View style={styles.portfolioStatsRow}>
-            <View style={styles.portfolioStat}>
-              <ThemedText style={[styles.statLabel, { color: mutedText }]}>Today</ThemedText>
-              <ThemedText style={[styles.statValue, { color: fg }]}>
-                {todayCount}
-              </ThemedText>
-              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Entries</ThemedText>
-            </View>
-            <View style={styles.portfolioStat}>
-              <ThemedText style={[styles.statLabel, { color: mutedText }]}>Words</ThemedText>
-              <ThemedText style={[styles.statValue, { color: fg }]}>
-                {totalWords.toLocaleString()}
-              </ThemedText>
-              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Total</ThemedText>
-            </View>
-            <View style={styles.portfolioStat}>
-              <ThemedText style={[styles.statLabel, { color: mutedText }]}>Audio</ThemedText>
-              <ThemedText style={[styles.statValue, { color: fg }]}>
-                {audioCount}
-              </ThemedText>
-              <ThemedText style={[styles.statChangeAccent, { color: theme.accentWarm }]}>Clips</ThemedText>
-            </View>
+        {/* Sleek Story Board Row */}
+        <Pressable 
+          style={({ pressed }) => [
+            styles.sleekRow, 
+            { 
+              backgroundColor: pressed ? '#E0E0E0' : elementBg, 
+              borderColor: borderColor,
+            }
+          ]}
+          onPress={() => router.push('/stories')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Book size={18} color={fg} />
+            <ThemedText style={[styles.portfolioTitle, { color: fg, fontSize: 14 }]}>Story Board</ThemedText>
           </View>
-        </View>
+          <ChevronRight size={18} color={mutedText} />
+        </Pressable>
 
         {/* Heat Map (Activity Grid) */}
         <ActivityGrid compositions={compositions} />
@@ -135,7 +130,6 @@ export default function ProfileScreen() {
         </View>
 
         {/* Stats */}
-        <StreakCard compositions={compositions} />
         <ProfileStats compositions={compositions} />
 
         {/* ASCII Easter Egg Mascot */}
@@ -219,6 +213,15 @@ const styles = StyleSheet.create({
     borderColor: '#2A2A2A',
     borderRadius: 4,
   },
+  sleekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderRadius: 4,
+  },
   portfolioHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -229,33 +232,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 16,
     color: '#E0E0E0',
-  },
-  portfolioStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  portfolioStat: {
-    flex: 1,
-  },
-  statLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#878787',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  statChangeAccent: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-  },
-  statChangeRed: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#FF3B30',
   },
   mascotContainer: {
     marginTop: 40,

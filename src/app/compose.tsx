@@ -39,6 +39,7 @@ import {
   Music,
   Camera,
   Video,
+  Book
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
@@ -57,7 +58,9 @@ import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { TextInputWrapper } from "expo-paste-input";
 import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
+import { StoryPicker } from "@/components/story-picker";
 import type { MusicTrack } from "@/hooks/use-music-store";
+import { useStoriesStore } from "@/hooks/use-stories";
 
 function ComposeMediaPreview({
   m,
@@ -70,7 +73,7 @@ function ComposeMediaPreview({
 }) {
   const isVideo = m.type === "video";
   const videoThumbnailUri = useVideoThumbnail(isVideo ? m.uri : undefined);
-
+  
   return (
     <View style={styles.mediaPreviewWrapper}>
       {m.type === "audio" ? (
@@ -141,9 +144,10 @@ export default function ComposeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const { sharedText } = useLocalSearchParams<{ sharedText?: string }>();
+  const { sharedText, storyId: paramStoryId } = useLocalSearchParams<{ sharedText?: string; storyId?: string }>();
 
   const [body, setBody] = useState(sharedText ?? "");
+  const [storyId, setStoryId] = useState<number | null>(paramStoryId ? Number(paramStoryId) : null);
 
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
     const pendingMedia = consumePendingCameraMedia();
@@ -184,6 +188,10 @@ export default function ComposeScreen() {
   }>();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isMusicPickerVisible, setIsMusicPickerVisible] = useState(false);
+  
+  // storyId is declared above
+  const [isStoryPickerVisible, setIsStoryPickerVisible] = useState(false);
+  const { stories } = useStoriesStore();
 
   const fetchLocation = async () => {
     setIsFetchingLocation(true);
@@ -438,6 +446,7 @@ export default function ComposeScreen() {
         locationCoords: locationCoords
           ? JSON.stringify(locationCoords)
           : undefined,
+        storyIds: storyId ? [storyId] : [],
       });
 
       if (settings.dataCollection) {
@@ -698,6 +707,20 @@ export default function ComposeScreen() {
                   Music
                 </ThemedText>
               </Pressable>
+              <Pressable
+                onPress={() => setIsStoryPickerVisible(true)}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Book size={16} color={storyId ? theme.text : theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: storyId ? theme.text : theme.textMuted }]}
+                >
+                  {storyId ? "Story ✓" : "Story"}
+                </ThemedText>
+              </Pressable>
               {!settings.autoLocationTagging && !locationName && (
                 <Pressable
                   onPress={fetchLocation}
@@ -909,6 +932,13 @@ export default function ComposeScreen() {
         visible={isMusicPickerVisible}
         onClose={() => setIsMusicPickerVisible(false)}
         onSelect={handleAttachMusic}
+      />
+      
+      <StoryPicker mode="single"
+        visible={isStoryPickerVisible}
+        onClose={() => setIsStoryPickerVisible(false)}
+        onSelect={setStoryId}
+        selectedStoryId={storyId}
       />
     </View>
   );

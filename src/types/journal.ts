@@ -29,6 +29,8 @@ export interface CompositionRow {
   font_size: number;
   location_name?: string;
   location_coords?: string; // JSON string of LocationData
+  story_ids?: string; // Comma-separated string from GROUP_CONCAT
+  story_id?: number; // Legacy column
 }
 
 export interface Composition {
@@ -39,4 +41,23 @@ export interface Composition {
   fontFamily: string;
   fontSize: number;
   location?: LocationData;
+  storyIds: number[];
+}
+
+export interface StoryRow {
+  id: number;
+  title: string;
+  cover_image_uri: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface Story {
+  id: number;
+  title: string;
+  coverImageUri?: string;
+  sampleMedia?: { uri: string; type: 'image' | 'video' | 'audio' }[];
+  createdAt: number;
+  updatedAt: number;
+  memories?: Composition[]; // Hydrated array of memories belonging to this story
 }

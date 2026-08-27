@@ -53,7 +53,7 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { allCompositions, loading, refresh, loadAllCompositions, loadMoreCompositions, updatePositions, setTargetDate, addComposition, setActiveCompositionId } = useJournalStore();
+  const { allCompositions, loading, refresh, loadAllCompositions, updatePositions, setTargetDate, addComposition, setActiveCompositionId } = useJournalStore();
   
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
@@ -61,26 +61,15 @@ export default function HomeScreen() {
   const recorderState = useAudioRecorderState(recorder, 100);
   
   const { settings, updateSetting } = useSettingsStore();
-  
-  // The user wants the active card perfectly physically centered in the absolute screen
-  // so that the previous card and next card peek by the exact same number of pixels.
-  // We calculate card height strictly based on golden ratio, capped safely.
-  const cardHeight = Math.min(width * 1.618, height * 0.78);
-  const snapInterval = cardHeight + CARD_GAP;
-  const symmetricPadding = (height - snapInterval) / 2;
 
-  const timelineData = useMemo(() => {
+  const filteredCompositions = useMemo(() => {
     const reversed = [...allCompositions].reverse();
-    const items: TimelineItemType[] = [];
-    const offsets: number[] = [];
-    let currentOffset = 0;
-    const seen = new Set<string>();
-    let lastBlockKey: string | null = null;
+    if (settings.timelineMode === 'infinite') return reversed;
     
-    const filtered = reversed.filter(c => {
+    const seen = new Set<string>();
+    return reversed.filter(c => {
       const d = new Date(c.createdAt);
       if (isNaN(d.getTime())) return true;
-      if (settings.timelineMode === 'infinite') return true;
       const key = settings.timelineMode === 'yearly' 
         ? `${d.getFullYear()}` 
         : `${d.getFullYear()}-${d.getMonth()}`;
@@ -88,35 +77,7 @@ export default function HomeScreen() {
       seen.add(key);
       return true;
     });
-
-    for (const c of filtered) {
-      const d = new Date(c.createdAt);
-      if (isNaN(d.getTime())) {
-        items.push({ type: 'memory', id: `mem-${c.id}`, item: c, offset: currentOffset });
-        offsets.push(currentOffset);
-        currentOffset += snapInterval;
-        continue;
-      }
-      
-      const blockKey = settings.timelineMode === 'infinite'
-        ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        : settings.timelineMode === 'yearly'
-          ? `${d.getFullYear()}`
-          : `${d.getFullYear()}-${d.getMonth()}`;
-
-      if (lastBlockKey !== null && lastBlockKey !== blockKey) {
-        items.push({ type: 'separator', id: `sep-${c.id}-${blockKey}`, date: d, mode: settings.timelineMode, offset: currentOffset });
-        currentOffset += DATE_SEPARATOR_HEIGHT;
-      }
-      lastBlockKey = blockKey;
-      
-      items.push({ type: 'memory', id: `mem-${c.id}`, item: c, offset: currentOffset });
-      offsets.push(currentOffset);
-      currentOffset += snapInterval;
-    }
-
-    return { items, offsets };
-  }, [allCompositions, settings.timelineMode, snapInterval]);
+  }, [allCompositions, settings.timelineMode]);
 
   
   // Handle incoming shared media (e.g. from Photos app, Chrome, Files, etc.)
@@ -305,7 +266,7 @@ export default function HomeScreen() {
   };
 
   const listRef = useRef<Animated.FlatList<Composition>>(null);
-  const prevCount = useRef(timelineData.items.length);
+  const prevCount = useRef(filteredCompositions.length);
 
   // Auto-scroll to the bottom when a new item is added
   const [activeDate, setActiveDate] = useState(() => new Date());
@@ -333,15 +294,12 @@ export default function HomeScreen() {
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
-      // Find the first viewable memory card (ignore separators for active date calculation)
-      const centerView = viewableItems.find((v: any) => v.isViewable && v.item.type === 'memory') || 
-                         viewableItems.find((v: any) => v.item.type === 'memory');
-                         
-      if (centerView && centerView.item && centerView.item.type === 'memory') {
-        const memory = centerView.item.item as Composition;
-        setActiveCompositionId(memory.id);
-        if (memory.createdAt) {
-          const parsed = new Date(memory.createdAt);
+      const centerItem = viewableItems.find((v: any) => v.isViewable) || viewableItems[0];
+      if (centerItem && centerItem.item) {
+        setActiveCompositionId(centerItem.item.id);
+        if (centerItem.item.createdAt) {
+          const parsed = new Date(centerItem.item.createdAt);
+          // Only update if the parsed date is actually valid
           if (!isNaN(parsed.getTime())) {
             setActiveDate(parsed);
           }
@@ -351,17 +309,23 @@ export default function HomeScreen() {
   }).current;
 
   useEffect(() => {
-    if (timelineData.items.length > prevCount.current) {
+    if (filteredCompositions.length > prevCount.current) {
       setTimeout(() => {
         // Since the list is inverted and data is reversed, index 0 (the newest item) is at offset 0 (the bottom).
         listRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 300); // Snappier wait for screen transition
     }
-    prevCount.current = timelineData.items.length;
-  }, [timelineData.items.length]);
+    prevCount.current = filteredCompositions.length;
+  }, [filteredCompositions.length]);
   
   // The user wants the active card perfectly physically centered in the absolute screen
   // so that the previous card and next card peek by the exact same number of pixels.
+  // We calculate card height strictly based on golden ratio, capped safely.
+  const cardHeight = Math.min(width * 1.618, height * 0.78);
+  const snapInterval = cardHeight + CARD_GAP;
+  
+  // Pure symmetric padding based on the physical screen height
+  const symmetricPadding = (height - snapInterval) / 2;
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -370,21 +334,16 @@ export default function HomeScreen() {
     },
   });
 
-  const renderItem = useCallback(({ item }: { item: TimelineItemType }) => {
-    if (item.type === 'separator') {
-      return <DateSeparator date={item.date} timelineMode={item.mode} />;
-    }
-    return (
-      <CarouselItem
-        item={item.item}
-        itemOffset={item.offset}
-        snapInterval={snapInterval}
-        cardHeight={cardHeight}
-        scrollY={scrollY}
-        updatePositions={updatePositions}
-      />
-    );
-  }, [snapInterval, cardHeight, scrollY, updatePositions]);
+  const renderItem = useCallback(({ item, index }: { item: Composition; index: number }) => (
+    <CarouselItem
+      item={item}
+      index={index}
+      snapInterval={snapInterval}
+      cardHeight={cardHeight}
+      scrollY={scrollY}
+      updatePositions={updatePositions}
+    />
+  ), [snapInterval, cardHeight, scrollY, updatePositions]);
 
   return (
     // Clean background
@@ -409,18 +368,18 @@ export default function HomeScreen() {
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </Pressable>
 
-      {timelineData.items.length === 0 && !loading ? (
+      {filteredCompositions.length === 0 && !loading ? (
         <EmptyState />
       ) : (
         <Animated.FlatList
           ref={listRef}
-          data={timelineData.items}
+          data={filteredCompositions}
           inverted={true}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          // Perfect mathematical snapping, accounting for DateSeparators
-          snapToOffsets={timelineData.offsets}
+          // Perfect mathematical snapping
+          snapToOffsets={filteredCompositions.map((_, i) => i * snapInterval)}
           decelerationRate="fast"
           disableIntervalMomentum
           // iOS specific fixes
@@ -431,8 +390,6 @@ export default function HomeScreen() {
           scrollEventThrottle={16}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
-          onEndReached={loadMoreCompositions}
-          onEndReachedThreshold={0.5}
           // Center cards perfectly in the absolute physical screen.
           // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
           // We use symmetricPadding for both to ensure every card perfectly snaps to the physical center of the screen.

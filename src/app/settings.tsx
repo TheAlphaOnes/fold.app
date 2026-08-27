@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput, Switch } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Share, Trash2, Moon, Sun, Smartphone } from 'lucide-react-native';
+import { X, Share, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity } from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
+import * as Haptics from 'expo-haptics';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
-import { useSettings } from '@/hooks/use-settings';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 
@@ -18,7 +19,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting } = useSettingsStore();
   
   const [easterEggActive, setEasterEggActive] = useState(false);
 
@@ -82,11 +83,20 @@ export default function SettingsScreen() {
     });
   };
 
-  const cycleTheme = () => {
-    const modes: ThemeMode[] = ['light', 'dark', 'system'];
+  const cycleTheme = async () => {
+    Haptics.selectionAsync();
+    const modes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
     const currentIndex = modes.indexOf(settings.theme);
     const nextMode = modes[(currentIndex + 1) % modes.length];
-    updateSetting('theme', nextMode);
+    await updateSetting('theme', nextMode);
+  };
+
+  const cycleTimelineMode = async () => {
+    Haptics.selectionAsync();
+    const modes = ['yearly', 'monthly', 'infinite'] as const;
+    const currentIndex = modes.indexOf(settings.timelineMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    await updateSetting('timelineMode', nextMode);
   };
 
 
@@ -201,11 +211,27 @@ export default function SettingsScreen() {
           <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
 
           <View style={styles.settingRow}>
-            <View style={[styles.settingRowLeft, { flexDirection: 'column', alignItems: 'flex-start', gap: 4, flex: 1, paddingRight: 16 }]}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO-PLAY MUSIC</ThemedText>
-              <ThemedText style={[styles.settingSubtext, { color: theme.textMuted }]}>
-                Play audio cards automatically when they appear on screen.
+            <View style={styles.settingRowLeft}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>TIMELINE VIEW</ThemedText>
+            </View>
+            <Pressable 
+              onPress={cycleTimelineMode}
+              style={[styles.themeBtn, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+            >
+              {settings.timelineMode === 'yearly' && <Calendar size={14} color={theme.text} />}
+              {settings.timelineMode === 'monthly' && <CalendarDays size={14} color={theme.text} />}
+              {settings.timelineMode === 'infinite' && <Infinity size={14} color={theme.text} />}
+              <ThemedText style={[styles.themeBtnText, { color: theme.text }]}>
+                {settings.timelineMode.toUpperCase()}
               </ThemedText>
+            </Pressable>
+          </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingRowLeft}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO-PLAY AUDIO</ThemedText>
             </View>
             <Switch
               value={settings.autoPlayMusic}
@@ -390,7 +416,7 @@ const styles = StyleSheet.create({
     paddingBottom: 21,
   },
   title: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'BitcountGridDouble-Regular',
     fontSize: 18,
     letterSpacing: 2,
   },
@@ -410,7 +436,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   sectionTitle: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 11,
     letterSpacing: 2,
     color: '#878787',

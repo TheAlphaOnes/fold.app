@@ -1,28 +1,46 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Modal, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getCompositionById } from '@/db/journal-repository';
+
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText, MapPin } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText, MapPin, Book, BookMinus, BookPlus, Check } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { VinylRecord } from '@/components/vinyl-record';
+import { StoryPicker } from '@/components/story-picker';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { usePostHog } from 'posthog-react-native';
 import * as Sharing from 'expo-sharing';
+import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
+import { useStoriesStore } from '@/hooks/use-stories';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+
+function StoryPickerThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
+  const isVideo = media.type === 'video';
+  const videoThumb = useVideoThumbnail(isVideo ? media.uri : undefined);
+  const sourceUri = isVideo && videoThumb ? videoThumb : media.uri;
+
+  return (
+    <Image 
+      source={{ uri: sourceUri }} 
+      style={style} 
+      contentFit="cover"
+    />
+  );
+}
 
 // --- Types ---
 type SlideData =
@@ -296,13 +314,32 @@ function MediaSlide({ media, width, height, isActive }: { media: MediaElement; w
 
 export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [composition, setComposition] = useState<Composition | null>(null);
+
+  // Search allCompositions (full timeline) first, then fall back to compositions (On-This-Day).
+  // This ensures memories from any date resolve, not just today's.
+  const composition = useJournalStore(state =>
+    state.allCompositions.find(c => c.id === Number(id)) ??
+    state.compositions.find(c => c.id === Number(id)) ??
+    null
+  );
+  const { loadAllCompositions } = useJournalStore();
+
+  // If allCompositions is empty (store hasn't loaded yet), trigger a load.
+  // This handles navigating directly to a memory URL / deep-link.
+  const allCount = useJournalStore(state => state.allCompositions.length);
+  React.useEffect(() => {
+    if (allCount === 0) {
+      loadAllCompositions();
+    }
+  }, [allCount, loadAllCompositions]);
+
   const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const posthog = usePostHog();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
+  const [isStoryPickerVisible, setIsStoryPickerVisible] = useState(false);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -311,7 +348,8 @@ export default function MemoryDetailScreen() {
   }).current;
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-  const { removeComposition } = useJournalStore();
+  const { removeComposition, toggleStoryId } = useJournalStore();
+  const { stories } = useStoriesStore();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = () => {
@@ -428,14 +466,6 @@ export default function MemoryDetailScreen() {
     }
   };
 
-  useEffect(() => {
-    if (!id) return;
-    const fetchMemory = async () => {
-      const comp = await getCompositionById(Number(id));
-      setComposition(comp);
-    };
-    fetchMemory();
-  }, [id]);
 
   if (!composition) {
     return (
@@ -541,6 +571,23 @@ export default function MemoryDetailScreen() {
             style={({ pressed }) => [
               styles.actionBtn, 
               { 
+                borderColor: (composition?.storyIds?.length ?? 0) > 0 ? theme.text : theme.border,
+                backgroundColor: theme.background,
+                opacity: pressed ? 0.5 : 1 
+              }
+            ]} 
+            onPress={() => setIsStoryPickerVisible(true)}
+          >
+            {(composition?.storyIds?.length ?? 0) > 0 ? (
+              <Book size={16} color={theme.text} />
+            ) : (
+              <BookPlus size={16} color={theme.text} />
+            )}
+          </Pressable>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.actionBtn, 
+              { 
                 borderColor: theme.border,
                 backgroundColor: theme.background,
                 opacity: pressed ? 0.5 : 1 
@@ -583,19 +630,41 @@ export default function MemoryDetailScreen() {
         </View>
       </View>
 
-      {/* Bottom Bar: Location & Slide Indicator */}
-      <View style={[styles.bottomBar, { bottom: insets.bottom + 24 }]}>
-        {composition.location?.name && (
-          <Pressable 
-            style={({ pressed }) => [styles.locationBadge, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={handleOpenLocation}
-          >
-            <MapPin size={12} color={theme.textMuted} />
-            <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
-              {composition.location.name.toUpperCase()}
-            </Text>
-          </Pressable>
-        )}
+      {/* Bottom Bar: Location, Story & Slide Indicator */}
+      <View style={[styles.bottomBar, { bottom: insets.bottom + 24, width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 }]}>
+        <View style={{ gap: 8, flex: 1, alignItems: 'flex-start' }}>
+          {(composition?.storyIds?.length ?? 0) > 0 && (
+            <Pressable 
+              style={({ pressed }) => [styles.locationBadge, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => {
+                if (composition.storyIds.length === 1) {
+                  router.push(`/stories/${composition.storyIds[0]}`);
+                } else {
+                  setIsStoryPickerVisible(true);
+                }
+              }}
+            >
+              <Book size={12} color={theme.textMuted} />
+              <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
+                {composition.storyIds.length === 1 
+                  ? stories.find(s => s.id === composition.storyIds[0])?.title.toUpperCase() 
+                  : `${composition.storyIds.length} STORIES`}
+              </Text>
+            </Pressable>
+          )}
+
+          {composition.location?.name && (
+            <Pressable 
+              style={({ pressed }) => [styles.locationBadge, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={handleOpenLocation}
+            >
+              <MapPin size={12} color={theme.textMuted} />
+              <Text style={[styles.locationText, { color: theme.textMuted }]} numberOfLines={1}>
+                {composition.location.name.toUpperCase()}
+              </Text>
+            </Pressable>
+          )}
+        </View>
         
         {slides.length > 1 && (
           <View style={styles.indicatorContainer}>
@@ -623,19 +692,23 @@ export default function MemoryDetailScreen() {
       <Modal visible={isShareMenuVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsShareMenuVisible(false)} />
-          <View style={[styles.shareMenu, { backgroundColor: theme.backgroundElement, borderColor: theme.border, paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }]}>
-            <View style={[styles.shareMenuHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.shareMenuTitle, { color: theme.textMuted }]}>SHARE OPTIONS</Text>
+          
+          <View style={[styles.shareMenu, { backgroundColor: theme.backgroundElement, borderColor: theme.border, paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.shareMenuHeader}>
+              <View style={[styles.shareMenuHandle, { backgroundColor: theme.border }]} />
+              <Text style={[styles.shareMenuTitle, { color: theme.text }]}>Share options</Text>
             </View>
             
             <Pressable 
               style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
               onPress={captureAndShareCard}
             >
-              <ImageIcon size={20} color={theme.text} />
+              <View style={[styles.shareIconBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <ImageIcon size={18} color={theme.text} />
+              </View>
               <View style={styles.shareOptionText}>
-                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Card as Image</Text>
-                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>Generates a styled snapshot</Text>
+                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Export as Canvas</Text>
+                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>A beautifully framed canvas, ready to share</Text>
               </View>
             </Pressable>
             
@@ -643,19 +716,33 @@ export default function MemoryDetailScreen() {
               style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
               onPress={() => shareRawContent(slides)}
             >
-              {slides[currentIndex]?.type === 'media' ? (
-                <Download size={20} color={theme.text} />
-              ) : (
-                <FileText size={20} color={theme.text} />
-              )}
+              <View style={[styles.shareIconBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                {slides[currentIndex]?.type === 'media' ? (
+                  <Download size={18} color={theme.text} />
+                ) : (
+                  <FileText size={18} color={theme.text} />
+                )}
+              </View>
               <View style={styles.shareOptionText}>
-                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Original File</Text>
-                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>Raw media or text content</Text>
+                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Original</Text>
+                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>The raw, untouched source media</Text>
               </View>
             </Pressable>
+
           </View>
         </View>
       </Modal>
+
+      <StoryPicker
+        mode="multi"
+        visible={isStoryPickerVisible}
+        onClose={() => setIsStoryPickerVisible(false)}
+        selectedStoryIds={composition?.storyIds ?? []}
+        onToggle={async (storyId) => {
+          if (!composition) return;
+          await toggleStoryId(composition.id, storyId);
+        }}
+      />
       {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
     </View>
   );
@@ -718,59 +805,93 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    height: 16, // Fixed height to align properly with text
+    justifyContent: 'center',
   },
   bead: {
-    height: 6,
+    height: 4,
     borderWidth: 1,
-    borderRadius: 1,
+    borderRadius: 2,
   },
   beadActive: {
-    width: 24, // Expanded dash for current
+    width: 16, // Sleeker dash
   },
   beadInactive: {
-    width: 6, // Small square for inactive
-    opacity: 0.3,
+    width: 4, // Small square
+    opacity: 0.4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   shareMenu: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 0,
+    borderTopWidth: 1,
     overflow: 'hidden',
   },
   shareMenuHeader: {
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    padding: 24,
+    paddingBottom: 24,
     alignItems: 'center',
+    gap: 16,
+  },
+  shareMenuHandle: {
+    width: 36,
+    height: 5,
+    borderRadius: 2.5,
+    opacity: 0.5,
   },
   shareMenuTitle: {
-    fontFamily: 'JetBrainsMono-SemiBold',
-    fontSize: 12,
-    letterSpacing: 1,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 16,
+    letterSpacing: -0.3,
   },
   shareOption: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
     gap: 16,
+  },
+  shareIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareIconBoxStack: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerSticker: {
+    position: 'absolute',
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#000',
+    overflow: 'hidden',
   },
   shareOptionText: {
     flex: 1,
   },
   shareOptionTitle: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 16,
+    fontSize: 15,
   },
   shareOptionDesc: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
+    opacity: 0.7,
   },
 });

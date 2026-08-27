@@ -1,0 +1,16 @@
+--- src/app/index.tsx
++++ src/app/index.tsx
+@@ -58,6 +58,13 @@
+   const recorderState = useAudioRecorderState(recorder, 100);
+   
+   const { settings, updateSetting } = useSettingsStore();
++  
++  // The user wants the active card perfectly physically centered in the absolute screen
++  // so that the previous card and next card peek by the exact same number of pixels.
++  // We calculate card height strictly based on golden ratio, capped safely.
++  const cardHeight = Math.min(width * 1.618, height * 0.78);
++  const snapInterval = cardHeight + CARD_GAP;
++  const symmetricPadding = (height - snapInterval) / 2;
+ 
+   const filteredCompositions = useMemo(() => {
+     const reversed = [...allCompositions].reverse();

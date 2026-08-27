@@ -14,7 +14,7 @@ import * as FileSystem from 'expo-file-system/legacy';
  * Files stored in sub-folders of documentDirectory are handled by
  * preserving the path relative to the last "Documents/" segment.
  */
-function resolveDocumentUri(uri: string): string {
+export function resolveDocumentUri(uri: string): string {
   if (!uri) return uri;
   // Only patch file:// URIs that point into a Documents folder
   if (!uri.startsWith('file://') || !uri.includes('/Documents/')) return uri;
@@ -35,6 +35,7 @@ export interface CreateCompositionInput {
   fontSize: number;
   locationName?: string;
   locationCoords?: string;
+  storyIds?: number[];
 }
 
 export interface UpdateMediaPositionsInput {
@@ -42,7 +43,7 @@ export interface UpdateMediaPositionsInput {
   mediaElements: MediaElement[];
 }
 
-function rowToComposition(row: CompositionRow): Composition {
+export function rowToComposition(row: CompositionRow): Composition {
   let mediaElements: MediaElement[] = [];
   try {
     const parsed: MediaElement[] = JSON.parse(row.media_elements);
@@ -75,24 +76,31 @@ function rowToComposition(row: CompositionRow): Composition {
     fontFamily: row.font_family,
     fontSize: row.font_size,
     location,
+    storyIds: row.story_ids ? row.story_ids.split(',').map(Number) : (row.story_id ? [row.story_id] : []),
   };
 }
 
-export async function getAllCompositions(): Promise<Composition[]> {
+export async function getAllCompositions(limit: number = 100, offset: number = 0): Promise<Composition[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync(
-    'SELECT * FROM compositions ORDER BY created_at ASC'
+    `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
+     FROM compositions c 
+     ORDER BY c.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [limit, offset]
   );
-  return rows.map((row) => rowToComposition(mapRow(row)));
+  // We reverse the result to maintain the ASC order expected by the app for the feed
+  return rows.reverse().map((row) => rowToComposition(mapRow(row)));
 }
 
 export async function getOnThisDayCompositions(month: number, date: number): Promise<Composition[]> {
   const db = await getDatabase();
   const targetStr = `${month.toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
   const rows = await db.getAllAsync(
-    `SELECT * FROM compositions 
-     WHERE strftime('%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ? 
-     ORDER BY created_at ASC`,
+    `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
+     FROM compositions c 
+     WHERE strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ? 
+     ORDER BY c.created_at ASC`,
     targetStr
   );
   return rows.map((row) => rowToComposition(mapRow(row)));
@@ -110,7 +118,8 @@ export async function getDatesWithMemories(): Promise<string[]> {
 export async function getCompositionById(id: number): Promise<Composition | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<any>(
-    'SELECT * FROM compositions WHERE id = ?',
+    `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
+     FROM compositions c WHERE c.id = ?`,
     id
   );
   if (!row) return null;
@@ -123,15 +132,25 @@ export async function createComposition(input: CreateCompositionInput): Promise<
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
-    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, location_name, location_coords) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, location_name, location_coords, story_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     input.textContent,
     mediaJson,
     now,
     input.fontFamily,
     input.fontSize,
     input.locationName || null,
-    input.locationCoords || null
+    input.locationCoords || null,
+    null // Legacy story_id
   );
+  
+  const compositionId = result.lastInsertRowId as number;
+  
+  if (input.storyIds && input.storyIds.length > 0) {
+    for (const sId of input.storyIds) {
+      await db.runAsync('INSERT INTO composition_stories (composition_id, story_id) VALUES (?, ?)', compositionId, sId);
+    }
+  }
+
   let location: LocationData | undefined = undefined;
   if (input.locationCoords) {
     try {
@@ -145,13 +164,14 @@ export async function createComposition(input: CreateCompositionInput): Promise<
   }
 
   return {
-    id: result.lastInsertRowId as number,
+    id: compositionId,
     textContent: input.textContent,
     mediaElements: input.mediaElements,
     createdAt: now,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
     location,
+    storyIds: input.storyIds || [],
   };
 }
 
@@ -163,6 +183,19 @@ export async function updateMediaPositions(input: UpdateMediaPositionsInput): Pr
     mediaJson,
     input.id
   );
+}
+
+export async function toggleCompositionStoryId(id: number, storyId: number): Promise<boolean> {
+  const db = await getDatabase();
+  const existing = await db.getFirstAsync('SELECT 1 FROM composition_stories WHERE composition_id = ? AND story_id = ?', id, storyId);
+  
+  if (existing) {
+    await db.runAsync('DELETE FROM composition_stories WHERE composition_id = ? AND story_id = ?', id, storyId);
+    return false; // Removed
+  } else {
+    await db.runAsync('INSERT INTO composition_stories (composition_id, story_id) VALUES (?, ?)', id, storyId);
+    return true; // Added
+  }
 }
 
 export async function deleteComposition(id: number): Promise<void> {
