@@ -166,6 +166,7 @@ function RootLayoutNav() {
     "RockSalt-Regular": require("../../assets/fonts/RockSalt-Regular.ttf"),
     "BigelowRules-Regular": require("../../assets/fonts/BigelowRules-Regular.ttf"),
     "RubikGlitchPop-Regular": require("../../assets/fonts/RubikGlitchPop-Regular.ttf"),
+    "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,

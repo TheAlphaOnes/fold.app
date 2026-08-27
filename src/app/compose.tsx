@@ -237,6 +237,7 @@ export default function ComposeScreen() {
     { id: "RockSalt-Regular", name: "ROCK SALT" },
     { id: "BigelowRules-Regular", name: "BIGELOW" },
     { id: "RubikGlitchPop-Regular", name: "GLITCH" },
+    { id: "Ewert-Regular", name: "EWERT" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
     { id: "BebasNeue_400Regular", name: "BEBAS" },
