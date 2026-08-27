@@ -238,6 +238,7 @@ export default function ComposeScreen() {
     { id: "BigelowRules-Regular", name: "BIGELOW" },
     { id: "RubikGlitchPop-Regular", name: "GLITCH" },
     { id: "Ewert-Regular", name: "EWERT" },
+    { id: "RubikDoodleShadow-Regular", name: "DOODLE" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
     { id: "BebasNeue_400Regular", name: "BEBAS" },

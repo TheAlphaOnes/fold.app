@@ -167,6 +167,7 @@ function RootLayoutNav() {
     "BigelowRules-Regular": require("../../assets/fonts/BigelowRules-Regular.ttf"),
     "RubikGlitchPop-Regular": require("../../assets/fonts/RubikGlitchPop-Regular.ttf"),
     "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
+    "RubikDoodleShadow-Regular": require("../../assets/fonts/RubikDoodleShadow-Regular.ttf"),
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
