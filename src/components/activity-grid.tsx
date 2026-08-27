@@ -106,13 +106,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
-          <ThemedText style={styles.scrollHint}>{'<<< SCROLL'}</ThemedText>
-        </View>
-        <View style={[styles.badge, { borderColor: theme.border }]}>
-          <ThemedText style={styles.badgeText}>1Y</ThemedText>
-        </View>
+        <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
       </View>
       
       <View style={styles.scrollWrapper}>
@@ -185,23 +179,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
     color: '#E0E0E0',
-  },
-  scrollHint: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#FF4B00', // TE Orange for subtle accent
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 2,
-  },
-  badgeText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    color: '#878787',
   },
   scrollWrapper: {
     marginBottom: 12,
