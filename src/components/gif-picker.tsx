@@ -197,7 +197,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
               <Search size={16} color={theme.textMuted} style={styles.searchIcon} />
               <TextInput
                 style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search GIFs..."
+                placeholder="Search KLIPY..."
                 placeholderTextColor={theme.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -245,6 +245,11 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
                 searchQuery.length > 0 && !loading ? (
                   <Text style={[styles.emptyText, { color: theme.textMuted }]}>No GIFs found</Text>
                 ) : null
+              )}
+              ListFooterComponent={() => (
+                <View style={styles.footerContainer}>
+                  <Text style={[styles.attributionText, { color: theme.textMuted }]}>POWERED BY KLIPY</Text>
+                </View>
               )}
             />
           )
@@ -361,5 +366,15 @@ const styles = StyleSheet.create({
     marginTop: 40,
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 15,
+  },
+  footerContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  attributionText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 10,
+    letterSpacing: 1,
+    opacity: 0.5,
   },
 });
