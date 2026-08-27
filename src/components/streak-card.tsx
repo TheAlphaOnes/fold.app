@@ -146,17 +146,19 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
           <Flame size={24} color={flameColor} />
         </View>
 
-        <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
-          {currentStreak}
-        </ThemedText>
+        <View style={s.numberRow}>
+          <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+            {currentStreak}
+          </ThemedText>
 
-        <View style={s.textCol}>
-          <ThemedText style={[s.streakUnit, { color: theme.textMuted }]}>
-            day streak
-          </ThemedText>
-          <ThemedText style={[s.rankText, { color: isActive ? flameColor : theme.textMuted }]}>
-            {rank.title}
-          </ThemedText>
+          <View style={s.textCol}>
+            <ThemedText style={[s.streakUnit, { color: theme.textMuted }]}>
+              day streak
+            </ThemedText>
+            <ThemedText style={[s.rankText, { color: isActive ? flameColor : theme.textMuted }]}>
+              {rank.title}
+            </ThemedText>
+          </View>
         </View>
       </View>
 
@@ -210,10 +212,15 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  numberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+  },
   textCol: {
     alignItems: 'flex-start',
     gap: 2, // tighter line spacing
-    marginTop: 4, // optical adjustment to center nicely with the big number
+    marginBottom: 10, // optical adjustment to align baseline nicely with the big number
   },
   streakUnit: {
     fontFamily: 'JetBrainsMono-Regular',
