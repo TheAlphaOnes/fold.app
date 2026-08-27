@@ -169,6 +169,7 @@ function RootLayoutNav() {
     "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
     "RubikDoodleShadow-Regular": require("../../assets/fonts/RubikDoodleShadow-Regular.ttf"),
     "Cookie-Regular": require("../../assets/fonts/Cookie-Regular.ttf"),
+    "Cookiemonster-gv11": require("../../assets/fonts/Cookiemonster-gv11.ttf"),
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
