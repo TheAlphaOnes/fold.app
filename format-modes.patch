@@ -1,0 +1,57 @@
+--- src/app/index.tsx
++++ src/app/index.tsx
+@@ -318,10 +318,18 @@
+       date = new Date();
+     }
++    const yyyy = String(date.getFullYear());
++    
++    if (settings.timelineMode === 'yearly') {
++      return yyyy;
++    }
++    
++    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
++    if (settings.timelineMode === 'monthly') {
++      return `${months[date.getMonth()]}  ${yyyy}`;
++    }
++
+     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+     const day = days[date.getDay()];
+     const dd = String(date.getDate()).padStart(2, '0');
+     const mm = String(date.getMonth() + 1).padStart(2, '0');
+-    const yyyy = String(date.getFullYear()); // Explicit String() cast
+     return `${day}  ${dd}.${mm}.${yyyy}`;
+   };
+ 
+--- src/components/memory-card.tsx
++++ src/components/memory-card.tsx
+@@ -256,12 +256,22 @@
+   }).format(itemDate);
+ 
+   let formattedTime = timeStr;
+-  if (!isToday) {
+-    const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
+-    const day = itemDate.getDate();
+-    if (isThisYear) {
+-      formattedTime = `${month} ${day} • ${timeStr}`;
+-    } else {
+-      formattedTime = `${month} ${day}, ${itemDate.getFullYear()} • ${timeStr}`;
++  
++  const { settings } = useSettingsStore();
++  
++  if (settings.timelineMode === 'yearly') {
++    formattedTime = String(itemDate.getFullYear());
++  } else if (settings.timelineMode === 'monthly') {
++    const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
++    formattedTime = `${month} ${itemDate.getFullYear()}`;
++  } else {
++    if (!isToday) {
++      const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
++      const day = itemDate.getDate();
++      if (isThisYear) {
++        formattedTime = `${month} ${day} • ${timeStr}`;
++      } else {
++        formattedTime = `${month} ${day}, ${itemDate.getFullYear()} • ${timeStr}`;
++      }
+     }
+   }
+ 
