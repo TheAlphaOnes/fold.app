@@ -202,9 +202,9 @@ const s = StyleSheet.create({
   },
   dayStreakLabel: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 24,
+    fontSize: 32,
     letterSpacing: 2,
-    lineHeight: 28,
+    lineHeight: 36,
   },
   rankBadge: {
     fontFamily: 'BitcountGridDouble-Light',
