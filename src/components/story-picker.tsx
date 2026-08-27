@@ -136,9 +136,37 @@ export function StoryPicker(props: StoryPickerProps) {
               />
             ))
           ) : (
-            <View style={[styles.thumbFallback, { backgroundColor: theme.backgroundSurface, borderColor: theme.border }]}>
-              <Book size={24} color={theme.textMuted} />
-            </View>
+            <>
+              {[0, 1, 2].map((i) => (
+                <View
+                  key={`fallback-${i}`}
+                  style={[
+                    styles.thumbFallback,
+                    {
+                      position: 'absolute',
+                      backgroundColor: theme.backgroundSurface,
+                      borderColor: theme.border,
+                      borderWidth: 1,
+                      transform: [
+                        { rotate: `${(i - 1) * 8}deg` },
+                        { translateX: (i - 1) * 6 },
+                      ],
+                      zIndex: 3 - i,
+                      overflow: 'hidden',
+                    }
+                  ]}
+                >
+                  {i === 0 && (
+                    <>
+                      <ThemedText style={{ position: 'absolute', fontSize: 64, fontFamily: 'JetBrainsMono-Bold', opacity: 0.05, color: theme.text, top: -12, left: -6 }}>
+                        {item.title.charAt(0).toUpperCase()}
+                      </ThemedText>
+                      <Book size={20} color={theme.textMuted} style={{ opacity: 0.6 }} />
+                    </>
+                  )}
+                </View>
+              ))}
+            </>
           )}
         </View>
 
