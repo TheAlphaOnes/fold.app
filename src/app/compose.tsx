@@ -147,7 +147,7 @@ export default function ComposeScreen() {
   const { sharedText, storyId: paramStoryId } = useLocalSearchParams<{ sharedText?: string; storyId?: string }>();
 
   const [body, setBody] = useState(sharedText ?? "");
-  const [storyId, setStoryId] = useState<number | null>(paramStoryId ? Number(paramStoryId) : null);
+  const [storyIds, setStoryIds] = useState<number[]>(paramStoryId ? [Number(paramStoryId)] : []);
 
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
     const pendingMedia = consumePendingCameraMedia();
@@ -447,7 +447,7 @@ export default function ComposeScreen() {
         locationCoords: locationCoords
           ? JSON.stringify(locationCoords)
           : undefined,
-        storyIds: storyId ? [storyId] : [],
+        storyIds,
       });
 
       if (settings.dataCollection) {
@@ -664,12 +664,16 @@ export default function ComposeScreen() {
                 style={({ pressed }) => [
                   styles.storyTagButton,
                   { opacity: pressed ? 0.7 : 1 },
-                  storyId ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
+                  storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
                 ]}
               >
-                <Book size={14} color={storyId ? theme.background : theme.text} />
-                <ThemedText style={[styles.storyTagText, { color: storyId ? theme.background : theme.text }]}>
-                  {storyId ? (stories.find(s => s.id === storyId)?.title.toUpperCase() || 'STORY') : 'STORY'}
+                <Book size={14} color={storyIds.length > 0 ? theme.background : theme.text} />
+                <ThemedText style={[styles.storyTagText, { color: storyIds.length > 0 ? theme.background : theme.text }]}>
+                  {storyIds.length === 1 
+                    ? (stories.find(s => s.id === storyIds[0])?.title.toUpperCase() || 'STORY')
+                    : storyIds.length > 1
+                    ? `${storyIds.length} SELECTED`
+                    : 'STORY'}
                 </ThemedText>
               </Pressable>
             </View>
@@ -937,11 +941,15 @@ export default function ComposeScreen() {
         onSelect={handleAttachMusic}
       />
       
-      <StoryPicker mode="single"
+      <StoryPicker mode="multi"
         visible={isStoryPickerVisible}
         onClose={() => setIsStoryPickerVisible(false)}
-        onSelect={setStoryId}
-        selectedStoryId={storyId}
+        onToggle={(id) => {
+          setStoryIds((prev) => 
+            prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+          );
+        }}
+        selectedStoryIds={storyIds}
       />
     </View>
   );
