@@ -648,33 +648,29 @@ export default function ComposeScreen() {
         >
           {/* Date + time + media attach metadata — monospace, industrial readout */}
           <View style={styles.metaContainer}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <View style={styles.metaLeft}>
-                <ThemedText style={styles.metaDate} themeColor="textMuted">
-                  {dateString}
-                </ThemedText>
-                <View style={styles.metaDot} />
-                <ThemedText style={styles.metaTime} themeColor="textMuted">
-                  {timeString}
-                </ThemedText>
-              </View>
+            <View style={styles.metaLeft}>
+              <ThemedText style={styles.metaDate} themeColor="textMuted">
+                {dateString}
+              </ThemedText>
+              <View style={styles.metaDot} />
+              <ThemedText style={styles.metaTime} themeColor="textMuted">
+                {timeString}
+              </ThemedText>
+              
+              <View style={{ width: 4 }} />
               
               <Pressable
                 onPress={() => setIsStoryPickerVisible(true)}
                 style={({ pressed }) => [
                   styles.storyTagButton,
-                  { opacity: pressed ? 0.6 : 1 },
+                  { opacity: pressed ? 0.7 : 1 },
+                  storyId ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
                 ]}
               >
-                {storyId ? (
-                  <ThemedText style={styles.storyTagTextActive} themeColor="text">
-                    ✦ {stories.find(s => s.id === storyId)?.title.toLowerCase() || 'canvas'}
-                  </ThemedText>
-                ) : (
-                  <ThemedText style={styles.storyTagText} themeColor="textMuted">
-                    [ + attach to canvas ]
-                  </ThemedText>
-                )}
+                <Book size={10} color={storyId ? theme.background : theme.textMuted} />
+                <ThemedText style={[styles.storyTagText, { color: storyId ? theme.background : theme.textMuted }]}>
+                  {storyId ? (stories.find(s => s.id === storyId)?.title.toLowerCase() || 'story') : 'add to story'}
+                </ThemedText>
               </Pressable>
             </View>
 
@@ -1018,6 +1014,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
   },
   metaActionsRow: {
     flexDirection: "row",
@@ -1040,16 +1037,16 @@ const styles = StyleSheet.create({
   storyTagButton: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   storyTagText: {
-    fontFamily: "JetBrainsMono-Regular",
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
-  storyTagTextActive: {
-    fontFamily: "JetBrainsMono-Bold",
-    fontSize: 11,
-    letterSpacing: 0.5,
+    fontFamily: "JetBrainsMono-Medium",
+    fontSize: 10,
+    letterSpacing: 0.3,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",
