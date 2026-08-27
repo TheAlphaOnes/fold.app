@@ -208,9 +208,9 @@ const s = StyleSheet.create({
   },
   rankBadge: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 12,
+    fontSize: 16,
     letterSpacing: 2,
-    lineHeight: 16,
+    lineHeight: 20,
   },
   ringWrap: {
     alignItems: 'center',
