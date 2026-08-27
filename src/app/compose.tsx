@@ -235,6 +235,7 @@ export default function ComposeScreen() {
     { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
     { id: "BitcountGridDouble-Regular", name: "BITCOUNT" },
     { id: "RockSalt-Regular", name: "ROCK SALT" },
+    { id: "BigelowRules-Regular", name: "BIGELOW" },
     { id: "Inter_400Regular", name: "INTER" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
     { id: "ComicNeue_400Regular", name: "COMIC" },
