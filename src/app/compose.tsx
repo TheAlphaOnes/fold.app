@@ -648,7 +648,7 @@ export default function ComposeScreen() {
         >
           {/* Date + time + media attach metadata — monospace, industrial readout */}
           <View style={styles.metaContainer}>
-            <View style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <View style={styles.metaLeft}>
                 <ThemedText style={styles.metaDate} themeColor="textMuted">
                   {dateString}
@@ -1040,8 +1040,6 @@ const styles = StyleSheet.create({
   storyTagButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingTop: 2,
-    paddingBottom: 4,
   },
   storyTagText: {
     fontFamily: "JetBrainsMono-Regular",
