@@ -1,0 +1,23 @@
+--- src/components/date-separator.tsx
++++ src/components/date-separator.tsx
+@@ -115,16 +115,16 @@
+           },
+         ]}
+       >
+         <Text
+           style={[styles.primaryLabel, { color: theme.text }]}
+           allowFontScaling={false}
+         >
+-          {primary}
+-        </Text>
+-        <Text
+-          style={[styles.secondaryLabel, { color: theme.textMuted }]}
+-          allowFontScaling={false}
+-        >
+-          {secondary}
++          {secondary && <Text style={{ color: theme.textMuted }}>{secondary}  </Text>}
++          {primary}
+         </Text>
+       </RNAnimated.View>
+ 
+       {/* Right hairline */}

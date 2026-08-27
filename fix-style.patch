@@ -1,0 +1,17 @@
+--- src/components/date-separator.tsx
++++ src/components/date-separator.tsx
+@@ -142,12 +142,6 @@
+   primaryLabel: {
+     fontFamily: 'BitcountGridDouble-Light',
+-    fontSize: 11,
+-    letterSpacing: 2,
+-    textTransform: 'uppercase',
+-  },
+-  secondaryLabel: {
+-    fontFamily: 'BitcountGridDouble-Light',
+-    fontSize: 9,
+-    letterSpacing: 1.5,
++    fontSize: 14,
++    letterSpacing: 3,
+     textTransform: 'uppercase',
+   },

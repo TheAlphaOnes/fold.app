@@ -145,8 +145,14 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 14,
-    letterSpacing: 3,
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  secondaryLabel: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 9,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
 });
