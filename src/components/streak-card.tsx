@@ -146,17 +146,16 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
           <Flame size={24} color={flameColor} />
         </View>
 
-        <View style={s.topRight}>
-          <View style={s.textCol}>
-            <ThemedText style={[s.streakUnit, { color: theme.textMuted }]}>
-              day streak
-            </ThemedText>
-            <ThemedText style={[s.rankText, { color: isActive ? flameColor : theme.textMuted }]}>
-              {rank.title}
-            </ThemedText>
-          </View>
-          <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
-            {currentStreak}
+        <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+          {currentStreak}
+        </ThemedText>
+
+        <View style={s.textCol}>
+          <ThemedText style={[s.streakUnit, { color: theme.textMuted }]}>
+            day streak
+          </ThemedText>
+          <ThemedText style={[s.rankText, { color: isActive ? flameColor : theme.textMuted }]}>
+            {rank.title}
           </ThemedText>
         </View>
       </View>
@@ -204,19 +203,15 @@ const s = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
+    gap: 16,
   },
   ringBox: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  topRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12, // slightly tighter gap to the number
-  },
   textCol: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     gap: 2, // tighter line spacing
     marginTop: 4, // optical adjustment to center nicely with the big number
   },
