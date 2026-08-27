@@ -1,0 +1,87 @@
+--- src/app/compose.tsx
++++ src/app/compose.tsx
+@@ -647,15 +647,33 @@
+         >
+           {/* Date + time + media attach metadata — monospace, industrial readout */}
+           <View style={styles.metaContainer}>
+-            <View style={styles.metaLeft}>
+-              <ThemedText style={styles.metaDate} themeColor="textMuted">
+-                {dateString}
+-              </ThemedText>
+-              <View style={styles.metaDot} />
+-              <ThemedText style={styles.metaTime} themeColor="textMuted">
+-                {timeString}
+-              </ThemedText>
++            <View style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
++              <View style={styles.metaLeft}>
++                <ThemedText style={styles.metaDate} themeColor="textMuted">
++                  {dateString}
++                </ThemedText>
++                <View style={styles.metaDot} />
++                <ThemedText style={styles.metaTime} themeColor="textMuted">
++                  {timeString}
++                </ThemedText>
++              </View>
++              
++              <Pressable
++                onPress={() => setIsStoryPickerVisible(true)}
++                style={({ pressed }) => [
++                  styles.storyTagButton,
++                  { opacity: pressed ? 0.6 : 1 },
++                ]}
++              >
++                {storyId ? (
++                  <ThemedText style={styles.storyTagTextActive} themeColor="text">
++                    ✦ {stories.find(s => s.id === storyId)?.title.toLowerCase() || 'canvas'}
++                  </ThemedText>
++                ) : (
++                  <ThemedText style={styles.storyTagText} themeColor="textMuted">
++                    [ + attach to canvas ]
++                  </ThemedText>
++                )}
++              </Pressable>
+             </View>
+ 
+             <ScrollView
+@@ -707,19 +725,6 @@
+                   Music
+                 </ThemedText>
+               </Pressable>
+-              <Pressable
+-                onPress={() => setIsStoryPickerVisible(true)}
+-                style={({ pressed }) => [
+-                  styles.attachButton,
+-                  { opacity: pressed ? 0.5 : 1 },
+-                ]}
+-              >
+-                <Book size={16} color={storyId ? theme.text : theme.textMuted} />
+-                <ThemedText
+-                  style={[styles.attachText, { color: storyId ? theme.text : theme.textMuted }]}
+-                >
+-                  {storyId ? "Story ✓" : "Story"}
+-                </ThemedText>
+-              </Pressable>
+               {!settings.autoLocationTagging && !locationName && (
+                 <Pressable
+@@ -1029,6 +1034,22 @@
+   attachText: {
+     fontFamily: "JetBrainsMono-Medium",
+     fontSize: 12,
++  },
++  storyTagButton: {
++    flexDirection: "row",
++    alignItems: "center",
++    paddingTop: 2,
++    paddingBottom: 4,
++  },
++  storyTagText: {
++    fontFamily: "JetBrainsMono-Regular",
++    fontSize: 11,
++    letterSpacing: 0.5,
++  },
++  storyTagTextActive: {
++    fontFamily: "JetBrainsMono-Bold",
++    fontSize: 11,
++    letterSpacing: 0.5,
+   },
+   closeButton: {

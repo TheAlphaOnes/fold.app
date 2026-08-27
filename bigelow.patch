@@ -1,0 +1,20 @@
+--- src/app/_layout.tsx
++++ src/app/_layout.tsx
+@@ -166,6 +166,7 @@
+     "BitcountGridDouble-SemiBold": require("../../assets/fonts/BitcountGridDouble-SemiBold.ttf"),
+     "BitcountGridDouble-Bold": require("../../assets/fonts/BitcountGridDouble-Bold.ttf"),
+     "RockSalt-Regular": require("../../assets/fonts/RockSalt-Regular.ttf"),
++    "BigelowRules-Regular": require("../../assets/fonts/BigelowRules-Regular.ttf"),
+     Inter_400Regular,
+     Inter_500Medium,
+     Inter_600SemiBold,
+--- src/app/compose.tsx
++++ src/app/compose.tsx
+@@ -237,6 +237,7 @@
+     { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
+     { id: "BitcountGridDouble-Regular", name: "BITCOUNT" },
+     { id: "RockSalt-Regular", name: "ROCK SALT" },
++    { id: "BigelowRules-Regular", name: "BIGELOW" },
+     { id: "Inter_400Regular", name: "INTER" },
+     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
+     { id: "ComicNeue_400Regular", name: "COMIC" },

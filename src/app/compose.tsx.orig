@@ -235,13 +235,15 @@ export default function ComposeScreen() {
     { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
     { id: "BitcountGridDouble-Regular", name: "BITCOUNT" },
     { id: "RockSalt-Regular", name: "ROCK SALT" },
-    { id: "BigelowRules-Regular", name: "BIGELOW" },
+    { id: "Inter_400Regular", name: "INTER" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
+    { id: "ComicNeue_400Regular", name: "COMIC" },
     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
     { id: "BebasNeue_400Regular", name: "BEBAS" },
     { id: "Caveat_400Regular", name: "CAVEAT" },
     { id: "DancingScript_400Regular", name: "DANCING" },
     { id: "Righteous_400Regular", name: "FUNKY" },
+    { id: "EBGaramond_400Regular", name: "POETRY" },
     { id: "Pacifico_400Regular", name: "PACIFICO" },
     { id: "PermanentMarker_400Regular", name: "MARKER" },
     { id: "AmaticSC_700Bold", name: "SKETCH" },
@@ -647,34 +649,14 @@ export default function ComposeScreen() {
         >
           {/* Date + time + media attach metadata — monospace, industrial readout */}
           <View style={styles.metaContainer}>
-            <View style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-              <View style={styles.metaLeft}>
-                <ThemedText style={styles.metaDate} themeColor="textMuted">
-                  {dateString}
-                </ThemedText>
-                <View style={styles.metaDot} />
-                <ThemedText style={styles.metaTime} themeColor="textMuted">
-                  {timeString}
-                </ThemedText>
-              </View>
-              
-              <Pressable
-                onPress={() => setIsStoryPickerVisible(true)}
-                style={({ pressed }) => [
-                  styles.storyTagButton,
-                  { opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                {storyId ? (
-                  <ThemedText style={styles.storyTagTextActive} themeColor="text">
-                    ✦ {stories.find(s => s.id === storyId)?.title.toLowerCase() || 'canvas'}
-                  </ThemedText>
-                ) : (
-                  <ThemedText style={styles.storyTagText} themeColor="textMuted">
-                    [ + attach to canvas ]
-                  </ThemedText>
-                )}
-              </Pressable>
+            <View style={styles.metaLeft}>
+              <ThemedText style={styles.metaDate} themeColor="textMuted">
+                {dateString}
+              </ThemedText>
+              <View style={styles.metaDot} />
+              <ThemedText style={styles.metaTime} themeColor="textMuted">
+                {timeString}
+              </ThemedText>
             </View>
 
             <ScrollView
@@ -725,6 +707,20 @@ export default function ComposeScreen() {
                   style={[styles.attachText, { color: theme.textMuted }]}
                 >
                   Music
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsStoryPickerVisible(true)}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Book size={16} color={storyId ? theme.text : theme.textMuted} />
+                <ThemedText
+                  style={[styles.attachText, { color: storyId ? theme.text : theme.textMuted }]}
+                >
+                  {storyId ? "Story ✓" : "Story"}
                 </ThemedText>
               </Pressable>
               {!settings.autoLocationTagging && !locationName && (
@@ -1035,22 +1031,6 @@ const styles = StyleSheet.create({
   attachText: {
     fontFamily: "JetBrainsMono-Medium",
     fontSize: 12,
-  },
-  storyTagButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingTop: 2,
-    paddingBottom: 4,
-  },
-  storyTagText: {
-    fontFamily: "JetBrainsMono-Regular",
-    fontSize: 11,
-    letterSpacing: 0.5,
-  },
-  storyTagTextActive: {
-    fontFamily: "JetBrainsMono-Bold",
-    fontSize: 11,
-    letterSpacing: 0.5,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",
