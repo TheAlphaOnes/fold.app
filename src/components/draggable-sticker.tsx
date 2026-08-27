@@ -222,9 +222,9 @@ export function DraggableSticker({
     media.type === "video" ? media.uri : undefined,
   );
 
-  const STICKER_WIDTH = 90;
-  const STICKER_HEIGHT = 120;
-
+  const isHorizontal = media.width && media.height ? media.width > media.height : false;
+  const STICKER_WIDTH = isHorizontal ? 120 : 90;
+  const STICKER_HEIGHT = isHorizontal ? 90 : 120;
   // Clamp initial positions just in case they spawned out of bounds
   const clampedStartX = Math.max(
     0,
@@ -334,6 +334,7 @@ export function DraggableSticker({
       <Animated.View
         style={[
           styles.sticker,
+          { width: STICKER_WIDTH, height: STICKER_HEIGHT },
           media.type !== "audio" && {
             backgroundColor: theme.backgroundElement,
             borderColor: theme.borderStrong,
