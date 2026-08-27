@@ -667,9 +667,9 @@ export default function ComposeScreen() {
                   storyId ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
                 ]}
               >
-                <Book size={10} color={storyId ? theme.background : theme.textMuted} />
-                <ThemedText style={[styles.storyTagText, { color: storyId ? theme.background : theme.textMuted }]}>
-                  {storyId ? (stories.find(s => s.id === storyId)?.title.toLowerCase() || 'story') : 'add to story'}
+                <Book size={14} color={storyId ? theme.background : theme.text} />
+                <ThemedText style={[styles.storyTagText, { color: storyId ? theme.background : theme.text }]}>
+                  {storyId ? (stories.find(s => s.id === storyId)?.title.toUpperCase() || 'STORY') : 'STORY'}
                 </ThemedText>
               </Pressable>
             </View>
@@ -1037,16 +1037,16 @@ const styles = StyleSheet.create({
   storyTagButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 34,
+    borderWidth: 1,
   },
   storyTagText: {
     fontFamily: "JetBrainsMono-Medium",
-    fontSize: 10,
-    letterSpacing: 0.3,
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",
