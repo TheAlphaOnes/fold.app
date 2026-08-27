@@ -1,0 +1,24 @@
+--- src/components/draggable-sticker.tsx
++++ src/components/draggable-sticker.tsx
+@@ -79,8 +79,16 @@
+     media.type === "video" ? media.uri : undefined,
+   );
+ 
+-  const STICKER_WIDTH = 90;
+-  const STICKER_HEIGHT = 120;
++  // Determine if media is horizontal/landscape based on actual dimensions
++  const isHorizontal = media.width && media.height && media.width > media.height;
++  
++  // Audio or vertical image -> vertical sticker. Horizontal image -> horizontal sticker.
++  const STICKER_WIDTH = isHorizontal ? 120 : 90;
++  const STICKER_HEIGHT = isHorizontal ? 90 : 120;
+ 
+   // Clamp initial positions just in case they spawned out of bounds
+   const clampedStartX = Math.max(
+@@ -194,8 +202,6 @@
+         style={[
+           styles.sticker,
++          { width: STICKER_WIDTH, height: STICKER_HEIGHT },
+           media.type !== "audio" && {
+             backgroundColor: theme.backgroundElement,
+             borderColor: theme.borderStrong,

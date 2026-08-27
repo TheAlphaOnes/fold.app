@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   headerTitle: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 18,
     letterSpacing: 1,
   },

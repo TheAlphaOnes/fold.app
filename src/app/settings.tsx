@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     paddingBottom: 21,
   },
   title: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 18,
     letterSpacing: 2,
   },

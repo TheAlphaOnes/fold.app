@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 48,
     lineHeight: 64,
     letterSpacing: 8,

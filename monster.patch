@@ -1,0 +1,20 @@
+--- src/app/_layout.tsx
++++ src/app/_layout.tsx
+@@ -171,6 +171,7 @@
+     "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
+     "RubikDoodleShadow-Regular": require("../../assets/fonts/RubikDoodleShadow-Regular.ttf"),
+     "Cookie-Regular": require("../../assets/fonts/Cookie-Regular.ttf"),
++    "Cookiemonster-gv11": require("../../assets/fonts/Cookiemonster-gv11.ttf"),
+     Inter_400Regular,
+     Inter_500Medium,
+     Inter_600SemiBold,
+--- src/app/compose.tsx
++++ src/app/compose.tsx
+@@ -241,6 +241,7 @@
+     { id: "Ewert-Regular", name: "EWERT" },
+     { id: "RubikDoodleShadow-Regular", name: "DOODLE" },
+     { id: "Cookie-Regular", name: "COOKIE" },
++    { id: "Cookiemonster-gv11", name: "MONSTER" },
+     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
+     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
+     { id: "BebasNeue_400Regular", name: "BEBAS" },

@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   portfolioTitle: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 16,
     color: '#E0E0E0',
   },

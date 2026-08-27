@@ -1,0 +1,20 @@
+--- src/app/_layout.tsx
++++ src/app/_layout.tsx
+@@ -170,6 +170,7 @@
+     "RubikGlitchPop-Regular": require("../../assets/fonts/RubikGlitchPop-Regular.ttf"),
+     "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
+     "RubikDoodleShadow-Regular": require("../../assets/fonts/RubikDoodleShadow-Regular.ttf"),
++    "Cookie-Regular": require("../../assets/fonts/Cookie-Regular.ttf"),
+     Inter_400Regular,
+     Inter_500Medium,
+     Inter_600SemiBold,
+--- src/app/compose.tsx
++++ src/app/compose.tsx
+@@ -240,6 +240,7 @@
+     { id: "RubikGlitchPop-Regular", name: "GLITCH" },
+     { id: "Ewert-Regular", name: "EWERT" },
+     { id: "RubikDoodleShadow-Regular", name: "DOODLE" },
++    { id: "Cookie-Regular", name: "COOKIE" },
+     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
+     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
+     { id: "BebasNeue_400Regular", name: "BEBAS" },

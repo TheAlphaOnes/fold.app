@@ -183,7 +183,7 @@ const s = StyleSheet.create({
     gap: 16,
   },
   hugeNumber: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 100,
     lineHeight: 100,
     includeFontPadding: false,
@@ -236,7 +236,7 @@ const s = StyleSheet.create({
     height: 28,
   },
   metricNum: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 32,
     marginBottom: -4,
   },

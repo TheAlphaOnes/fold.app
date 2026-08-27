@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   phaseTitle: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 14,
     letterSpacing: 4,
     marginBottom: 16,

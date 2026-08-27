@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   title: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 32,
     lineHeight: 44,
     letterSpacing: 4,

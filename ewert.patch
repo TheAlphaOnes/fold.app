@@ -1,0 +1,20 @@
+--- src/app/_layout.tsx
++++ src/app/_layout.tsx
+@@ -168,6 +168,7 @@
+     "RockSalt-Regular": require("../../assets/fonts/RockSalt-Regular.ttf"),
+     "BigelowRules-Regular": require("../../assets/fonts/BigelowRules-Regular.ttf"),
+     "RubikGlitchPop-Regular": require("../../assets/fonts/RubikGlitchPop-Regular.ttf"),
++    "Ewert-Regular": require("../../assets/fonts/Ewert-Regular.ttf"),
+     Inter_400Regular,
+     Inter_500Medium,
+     Inter_600SemiBold,
+--- src/app/compose.tsx
++++ src/app/compose.tsx
+@@ -238,6 +238,7 @@
+     { id: "RockSalt-Regular", name: "ROCK SALT" },
+     { id: "BigelowRules-Regular", name: "BIGELOW" },
+     { id: "RubikGlitchPop-Regular", name: "GLITCH" },
++    { id: "Ewert-Regular", name: "EWERT" },
+     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
+     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
+     { id: "BebasNeue_400Regular", name: "BEBAS" },

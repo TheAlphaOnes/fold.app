@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   titleText: {
-    fontFamily: 'BitcountGridDouble-Regular',
+    fontFamily: 'BitcountGridDouble-Light',
     fontSize: 16,
     textTransform: 'uppercase',
   },

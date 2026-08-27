@@ -147,7 +147,7 @@ export default function ComposeScreen() {
   const { sharedText, storyId: paramStoryId } = useLocalSearchParams<{ sharedText?: string; storyId?: string }>();
 
   const [body, setBody] = useState(sharedText ?? "");
-  const [storyId, setStoryId] = useState<number | null>(paramStoryId ? Number(paramStoryId) : null);
+  const [storyIds, setStoryIds] = useState<number[]>(paramStoryId ? [Number(paramStoryId)] : []);
 
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
     const pendingMedia = consumePendingCameraMedia();
@@ -233,17 +233,20 @@ export default function ComposeScreen() {
 
   const AVAILABLE_FONTS = [
     { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
-    { id: "BitcountGridDouble-Regular", name: "BITCOUNT" },
+    { id: "BitcountGridDouble-Light", name: "BITCOUNT" },
     { id: "RockSalt-Regular", name: "ROCK SALT" },
-    { id: "Inter_400Regular", name: "INTER" },
+    { id: "BigelowRules-Regular", name: "BIGELOW" },
+    { id: "RubikGlitchPop-Regular", name: "GLITCH" },
+    { id: "Ewert-Regular", name: "EWERT" },
+    { id: "RubikDoodleShadow-Regular", name: "DOODLE" },
+    { id: "Cookie-Regular", name: "COOKIE" },
+    { id: "Cookiemonster-gv11", name: "MONSTER" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
-    { id: "ComicNeue_400Regular", name: "COMIC" },
     { id: "SpaceGrotesk_400Regular", name: "GROTESK" },
     { id: "BebasNeue_400Regular", name: "BEBAS" },
     { id: "Caveat_400Regular", name: "CAVEAT" },
     { id: "DancingScript_400Regular", name: "DANCING" },
     { id: "Righteous_400Regular", name: "FUNKY" },
-    { id: "EBGaramond_400Regular", name: "POETRY" },
     { id: "Pacifico_400Regular", name: "PACIFICO" },
     { id: "PermanentMarker_400Regular", name: "MARKER" },
     { id: "AmaticSC_700Bold", name: "SKETCH" },
@@ -448,7 +451,7 @@ export default function ComposeScreen() {
         locationCoords: locationCoords
           ? JSON.stringify(locationCoords)
           : undefined,
-        storyIds: storyId ? [storyId] : [],
+        storyIds,
       });
 
       if (settings.dataCollection) {
@@ -657,6 +660,30 @@ export default function ComposeScreen() {
               <ThemedText style={styles.metaTime} themeColor="textMuted">
                 {timeString}
               </ThemedText>
+              
+              <View style={{ flex: 1 }} />
+              
+              <Pressable
+                onPress={() => setIsStoryPickerVisible(true)}
+                style={({ pressed }) => [
+                  styles.storyTagButton,
+                  { opacity: pressed ? 0.7 : 1 },
+                  storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
+                ]}
+              >
+                <Book size={12} color={storyIds.length > 0 ? theme.background : theme.text} />
+                <ThemedText 
+                  style={[styles.storyTagText, { color: storyIds.length > 0 ? theme.background : theme.text }]}
+                  numberOfLines={1} 
+                  ellipsizeMode="tail"
+                >
+                  {storyIds.length === 1 
+                    ? (stories.find(s => s.id === storyIds[0])?.title.toUpperCase() || 'STORY')
+                    : storyIds.length > 1
+                    ? `${storyIds.length} SELECTED`
+                    : 'STORY'}
+                </ThemedText>
+              </Pressable>
             </View>
 
             <ScrollView
@@ -707,20 +734,6 @@ export default function ComposeScreen() {
                   style={[styles.attachText, { color: theme.textMuted }]}
                 >
                   Music
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={() => setIsStoryPickerVisible(true)}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Book size={16} color={storyId ? theme.text : theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: storyId ? theme.text : theme.textMuted }]}
-                >
-                  {storyId ? "Story ✓" : "Story"}
                 </ThemedText>
               </Pressable>
               {!settings.autoLocationTagging && !locationName && (
@@ -936,11 +949,15 @@ export default function ComposeScreen() {
         onSelect={handleAttachMusic}
       />
       
-      <StoryPicker mode="single"
+      <StoryPicker mode="multi"
         visible={isStoryPickerVisible}
         onClose={() => setIsStoryPickerVisible(false)}
-        onSelect={setStoryId}
-        selectedStoryId={storyId}
+        onToggle={(id) => {
+          setStoryIds((prev) => 
+            prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+          );
+        }}
+        selectedStoryIds={storyIds}
       />
     </View>
   );
@@ -1031,6 +1048,22 @@ const styles = StyleSheet.create({
   attachText: {
     fontFamily: "JetBrainsMono-Medium",
     fontSize: 12,
+  },
+  storyTagButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    flexShrink: 1,
+  },
+  storyTagText: {
+    fontFamily: "JetBrainsMono-Medium",
+    fontSize: 11,
+    letterSpacing: 0.5,
+    flexShrink: 1,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",
