@@ -17,6 +17,8 @@ import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
+import { BiometricContext } from '@/components/biometric-gate';
+import { useContext } from 'react';
 
 interface AnimatedSplashScreenProps {
   isAppReady: boolean;
@@ -25,6 +27,7 @@ interface AnimatedSplashScreenProps {
 
 export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScreenProps) {
   const theme = useTheme();
+  const { isLocked } = useContext(BiometricContext);
   const setAppVisible = useJournalStore((s) => s.setAppVisible);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const opacity = useSharedValue(1);
@@ -79,10 +82,14 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
 
   useEffect(() => {
     if (isAppReady) {
-      // Hide the native splash screen immediately, revealing this identical RN component
+      // Hide the native splash screen immediately to show either lock screen or app
       SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isAppReady]);
 
-      // Launch the traveling dot animation!
+  useEffect(() => {
+    if (isAppReady && !isLocked) {
+      // Launch the traveling dot animation only when unlocked!
       // Make it 2.5 seconds so the user can enjoy the interaction
       progress.value = withTiming(1, { 
         duration: 2500, 
@@ -96,7 +103,7 @@ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScr
         }
       });
     }
-  }, [isAppReady, opacity, progress]);
+  }, [isAppReady, isLocked, opacity, progress]);
 
   const splashStyle = useAnimatedStyle(() => {
     return {

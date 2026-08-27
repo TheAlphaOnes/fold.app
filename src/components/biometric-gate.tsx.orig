@@ -21,14 +21,12 @@ interface BiometricGateProps {
   children: React.ReactNode;
 }
 
-export const BiometricContext = React.createContext({ isLocked: false });
-
 export function BiometricGate({ children }: BiometricGateProps) {
   const { settings, loading } = useSettings();
   const { colors } = useThemeContext();
   const appState = useRef(AppState.currentState);
 
-  const [isLocked, setIsLocked] = useState(() => settings.requireBiometrics);
+  const [isLocked, setIsLocked] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const initialMount = useRef(true);
@@ -150,9 +148,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
 
   return (
     <View style={styles.container}>
-      <BiometricContext.Provider value={{ isLocked }}>
-        {children}
-      </BiometricContext.Provider>
+      {children}
 
       {showPrivacy && (
         <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.background }]}>

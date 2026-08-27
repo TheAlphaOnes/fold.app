@@ -1,0 +1,19 @@
+--- src/components/splash-screen.tsx
++++ src/components/splash-screen.tsx
+@@ -15,6 +15,7 @@
+ import { useWindowDimensions } from 'react-native';
+ import { useTheme } from '@/hooks/use-theme';
+ import { useJournalStore } from '@/hooks/use-journal';
++import { BiometricContext } from '@/components/biometric-gate';
++import { useContext } from 'react';
+ 
+ interface AnimatedSplashScreenProps {
+   isAppReady: boolean;
+@@ -23,6 +24,7 @@
+ 
+ export function AnimatedSplashScreen({ isAppReady, children }: AnimatedSplashScreenProps) {
+   const theme = useTheme();
++  const { isLocked } = useContext(BiometricContext);
+   const setAppVisible = useJournalStore((s) => s.setAppVisible);
+   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+   const opacity = useSharedValue(1);

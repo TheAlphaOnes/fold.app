@@ -1,0 +1,24 @@
+--- src/app/_layout.tsx
++++ src/app/_layout.tsx
+@@ -248,8 +248,8 @@
+     >
+       <ThemeProvider value={FoldTheme}>
+         <PostHogSync />
+-        <AnimatedSplashScreen isAppReady={isAppReady}>
+-          <BiometricGate>
++        <BiometricGate>
++          <AnimatedSplashScreen isAppReady={isAppReady}>
+             <StatusBar hidden />
+             <Stack screenOptions={{ headerShown: false }}>
+               <Stack.Screen name="index" />
+@@ -262,8 +262,8 @@
+                 }}
+               />
+             </Stack>
+-          </BiometricGate>
+-        </AnimatedSplashScreen>
++          </AnimatedSplashScreen>
++        </BiometricGate>
+       </ThemeProvider>
+     </PostHogProvider>
+   );

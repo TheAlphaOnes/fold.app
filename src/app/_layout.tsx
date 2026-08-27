@@ -248,8 +248,8 @@ function RootLayoutNav() {
     >
       <ThemeProvider value={FoldTheme}>
         <PostHogSync />
-        <AnimatedSplashScreen isAppReady={isAppReady}>
-          <BiometricGate>
+        <BiometricGate>
+          <AnimatedSplashScreen isAppReady={isAppReady}>
             <StatusBar hidden />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
@@ -262,8 +262,8 @@ function RootLayoutNav() {
                 }}
               />
             </Stack>
-          </BiometricGate>
-        </AnimatedSplashScreen>
+          </AnimatedSplashScreen>
+        </BiometricGate>
       </ThemeProvider>
     </PostHogProvider>
   );
