@@ -195,6 +195,7 @@ const s = StyleSheet.create({
     fontSize: 56,
     lineHeight: 64,
     includeFontPadding: false,
+    marginLeft: -4, // Optical adjustment for JetBrains Mono's internal left padding
   } as any,
   labelStack: {
     flexDirection: 'column',
