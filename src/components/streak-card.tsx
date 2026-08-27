@@ -206,7 +206,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 16,
+    gap: 24, // wider gap between circle and number block
   },
   ringBox: {
     justifyContent: 'center',
@@ -214,13 +214,13 @@ const s = StyleSheet.create({
   },
   numberRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 12,
+    alignItems: 'center', // center align text block with the number 3
+    gap: 16,
   },
   textCol: {
     alignItems: 'flex-start',
-    gap: 2, // tighter line spacing
-    marginBottom: 10, // optical adjustment to align baseline nicely with the big number
+    gap: 4, // comfortable line spacing
+    marginTop: 4, // optical adjustment to counter font leading
   },
   streakUnit: {
     fontFamily: 'JetBrainsMono-Regular',
