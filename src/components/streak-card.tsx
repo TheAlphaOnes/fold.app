@@ -109,6 +109,7 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
   const isActive = currentStreak > 0;
   const RING_SIZE = 56;
   const streakFormatted = String(currentStreak).padStart(2, '0');
+  const numberColor = isActive ? '#A3A3A3' : theme.textMuted;
 
   return (
     <View style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -116,8 +117,8 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
       {/* ── Hero row: number + labels on left, flame ring on right ── */}
       <View style={s.heroRow}>
         <View style={s.numberBlock}>
-          <View style={[s.hugeNumberContainer, { borderBottomColor: theme.text }]}>
-            <ThemedText style={[s.hugeNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+          <View style={[s.hugeNumberContainer, { borderBottomColor: numberColor }]}>
+            <ThemedText style={[s.hugeNumber, { color: numberColor }]}>
               {streakFormatted}
             </ThemedText>
           </View>
@@ -190,7 +191,7 @@ const s = StyleSheet.create({
     paddingBottom: 2,
   },
   hugeNumber: {
-    fontFamily: 'JetBrainsMono-Regular',
+    fontFamily: 'JetBrainsMono-Medium',
     fontSize: 56,
     lineHeight: 64,
     includeFontPadding: false,
@@ -198,19 +199,19 @@ const s = StyleSheet.create({
   labelStack: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 4,
+    gap: 0,
   },
   dayStreakLabel: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
+    fontSize: 32.5,
     letterSpacing: 2,
-    lineHeight: 36,
+    lineHeight: 34,
   },
   rankBadge: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
+    fontSize: 16.25,
     letterSpacing: 2,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   ringWrap: {
     alignItems: 'center',
