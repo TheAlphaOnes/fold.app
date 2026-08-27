@@ -1,0 +1,21 @@
+--- src/components/draggable-sticker.tsx
++++ src/components/draggable-sticker.tsx
+@@ -251,7 +251,8 @@
+   const savedBaseScale = useSharedValue(initialScale);
+ 
+   const panGesture = Gesture.Pan()
+-    .hitSlop(40)
++    .hitSlop(10)
++    .minDistance(15) // Requires 15px of movement before claiming, allowing FlatList scroll to win
+     .onStart(() => {
+       isDragging.value = true;
+       activeScale.value = withTiming(1.02, { duration: 150 });
+@@ -280,7 +281,7 @@
+     });
+ 
+   const pinchGesture = Gesture.Pinch()
+-    .hitSlop(40) // Massively increase touch target area for pinching
++    .hitSlop(10) 
+     .onUpdate((event) => {
+       baseScale.value = Math.max(
+         0.5,

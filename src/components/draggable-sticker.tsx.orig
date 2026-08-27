@@ -251,8 +251,7 @@ export function DraggableSticker({
   const contextY = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
-    .hitSlop(10)
-    .minDistance(15) // Requires 15px of movement before claiming, allowing FlatList scroll to win
+    .hitSlop(40)
     .onStart(() => {
       isDragging.value = true;
       activeScale.value = withTiming(1.02, { duration: 150 });
@@ -281,7 +280,7 @@ export function DraggableSticker({
     });
 
   const pinchGesture = Gesture.Pinch()
-    .hitSlop(10) 
+    .hitSlop(40) // Massively increase touch target area for pinching
     .onUpdate((event) => {
       baseScale.value = Math.max(
         0.5,

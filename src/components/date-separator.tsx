@@ -14,14 +14,6 @@ function formatSeparatorLabel(date: Date, mode: string): { prefix: string; suffi
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
-  if (mode === 'yearly') {
-    return { prefix: '', suffix: String(date.getFullYear()) };
-  }
-
-  if (mode === 'monthly') {
-    return { prefix: months[date.getMonth()], suffix: String(date.getFullYear()) };
-  }
-
   // Infinite: per-day labels
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
