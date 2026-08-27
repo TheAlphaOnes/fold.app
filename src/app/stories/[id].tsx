@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   titleText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
+    fontFamily: 'BitcountGridDouble-Regular',
+    fontSize: 16,
     textTransform: 'uppercase',
   },
   emptyContainer: {

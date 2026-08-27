@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   phaseTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'BitcountGridDouble-Regular',
     fontSize: 14,
     letterSpacing: 4,
     marginBottom: 16,

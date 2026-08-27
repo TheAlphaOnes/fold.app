@@ -89,11 +89,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: 'JetBrainsMono-Bold',
+    fontFamily: 'BitcountGridDouble-Regular',
     fontSize: 48,
     lineHeight: 64,
     letterSpacing: 8,
-    marginLeft: 8, // Optical compensation for letterSpacing
+    marginLeft: 8,
   },
   description: {
     fontFamily: 'JetBrainsMono-Regular',

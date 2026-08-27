@@ -298,8 +298,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   headerTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
+    fontFamily: 'BitcountGridDouble-Regular',
+    fontSize: 18,
     letterSpacing: 1,
   },
   iconBtn: {
