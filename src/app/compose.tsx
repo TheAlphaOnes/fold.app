@@ -233,6 +233,8 @@ export default function ComposeScreen() {
 
   const AVAILABLE_FONTS = [
     { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
+    { id: "BitcountGridDouble-Regular", name: "BITCOUNT" },
+    { id: "RockSalt-Regular", name: "ROCK SALT" },
     { id: "Inter_400Regular", name: "INTER" },
     { id: "PlayfairDisplay_400Regular", name: "PLAYFAIR" },
     { id: "ComicNeue_400Regular", name: "COMIC" },
