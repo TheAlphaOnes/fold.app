@@ -659,7 +659,7 @@ export default function ComposeScreen() {
                 {timeString}
               </ThemedText>
               
-              <View style={{ width: 16 }} />
+              <View style={{ flex: 1 }} />
               
               <Pressable
                 onPress={() => setIsStoryPickerVisible(true)}
