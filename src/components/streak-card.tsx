@@ -179,20 +179,22 @@ const s = StyleSheet.create({
   },
   numberBlock: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 14,
+    alignItems: 'center', // Changed from flex-end to center for optical alignment
+    gap: 16,
   },
   hugeNumber: {
     fontFamily: 'BitcountGridDouble-Regular',
-    fontSize: 72,
-    lineHeight: 72,
+    fontSize: 100,
+    lineHeight: 100,
     includeFontPadding: false,
+    marginBottom: -16, // Optical adjustment for baseline
+    marginTop: -8,
   } as any,
   labelStack: {
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 4,
-    paddingBottom: 5,
+    paddingTop: 4,
   },
   dayStreakLabel: {
     fontFamily: 'JetBrainsMono-Regular',
@@ -235,7 +237,8 @@ const s = StyleSheet.create({
   },
   metricNum: {
     fontFamily: 'BitcountGridDouble-Regular',
-    fontSize: 20,
+    fontSize: 32,
+    marginBottom: -4,
   },
   metricLabel: {
     fontFamily: 'JetBrainsMono-Regular',
