@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Modal, Pressable, TextInput, ActivityIndicator, FlatList, Dimensions, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, TextInput, ActivityIndicator, FlatList, Dimensions, KeyboardAvoidingView, Platform, Keyboard, Text } from 'react-native';
 import { Image } from 'expo-image';
-import { X, Search } from 'lucide-react-native';
+import { X, Search, Heart } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from './themed-text';
 import { GrainBackground } from './grain-background';
+import { useGifStore } from '@/hooks/use-gif-store';
 
 const KLIPY_API_KEY = 'kiVN0StBmo7SHZgF1HBo5urhdRyAOIswH6H8jpwPbgk349YTxwl9is90oelcNTXE';
 
@@ -16,7 +17,7 @@ interface GifPickerProps {
 }
 
 interface KlipyGif {
-  id: string;
+  id: string | number;
   title: string;
   file: {
     hd: {
@@ -37,10 +38,13 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   
+  const [activeTab, setActiveTab] = useState<'discover' | 'saved'>('discover');
   const [searchQuery, setSearchQuery] = useState('');
   const [gifs, setGifs] = useState<KlipyGif[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { savedGifs, saveGif, removeGif } = useGifStore();
 
   const fetchGifs = useCallback(async (query: string) => {
     setLoading(true);
@@ -71,21 +75,39 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
 
   // Debounced search
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || activeTab === 'saved') return;
     const timer = setTimeout(() => {
       fetchGifs(searchQuery);
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery, visible, fetchGifs]);
+  }, [searchQuery, visible, fetchGifs, activeTab]);
 
-  const handleSelect = (gif: KlipyGif) => {
-    const url = gif.file?.hd?.gif?.url || gif.file?.sm?.gif?.url;
+  const handleSelect = (url: string) => {
     if (url) {
       onSelect(url);
     }
   };
 
-  const renderItem = ({ item }: { item: KlipyGif }) => {
+  const toggleSave = (gif: KlipyGif) => {
+    const format = gif.file?.hd?.gif || gif.file?.sm?.gif;
+    if (!format || !format.url) return;
+    
+    const id = gif.id.toString();
+    const isSaved = savedGifs.some(g => g.id === id);
+    if (isSaved) {
+      removeGif(id);
+    } else {
+      saveGif({
+        id,
+        url: format.url,
+        width: format.width || 1,
+        height: format.height || 1,
+        title: gif.title || "GIF"
+      });
+    }
+  };
+
+  const renderDiscoverItem = ({ item }: { item: KlipyGif }) => {
     const format = item.file?.sm?.gif || item.file?.hd?.gif;
     if (!format || !format.url) return null;
     
@@ -93,27 +115,57 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
     const w = format.width || 1;
     const h = format.height || 1;
     const itemHeight = (ITEM_WIDTH * h) / w;
+    const id = item.id.toString();
+    const isSaved = savedGifs.some(g => g.id === id);
 
     return (
-      <Pressable 
-        style={({ pressed }) => [
-          styles.gifContainer, 
-          { 
-            width: ITEM_WIDTH, 
-            height: Math.max(100, Math.min(itemHeight, 250)),
-            backgroundColor: theme.border,
-            opacity: pressed ? 0.7 : 1 
-          }
-        ]}
-        onPress={() => handleSelect(item)}
-      >
-        <Image 
-          source={format.url} 
-          style={StyleSheet.absoluteFill} 
-          contentFit="cover" 
-          transition={200}
-        />
-      </Pressable>
+      <View style={[styles.gifContainer, { width: ITEM_WIDTH, height: Math.max(100, Math.min(itemHeight, 250)), backgroundColor: theme.border }]}>
+        <Pressable 
+          style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => handleSelect(item.file?.hd?.gif?.url || format.url)}
+        >
+          <Image 
+            source={format.url} 
+            style={StyleSheet.absoluteFill} 
+            contentFit="cover" 
+            transition={200}
+          />
+        </Pressable>
+        <Pressable
+          style={styles.saveBtn}
+          onPress={() => toggleSave(item)}
+          hitSlop={15}
+        >
+          <Heart size={20} color="#FFFFFF" fill={isSaved ? "#FF4B00" : "rgba(0,0,0,0.5)"} />
+        </Pressable>
+      </View>
+    );
+  };
+
+  const renderSavedItem = ({ item }: { item: any }) => {
+    const itemHeight = (ITEM_WIDTH * item.height) / item.width;
+    
+    return (
+      <View style={[styles.gifContainer, { width: ITEM_WIDTH, height: Math.max(100, Math.min(itemHeight, 250)), backgroundColor: theme.border }]}>
+        <Pressable 
+          style={({ pressed }) => [{ flex: 1, opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => handleSelect(item.url)}
+        >
+          <Image 
+            source={item.url} 
+            style={StyleSheet.absoluteFill} 
+            contentFit="cover" 
+            transition={200}
+          />
+        </Pressable>
+        <Pressable
+          style={styles.saveBtn}
+          onPress={() => removeGif(item.id)}
+          hitSlop={15}
+        >
+          <Heart size={20} color="#FFFFFF" fill="#FF4B00" />
+        </Pressable>
+      </View>
     );
   };
 
@@ -130,57 +182,85 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
       >
         <GrainBackground />
         
-        {/* Header */}
+        {/* Header (Matches music picker) */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <ThemedText style={[styles.title, { color: theme.text }]}>SYS.GIF_SEARCH</ThemedText>
-          <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={20}>
-            <X size={24} color={theme.textMuted} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>SYS.GIF_SEARCH</Text>
+          <Pressable onPress={onClose} style={[styles.closeBtnHeader, { borderColor: theme.border }]} hitSlop={20}>
+            <X size={18} color={theme.text} />
           </Pressable>
         </View>
 
         {/* Search Bar */}
-        <View style={styles.searchWrap}>
-          <View style={[styles.searchBox, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <Search size={18} color={theme.textMuted} style={styles.searchIcon} />
-            <TextInput
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder="SEARCH MEMES..."
-              placeholderTextColor={theme.textMuted}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              returnKeyType="search"
-              onSubmitEditing={() => Keyboard.dismiss()}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} hitSlop={10}>
-                <X size={16} color={theme.textMuted} />
-              </Pressable>
-            )}
+        {activeTab === 'discover' && (
+          <View style={styles.searchWrap}>
+            <View style={[styles.searchBox, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
+              <Search size={16} color={theme.textMuted} style={styles.searchIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Search GIFs..."
+                placeholderTextColor={theme.textMuted}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCorrect={false}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+                onSubmitEditing={() => Keyboard.dismiss()}
+              />
+            </View>
           </View>
+        )}
+
+        {/* Tabs */}
+        <View style={[styles.tabs, { borderBottomColor: theme.border }]}>
+          <Pressable style={[styles.tab, activeTab === 'discover' && { borderBottomColor: theme.text }]} onPress={() => setActiveTab('discover')}>
+            <Text style={[styles.tabText, { color: activeTab === 'discover' ? theme.text : theme.textMuted }]}>Discover</Text>
+          </Pressable>
+          <Pressable style={[styles.tab, activeTab === 'saved' && { borderBottomColor: theme.text }]} onPress={() => setActiveTab('saved')}>
+            <Text style={[styles.tabText, { color: activeTab === 'saved' ? theme.text : theme.textMuted }]}>Saved</Text>
+          </Pressable>
         </View>
 
         {/* Content */}
-        {loading && gifs.length === 0 ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={theme.text} />
-          </View>
-        ) : error ? (
-          <View style={styles.center}>
-            <ThemedText style={{ color: '#FF4B00' }}>{error}</ThemedText>
-          </View>
+        {activeTab === 'discover' ? (
+          loading && gifs.length === 0 ? (
+            <View style={styles.center}>
+              <ActivityIndicator color={theme.text} style={{ marginTop: 40 }} />
+            </View>
+          ) : error ? (
+            <View style={styles.center}>
+              <ThemedText style={{ color: '#FF4B00', marginTop: 40 }}>{error}</ThemedText>
+            </View>
+          ) : (
+            <FlatList
+              data={gifs}
+              keyExtractor={item => item.id.toString()}
+              renderItem={renderDiscoverItem}
+              numColumns={COLUMN_COUNT}
+              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
+              columnWrapperStyle={styles.columnWrapper}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode="on-drag"
+              ListEmptyComponent={() => (
+                searchQuery.length > 0 && !loading ? (
+                  <Text style={[styles.emptyText, { color: theme.textMuted }]}>No GIFs found</Text>
+                ) : null
+              )}
+            />
+          )
         ) : (
           <FlatList
-            data={gifs}
+            data={savedGifs}
             keyExtractor={item => item.id}
-            renderItem={renderItem}
+            renderItem={renderSavedItem}
             numColumns={COLUMN_COUNT}
             contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
             columnWrapperStyle={styles.columnWrapper}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            keyboardDismissMode="on-drag"
+            ListEmptyComponent={() => (
+              <Text style={[styles.emptyText, { color: theme.textMuted }]}>No saved GIFs yet{'\n'}Tap the heart on any GIF</Text>
+            )}
           />
         )}
       </KeyboardAvoidingView>
@@ -194,42 +274,66 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  title: {
-    fontFamily: 'BitcountGridDouble-Light',
+  headerTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
     fontSize: 16,
-    letterSpacing: 2,
   },
-  closeBtn: {
-    padding: 4,
+  closeBtnHeader: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchWrap: {
-    padding: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 6,
     paddingHorizontal: 12,
-    height: 48,
+    height: 44,
+    gap: 8,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 0,
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 14,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 15,
     height: '100%',
+  },
+  tabs: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   listContent: {
     padding: SPACING,
+    paddingTop: 8,
   },
   columnWrapper: {
     gap: SPACING,
@@ -240,9 +344,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
   },
+  saveBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
   center: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 15,
   },
 });
