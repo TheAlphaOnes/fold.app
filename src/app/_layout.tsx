@@ -165,6 +165,7 @@ function RootLayoutNav() {
     "BitcountGridDouble-Bold": require("../../assets/fonts/BitcountGridDouble-Bold.ttf"),
     "RockSalt-Regular": require("../../assets/fonts/RockSalt-Regular.ttf"),
     "BigelowRules-Regular": require("../../assets/fonts/BigelowRules-Regular.ttf"),
+    "RubikGlitchPop-Regular": require("../../assets/fonts/RubikGlitchPop-Regular.ttf"),
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
