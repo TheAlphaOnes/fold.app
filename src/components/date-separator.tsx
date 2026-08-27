@@ -10,16 +10,16 @@ interface DateSeparatorProps {
   timelineMode: TimelineMode;
 }
 
-function formatSeparatorLabel(date: Date, mode: string): string {
+function formatSeparatorLabel(date: Date, mode: string): { prefix: string; suffix: string } {
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
   if (mode === 'yearly') {
-    return String(date.getFullYear());
+    return { prefix: '', suffix: String(date.getFullYear()) };
   }
 
   if (mode === 'monthly') {
-    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    return { prefix: months[date.getMonth()], suffix: String(date.getFullYear()) };
   }
 
   // Infinite: per-day labels
@@ -27,7 +27,7 @@ function formatSeparatorLabel(date: Date, mode: string): string {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const yyyy = String(date.getFullYear());
   const dow = days[date.getDay()];
-  return `${dow}  ${dd}.${mm}.${yyyy}`;
+  return { prefix: dow, suffix: `${dd}.${mm}.${yyyy}` };
 }
 
 export const DateSeparator = React.memo(function DateSeparator({
@@ -35,7 +35,7 @@ export const DateSeparator = React.memo(function DateSeparator({
   timelineMode,
 }: DateSeparatorProps) {
   const theme = useTheme();
-  const labelText = formatSeparatorLabel(date, timelineMode);
+  const { prefix, suffix } = formatSeparatorLabel(date, timelineMode);
 
   // Three staggered animation segments so the separator feels alive, not monotonous
   const lineOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -85,18 +85,6 @@ export const DateSeparator = React.memo(function DateSeparator({
         style={[styles.line, { backgroundColor: theme.border, opacity: lineOpacity }]}
       />
 
-      {/* Accent dot */}
-      <RNAnimated.View
-        style={[
-          styles.dot,
-          {
-            backgroundColor: theme.accentWarm,
-            transform: [{ scale: dotScale }],
-          },
-        ]}
-      />
-
-      {/* Date labels */}
       <RNAnimated.View
         style={[
           styles.labelContainer,
@@ -106,11 +94,31 @@ export const DateSeparator = React.memo(function DateSeparator({
           },
         ]}
       >
+        {!!prefix && (
+          <Text
+            style={[styles.primaryLabel, { color: theme.textMuted }]}
+            allowFontScaling={false}
+          >
+            {prefix}
+          </Text>
+        )}
+        
+        {/* Accent dot */}
+        <RNAnimated.View
+          style={[
+            styles.dot,
+            {
+              backgroundColor: theme.accentWarm,
+              transform: [{ scale: dotScale }],
+            },
+          ]}
+        />
+
         <Text
           style={[styles.primaryLabel, { color: theme.text }]}
           allowFontScaling={false}
         >
-          {labelText}
+          {suffix}
         </Text>
       </RNAnimated.View>
 
@@ -140,8 +148,9 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
   },
   labelContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 12,
   },
   primaryLabel: {
     fontFamily: 'BitcountGridDouble-Light',
