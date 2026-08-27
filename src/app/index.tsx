@@ -333,6 +333,10 @@ export default function HomeScreen() {
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
+      // If the absolute newest item in the timeline (index 0) is viewable, 
+      // we consider the user physically anchored in the "Present" time.
+      const isAtBottom = viewableItems.some((v: any) => v.index === 0 && v.isViewable);
+
       // Find the first viewable memory card (ignore separators for active date calculation)
       const centerView = viewableItems.find((v: any) => v.isViewable && v.item.type === 'memory') || 
                          viewableItems.find((v: any) => v.item.type === 'memory');
@@ -340,7 +344,10 @@ export default function HomeScreen() {
       if (centerView && centerView.item && centerView.item.type === 'memory') {
         const memory = centerView.item.item as Composition;
         setActiveCompositionId(memory.id);
-        if (memory.createdAt) {
+        
+        if (isAtBottom) {
+          setActiveDate(new Date());
+        } else if (memory.createdAt) {
           const parsed = new Date(memory.createdAt);
           if (!isNaN(parsed.getTime())) {
             setActiveDate(parsed);

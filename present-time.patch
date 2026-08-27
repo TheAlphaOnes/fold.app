@@ -1,0 +1,21 @@
+--- src/app/index.tsx
++++ src/app/index.tsx
+@@ -328,11 +328,14 @@
+ 
+   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+     if (viewableItems && viewableItems.length > 0) {
++      // If the absolute newest item is viewable, we are anchored in the present
++      const isAtBottom = viewableItems.some((v: any) => v.index === 0 && v.isViewable);
++
+       // Find the first viewable memory card (ignore separators for active date calculation)
+       const centerView = viewableItems.find((v: any) => v.isViewable && v.item.type === 'memory') || 
+                          viewableItems.find((v: any) => v.item.type === 'memory');
+                          
+-      if (centerView && centerView.item && centerView.item.type === 'memory') {
++      if (isAtBottom) {
++        setActiveDate(new Date());
++      } else if (centerView && centerView.item && centerView.item.type === 'memory') {
+         const itemDate = new Date(centerView.item.data.created_at);
+         if (!isNaN(itemDate.getTime())) {
+           setActiveDate(itemDate);
+         }
