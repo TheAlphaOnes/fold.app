@@ -667,8 +667,12 @@ export default function ComposeScreen() {
                   storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
                 ]}
               >
-                <Book size={14} color={storyIds.length > 0 ? theme.background : theme.text} />
-                <ThemedText style={[styles.storyTagText, { color: storyIds.length > 0 ? theme.background : theme.text }]}>
+                <Book size={12} color={storyIds.length > 0 ? theme.background : theme.text} />
+                <ThemedText 
+                  style={[styles.storyTagText, { color: storyIds.length > 0 ? theme.background : theme.text }]}
+                  numberOfLines={1} 
+                  ellipsizeMode="tail"
+                >
                   {storyIds.length === 1 
                     ? (stories.find(s => s.id === storyIds[0])?.title.toUpperCase() || 'STORY')
                     : storyIds.length > 1
@@ -1022,7 +1026,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    flexWrap: "wrap",
   },
   metaActionsRow: {
     flexDirection: "row",
@@ -1046,15 +1049,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 34,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
     borderWidth: 1,
+    flexShrink: 1,
   },
   storyTagText: {
     fontFamily: "JetBrainsMono-Medium",
-    fontSize: 13,
+    fontSize: 11,
     letterSpacing: 0.5,
+    flexShrink: 1,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",
