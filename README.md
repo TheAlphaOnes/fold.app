@@ -1,5 +1,3 @@
-
-
 <div align="center">
   <img src="assets/logo.svg" width="120" height="120" alt="Fold Logo" />
 </div>
@@ -14,20 +12,22 @@
 
 Fold is a personal memory journal for iOS and Android, built with an uncompromising commitment to privacy. Every note, photo, audio recording, and thought you capture stays entirely on your device — never uploaded, never analyzed, never monetized.
 
-It's designed for people who want a place to keep the fragments of their life without giving them to a corporation.
+It's designed for people who want a place to keep the fragments of their life without giving them to a corporation. 
+
+The aesthetic is heavily inspired by brutalist terminal interfaces and industrial hardware (like Teenage Engineering) — utilitarian, honest, and minimal.
 
 ---
 
 ## Features
 
-- **Write** — Compose entries in 14 different typefaces, from system mono to handwriting fonts. The writing surface is minimal and distraction-free.
+- **Write** — Compose entries in multiple distinct typefaces. The writing surface is minimal and distraction-free.
 - **Capture** — Attach photos and videos from your library, or shoot directly from the camera into a memory.
 - **Record Audio** — Voice notes attach directly to a memory, visualized by a vinyl record animation.
-- **Gallery** — Browse your archive in a clean card layout. Every memory is renderable as a shareable image.
-- **Export & Share** — Share any memory as a flat image, with the Fold mark stamped on it. Square corners, platform-agnostic.
+- **Gallery & Story Board** — Browse your archive in a clean card layout. Select memories to view them as a seamless story.
+- **Streak Tracking** — Build the habit of writing daily with a built-in streak tracker and heat map. Ranks evolve as your streak grows (Ignited, Burning, Inferno, etc.).
 - **Biometric Lock** — Protect your journal behind Face ID or fingerprint. All or nothing.
-- **Dark & Light Mode** — A considered theme system that adapts to your system preference.
-- **Grain Texture** — Every surface has a subtle film grain. Because flat is boring.
+- **Export & Share** — Share any memory as a flat image, with the Fold mark stamped on it. Square corners, platform-agnostic.
+- **Brutalist UI** — A highly considered theme system featuring terminal-style success glitches, dot-matrix typography (`BitcountGridDouble`), and a subtle film grain on every surface.
 
 ---
 
@@ -38,12 +38,12 @@ It's designed for people who want a place to keep the fragments of their life wi
 | Framework | [Expo](https://expo.dev) (SDK 57) + Expo Router |
 | Language | TypeScript |
 | State | Zustand |
-| Storage | expo-sqlite (on-device) |
+| Database | expo-sqlite + **Drizzle ORM** |
 | Animation | React Native Reanimated 4 |
 | Gestures | React Native Gesture Handler |
 | UI | Lucide icons, expo-image, expo-video |
 | Audio | expo-audio |
-| Fonts | JetBrains Mono + 13 Google Fonts via expo-google-fonts |
+| Fonts | JetBrains Mono, Bitcount Grid Double, + Google Fonts |
 | Sharing | react-native-view-shot + expo-sharing |
 | Auth | expo-local-authentication (biometrics) |
 | Package Manager | pnpm |
@@ -63,8 +63,8 @@ It's designed for people who want a place to keep the fragments of their life wi
 ### Install
 
 ```bash
-git clone https://github.com/your-username/fold.git
-cd fold
+git clone https://github.com/TheAlphaOnes/fold.app.git
+cd fold.app
 pnpm install
 ```
 
@@ -103,13 +103,13 @@ src/
 │   ├── _layout.tsx         # Root layout, theme, auth gate
 │   ├── index.tsx           # Home / gallery
 │   ├── compose.tsx         # Write / compose screen
-│   ├── archive.tsx         # Archive view
 │   ├── camera.tsx          # Camera capture
-│   ├── profile.tsx         # User profile
-│   ├── settings.tsx        # App settings
+│   ├── profile.tsx         # User profile, Streak Card, Heat Map
+│   ├── stories/            # Multi-select Story Board viewing
 │   ├── memory/[id].tsx     # Individual memory view
-│   └── onboarding/         # Onboarding flow
-├── components/             # Reusable UI components
+│   └── onboarding/         # Setup flow with haptic terminal interactions
+├── components/             # Reusable UI components (StreakCard, ActivityGrid, etc.)
+├── db/                     # Drizzle ORM schema, client, and repositories
 ├── hooks/                  # Zustand stores + custom hooks
 ├── types/                  # Shared TypeScript types
 └── utils/                  # Pure utility functions
@@ -127,14 +127,6 @@ Fold is built on a simple contract with the user:
 - **No ads.** Ever.
 
 Your memories belong to you. Fold has no way to access them even if it wanted to.
-
----
-
-## Design Philosophy
-
-Fold's aesthetic is inspired by Teenage Engineering's industrial hardware design — utilitarian, honest, minimal. Every pixel should feel intentional. The monospace typeface, the grain texture, the flat color palette — all of it is deliberate.
-
-The UI is built to get out of your way and let you write.
 
 ---
 
