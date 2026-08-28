@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Trash2, Play, ImageOff } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
+import { MemoryCard } from '@/components/memory-card';
+import { FlatList } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler, 
@@ -203,6 +205,7 @@ export default function StoryDetailScreen() {
   const [activeSlots, setActiveSlots] = useState<StoryItem[]>([]);
   const queueRef = useRef<StoryItem[]>([]);
   const [viewerState, setViewerState] = useState({ isOpen: false, initialIndex: 0 });
+  const [viewMode, setViewMode] = useState<'wheel' | 'list'>('wheel');
 
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
@@ -327,11 +330,30 @@ export default function StoryDetailScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <GestureDetector gesture={panGesture}>
-        <Animated.View style={StyleSheet.absoluteFill}>
-          {activeSlots.map((item, index) => renderItem(item, index))}
-        </Animated.View>
-      </GestureDetector>
+      {viewMode === 'wheel' ? (
+        <GestureDetector gesture={panGesture}>
+          <Animated.View style={StyleSheet.absoluteFill}>
+            {activeSlots.map((item, index) => renderItem(item, index))}
+          </Animated.View>
+        </GestureDetector>
+      ) : (
+        <FlatList
+          data={[...activeStoryMemories].reverse()}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
+              <MemoryCard 
+                item={item} 
+                height={Math.min(height * 0.6, 500)}
+                onUpdatePositions={() => {}}
+                isExporting={false}
+              />
+            </View>
+          )}
+          contentContainerStyle={{ paddingTop: 120, paddingBottom: Math.max(insets.bottom, 40) }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       {/* Header Overlay */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
@@ -351,15 +373,34 @@ export default function StoryDetailScreen() {
           </ThemedText>
         </View>
 
-        <Pressable 
-          onPress={handleDelete}
-          style={({ pressed }) => [
-            styles.iconBtn, 
-            { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
-          ]}
-        >
-          <Trash2 size={16} color="#FF3B30" />
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Pressable 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewMode(prev => prev === 'wheel' ? 'list' : 'wheel');
+            }}
+            style={({ pressed }) => [
+              styles.iconBtn, 
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            {viewMode === 'wheel' ? (
+              <List size={16} color={theme.text} />
+            ) : (
+              <CircleDashed size={16} color={theme.text} />
+            )}
+          </Pressable>
+
+          <Pressable 
+            onPress={handleDelete}
+            style={({ pressed }) => [
+              styles.iconBtn, 
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            <Trash2 size={16} color="#FF3B30" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Empty State */}
