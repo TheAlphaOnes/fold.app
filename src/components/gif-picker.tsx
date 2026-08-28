@@ -150,7 +150,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
           <Image source={format.url} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
         </Pressable>
         <Pressable style={styles.saveBtn} onPress={() => toggleSave(item)} hitSlop={15}>
-          <Heart size={18} color={theme.text} fill={isSaved ? theme.text : 'transparent'} />
+          <Heart size={18} color="#FFFFFF" fill={isSaved ? '#FFFFFF' : 'transparent'} />
         </Pressable>
       </View>
     );
@@ -170,7 +170,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
           <Image source={item.url} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
         </Pressable>
         <Pressable style={styles.saveBtn} onPress={() => removeGif(item.id)} hitSlop={15}>
-          <Heart size={18} color={theme.text} fill={theme.text} />
+          <Heart size={18} color="#FFFFFF" fill="#FFFFFF" />
         </Pressable>
       </View>
     );
