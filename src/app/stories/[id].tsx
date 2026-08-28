@@ -319,12 +319,13 @@ export default function StoryDetailScreen() {
     })
     .onChange((e) => {
       // Dampen sensitivity to make the wheel feel heavier and more deliberate
-      rotation.value += e.changeX * 0.002 + e.changeY * 0.001;
+      // Inverted so dragging right moves the front item right
+      rotation.value -= (e.changeX * 0.002 + e.changeY * 0.001);
     })
     .onEnd((e) => {
       isInteracting.value = false;
       // Aggressively dampen the release momentum (from 0.05 to 0.01)
-      velocity.value = (e.velocityX * 0.002 + e.velocityY * 0.001) * 0.01;
+      velocity.value = -(e.velocityX * 0.002 + e.velocityY * 0.001) * 0.01;
     });
 
   const handleCardPress = (item: StoryItem) => {
