@@ -184,75 +184,10 @@ export default function StoryDetailScreen() {
 
   const renderItem = (item: StoryItem, index: number) => {
     // Key must be index so the slot component stays mounted and can animate the item swap
-    return <CarouselNode key={`slot-${index}`} item={item} index={index} total={activeSlots.length} />;
+    return <CarouselNode key={`slot-${index}`} item={item} index={index} total={activeSlots.length} rotation={rotation} />;
   };
 
-  const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
-    // Strict circle layout
-    const baseAngle = (index / total) * Math.PI * 2;
-    
-    const animatedStyle = useAnimatedStyle(() => {
-      const currentAngle = baseAngle + rotation.value;
-      const translateX = Math.sin(currentAngle) * RADIUS;
-      const translateY = -Math.cos(currentAngle) * RADIUS;
 
-      return {
-        transform: [{ translateX }, { translateY }],
-        zIndex: Math.round(translateY * 100),
-      };
-    });
-
-    const handlePress = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`/memory/${item.memoryId}`);
-    };
-
-    const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
-
-    // If it's a video and thumbnail is generating, we can safely pass the video URI as a fallback
-    // expo-image might show blank for mp4 until thumbnail resolves, but native transition handles the swap smoothly.
-    const imageSource = item.type === 'video' && videoThumb ? { uri: videoThumb } : { uri: item.uri };
-
-    const [hasError, setHasError] = useState(false);
-
-    // Reset error state if the underlying item changes
-    useEffect(() => {
-      setHasError(false);
-    }, [item.uri]);
-
-    return (
-      <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
-        <Pressable onPress={handlePress} style={styles.itemPressable}>
-          <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-            
-            {/* Native expo-image crossfade when source changes */}
-            {!hasError && (
-              <Image 
-                source={imageSource} 
-                style={StyleSheet.absoluteFill} 
-                contentFit="cover" 
-                transition={800}
-                onError={() => setHasError(true)} 
-              />
-            )}
-
-            {hasError && (
-              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ImageOff size={32} color={theme.text} opacity={0.3} />
-              </View>
-            )}
-
-            {item.type === 'video' && !hasError && (
-              <View style={styles.videoOverlay}>
-                <Play size={20} color="#FFF" fill="#FFF" />
-              </View>
-            )}
-
-          </View>
-        </Pressable>
-      </Animated.View>
-    );
-  };
 
   if (!activeStory) {
     return (
