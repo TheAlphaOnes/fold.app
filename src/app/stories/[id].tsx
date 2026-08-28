@@ -3,7 +3,8 @@ import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
-import { MemoryCard } from '@/components/memory-card';
+import { CarouselItem } from '@/components/carousel-item';
+import { MemoryCard } from '@/components/memory-card'; // fallback if needed
 import { FlatList } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -23,6 +24,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
 import { useStoriesStore } from '@/hooks/use-stories';
+import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
@@ -207,6 +209,21 @@ export default function StoryDetailScreen() {
   const [viewerState, setViewerState] = useState({ isOpen: false, initialIndex: 0 });
   const [viewMode, setViewMode] = useState<'wheel' | 'list'>('wheel');
 
+  // List view math
+  const cardHeight = Math.min(height * 0.6, 500);
+  const snapInterval = cardHeight + 21; // CARD_GAP from index.tsx
+  const listScrollY = useSharedValue(0);
+  const listScrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      listScrollY.value = e.contentOffset.y;
+    },
+  });
+
+  // Calculate snap offsets for list mode
+  const listOffsets = useMemo(() => {
+    return activeStoryMemories.map((_, i) => i * snapInterval);
+  }, [activeStoryMemories, snapInterval]);
+
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
@@ -337,19 +354,26 @@ export default function StoryDetailScreen() {
           </Animated.View>
         </GestureDetector>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={[...activeStoryMemories].reverse()}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 24 }}>
-              <MemoryCard 
-                item={item} 
-                height={Math.min(height * 0.6, 500)}
-                onUpdatePositions={() => {}}
-                isExporting={false}
-              />
-            </View>
+          renderItem={({ item, index }) => (
+            <CarouselItem
+              item={item}
+              itemOffset={index * snapInterval}
+              snapInterval={snapInterval}
+              cardHeight={cardHeight}
+              scrollY={listScrollY}
+              updatePositions={(id, media) => {
+                useJournalStore.getState().updatePositions(id, media);
+              }}
+            />
           )}
+          onScroll={listScrollHandler}
+          snapToOffsets={listOffsets}
+          decelerationRate="fast"
+          disableIntervalMomentum
+          scrollEventThrottle={16}
           contentContainerStyle={{ paddingTop: 120, paddingBottom: Math.max(insets.bottom, 40) }}
           showsVerticalScrollIndicator={false}
         />
