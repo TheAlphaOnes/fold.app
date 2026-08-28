@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fold",
     "slug": "Fold",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/fold-logo.png",
     "scheme": "fold",
@@ -111,24 +111,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "build": {
-          "experimental": {
-            "ios": {
-              "appExtensions": [
-                {
-                  "targetName": "ShareExtension",
-                  "bundleIdentifier": "com.fold.app.ShareExtension",
-                  "entitlements": {
-                    "com.apple.security.application-groups": [
-                      "group.com.fold.app"
-                    ]
-                  }
-                }
-              ]
-            }
-          }
-        },
-        "projectId": "97bba71f-55da-4483-b667-66c5fae703b9"
+        "projectId": "3203950f-07bf-48c1-9153-218a1e05e23f"
       }
     }
   }
