@@ -59,25 +59,16 @@ export default function StoryDetailScreen() {
     }
   };
 
-  // Flatten media and text into a loop of items
+  // Flatten media into a loop of items (only images and videos)
   const storyItems = useMemo<StoryItem[]>(() => {
     const items: StoryItem[] = [];
     activeStoryMemories.forEach(mem => {
-      // Add text if available
-      if (mem.textContent && mem.textContent.trim()) {
+      // Only extract images and videos
+      mem.mediaElements.forEach((media, index) => {
+        if (media.type === 'audio') return; // Skip audio
+        
         items.push({
-          id: `text-${mem.id}`,
-          memoryId: mem.id,
-          type: 'text',
-          content: mem.textContent.trim(),
-          fontFamily: mem.fontFamily,
-          fontSize: mem.fontSize,
-        });
-      }
-      // Add all media
-      mem.mediaElements.forEach(media => {
-        items.push({
-          id: `media-${mem.id}-${media.id}`,
+          id: `media-${mem.id}-${index}`,
           memoryId: mem.id,
           type: media.type,
           uri: media.uri,
@@ -86,7 +77,7 @@ export default function StoryDetailScreen() {
       });
     });
     
-    // Sort slightly randomly or keep chronological? Chronological is better for memory, but reversed so newest is first.
+    // Reverse so newest is first.
     return items.reverse();
   }, [activeStoryMemories]);
 
@@ -195,32 +186,31 @@ export default function StoryDetailScreen() {
 
   const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
     const [currentItem, setCurrentItem] = useState(item);
-    const [nextItem, setNextItem] = useState<StoryItem | null>(null);
-    const crossfade = useSharedValue(0);
+    const fadeAnim = useSharedValue(1);
 
-    // Watch for item prop changes (when the queue swaps this slot)
+    // Fade out when item changes
     useEffect(() => {
       if (item.id !== currentItem.id) {
-        setNextItem(item);
-        crossfade.value = 0;
-        crossfade.value = withTiming(1, { duration: 800 }, (finished) => {
+        fadeAnim.value = withTiming(0, { duration: 300 }, (finished) => {
           if (finished) {
             runOnJS(setCurrentItem)(item);
-            runOnJS(setNextItem)(null);
-            crossfade.value = 0; // reset
           }
         });
       }
     }, [item.id]);
+
+    // Fade back in when currentItem successfully updates
+    useEffect(() => {
+      if (currentItem.id === item.id && fadeAnim.value === 0) {
+        fadeAnim.value = withTiming(1, { duration: 300 });
+      }
+    }, [currentItem.id, item.id]);
     
     // Strict circle layout
     const baseAngle = (index / total) * Math.PI * 2;
     
     const animatedStyle = useAnimatedStyle(() => {
-      // Total angle including the global wheel rotation
       const currentAngle = baseAngle + rotation.value;
-
-      // 2D Ferris Wheel coordinates
       const translateX = Math.sin(currentAngle) * RADIUS;
       const translateY = -Math.cos(currentAngle) * RADIUS;
 
@@ -230,12 +220,8 @@ export default function StoryDetailScreen() {
       };
     });
 
-    const currentStyle = useAnimatedStyle(() => ({
-      opacity: 1 - crossfade.value
-    }));
-
-    const nextStyle = useAnimatedStyle(() => ({
-      opacity: crossfade.value
+    const contentStyle = useAnimatedStyle(() => ({
+      opacity: fadeAnim.value
     }));
 
     const handlePress = () => {
@@ -243,59 +229,26 @@ export default function StoryDetailScreen() {
       router.push(`/memory/${currentItem.memoryId}`);
     };
 
-    const renderContent = (contentItem: StoryItem) => {
-      const videoThumb = contentItem.type === 'video' ? contentItem.uri : undefined; // Simplified thumb logic to avoid hook rules in helper
-      
-      return (
-        <View style={StyleSheet.absoluteFill}>
-          {contentItem.type === 'text' && (
-            <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Text 
-                style={[styles.textContent, { color: theme.text, fontFamily: contentItem.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
-                numberOfLines={6}
-                ellipsizeMode="tail"
-              >
-                {contentItem.content}
-              </Text>
-            </View>
-          )}
-
-          {contentItem.type === 'image' && (
-            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Image source={{ uri: contentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
-            </View>
-          )}
-
-          {contentItem.type === 'video' && (
-            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Image source={{ uri: videoThumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
-              <View style={styles.videoOverlay}>
-                <Play size={20} color="#FFF" fill="#FFF" />
-              </View>
-            </View>
-          )}
-
-          {contentItem.type === 'audio' && (
-            <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={contentItem.metadata?.artwork} />
-            </View>
-          )}
-        </View>
-      );
-    };
+    const videoThumb = useVideoThumbnail(currentItem.type === 'video' ? currentItem.uri : undefined);
 
     return (
       <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
         <Pressable onPress={handlePress} style={styles.itemPressable}>
-          <Animated.View style={[StyleSheet.absoluteFill, currentStyle]}>
-            {renderContent(currentItem)}
+          <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              {currentItem.type === 'image' && (
+                <Image source={{ uri: currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+              )}
+              {currentItem.type === 'video' && (
+                <>
+                  <Image source={{ uri: videoThumb || currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                  <View style={styles.videoOverlay}>
+                    <Play size={20} color="#FFF" fill="#FFF" />
+                  </View>
+                </>
+              )}
+            </View>
           </Animated.View>
-          
-          {nextItem && (
-            <Animated.View style={[StyleSheet.absoluteFill, nextStyle]} pointerEvents="none">
-              {renderContent(nextItem)}
-            </Animated.View>
-          )}
         </Pressable>
       </Animated.View>
     );
