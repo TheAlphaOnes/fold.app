@@ -262,7 +262,8 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={SNAP_INTERVAL}
-          decelerationRate="fast"
+          disableIntervalMomentum={true}
+          decelerationRate="normal"
           contentContainerStyle={{
             paddingHorizontal: PADDING_HORIZONTAL,
             alignItems: 'center',

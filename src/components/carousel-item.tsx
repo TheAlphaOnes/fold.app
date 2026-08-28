@@ -53,15 +53,18 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     router.push(`/memory/${item.id}`);
   };
 
+  const [isSharing, setIsSharing] = useState(false);
+
   const triggerShareFeedback = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setScanKey(prev => prev + 1);
   };
 
   const captureAndShareCard = async () => {
+    setIsSharing(true);
     try {
-      // Wait to let the flight animation resolve upwards
-      await new Promise(resolve => setTimeout(resolve, 600));
+      // Wait to let the flight animation completely finish before freezing JS thread (700ms delay + 1000ms duration)
+      await new Promise(resolve => setTimeout(resolve, 1750));
       const uri = await captureRef(hiddenCardRef, {
         format: 'png',
         quality: 1,
@@ -75,6 +78,8 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       }
     } catch (e) {
       console.error('Failed to capture memory card:', e);
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -136,20 +141,22 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
       {/* Hidden card for capturing as image */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
-        <View 
-          ref={hiddenCardRef} 
-          collapsable={false} 
-          style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
-        >
-          <MemoryCard 
-            item={item} 
-            height={cardHeight} 
-            onUpdatePositions={() => {}} 
-            isExporting={true}
-          />
+      {isSharing && (
+        <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
+          <View 
+            ref={hiddenCardRef} 
+            collapsable={false} 
+            style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
+          >
+            <MemoryCard 
+              item={item} 
+              height={cardHeight} 
+              onUpdatePositions={() => {}} 
+              isExporting={true}
+            />
+          </View>
         </View>
-      </View>
+      )}
 
       <GestureDetector gesture={composed}>
         <Animated.View style={[animatedStyle, { width: '100%' }]}>
