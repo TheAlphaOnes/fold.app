@@ -94,6 +94,15 @@ export default function StoryDetailScreen() {
   const [activeSlots, setActiveSlots] = useState<StoryItem[]>([]);
   const queueRef = useRef<StoryItem[]>([]);
 
+  // 2D Ring math constants
+  const ITEM_WIDTH = width * 0.3;
+  const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
+  const RADIUS = width * 0.38;
+  
+  const rotation = useSharedValue(0);
+  const isInteracting = useSharedValue(false);
+  const velocity = useSharedValue(0);
+
   // Initialize slots
   useEffect(() => {
     if (!storyItems.length) return;
@@ -116,8 +125,23 @@ export default function StoryDetailScreen() {
         const nextQueue = [...queueRef.current];
         if (nextQueue.length === 0) return prev;
         
-        // Pick a random slot to swap out
-        const slotToReplace = Math.floor(Math.random() * MAX_SLOTS);
+        // Find the slots that are currently in the "back" of the wheel (near the top)
+        // translateY = -Math.cos(currentAngle) * RADIUS
+        // The back of the wheel is where cos(angle) is positive (closest to 1)
+        const currentRotation = rotation.value;
+        const slotScores = prev.map((_, i) => {
+          const baseAngle = (i / MAX_SLOTS) * Math.PI * 2;
+          const currentAngle = baseAngle + currentRotation;
+          return { index: i, score: Math.cos(currentAngle) };
+        });
+
+        // Sort descending by score (highest score = furthest back)
+        slotScores.sort((a, b) => b.score - a.score);
+        
+        // Pick randomly from the top 3 furthest back cards
+        const candidates = slotScores.slice(0, 3);
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        const slotToReplace = picked.index;
         
         const oldItem = prev[slotToReplace];
         const newItem = nextQueue.shift()!;
@@ -133,15 +157,6 @@ export default function StoryDetailScreen() {
 
     return () => clearInterval(interval);
   }, [storyItems.length]);
-
-  // 2D Ring math constants
-  const ITEM_WIDTH = width * 0.3;
-  const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
-  const RADIUS = width * 0.38;
-  
-  const rotation = useSharedValue(0);
-  const isInteracting = useSharedValue(false);
-  const velocity = useSharedValue(0);
 
   // Auto-rotation + momentum decay loop
   useFrameCallback((frameInfo) => {
