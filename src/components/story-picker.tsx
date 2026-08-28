@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Modal, Pressable, FlatList, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Modal, Pressable, FlatList, TextInput, Platform, Keyboard, Animated } from 'react-native';
 import { X, Plus, Book, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -44,6 +44,24 @@ export function StoryPicker(props: StoryPickerProps) {
 
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (props.visible) {
@@ -182,10 +200,7 @@ export function StoryPicker(props: StoryPickerProps) {
 
   return (
     <Modal visible={props.visible} animationType="slide" transparent>
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <Animated.View style={[styles.modalOverlay, { paddingBottom: keyboardHeight }]}>
         <View style={[styles.modalContent, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle */}
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
@@ -309,7 +324,7 @@ export function StoryPicker(props: StoryPickerProps) {
             </>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
