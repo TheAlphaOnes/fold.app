@@ -263,6 +263,8 @@ const styles = StyleSheet.create({
   },
   trackIcon: {
     position: 'absolute',
+    right: '50%',
+    marginRight: 16, // Places icon explicitly to the left of the center detent
     alignItems: 'center',
     justifyContent: 'center',
   },
