@@ -87,14 +87,14 @@ export default function StoryDetailScreen() {
   }, [activeStoryMemories]);
 
   // Cylinder math constants
-  const ITEM_HEIGHT = height * 0.45;
-  const ITEM_WIDTH = width * 0.75;
-  const RADIUS = height * 0.42;
-  const scrollY = useSharedValue(0);
+  const ITEM_WIDTH = width * 0.70;
+  const ITEM_HEIGHT = height * 0.55;
+  const RADIUS = width * 0.45;
+  const scrollX = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
+      scrollX.value = event.contentOffset.x;
     },
   });
 
@@ -106,14 +106,12 @@ export default function StoryDetailScreen() {
     const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
     
     const animatedStyle = useAnimatedStyle(() => {
-      // 1. Calculate the item's native position relative to the screen
-      const nativeScreenY = index * ITEM_HEIGHT - scrollY.value;
+      // 1. Calculate the item's distance from the center of the screen
+      // FlatList paddingLeft is (width/2 - ITEM_WIDTH/2), which places index 0 exactly in the center when scrollX is 0.
+      // Therefore, the distance from center is simply:
+      const distance = index * ITEM_WIDTH - scrollX.value;
       
-      // 2. Calculate distance from the center of the screen
-      const centerOffset = height / 2 - ITEM_HEIGHT / 2;
-      const distance = nativeScreenY - centerOffset;
-      
-      // 3. Map distance to an angle on the cylinder
+      // 3. Map distance to an angle on the horizontal cylinder
       const angle = distance / RADIUS;
       
       // We clamp the angle so it doesn't wrap around the back of the cylinder
@@ -126,14 +124,12 @@ export default function StoryDetailScreen() {
 
       // 4. Calculate 3D transforms
       const translateZ = Math.cos(clampedAngle) * RADIUS - RADIUS;
-      const rotateX = `${clampedAngle}rad`;
+      // positive angle (item is on the right) should have positive rotateY so its right edge tilts backward (into screen)
+      const rotateY = `${clampedAngle}rad`;
 
-      // 5. Calculate Y foreshortening
-      // The item's desired visual distance from center is sin(angle) * RADIUS.
-      // Its current native distance from center is `distance`.
-      // The translation needed is the difference.
-      const targetYOffset = Math.sin(clampedAngle) * RADIUS;
-      const translateY = targetYOffset - distance;
+      // 5. Calculate X foreshortening
+      const targetXOffset = Math.sin(clampedAngle) * RADIUS;
+      const translateX = targetXOffset - distance;
 
       const perspective = 850;
       const scale = perspective / (perspective - translateZ);
@@ -147,9 +143,9 @@ export default function StoryDetailScreen() {
 
       return {
         transform: [
-          { translateY },
+          { translateX },
           { scale },
-          { rotateX }
+          { rotateY }
         ],
         opacity,
         zIndex: Math.round(translateZ)
@@ -222,17 +218,19 @@ export default function StoryDetailScreen() {
 
       <Animated.FlatList
         data={storyItems}
+        horizontal={true}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        snapToInterval={ITEM_HEIGHT}
+        snapToInterval={ITEM_WIDTH}
         decelerationRate="fast"
         contentContainerStyle={{
           // Give padding so the first/last items can reach the center
-          paddingTop: height / 2,
-          paddingBottom: height / 2,
+          paddingLeft: width / 2 - ITEM_WIDTH / 2,
+          paddingRight: width / 2 - ITEM_WIDTH / 2,
+          alignItems: 'center',
         }}
       />
 
