@@ -115,9 +115,11 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     })
     .onEnd(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       if (item.storyIds && item.storyIds.length > 0) {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
         runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
+      } else {
+        runOnJS(router.push)('/stories');
       }
     })
     .onFinalize(() => {
@@ -130,9 +132,13 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       pressedScale.value = Math.max(Math.min(e.scale, 1), 0.85);
     })
     .onEnd((e) => {
-      if (e.scale < 0.9 && item.storyIds && item.storyIds.length > 0) {
+      if (e.scale < 0.9) {
         runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
+        if (item.storyIds && item.storyIds.length > 0) {
+          runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
+        } else {
+          runOnJS(router.push)('/stories');
+        }
       }
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     })
