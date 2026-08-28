@@ -188,27 +188,6 @@ export default function StoryDetailScreen() {
   };
 
   const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
-    const [currentItem, setCurrentItem] = useState(item);
-    const fadeAnim = useSharedValue(1);
-
-    // Fade out when item changes
-    useEffect(() => {
-      if (item.id !== currentItem.id) {
-        fadeAnim.value = withTiming(0, { duration: 300 }, (finished) => {
-          if (finished) {
-            runOnJS(setCurrentItem)(item);
-          }
-        });
-      }
-    }, [item.id]);
-
-    // Fade back in when currentItem successfully updates
-    useEffect(() => {
-      if (currentItem.id === item.id && fadeAnim.value === 0) {
-        fadeAnim.value = withTiming(1, { duration: 300 });
-      }
-    }, [currentItem.id, item.id]);
-    
     // Strict circle layout
     const baseAngle = (index / total) * Math.PI * 2;
     
@@ -223,34 +202,37 @@ export default function StoryDetailScreen() {
       };
     });
 
-    const contentStyle = useAnimatedStyle(() => ({
-      opacity: fadeAnim.value
-    }));
-
     const handlePress = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`/memory/${currentItem.memoryId}`);
+      router.push(`/memory/${item.memoryId}`);
     };
 
-    const videoThumb = useVideoThumbnail(currentItem.type === 'video' ? currentItem.uri : undefined);
+    const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
+
+    // If it's a video and thumbnail is generating, we can safely pass the video URI as a fallback
+    // expo-image might show blank for mp4 until thumbnail resolves, but native transition handles the swap smoothly.
+    const imageSource = item.type === 'video' && videoThumb ? { uri: videoThumb } : { uri: item.uri };
 
     return (
       <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
         <Pressable onPress={handlePress} style={styles.itemPressable}>
-          <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
-            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              {currentItem.type === 'image' ? (
-                <Image source={{ uri: currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-              ) : currentItem.type === 'video' ? (
-                <>
-                  <Image source={{ uri: videoThumb || currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-                  <View style={styles.videoOverlay}>
-                    <Play size={20} color="#FFF" fill="#FFF" />
-                  </View>
-                </>
-              ) : null}
-            </View>
-          </Animated.View>
+          <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+            
+            {/* Native expo-image crossfade when source changes */}
+            <Image 
+              source={imageSource} 
+              style={StyleSheet.absoluteFill} 
+              contentFit="cover" 
+              transition={800} 
+            />
+
+            {item.type === 'video' && (
+              <View style={styles.videoOverlay}>
+                <Play size={20} color="#FFF" fill="#FFF" />
+              </View>
+            )}
+
+          </View>
         </Pressable>
       </Animated.View>
     );
