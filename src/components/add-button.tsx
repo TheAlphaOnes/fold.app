@@ -204,17 +204,20 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
         trackStyle
       ]} />
       
-      {/* Track detent markers */}
-      <Animated.View style={[styles.detent, { bottom: 17 + Math.abs(PHOTO_THRESHOLD), backgroundColor: theme.border }, detentsStyle]} />
-      <Animated.View style={[styles.detent, { bottom: 17 + Math.abs(VIDEO_THRESHOLD), backgroundColor: theme.border }, detentsStyle]} />
+      {/* Threshold Markers: Icons on left, detent dashes on right */}
+      <View style={[styles.thresholdRow, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }]} pointerEvents="none">
+        <Animated.View style={[styles.trackIcon, photoIconStyle]}>
+          <Camera size={18} color={theme.text} strokeWidth={2.5} />
+        </Animated.View>
+        <Animated.View style={[styles.detent, { backgroundColor: theme.border }, detentsStyle]} />
+      </View>
       
-      {/* Icons placed precisely at their thresholds */}
-      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }, photoIconStyle]}>
-         <Camera size={18} color={theme.text} strokeWidth={2.5} />
-      </Animated.View>
-      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }, videoIconStyle]}>
-         <Video size={18} color={theme.text} strokeWidth={2.5} />
-      </Animated.View>
+      <View style={[styles.thresholdRow, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }]} pointerEvents="none">
+        <Animated.View style={[styles.trackIcon, videoIconStyle]}>
+          <Video size={18} color={theme.text} strokeWidth={2.5} />
+        </Animated.View>
+        <Animated.View style={[styles.detent, { backgroundColor: theme.border }, detentsStyle]} />
+      </View>
 
       <GestureDetector gesture={composedGesture}>
         <Animated.View
@@ -253,18 +256,19 @@ const styles = StyleSheet.create({
     // Anchor the transform to the bottom so it grows upwards
     
   },
-  detent: {
+  thresholdRow: {
     position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16, // Distance between icon and dash
+  },
+  detent: {
     width: 12,
     height: 2,
     borderRadius: 1,
-    left: '50%',
-    transform: [{ translateX: -6 }],
   },
   trackIcon: {
-    position: 'absolute',
-    right: '50%',
-    marginRight: 16, // Places icon explicitly to the left of the center detent
     alignItems: 'center',
     justifyContent: 'center',
   },
