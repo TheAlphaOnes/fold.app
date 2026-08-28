@@ -83,15 +83,36 @@ pnpm android
 
 > **Note:** Some features (biometrics, camera, audio recording) require a physical device or a development build. They will not work in Expo Go.
 
-### Development Build
+### Development Build (Native Features)
 
-For the full feature set, run a development build:
+For the full feature set (biometrics, camera, audio recording), you must run a native dev build — **not** Expo Go.
 
 ```bash
-npx expo run:ios
+pnpm expo run:ios
 # or
-npx expo run:android
+pnpm expo run:android
 ```
+
+---
+
+### ⚠️ iOS Build Fix — expo-sqlite Header Conflict
+
+> **This is required.** Without it, the iOS build fails with 67+ Swift compilation errors like `cannot find 'exsqlite3_bind_text' in scope`.
+
+**Root Cause:** `expo-sqlite` ships a custom `sqlite3.h` that uses `#ifndef SQLITE3_H` as its include guard. This conflicts with Apple's system SQLite header (which is already included internally by iOS frameworks), causing the custom header to be silently skipped. The fix renames the guard and corrects the modulemap path.
+
+**The fix is already in `Podfile` as a `post_install` hook.** After running `pnpm expo run:ios` for the first time, if you ever regenerate Pods (`pod install`), you must re-apply it:
+
+```bash
+cd ios && pod install && cd ..
+pnpm expo run:ios
+```
+
+The hook in `Podfile` automatically:
+1. Renames the `sqlite3.h` header guard from `SQLITE3_H` → `EXSQLITE3_H` to prevent the system SQLite collision.
+2. Patches `ExpoSQLite.debug.xcconfig` and `ExpoSQLite.release.xcconfig` to set the correct `MODULEMAP_FILE` path pointing to `${PODS_ROOT}/Target Support Files/ExpoSQLite/ExpoSQLite.modulemap`.
+
+**You do not need to do anything manually** — just don't delete the `post_install` block from `Podfile`.
 
 ---
 
