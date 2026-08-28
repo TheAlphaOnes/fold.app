@@ -30,6 +30,68 @@ interface StoryViewerProps {
   onClose: () => void;
 }
 
+const ViewerCard = React.memo(({
+  item,
+  index,
+  scrollX,
+  ITEM_WIDTH,
+  SPACING,
+  SNAP_INTERVAL,
+  theme
+}: {
+  item: StoryItem;
+  index: number;
+  scrollX: import('react-native-reanimated').SharedValue<number>;
+  ITEM_WIDTH: number;
+  SPACING: number;
+  SNAP_INTERVAL: number;
+  theme: any;
+}) => {
+  const inputRange = [
+    (index - 1) * SNAP_INTERVAL,
+    index * SNAP_INTERVAL,
+    (index + 1) * SNAP_INTERVAL,
+  ];
+
+  const cardStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.9, 1, 0.9],
+      Extrapolation.CLAMP
+    );
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.5, 1, 0.5],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [{ scale }],
+      opacity,
+    };
+  });
+
+  return (
+    <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
+      <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
+        <Image
+          source={{ uri: item.uri }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={300}
+        />
+        {item.type === 'video' && (
+          <View style={styles.videoOverlay}>
+            <Play size={32} color="#FFF" fill="#FFF" />
+          </View>
+        )}
+      </Animated.View>
+    </View>
+  );
+});
+
 export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) {
   const { width, height } = useWindowDimensions();
   const theme = useTheme();
@@ -73,48 +135,16 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   }));
 
   const renderItem = ({ item, index }: { item: StoryItem; index: number }) => {
-    const inputRange = [
-      (index - 1) * SNAP_INTERVAL,
-      index * SNAP_INTERVAL,
-      (index + 1) * SNAP_INTERVAL,
-    ];
-
-    const cardStyle = useAnimatedStyle(() => {
-      const scale = interpolate(
-        scrollX.value,
-        inputRange,
-        [0.9, 1, 0.9],
-        Extrapolation.CLAMP
-      );
-      const opacity = interpolate(
-        scrollX.value,
-        inputRange,
-        [0.5, 1, 0.5],
-        Extrapolation.CLAMP
-      );
-
-      return {
-        transform: [{ scale }],
-        opacity,
-      };
-    });
-
     return (
-      <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
-        <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
-          <Image
-            source={{ uri: item.uri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            transition={300}
-          />
-          {item.type === 'video' && (
-            <View style={styles.videoOverlay}>
-              <Play size={32} color="#FFF" fill="#FFF" />
-            </View>
-          )}
-        </Animated.View>
-      </View>
+      <ViewerCard
+        item={item}
+        index={index}
+        scrollX={scrollX}
+        ITEM_WIDTH={ITEM_WIDTH}
+        SPACING={SPACING}
+        SNAP_INTERVAL={SNAP_INTERVAL}
+        theme={theme}
+      />
     );
   };
 
