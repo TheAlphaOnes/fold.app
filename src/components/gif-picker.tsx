@@ -21,7 +21,7 @@ import { ThemedText } from './themed-text';
 import { GrainBackground } from './grain-background';
 import { useGifStore } from '@/hooks/use-gif-store';
 
-const KLIPY_API_KEY = 'kiVN0StBmo7SHZgF1HBo5urhdRyAOIswH6H8jpwPbgk349YTxwl9is90oelcNTXE';
+const KLIPY_API_KEY = process.env.EXPO_PUBLIC_KLIPY_API_KEY || '';
 
 interface GifPickerProps {
   visible: boolean;
