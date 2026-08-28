@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, useWindowDimensions, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { View, StyleSheet, useWindowDimensions, Pressable, Text } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler, 
   useSharedValue, 
@@ -8,7 +8,8 @@ import Animated, {
   Extrapolation,
   withSpring,
   withTiming,
-  runOnJS
+  runOnJS,
+  useAnimatedReaction
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Play, X } from 'lucide-react-native';
@@ -108,7 +109,15 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   
-  const scrollX = useSharedValue(initialIndex * (width * 0.75 + 16));
+  // Fake infinite looping by duplicating the array 100 times
+  const LOOP_COPIES = 100;
+  const loopedItems = useMemo(() => Array(LOOP_COPIES).fill(items).flat(), [items]);
+  
+  // Start in the middle of the giant array
+  const middleCopyIndex = Math.floor(LOOP_COPIES / 2);
+  const startScrollIndex = (middleCopyIndex * items.length) + initialIndex;
+
+  const scrollX = useSharedValue(startScrollIndex * (width * 0.75 + 16));
   const appearAnim = useSharedValue(0);
 
   const ITEM_WIDTH = width * 0.75;
@@ -118,6 +127,17 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   const PADDING_HORIZONTAL = (width - ITEM_WIDTH) / 2 - SPACING / 2;
 
   const flatListRef = useRef<Animated.FlatList<StoryItem>>(null);
+  
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+
+  useAnimatedReaction(
+    () => Math.round(scrollX.value / SNAP_INTERVAL),
+    (currentIndex, prevIndex) => {
+      if (currentIndex !== prevIndex && currentIndex >= 0) {
+        runOnJS(setActiveIndex)(currentIndex % items.length);
+      }
+    }
+  );
 
   useEffect(() => {
     appearAnim.value = withSpring(1, { damping: 20, stiffness: 200 });
@@ -179,8 +199,8 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
       <Animated.View style={[StyleSheet.absoluteFill, containerStyle, { justifyContent: 'center' }]}>
         <Animated.FlatList
           ref={flatListRef}
-          data={items}
-          keyExtractor={(item, idx) => item.id || idx.toString()}
+          data={loopedItems}
+          keyExtractor={(_, idx) => idx.toString()}
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={SNAP_INTERVAL}
@@ -189,7 +209,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
             paddingHorizontal: PADDING_HORIZONTAL,
             alignItems: 'center',
           }}
-          initialScrollIndex={initialIndex}
+          initialScrollIndex={startScrollIndex}
           getItemLayout={(_, index) => ({
             length: SNAP_INTERVAL,
             offset: SNAP_INTERVAL * index,
@@ -203,6 +223,13 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
           renderItem={renderItem}
         />
       </Animated.View>
+
+      {/* Counter */}
+      <View style={[styles.counterContainer, { bottom: Math.max(insets.bottom, 20) }]}>
+        <Text style={[styles.counterText, { color: theme.text }]}>
+          {activeIndex + 1} / {items.length}
+        </Text>
+      </View>
     </Animated.View>
   );
 }
@@ -220,6 +247,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+  },
+  counterContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  counterText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    letterSpacing: 1,
   },
   card: {
     width: '100%',
