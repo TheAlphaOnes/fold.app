@@ -185,12 +185,6 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     };
   });
 
-  const detentsStyle = useAnimatedStyle(() => {
-    const isVisible = translateY.value < -2;
-    return {
-      opacity: withTiming(isVisible ? 1 : 0, { duration: 250 })
-    };
-  });
 
   return (
     <View style={styles.wrapper}>
@@ -204,20 +198,13 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
         trackStyle
       ]} />
       
-      {/* Threshold Markers: Icons on left, detent dashes on right */}
-      <View style={[styles.thresholdRow, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }]} pointerEvents="none">
-        <Animated.View style={[styles.trackIcon, photoIconStyle]}>
-          <Camera size={18} color={theme.text} strokeWidth={2.5} />
-        </Animated.View>
-        <Animated.View style={[styles.detent, { backgroundColor: theme.border }, detentsStyle]} />
-      </View>
-      
-      <View style={[styles.thresholdRow, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }]} pointerEvents="none">
-        <Animated.View style={[styles.trackIcon, videoIconStyle]}>
-          <Video size={18} color={theme.text} strokeWidth={2.5} />
-        </Animated.View>
-        <Animated.View style={[styles.detent, { backgroundColor: theme.border }, detentsStyle]} />
-      </View>
+      {/* Threshold Markers: Icons placed precisely at their thresholds */}
+      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }, photoIconStyle]} pointerEvents="none">
+         <Camera size={18} color={theme.text} strokeWidth={2.5} />
+      </Animated.View>
+      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }, videoIconStyle]} pointerEvents="none">
+         <Video size={18} color={theme.text} strokeWidth={2.5} />
+      </Animated.View>
 
       <GestureDetector gesture={composedGesture}>
         <Animated.View
@@ -256,19 +243,8 @@ const styles = StyleSheet.create({
     // Anchor the transform to the bottom so it grows upwards
     
   },
-  thresholdRow: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16, // Distance between icon and dash
-  },
-  detent: {
-    width: 12,
-    height: 2,
-    borderRadius: 1,
-  },
   trackIcon: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
