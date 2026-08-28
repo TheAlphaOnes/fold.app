@@ -25,12 +25,12 @@ function mapStoryRow(row: unknown): Story {
       for (const arr of mediaArrays) {
         if (Array.isArray(arr)) {
           for (const media of arr) {
-            // Include audio? The previous code didn't filter, but maybe we only want visual media for thumbnails.
-            // Let's stick to what we have, but we can handle audio later if needed.
-            if (media?.uri && mediaList.length < 3) {
+            // Only include visual media for thumbnails (audio/text will fail to render as images)
+            const type = media.type || 'image';
+            if (media?.uri && (type === 'image' || type === 'video') && mediaList.length < 3) {
               mediaList.push({
                 uri: resolveDocumentUri(media.uri),
-                type: media.type || 'image' // fallback to image
+                type: type
               });
             }
           }
