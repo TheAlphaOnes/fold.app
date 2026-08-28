@@ -106,7 +106,14 @@ export default function StoryDetailScreen() {
     const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
     
     const animatedStyle = useAnimatedStyle(() => {
-      const distance = index * ITEM_HEIGHT - scrollY.value;
+      // 1. Calculate the item's native position relative to the screen
+      const nativeScreenY = index * ITEM_HEIGHT - scrollY.value;
+      
+      // 2. Calculate distance from the center of the screen
+      const centerOffset = height / 2 - ITEM_HEIGHT / 2;
+      const distance = nativeScreenY - centerOffset;
+      
+      // 3. Map distance to an angle on the cylinder
       const angle = distance / RADIUS;
       
       // We clamp the angle so it doesn't wrap around the back of the cylinder
@@ -117,26 +124,30 @@ export default function StoryDetailScreen() {
         Extrapolation.CLAMP
       );
 
-      const translateY = Math.sin(clampedAngle) * RADIUS;
+      // 4. Calculate 3D transforms
       const translateZ = Math.cos(clampedAngle) * RADIUS - RADIUS;
       const rotateX = `${clampedAngle}rad`;
 
-      const perspective = 800;
+      // 5. Calculate Y foreshortening
+      // The item's desired visual distance from center is sin(angle) * RADIUS.
+      // Its current native distance from center is `distance`.
+      // The translation needed is the difference.
+      const targetYOffset = Math.sin(clampedAngle) * RADIUS;
+      const translateY = targetYOffset - distance;
+
+      const perspective = 850;
       const scale = perspective / (perspective - translateZ);
       
       const opacity = interpolate(
         Math.abs(angle),
-        [0, Math.PI / 3, Math.PI / 2],
-        [1, 0.4, 0],
+        [0, Math.PI / 3, Math.PI / 2.2], // Fade out just before the edge
+        [1, 0.5, 0],
         Extrapolation.CLAMP
       );
 
-      // We negate the native flatlist offset and apply our own center offset + translateY
-      const adjustment = (height / 2 - ITEM_HEIGHT / 2 + translateY) - (index * ITEM_HEIGHT);
-
       return {
         transform: [
-          { translateY: adjustment },
+          { translateY },
           { scale },
           { rotateX }
         ],
