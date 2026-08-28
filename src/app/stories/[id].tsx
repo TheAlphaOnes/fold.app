@@ -1,28 +1,44 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Trash2 } from 'lucide-react-native';
-import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
+import { ArrowLeft, Trash2, Play } from 'lucide-react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedScrollHandler, 
+  useAnimatedStyle, 
+  interpolate, 
+  Extrapolation 
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { useJournalStore } from '@/hooks/use-journal';
-import { CarouselItem } from '@/components/carousel-item';
-import type { Composition } from '@/types/journal';
+import { VinylRecord } from '@/components/vinyl-record';
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+
+interface StoryItem {
+  id: string;
+  memoryId: number;
+  type: 'image' | 'video' | 'audio' | 'text';
+  uri?: string;
+  content?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  metadata?: any;
+}
 
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   
   const { loadStory, activeStory, activeStoryMemories, removeStory, clearActiveStory } = useStoriesStore();
-  const updatePositions = useJournalStore(s => s.updatePositions);
 
   useEffect(() => {
     if (id) {
@@ -39,10 +55,41 @@ export default function StoryDetailScreen() {
     }
   };
 
-  // Dimensions (same as home feed)
-  const snapInterval = height * 0.70;
-  const cardHeight = height * 0.65;
-  const symmetricPadding = (height - snapInterval) / 2;
+  // Flatten media and text into a loop of items
+  const storyItems = useMemo<StoryItem[]>(() => {
+    const items: StoryItem[] = [];
+    activeStoryMemories.forEach(mem => {
+      // Add text if available
+      if (mem.textContent && mem.textContent.trim()) {
+        items.push({
+          id: `text-${mem.id}`,
+          memoryId: mem.id,
+          type: 'text',
+          content: mem.textContent.trim(),
+          fontFamily: mem.fontFamily,
+          fontSize: mem.fontSize,
+        });
+      }
+      // Add all media
+      mem.mediaElements.forEach(media => {
+        items.push({
+          id: `media-${mem.id}-${media.id}`,
+          memoryId: mem.id,
+          type: media.type,
+          uri: media.uri,
+          metadata: media.metadata,
+        });
+      });
+    });
+    
+    // Sort slightly randomly or keep chronological? Chronological is better for memory, but reversed so newest is first.
+    return items.reverse();
+  }, [activeStoryMemories]);
+
+  // Cylinder math constants
+  const ITEM_HEIGHT = height * 0.45;
+  const ITEM_WIDTH = width * 0.75;
+  const RADIUS = height * 0.42;
   const scrollY = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler({
@@ -51,16 +98,104 @@ export default function StoryDetailScreen() {
     },
   });
 
-  const renderItem = useCallback(({ item, index }: { item: Composition; index: number }) => (
-    <CarouselItem
-      item={item}
-      itemOffset={index * snapInterval}
-      snapInterval={snapInterval}
-      cardHeight={cardHeight}
-      scrollY={scrollY}
-      updatePositions={updatePositions}
-    />
-  ), [snapInterval, cardHeight, scrollY, updatePositions]);
+  const renderItem = ({ item, index }: { item: StoryItem; index: number }) => {
+    return <CarouselNode item={item} index={index} />;
+  };
+
+  const CarouselNode = ({ item, index }: { item: StoryItem; index: number }) => {
+    const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
+    
+    const animatedStyle = useAnimatedStyle(() => {
+      const distance = index * ITEM_HEIGHT - scrollY.value;
+      const angle = distance / RADIUS;
+      
+      // We clamp the angle so it doesn't wrap around the back of the cylinder
+      const clampedAngle = interpolate(
+        angle,
+        [-Math.PI / 2, Math.PI / 2],
+        [-Math.PI / 2, Math.PI / 2],
+        Extrapolation.CLAMP
+      );
+
+      const translateY = Math.sin(clampedAngle) * RADIUS;
+      const translateZ = Math.cos(clampedAngle) * RADIUS - RADIUS;
+      const rotateX = `${clampedAngle}rad`;
+
+      const perspective = 800;
+      const scale = perspective / (perspective - translateZ);
+      
+      const opacity = interpolate(
+        Math.abs(angle),
+        [0, Math.PI / 3, Math.PI / 2],
+        [1, 0.4, 0],
+        Extrapolation.CLAMP
+      );
+
+      // We negate the native flatlist offset and apply our own center offset + translateY
+      const adjustment = (height / 2 - ITEM_HEIGHT / 2 + translateY) - (index * ITEM_HEIGHT);
+
+      return {
+        transform: [
+          { translateY: adjustment },
+          { scale },
+          { rotateX }
+        ],
+        opacity,
+        zIndex: Math.round(translateZ)
+      };
+    });
+
+    const handlePress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push(`/memory/${item.memoryId}`);
+    };
+
+    return (
+      <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, alignSelf: 'center' }, animatedStyle]}>
+        <Pressable onPress={handlePress} style={styles.itemPressable}>
+          
+          {item.type === 'text' && (
+            <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Text 
+                style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 24 }]} 
+                numberOfLines={8}
+                ellipsizeMode="tail"
+              >
+                {item.content}
+              </Text>
+            </View>
+          )}
+
+          {item.type === 'image' && (
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            </View>
+          )}
+
+          {item.type === 'video' && (
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Image source={{ uri: videoThumb || item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <View style={styles.videoOverlay}>
+                <Play size={32} color="#FFF" fill="#FFF" />
+              </View>
+            </View>
+          )}
+
+          {item.type === 'audio' && (
+            <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <VinylRecord size={160} isPlaying={false} imageUrl={item.metadata?.artwork} />
+              {item.metadata?.title && (
+                <Text style={[styles.audioTitle, { color: theme.text }]} numberOfLines={1}>
+                  {item.metadata.title}
+                </Text>
+              )}
+            </View>
+          )}
+
+        </Pressable>
+      </Animated.View>
+    );
+  };
 
   if (!activeStory) {
     return (
@@ -75,22 +210,19 @@ export default function StoryDetailScreen() {
       <GrainBackground />
 
       <Animated.FlatList
-        data={[...activeStoryMemories].reverse()}
-        inverted={true}
-        keyExtractor={(item) => item.id.toString()}
+        data={storyItems}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
-        snapToOffsets={activeStoryMemories.map((_, i) => i * snapInterval)}
-        decelerationRate="fast"
-        disableIntervalMomentum
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        contentContainerStyle={{
-          paddingTop: symmetricPadding,
-          paddingBottom: symmetricPadding,
-        }}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        snapToInterval={ITEM_HEIGHT}
+        decelerationRate="fast"
+        contentContainerStyle={{
+          // Give padding so the first/last items can reach the center
+          paddingTop: height / 2,
+          paddingBottom: height / 2,
+        }}
       />
 
       {/* Header Overlay */}
@@ -123,7 +255,7 @@ export default function StoryDetailScreen() {
       </View>
 
       {/* Empty State */}
-      {activeStoryMemories.length === 0 && (
+      {storyItems.length === 0 && (
         <View style={[StyleSheet.absoluteFill, styles.emptyContainer, { pointerEvents: 'box-none' }]}>
           <Pressable 
             style={({ pressed }) => [
@@ -195,5 +327,61 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
     letterSpacing: 1,
+  },
+  itemContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemPressable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  mediaCard: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  textCard: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textContent: {
+    textAlign: 'center',
+    lineHeight: 32,
+  },
+  audioCard: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+  },
+  audioTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });
