@@ -8,8 +8,10 @@ import Animated, {
   useAnimatedScrollHandler, 
   useAnimatedStyle, 
   interpolate, 
-  Extrapolation 
+  Extrapolation,
+  useFrameCallback
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 
@@ -86,69 +88,73 @@ export default function StoryDetailScreen() {
     return items.reverse();
   }, [activeStoryMemories]);
 
-  // Cylinder math constants
-  const ITEM_WIDTH = width * 0.70;
-  const ITEM_HEIGHT = height * 0.55;
-  const RADIUS = width * 0.45;
-  const scrollX = useSharedValue(0);
+  // 2D Ring math constants
+  const ITEM_WIDTH = width * 0.3;
+  const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
+  const RADIUS = width * 0.38;
+  
+  const rotation = useSharedValue(0);
+  const isInteracting = useSharedValue(false);
+  const velocity = useSharedValue(0);
 
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
+  // Auto-rotation + momentum decay loop
+  useFrameCallback((frameInfo) => {
+    if (isInteracting.value) return;
+    const delta = frameInfo.timeSincePreviousFrame || 16;
+    
+    // base speed (approx 1 full rotation every 30 seconds)
+    const baseSpeed = 0.0002; 
+    
+    // decay residual swipe velocity
+    velocity.value = velocity.value * 0.95;
+    
+    // add them together
+    rotation.value += (baseSpeed + velocity.value) * delta;
   });
 
-  const renderItem = ({ item, index }: { item: StoryItem; index: number }) => {
-    return <CarouselNode item={item} index={index} />;
+  const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      isInteracting.value = true;
+      velocity.value = 0;
+    })
+    .onChange((e) => {
+      // Map both X and Y movement to rotation for a more fluid "spin" feel
+      // or just X
+      rotation.value += e.changeX * 0.005 + e.changeY * 0.002;
+    })
+    .onEnd((e) => {
+      isInteracting.value = false;
+      velocity.value = (e.velocityX * 0.005 + e.velocityY * 0.002) * 0.05;
+    });
+
+  const renderItem = (item: StoryItem, index: number) => {
+    return <CarouselNode key={item.id} item={item} index={index} total={storyItems.length} />;
   };
 
-  const CarouselNode = ({ item, index }: { item: StoryItem; index: number }) => {
+  const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
     const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
     
     const animatedStyle = useAnimatedStyle(() => {
-      // 1. Calculate the item's distance from the center of the screen
-      // FlatList paddingLeft is (width/2 - ITEM_WIDTH/2), which places index 0 exactly in the center when scrollX is 0.
-      // Therefore, the distance from center is simply:
-      const distance = index * ITEM_WIDTH - scrollX.value;
+      // Base angle for this item on the ring
+      const baseAngle = (index / total) * Math.PI * 2;
       
-      // 3. Map distance to an angle on the horizontal cylinder
-      const angle = distance / RADIUS;
-      
-      // We clamp the angle so it doesn't wrap around the back of the cylinder
-      const clampedAngle = interpolate(
-        angle,
-        [-Math.PI / 2, Math.PI / 2],
-        [-Math.PI / 2, Math.PI / 2],
-        Extrapolation.CLAMP
-      );
+      // Total angle including the global wheel rotation
+      const currentAngle = baseAngle + rotation.value;
 
-      // 4. Calculate 3D transforms
-      const translateZ = Math.cos(clampedAngle) * RADIUS - RADIUS;
-      // positive angle (item is on the right) should have positive rotateY so its right edge tilts backward (into screen)
-      const rotateY = `${clampedAngle}rad`;
-
-      // 5. Calculate X foreshortening
-      const targetXOffset = Math.sin(clampedAngle) * RADIUS;
-      const translateX = targetXOffset - distance;
-
-      const perspective = 850;
-      const scale = perspective / (perspective - translateZ);
-      
-      const opacity = interpolate(
-        Math.abs(angle),
-        [0, Math.PI / 3, Math.PI / 2.2], // Fade out just before the edge
-        [1, 0.5, 0],
-        Extrapolation.CLAMP
-      );
+      // 2D Ferris Wheel coordinates
+      const translateX = Math.sin(currentAngle) * RADIUS;
+      const translateY = -Math.cos(currentAngle) * RADIUS;
 
       return {
         transform: [
           { translateX },
-          { scale },
-          { rotateY }
+          { translateY },
+          // Optional: we can rotate the items slightly to face outward, or keep them upright.
+          // The sketch showed them upright, so we keep rotation 0.
+          // But to add some flair, let's keep them upright (no rotate).
         ],
-        opacity,
-        zIndex: Math.round(translateZ)
+        // Scale them down a bit if they are in the "back" (top of the wheel) to give slight depth
+        zIndex: Math.round(translateY * 100),
       };
     });
 
@@ -158,14 +164,14 @@ export default function StoryDetailScreen() {
     };
 
     return (
-      <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, alignSelf: 'center' }, animatedStyle]}>
+      <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
         <Pressable onPress={handlePress} style={styles.itemPressable}>
           
           {item.type === 'text' && (
             <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
               <Text 
-                style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: item.fontSize || 24 }]} 
-                numberOfLines={8}
+                style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
+                numberOfLines={6}
                 ellipsizeMode="tail"
               >
                 {item.content}
@@ -183,19 +189,14 @@ export default function StoryDetailScreen() {
             <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
               <Image source={{ uri: videoThumb || item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
               <View style={styles.videoOverlay}>
-                <Play size={32} color="#FFF" fill="#FFF" />
+                <Play size={20} color="#FFF" fill="#FFF" />
               </View>
             </View>
           )}
 
           {item.type === 'audio' && (
             <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <VinylRecord size={160} isPlaying={false} imageUrl={item.metadata?.artwork} />
-              {item.metadata?.title && (
-                <Text style={[styles.audioTitle, { color: theme.text }]} numberOfLines={1}>
-                  {item.metadata.title}
-                </Text>
-              )}
+              <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={item.metadata?.artwork} />
             </View>
           )}
 
@@ -216,23 +217,11 @@ export default function StoryDetailScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <Animated.FlatList
-        data={storyItems}
-        horizontal={true}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        showsHorizontalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        snapToInterval={ITEM_WIDTH}
-        decelerationRate="fast"
-        contentContainerStyle={{
-          // Give padding so the first/last items can reach the center
-          paddingLeft: width / 2 - ITEM_WIDTH / 2,
-          paddingRight: width / 2 - ITEM_WIDTH / 2,
-          alignItems: 'center',
-        }}
-      />
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={StyleSheet.absoluteFill}>
+          {storyItems.map((item, index) => renderItem(item, index))}
+        </Animated.View>
+      </GestureDetector>
 
       {/* Header Overlay */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
