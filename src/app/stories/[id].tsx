@@ -118,13 +118,13 @@ export default function StoryDetailScreen() {
       velocity.value = 0;
     })
     .onChange((e) => {
-      // Map both X and Y movement to rotation for a more fluid "spin" feel
-      // or just X
-      rotation.value += e.changeX * 0.005 + e.changeY * 0.002;
+      // Dampen sensitivity to make the wheel feel heavier and more deliberate
+      rotation.value += e.changeX * 0.002 + e.changeY * 0.001;
     })
     .onEnd((e) => {
       isInteracting.value = false;
-      velocity.value = (e.velocityX * 0.005 + e.velocityY * 0.002) * 0.05;
+      // Aggressively dampen the release momentum (from 0.05 to 0.01)
+      velocity.value = (e.velocityX * 0.002 + e.velocityY * 0.001) * 0.01;
     });
 
   const renderItem = (item: StoryItem, index: number) => {
@@ -134,16 +134,23 @@ export default function StoryDetailScreen() {
   const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
     const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
     
+    // If there are many items, we use a Phyllotaxis (Golden Angle) pattern 
+    // to distribute them organically in a "swarm" so they don't perfectly overlap.
+    const isSwarm = total > 12;
+    const GOLDEN_ANGLE = 2.39996323;
+    const baseAngle = isSwarm ? index * GOLDEN_ANGLE : (index / total) * Math.PI * 2;
+    
+    // Vary the radius slightly for the swarm to create a scattered cloud effect
+    const radiusVariation = isSwarm ? Math.sin(index * 7.89) * (width * 0.12) : 0;
+    const itemRadius = RADIUS + radiusVariation;
+    
     const animatedStyle = useAnimatedStyle(() => {
-      // Base angle for this item on the ring
-      const baseAngle = (index / total) * Math.PI * 2;
-      
       // Total angle including the global wheel rotation
       const currentAngle = baseAngle + rotation.value;
 
       // 2D Ferris Wheel coordinates
-      const translateX = Math.sin(currentAngle) * RADIUS;
-      const translateY = -Math.cos(currentAngle) * RADIUS;
+      const translateX = Math.sin(currentAngle) * itemRadius;
+      const translateY = -Math.cos(currentAngle) * itemRadius;
 
       return {
         transform: [
