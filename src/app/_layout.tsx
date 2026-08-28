@@ -267,6 +267,24 @@ function RootLayoutNav() {
                   animation: "slide_from_right",
                 }}
               />
+              <Stack.Screen
+                name="memory/[id]"
+                options={{
+                  animation: "fade",
+                }}
+              />
+              <Stack.Screen
+                name="stories/index"
+                options={{
+                  animation: "fade",
+                }}
+              />
+              <Stack.Screen
+                name="stories/[id]"
+                options={{
+                  animation: "fade",
+                }}
+              />
             </Stack>
           </AnimatedSplashScreen>
         </BiometricGate>
