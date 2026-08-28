@@ -298,9 +298,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   headerTitle: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 18,
-    letterSpacing: 1,
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    letterSpacing: 2,
   },
   iconBtn: {
     width: 34,

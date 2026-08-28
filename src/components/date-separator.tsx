@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryLabel: {
-    fontFamily: 'BitcountGridDouble-Light',
+    fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
     letterSpacing: 3,
     textTransform: 'uppercase',

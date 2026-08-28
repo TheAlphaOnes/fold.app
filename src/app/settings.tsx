@@ -416,9 +416,10 @@ const styles = StyleSheet.create({
     paddingBottom: 21,
   },
   title: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 18,
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
     letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   closeBtn: {
     width: 34,
@@ -436,11 +437,12 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   sectionTitle: {
-    fontFamily: 'BitcountGridDouble-Light',
+    fontFamily: 'JetBrainsMono-Bold',
     fontSize: 11,
     letterSpacing: 2,
     color: '#878787',
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
   divider: {
     height: 2,
