@@ -210,8 +210,9 @@ export default function StoryDetailScreen() {
   const [viewMode, setViewMode] = useState<'wheel' | 'list'>('wheel');
 
   // List view math
-  const cardHeight = Math.min(height * 0.6, 500);
+  const cardHeight = Math.min(width * 1.618, height * 0.78);
   const snapInterval = cardHeight + 21; // CARD_GAP from index.tsx
+  const symmetricPadding = (height - snapInterval) / 2;
   const listScrollY = useSharedValue(0);
   const listScrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -374,7 +375,10 @@ export default function StoryDetailScreen() {
           decelerationRate="fast"
           disableIntervalMomentum
           scrollEventThrottle={16}
-          contentContainerStyle={{ paddingTop: 120, paddingBottom: Math.max(insets.bottom, 40) }}
+          contentContainerStyle={{ 
+            paddingTop: symmetricPadding, 
+            paddingBottom: symmetricPadding 
+          }}
           showsVerticalScrollIndicator={false}
         />
       )}
