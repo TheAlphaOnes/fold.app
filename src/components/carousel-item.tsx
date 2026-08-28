@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
 import { MemoryCard } from '@/components/memory-card';
@@ -81,30 +81,30 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onStart(() => {
-      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(0.96, { duration: 150 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
     })
     .onEnd(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
       runOnJS(navigateToDetail)();
     })
     .onFinalize(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
     });
 
   const longPress = Gesture.LongPress()
     .minDuration(500)
     .onStart(() => {
-      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(0.96, { duration: 150 });
       runOnJS(triggerShareFeedback)();
       runOnJS(captureAndShareCard)();
     })
     .onEnd(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
     })
     .onFinalize(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
     });
 
   const swipeLeft = Gesture.Pan()
@@ -113,11 +113,11 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     // If the user moves 20px vertically first, fail this gesture so the FlatList can scroll normally
     .failOffsetY([-20, 20])
     .onStart(() => {
-      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(0.96, { duration: 150 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
     })
     .onEnd((e) => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
       
       // Only trigger if they swiped significantly left or flicked it fast
       if (e.translationX < -40 || e.velocityX < -500) {
@@ -128,7 +128,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       }
     })
     .onFinalize(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
+      pressedScale.value = withTiming(1, { duration: 150 });
     });
 
   const composed = Gesture.Exclusive(swipeLeft, doubleTap, longPress);
