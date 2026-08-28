@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Trash2, Play } from 'lucide-react-native';
+import { ArrowLeft, Trash2, Play, ImageOff } from 'lucide-react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler, 
@@ -213,20 +213,36 @@ export default function StoryDetailScreen() {
     // expo-image might show blank for mp4 until thumbnail resolves, but native transition handles the swap smoothly.
     const imageSource = item.type === 'video' && videoThumb ? { uri: videoThumb } : { uri: item.uri };
 
+    const [hasError, setHasError] = useState(false);
+
+    // Reset error state if the underlying item changes
+    useEffect(() => {
+      setHasError(false);
+    }, [item.uri]);
+
     return (
       <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
         <Pressable onPress={handlePress} style={styles.itemPressable}>
           <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
             
             {/* Native expo-image crossfade when source changes */}
-            <Image 
-              source={imageSource} 
-              style={StyleSheet.absoluteFill} 
-              contentFit="cover" 
-              transition={800} 
-            />
+            {!hasError && (
+              <Image 
+                source={imageSource} 
+                style={StyleSheet.absoluteFill} 
+                contentFit="cover" 
+                transition={800}
+                onError={() => setHasError(true)} 
+              />
+            )}
 
-            {item.type === 'video' && (
+            {hasError && (
+              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ImageOff size={32} color={theme.text} opacity={0.3} />
+              </View>
+            )}
+
+            {item.type === 'video' && !hasError && (
               <View style={styles.videoOverlay}>
                 <Play size={20} color="#FFF" fill="#FFF" />
               </View>
