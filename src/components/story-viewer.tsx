@@ -35,7 +35,7 @@ interface StoryViewerProps {
   onClose: () => void;
 }
 
-const ViewerCard = React.memo(({
+const ViewerCard = ({
   item,
   index,
   scrollX,
@@ -111,7 +111,7 @@ const ViewerCard = React.memo(({
             <Text style={[styles.audioTitle, { color: theme.text, marginTop: 40 }]}>
               {item.metadata?.title || 'Audio Note'}
             </Text>
-            {item.metadata?.artist && (
+            {Boolean(item.metadata?.artist) && (
               <Text style={[styles.audioTitle, { color: theme.text, fontSize: 12, opacity: 0.6, marginTop: 8 }]}>
                 {item.metadata?.artist}
               </Text>
@@ -137,7 +137,7 @@ const ViewerCard = React.memo(({
       </Animated.View>
     </View>
   );
-});
+};
 
 export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) {
   const { width, height } = useWindowDimensions();
