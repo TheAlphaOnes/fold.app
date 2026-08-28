@@ -187,7 +187,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   );
 
   useEffect(() => {
-    appearAnim.value = withSpring(1, { damping: 20, stiffness: 200 });
+    appearAnim.value = withTiming(1, { duration: 250 });
   }, []);
 
   const handleClose = () => {

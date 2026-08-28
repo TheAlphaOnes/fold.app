@@ -21,7 +21,7 @@ export function LogoUploadFlight({ color }: { color: string }) {
   useEffect(() => {
     // 1. Fade in and scale up subtly at the center
     opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-    scale.value = withSpring(1, { damping: 14, stiffness: 100 }); // Softer spring
+    scale.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
 
     // 2. HANG in the center so the user sees it, THEN accelerate upwards
     // Changed delay from 150ms to 700ms. Slowed duration from 600ms to 1000ms.

@@ -252,10 +252,10 @@ function MediaSlide({ media, width, height, isActive }: { media: MediaElement; w
     .onEnd(() => {
       if (scale.value <= 1.05) {
         // Snap back to unzoomed — reset everything and unlock FlatList swipe
-        scale.value = withSpring(1);
+        scale.value = withTiming(1, { duration: 150 });
         savedScale.value = 1;
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
+        translateX.value = withTiming(0, { duration: 150 });
+        translateY.value = withTiming(0, { duration: 150 });
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
         runOnJS(setIsZoomed)(false);

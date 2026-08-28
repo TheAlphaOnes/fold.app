@@ -22,12 +22,12 @@ export function ActionLink({ onPress, text }: ActionLinkProps) {
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    arrowOffset.value = withSpring(8, { damping: 15, stiffness: 300 });
+    arrowOffset.value = withTiming(8, { duration: 150 });
     opacity.value = withTiming(0.6, { duration: 150 });
   };
 
   const handlePressOut = () => {
-    arrowOffset.value = withSpring(0, { damping: 15, stiffness: 300 });
+    arrowOffset.value = withTiming(0, { duration: 150 });
     opacity.value = withTiming(1, { duration: 150 });
   };
 

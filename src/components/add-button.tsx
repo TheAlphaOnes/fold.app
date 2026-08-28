@@ -78,7 +78,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     })
     .onFinalize((_, success) => {
       isActive.value = false;
-      scale.value = withSpring(1, { damping: 12, stiffness: 200, mass: 0.6 });
+      scale.value = withTiming(1, { duration: 150 });
       if (success) {
         runOnJS(firePress)();
       }
@@ -88,13 +88,13 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     .minDuration(400)
     .onStart(() => {
       isActive.value = true;
-      scale.value = withSpring(0.85, { damping: 10, stiffness: 160 });
+      scale.value = withTiming(0.85, { duration: 150 });
       runOnJS(fireHapticHeavy)();
       runOnJS(fireLongPressStart)();
     })
     .onEnd(() => {
       isActive.value = false;
-      scale.value = withSpring(1, { damping: 12, stiffness: 200, mass: 0.6 });
+      scale.value = withTiming(1, { duration: 150 });
       runOnJS(fireLongPressEnd)();
     });
 
@@ -138,11 +138,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
       }
       
       swipeStage.value = 0;
-      translateY.value = withSpring(0, {
-        damping: 15,
-        stiffness: 300,
-        mass: 0.5,
-      });
+      translateY.value = withTiming(0, { duration: 150 });
     });
 
   const composedGesture = Gesture.Race(tapGesture, longPressGesture, panGesture);
@@ -172,7 +168,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     const isVisible = translateY.value < -2;
     return {
       opacity: withTiming(isVisible ? (active ? 1 : 0.4) : 0, { duration: 150 }),
-      transform: [{ scale: withSpring(active ? 1.2 : 1) }]
+      transform: [{ scale: withTiming(active ? 1.2 : 1, { duration: 150 }) }]
     };
   });
 
@@ -181,7 +177,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     const isVisible = translateY.value < -2;
     return {
       opacity: withTiming(isVisible ? (active ? 1 : 0.4) : 0, { duration: 150 }),
-      transform: [{ scale: withSpring(active ? 1.2 : 1) }]
+      transform: [{ scale: withTiming(active ? 1.2 : 1, { duration: 150 }) }]
     };
   });
 
