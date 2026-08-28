@@ -40,7 +40,7 @@ interface StoryItem {
   metadata?: any;
 }
 
-const CarouselNode = ({ 
+const CarouselNode = React.memo(({ 
   item, 
   index, 
   total,
@@ -124,8 +124,9 @@ const CarouselNode = ({
         </View>
       </Pressable>
     </Animated.View>
-  );
-};
+}, (prev, next) => {
+  return prev.item.id === next.item.id && prev.index === next.index && prev.total === next.total && prev.rotation === next.rotation;
+});
 
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

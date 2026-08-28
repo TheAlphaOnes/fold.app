@@ -35,7 +35,7 @@ interface StoryViewerProps {
   onClose: () => void;
 }
 
-const ViewerCard = ({
+const ViewerCard = React.memo(({
   item,
   index,
   scrollX,
@@ -137,7 +137,7 @@ const ViewerCard = ({
       </Animated.View>
     </View>
   );
-};
+});
 
 export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) {
   const { width, height } = useWindowDimensions();
