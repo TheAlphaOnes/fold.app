@@ -47,28 +47,39 @@ const ViewerCard = React.memo(({
   SNAP_INTERVAL: number;
   theme: any;
 }) => {
-  const inputRange = [
-    (index - 1) * SNAP_INTERVAL,
-    index * SNAP_INTERVAL,
-    (index + 1) * SNAP_INTERVAL,
-  ];
-
   const cardStyle = useAnimatedStyle(() => {
+    // distance from center of screen to center of this card (in pixels)
+    const distance = scrollX.value - (index * SNAP_INTERVAL);
+    // normalize it: -1 means it's 1 slot to the right, 0 is center, 1 is 1 slot to the left
+    const progress = distance / SNAP_INTERVAL;
+
     const scale = interpolate(
-      scrollX.value,
-      inputRange,
-      [0.92, 1, 0.92],
+      progress,
+      [-1, 0, 1],
+      [0.85, 1, 0.85],
       Extrapolation.CLAMP
     );
+    
     const opacity = interpolate(
-      scrollX.value,
-      inputRange,
-      [0.6, 1, 0.6],
+      progress,
+      [-2, -1, 0, 1, 2],
+      [0, 0.5, 1, 0.5, 0],
       Extrapolation.CLAMP
     );
+
+    // Create a beautiful parabolic arc
+    // When progress is 1 or -1, the card dips down by 60px
+    const translateY = Math.pow(progress, 2) * 60;
+    
+    // Tilt the cards along the arc (-15deg on left, +15deg on right)
+    const rotateZ = `${progress * -15}deg`;
 
     return {
-      transform: [{ scale }],
+      transform: [
+        { translateY },
+        { scale },
+        { rotateZ }
+      ],
       opacity,
     };
   });
