@@ -57,7 +57,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error('Failed to fetch GIFs');
       const json = await res.json();
-      setGifs(json.result?.data || []);
+      setGifs(json.data?.data || []);
     } catch (err) {
       console.error('Klipy API Error:', err);
       setError('Failed to load GIFs.');
