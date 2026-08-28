@@ -129,7 +129,7 @@ export default function StoryDetailScreen() {
         newSlots[slotToReplace] = newItem;
         return newSlots;
       });
-    }, 3500); // Swap an item every 3.5 seconds
+    }, 5000); // Swap an item every 5 seconds
 
     return () => clearInterval(interval);
   }, [storyItems.length]);
@@ -179,20 +179,24 @@ export default function StoryDetailScreen() {
   };
 
   const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
-    const [displayItem, setDisplayItem] = useState(item);
-    const fadeAnim = useSharedValue(1);
+    const [currentItem, setCurrentItem] = useState(item);
+    const [nextItem, setNextItem] = useState<StoryItem | null>(null);
+    const crossfade = useSharedValue(0);
 
     // Watch for item prop changes (when the queue swaps this slot)
     useEffect(() => {
-      if (item.id !== displayItem.id) {
-        fadeAnim.value = withTiming(0, { duration: 400 }, () => {
-          runOnJS(setDisplayItem)(item);
-          fadeAnim.value = withTiming(1, { duration: 400 });
+      if (item.id !== currentItem.id) {
+        setNextItem(item);
+        crossfade.value = 0;
+        crossfade.value = withTiming(1, { duration: 800 }, (finished) => {
+          if (finished) {
+            runOnJS(setCurrentItem)(item);
+            runOnJS(setNextItem)(null);
+            crossfade.value = 0; // reset
+          }
         });
       }
-    }, [item.id, displayItem.id]);
-
-    const videoThumb = useVideoThumbnail(displayItem.type === 'video' ? displayItem.uri : undefined);
+    }, [item.id]);
     
     // Strict circle layout
     const baseAngle = (index / total) * Math.PI * 2;
@@ -211,55 +215,73 @@ export default function StoryDetailScreen() {
       };
     });
 
-    const contentStyle = useAnimatedStyle(() => {
-      return { opacity: fadeAnim.value };
-    });
+    const currentStyle = useAnimatedStyle(() => ({
+      opacity: 1 - crossfade.value
+    }));
+
+    const nextStyle = useAnimatedStyle(() => ({
+      opacity: crossfade.value
+    }));
 
     const handlePress = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`/memory/${displayItem.memoryId}`);
+      router.push(`/memory/${currentItem.memoryId}`);
+    };
+
+    const renderContent = (contentItem: StoryItem) => {
+      const videoThumb = contentItem.type === 'video' ? contentItem.uri : undefined; // Simplified thumb logic to avoid hook rules in helper
+      
+      return (
+        <View style={StyleSheet.absoluteFill}>
+          {contentItem.type === 'text' && (
+            <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Text 
+                style={[styles.textContent, { color: theme.text, fontFamily: contentItem.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
+                numberOfLines={6}
+                ellipsizeMode="tail"
+              >
+                {contentItem.content}
+              </Text>
+            </View>
+          )}
+
+          {contentItem.type === 'image' && (
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Image source={{ uri: contentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
+            </View>
+          )}
+
+          {contentItem.type === 'video' && (
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <Image source={{ uri: videoThumb }} style={StyleSheet.absoluteFill} contentFit="cover" transition={400} />
+              <View style={styles.videoOverlay}>
+                <Play size={20} color="#FFF" fill="#FFF" />
+              </View>
+            </View>
+          )}
+
+          {contentItem.type === 'audio' && (
+            <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={contentItem.metadata?.artwork} />
+            </View>
+          )}
+        </View>
+      );
     };
 
     return (
       <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
-        <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
-          <Pressable onPress={handlePress} style={styles.itemPressable}>
-            
-            {displayItem.type === 'text' && (
-              <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <Text 
-                  style={[styles.textContent, { color: theme.text, fontFamily: displayItem.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
-                  numberOfLines={6}
-                  ellipsizeMode="tail"
-                >
-                  {displayItem.content}
-                </Text>
-              </View>
-            )}
-
-            {displayItem.type === 'image' && (
-              <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <Image source={{ uri: displayItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              </View>
-            )}
-
-            {displayItem.type === 'video' && (
-              <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <Image source={{ uri: videoThumb || displayItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                <View style={styles.videoOverlay}>
-                  <Play size={20} color="#FFF" fill="#FFF" />
-                </View>
-              </View>
-            )}
-
-            {displayItem.type === 'audio' && (
-              <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-                <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={displayItem.metadata?.artwork} />
-              </View>
-            )}
-
-          </Pressable>
-        </Animated.View>
+        <Pressable onPress={handlePress} style={styles.itemPressable}>
+          <Animated.View style={[StyleSheet.absoluteFill, currentStyle]}>
+            {renderContent(currentItem)}
+          </Animated.View>
+          
+          {nextItem && (
+            <Animated.View style={[StyleSheet.absoluteFill, nextStyle]} pointerEvents="none">
+              {renderContent(nextItem)}
+            </Animated.View>
+          )}
+        </Pressable>
       </Animated.View>
     );
   };
