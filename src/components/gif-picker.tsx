@@ -57,7 +57,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
       const res = await fetch(endpoint);
       if (!res.ok) throw new Error('Failed to fetch GIFs');
       const json = await res.json();
-      setGifs(json.data || []);
+      setGifs(json.result?.data || []);
     } catch (err) {
       console.error('Klipy API Error:', err);
       setError('Failed to load GIFs.');
@@ -201,6 +201,8 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
                 placeholderTextColor={theme.textMuted}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                cursorColor={theme.text}
+                selectionColor={theme.text}
                 autoCorrect={false}
                 returnKeyType="search"
                 clearButtonMode="while-editing"
@@ -318,6 +320,7 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 15,
     height: '100%',
+    paddingVertical: 0,
   },
   tabs: {
     flexDirection: 'row',
