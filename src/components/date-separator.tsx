@@ -14,10 +14,19 @@ function formatSeparatorLabel(date: Date, mode: string): { prefix: string; suffi
   const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+  const yyyy = String(date.getFullYear());
+
+  if (mode === 'yearly') {
+    return { prefix: '', suffix: yyyy };
+  }
+  
+  if (mode === 'monthly') {
+    return { prefix: months[date.getMonth()], suffix: yyyy };
+  }
+
   // Infinite: per-day labels
   const dd = String(date.getDate()).padStart(2, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const yyyy = String(date.getFullYear());
   const dow = days[date.getDay()];
   return { prefix: dow, suffix: `${dd}.${mm}.${yyyy}` };
 }
@@ -87,24 +96,26 @@ export const DateSeparator = React.memo(function DateSeparator({
         ]}
       >
         {!!prefix && (
-          <Text
-            style={[styles.primaryLabel, { color: theme.textMuted }]}
-            allowFontScaling={false}
-          >
-            {prefix}
-          </Text>
+          <>
+            <Text
+              style={[styles.primaryLabel, { color: theme.textMuted }]}
+              allowFontScaling={false}
+            >
+              {prefix}
+            </Text>
+            
+            {/* Accent dot */}
+            <RNAnimated.View
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: theme.accentWarm,
+                  transform: [{ scale: dotScale }],
+                },
+              ]}
+            />
+          </>
         )}
-        
-        {/* Accent dot */}
-        <RNAnimated.View
-          style={[
-            styles.dot,
-            {
-              backgroundColor: theme.accentWarm,
-              transform: [{ scale: dotScale }],
-            },
-          ]}
-        />
 
         <Text
           style={[styles.primaryLabel, { color: theme.text }]}

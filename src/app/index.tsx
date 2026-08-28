@@ -77,19 +77,7 @@ export default function HomeScreen() {
     const seen = new Set<string>();
     let lastBlockKey: string | null = null;
     
-    const filtered = reversed.filter(c => {
-      const d = new Date(c.createdAt);
-      if (isNaN(d.getTime())) return true;
-      if (settings.timelineMode === 'infinite') return true;
-      const key = settings.timelineMode === 'yearly' 
-        ? `${d.getFullYear()}` 
-        : `${d.getFullYear()}-${d.getMonth()}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    for (const c of filtered) {
+    for (const c of reversed) {
       const d = new Date(c.createdAt);
       if (isNaN(d.getTime())) {
         items.push({ type: 'memory', id: `mem-${c.id}`, item: c, offset: currentOffset });
