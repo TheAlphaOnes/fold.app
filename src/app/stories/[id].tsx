@@ -482,12 +482,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   titleText: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
     textTransform: 'uppercase',
     letterSpacing: 2,
+    textAlign: 'center',
+    marginLeft: 2, // Compensate for the extra trailing letter-spacing on the last character
   },
   emptyContainer: {
     justifyContent: 'center',
