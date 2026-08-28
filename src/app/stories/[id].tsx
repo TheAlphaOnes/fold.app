@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,9 @@ import Animated, {
   useAnimatedStyle, 
   interpolate, 
   Extrapolation,
-  useFrameCallback
+  useFrameCallback,
+  withTiming,
+  runOnJS
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
@@ -88,6 +90,50 @@ export default function StoryDetailScreen() {
     return items.reverse();
   }, [activeStoryMemories]);
 
+  const MAX_SLOTS = 12;
+  const [activeSlots, setActiveSlots] = useState<StoryItem[]>([]);
+  const queueRef = useRef<StoryItem[]>([]);
+
+  // Initialize slots
+  useEffect(() => {
+    if (!storyItems.length) return;
+    
+    if (storyItems.length <= MAX_SLOTS) {
+      setActiveSlots(storyItems);
+      queueRef.current = [];
+    } else {
+      setActiveSlots(storyItems.slice(0, MAX_SLOTS));
+      queueRef.current = storyItems.slice(MAX_SLOTS);
+    }
+  }, [storyItems]);
+
+  // Queue swapping logic
+  useEffect(() => {
+    if (storyItems.length <= MAX_SLOTS) return;
+
+    const interval = setInterval(() => {
+      setActiveSlots(prev => {
+        const nextQueue = [...queueRef.current];
+        if (nextQueue.length === 0) return prev;
+        
+        // Pick a random slot to swap out
+        const slotToReplace = Math.floor(Math.random() * MAX_SLOTS);
+        
+        const oldItem = prev[slotToReplace];
+        const newItem = nextQueue.shift()!;
+        nextQueue.push(oldItem); // Put the old item back at the end of the queue
+        
+        queueRef.current = nextQueue;
+        
+        const newSlots = [...prev];
+        newSlots[slotToReplace] = newItem;
+        return newSlots;
+      });
+    }, 3500); // Swap an item every 3.5 seconds
+
+    return () => clearInterval(interval);
+  }, [storyItems.length]);
+
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
@@ -128,86 +174,92 @@ export default function StoryDetailScreen() {
     });
 
   const renderItem = (item: StoryItem, index: number) => {
-    return <CarouselNode key={item.id} item={item} index={index} total={storyItems.length} />;
+    // Key must be index so the slot component stays mounted and can animate the item swap
+    return <CarouselNode key={`slot-${index}`} item={item} index={index} total={activeSlots.length} />;
   };
 
   const CarouselNode = ({ item, index, total }: { item: StoryItem; index: number, total: number }) => {
-    const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
+    const [displayItem, setDisplayItem] = useState(item);
+    const fadeAnim = useSharedValue(1);
+
+    // Watch for item prop changes (when the queue swaps this slot)
+    useEffect(() => {
+      if (item.id !== displayItem.id) {
+        fadeAnim.value = withTiming(0, { duration: 400 }, () => {
+          runOnJS(setDisplayItem)(item);
+          fadeAnim.value = withTiming(1, { duration: 400 });
+        });
+      }
+    }, [item.id, displayItem.id]);
+
+    const videoThumb = useVideoThumbnail(displayItem.type === 'video' ? displayItem.uri : undefined);
     
-    // If there are many items, we use a Phyllotaxis (Golden Angle) pattern 
-    // to distribute them organically in a "swarm" so they don't perfectly overlap.
-    const isSwarm = total > 12;
-    const GOLDEN_ANGLE = 2.39996323;
-    const baseAngle = isSwarm ? index * GOLDEN_ANGLE : (index / total) * Math.PI * 2;
-    
-    // Vary the radius slightly for the swarm to create a scattered cloud effect
-    const radiusVariation = isSwarm ? Math.sin(index * 7.89) * (width * 0.12) : 0;
-    const itemRadius = RADIUS + radiusVariation;
+    // Strict circle layout
+    const baseAngle = (index / total) * Math.PI * 2;
     
     const animatedStyle = useAnimatedStyle(() => {
       // Total angle including the global wheel rotation
       const currentAngle = baseAngle + rotation.value;
 
       // 2D Ferris Wheel coordinates
-      const translateX = Math.sin(currentAngle) * itemRadius;
-      const translateY = -Math.cos(currentAngle) * itemRadius;
+      const translateX = Math.sin(currentAngle) * RADIUS;
+      const translateY = -Math.cos(currentAngle) * RADIUS;
 
       return {
-        transform: [
-          { translateX },
-          { translateY },
-          // Optional: we can rotate the items slightly to face outward, or keep them upright.
-          // The sketch showed them upright, so we keep rotation 0.
-          // But to add some flair, let's keep them upright (no rotate).
-        ],
-        // Scale them down a bit if they are in the "back" (top of the wheel) to give slight depth
+        transform: [{ translateX }, { translateY }],
         zIndex: Math.round(translateY * 100),
       };
     });
 
+    const contentStyle = useAnimatedStyle(() => {
+      return { opacity: fadeAnim.value };
+    });
+
     const handlePress = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      router.push(`/memory/${item.memoryId}`);
+      router.push(`/memory/${displayItem.memoryId}`);
     };
 
     return (
       <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
-        <Pressable onPress={handlePress} style={styles.itemPressable}>
-          
-          {item.type === 'text' && (
-            <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Text 
-                style={[styles.textContent, { color: theme.text, fontFamily: item.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
-                numberOfLines={6}
-                ellipsizeMode="tail"
-              >
-                {item.content}
-              </Text>
-            </View>
-          )}
-
-          {item.type === 'image' && (
-            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            </View>
-          )}
-
-          {item.type === 'video' && (
-            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <Image source={{ uri: videoThumb || item.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <View style={styles.videoOverlay}>
-                <Play size={20} color="#FFF" fill="#FFF" />
+        <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
+          <Pressable onPress={handlePress} style={styles.itemPressable}>
+            
+            {displayItem.type === 'text' && (
+              <View style={[styles.textCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <Text 
+                  style={[styles.textContent, { color: theme.text, fontFamily: displayItem.fontFamily || 'JetBrainsMono-Regular', fontSize: 16 }]} 
+                  numberOfLines={6}
+                  ellipsizeMode="tail"
+                >
+                  {displayItem.content}
+                </Text>
               </View>
-            </View>
-          )}
+            )}
 
-          {item.type === 'audio' && (
-            <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={item.metadata?.artwork} />
-            </View>
-          )}
+            {displayItem.type === 'image' && (
+              <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <Image source={{ uri: displayItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              </View>
+            )}
 
-        </Pressable>
+            {displayItem.type === 'video' && (
+              <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <Image source={{ uri: videoThumb || displayItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <View style={styles.videoOverlay}>
+                  <Play size={20} color="#FFF" fill="#FFF" />
+                </View>
+              </View>
+            )}
+
+            {displayItem.type === 'audio' && (
+              <View style={[styles.audioCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+                <VinylRecord size={ITEM_WIDTH * 0.8} isPlaying={false} imageUrl={displayItem.metadata?.artwork} />
+              </View>
+            )}
+
+          </Pressable>
+        </Animated.View>
       </Animated.View>
     );
   };
@@ -226,7 +278,7 @@ export default function StoryDetailScreen() {
 
       <GestureDetector gesture={panGesture}>
         <Animated.View style={StyleSheet.absoluteFill}>
-          {storyItems.map((item, index) => renderItem(item, index))}
+          {activeSlots.map((item, index) => renderItem(item, index))}
         </Animated.View>
       </GestureDetector>
 
