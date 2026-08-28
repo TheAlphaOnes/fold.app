@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   phaseTitle: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 14,
+    fontSize: 24,
     letterSpacing: 4,
     marginBottom: 16,
     opacity: 0.5,
