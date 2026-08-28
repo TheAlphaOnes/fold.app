@@ -58,7 +58,13 @@ const CarouselNode = React.memo(({
 
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
-  const RADIUS = width * 0.38;
+  
+  // Scale radius based on how many items there are so sparse circles don't look weird
+  const maxRadius = width * 0.38;
+  const RADIUS = total <= 1 ? 0 : 
+                 total === 2 ? maxRadius * 0.55 : 
+                 total === 3 ? maxRadius * 0.8 : 
+                 maxRadius;
 
   // Strict circle layout
   const baseAngle = (index / total) * Math.PI * 2;
@@ -228,7 +234,6 @@ export default function StoryDetailScreen() {
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
-  const RADIUS = width * 0.38;
   
   const rotation = useSharedValue(0);
   const isInteracting = useSharedValue(false);
