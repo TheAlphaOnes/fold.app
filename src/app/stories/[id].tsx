@@ -23,6 +23,7 @@ import { GrainBackground } from '@/components/grain-background';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { StoryViewer } from '@/components/story-viewer';
 
 interface StoryItem {
   id: string;
@@ -39,16 +40,17 @@ const CarouselNode = React.memo(({
   item, 
   index, 
   total,
-  rotation 
+  rotation,
+  onPress
 }: { 
   item: StoryItem; 
   index: number; 
   total: number;
   rotation: import('react-native-reanimated').SharedValue<number>;
+  onPress: () => void;
 }) => {
   const { width, height } = useWindowDimensions();
   const theme = useTheme();
-  const router = useRouter();
 
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
@@ -70,7 +72,7 @@ const CarouselNode = React.memo(({
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/memory/${item.memoryId}`);
+    onPress();
   };
 
   const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
@@ -172,6 +174,7 @@ export default function StoryDetailScreen() {
   const MAX_SLOTS = 12;
   const [activeSlots, setActiveSlots] = useState<StoryItem[]>([]);
   const queueRef = useRef<StoryItem[]>([]);
+  const [viewerState, setViewerState] = useState({ isOpen: false, initialIndex: 0 });
 
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
@@ -197,7 +200,7 @@ export default function StoryDetailScreen() {
 
   // Queue swapping logic
   useEffect(() => {
-    if (storyItems.length <= MAX_SLOTS) return;
+    if (storyItems.length <= MAX_SLOTS || viewerState.isOpen) return;
 
     const interval = setInterval(() => {
       // Read shared value outside state updater to avoid reading during React's render phase
@@ -238,11 +241,11 @@ export default function StoryDetailScreen() {
     }, 5000); // Swap an item every 5 seconds
 
     return () => clearInterval(interval);
-  }, [storyItems.length]);
+  }, [storyItems.length, viewerState.isOpen]);
 
   // Auto-rotation + momentum decay loop
   useFrameCallback((frameInfo) => {
-    if (isInteracting.value) return;
+    if (isInteracting.value || viewerState.isOpen) return;
     const delta = frameInfo.timeSincePreviousFrame || 16;
     
     // base speed (approx 1 full rotation every 30 seconds)
@@ -270,9 +273,16 @@ export default function StoryDetailScreen() {
       velocity.value = (e.velocityX * 0.002 + e.velocityY * 0.001) * 0.01;
     });
 
+  const handleCardPress = (item: StoryItem) => {
+    const globalIndex = storyItems.findIndex(i => i.id === item.id);
+    if (globalIndex !== -1) {
+      setViewerState({ isOpen: true, initialIndex: globalIndex });
+    }
+  };
+
   const renderItem = (item: StoryItem, index: number) => {
     // Key must be index so the slot component stays mounted and can animate the item swap
-    return <CarouselNode key={`slot-${index}`} item={item} index={index} total={activeSlots.length} rotation={rotation} />;
+    return <CarouselNode key={`slot-${index}`} item={item} index={index} total={activeSlots.length} rotation={rotation} onPress={() => handleCardPress(item)} />;
   };
 
 
@@ -339,6 +349,15 @@ export default function StoryDetailScreen() {
             </ThemedText>
           </Pressable>
         </View>
+      )}
+
+      {/* Story Media Viewer Overlay */}
+      {viewerState.isOpen && (
+        <StoryViewer 
+          items={storyItems} 
+          initialIndex={viewerState.initialIndex} 
+          onClose={() => setViewerState({ ...viewerState, isOpen: false })} 
+        />
       )}
     </View>
   );

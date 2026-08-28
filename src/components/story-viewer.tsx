@@ -1,0 +1,200 @@
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, useWindowDimensions, Pressable } from 'react-native';
+import Animated, { 
+  useAnimatedScrollHandler, 
+  useSharedValue, 
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+  withSpring,
+  withTiming,
+  runOnJS
+} from 'react-native-reanimated';
+import { Image } from 'expo-image';
+import { Play, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/use-theme';
+import * as Haptics from 'expo-haptics';
+
+interface StoryItem {
+  id: string;
+  memoryId: number;
+  type: 'image' | 'video' | 'audio' | 'text';
+  uri?: string;
+  content?: string;
+}
+
+interface StoryViewerProps {
+  items: StoryItem[];
+  initialIndex: number;
+  onClose: () => void;
+}
+
+export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) {
+  const { width, height } = useWindowDimensions();
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  const scrollX = useSharedValue(initialIndex * (width * 0.8 + 16));
+  const appearAnim = useSharedValue(0);
+
+  const ITEM_WIDTH = width * 0.8;
+  const SPACING = 16;
+  const SNAP_INTERVAL = ITEM_WIDTH + SPACING;
+  const PADDING_HORIZONTAL = (width - ITEM_WIDTH) / 2;
+
+  const flatListRef = useRef<Animated.FlatList<StoryItem>>(null);
+
+  useEffect(() => {
+    appearAnim.value = withSpring(1, { damping: 20, stiffness: 200 });
+  }, []);
+
+  const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    appearAnim.value = withTiming(0, { duration: 250 }, (finished) => {
+      if (finished) runOnJS(onClose)();
+    });
+  };
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+  });
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: appearAnim.value,
+    backgroundColor: theme.background, // full background color
+  }));
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(appearAnim.value, [0, 1], [0.9, 1]) }],
+    opacity: appearAnim.value,
+  }));
+
+  const renderItem = ({ item, index }: { item: StoryItem; index: number }) => {
+    const inputRange = [
+      (index - 1) * SNAP_INTERVAL,
+      index * SNAP_INTERVAL,
+      (index + 1) * SNAP_INTERVAL,
+    ];
+
+    const cardStyle = useAnimatedStyle(() => {
+      const scale = interpolate(
+        scrollX.value,
+        inputRange,
+        [0.9, 1, 0.9],
+        Extrapolation.CLAMP
+      );
+      const opacity = interpolate(
+        scrollX.value,
+        inputRange,
+        [0.5, 1, 0.5],
+        Extrapolation.CLAMP
+      );
+
+      return {
+        transform: [{ scale }],
+        opacity,
+      };
+    });
+
+    return (
+      <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
+        <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
+          <Image
+            source={{ uri: item.uri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={300}
+          />
+          {item.type === 'video' && (
+            <View style={styles.videoOverlay}>
+              <Play size={32} color="#FFF" fill="#FFF" />
+            </View>
+          )}
+        </Animated.View>
+      </View>
+    );
+  };
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, overlayStyle, { zIndex: 1000 }]}>
+      {/* Header */}
+      <View style={[styles.header, { top: Math.max(insets.top, 20) }]}>
+        <Pressable 
+          onPress={handleClose}
+          style={({ pressed }) => [
+            styles.closeBtn,
+            { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }
+          ]}
+        >
+          <X size={20} color={theme.text} />
+        </Pressable>
+      </View>
+
+      {/* Carousel */}
+      <Animated.View style={[StyleSheet.absoluteFill, containerStyle, { justifyContent: 'center' }]}>
+        <Animated.FlatList
+          ref={flatListRef}
+          data={items}
+          keyExtractor={(item, idx) => item.id || idx.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={SNAP_INTERVAL}
+          decelerationRate="fast"
+          contentContainerStyle={{
+            paddingHorizontal: PADDING_HORIZONTAL,
+            alignItems: 'center',
+          }}
+          initialScrollIndex={initialIndex}
+          getItemLayout={(_, index) => ({
+            length: SNAP_INTERVAL,
+            offset: SNAP_INTERVAL * index,
+            index,
+          })}
+          windowSize={3}
+          initialNumToRender={3}
+          maxToRenderPerBatch={3}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          renderItem={renderItem}
+        />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  card: {
+    width: '100%',
+    aspectRatio: 3 / 4,
+    borderRadius: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 5,
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

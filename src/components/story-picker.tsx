@@ -271,6 +271,8 @@ export function StoryPicker(props: StoryPickerProps) {
                 placeholderTextColor={theme.textMuted}
                 value={newTitle}
                 onChangeText={setNewTitle}
+                cursorColor={theme.text}
+                selectionColor={theme.text}
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={handleCreate}
@@ -455,8 +457,10 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 22,
+    lineHeight: 28,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 10,
+    paddingBottom: 10,
+    paddingTop: 0,
     paddingHorizontal: 0,
   },
   createActions: {

@@ -80,8 +80,18 @@
             "NSExtensionActivationSupportsMovieWithMaxCount": 5,
             "NSExtensionActivationSupportsFileWithMaxCount": 10
           },
-          "androidIntentFilters": ["image/*", "video/*", "audio/*", "text/*", "*/*"],
-          "androidMultiIntentFilters": ["image/*", "video/*", "*/*"],
+          "androidIntentFilters": [
+            "image/*",
+            "video/*",
+            "audio/*",
+            "text/*",
+            "*/*"
+          ],
+          "androidMultiIntentFilters": [
+            "image/*",
+            "video/*",
+            "*/*"
+          ],
           "iosAppGroupIdentifier": "group.com.fold.app"
         }
       ],
@@ -91,7 +101,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Fold to use your location to automatically tag memories."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
