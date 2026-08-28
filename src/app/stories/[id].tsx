@@ -167,7 +167,35 @@ export default function StoryDetailScreen() {
       });
     });
     
-    // Reverse so newest is first.
+  // Reverse so newest is first.
+    return items.reverse();
+  }, [activeStoryMemories]);
+
+  // Full flattened array for the viewer (includes text, audio, etc)
+  const viewerItems = useMemo<StoryItem[]>(() => {
+    const items: StoryItem[] = [];
+    activeStoryMemories.forEach(mem => {
+      if (mem.textContent && mem.textContent.trim().length > 0) {
+        items.push({
+          id: `text-${mem.id}`,
+          memoryId: mem.id,
+          type: 'text',
+          content: mem.textContent,
+          fontFamily: mem.fontFamily,
+          fontSize: mem.fontSize,
+        });
+      }
+      
+      mem.mediaElements.forEach((media, index) => {
+        items.push({
+          id: `media-${mem.id}-${index}`,
+          memoryId: mem.id,
+          type: media.type,
+          uri: media.uri,
+          metadata: media.metadata,
+        });
+      });
+    });
     return items.reverse();
   }, [activeStoryMemories]);
 
@@ -274,7 +302,7 @@ export default function StoryDetailScreen() {
     });
 
   const handleCardPress = (item: StoryItem) => {
-    const globalIndex = storyItems.findIndex(i => i.id === item.id);
+    const globalIndex = viewerItems.findIndex(i => i.id === item.id);
     if (globalIndex !== -1) {
       setViewerState({ isOpen: true, initialIndex: globalIndex });
     }
@@ -354,7 +382,7 @@ export default function StoryDetailScreen() {
       {/* Story Media Viewer Overlay */}
       {viewerState.isOpen && (
         <StoryViewer 
-          items={storyItems} 
+          items={viewerItems} 
           initialIndex={viewerState.initialIndex} 
           onClose={() => setViewerState({ ...viewerState, isOpen: false })} 
         />
@@ -468,7 +496,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',

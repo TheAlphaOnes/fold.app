@@ -16,6 +16,7 @@ import { Play, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import * as Haptics from 'expo-haptics';
+import { VinylRecord } from '@/components/vinyl-record';
 
 interface StoryItem {
   id: string;
@@ -23,6 +24,9 @@ interface StoryItem {
   type: 'image' | 'video' | 'audio' | 'text';
   uri?: string;
   content?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  metadata?: any;
 }
 
 interface StoryViewerProps {
@@ -88,15 +92,46 @@ const ViewerCard = React.memo(({
   return (
     <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
       <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
-        <Image
-          source={{ uri: item.uri }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          transition={300}
-        />
+        {(item.type === 'image' || item.type === 'video') && (
+          <Image
+            source={{ uri: item.uri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={300}
+          />
+        )}
         {item.type === 'video' && (
           <View style={styles.videoOverlay}>
             <Play size={32} color="#FFF" fill="#FFF" />
+          </View>
+        )}
+        {item.type === 'audio' && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+            <VinylRecord size={160} isPlaying={true} imageUrl={item.metadata?.artwork} />
+            <Text style={[styles.audioTitle, { color: theme.text, marginTop: 40 }]}>
+              {item.metadata?.title || 'Audio Note'}
+            </Text>
+            {item.metadata?.artist && (
+              <Text style={[styles.audioTitle, { color: theme.text, fontSize: 12, opacity: 0.6, marginTop: 8 }]}>
+                {item.metadata?.artist}
+              </Text>
+            )}
+          </View>
+        )}
+        {item.type === 'text' && (
+          <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+            <Text 
+              style={{
+                fontFamily: item.fontFamily || 'JetBrainsMono-Regular',
+                fontSize: Math.min((item.fontSize || 24) * 0.8, 32),
+                color: theme.text,
+                textAlign: 'center',
+                lineHeight: 32
+              }}
+              numberOfLines={10}
+            >
+              {item.content}
+            </Text>
           </View>
         )}
       </Animated.View>
@@ -273,9 +308,15 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   videoOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  audioTitle: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  }
 });
