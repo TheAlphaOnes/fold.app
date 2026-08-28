@@ -256,22 +256,13 @@ export function MemoryCard({
 
   let formattedTime = timeStr;
   
-  const { settings } = useSettingsStore();
-  
-  if (settings.timelineMode === 'yearly') {
-    formattedTime = String(itemDate.getFullYear());
-  } else if (settings.timelineMode === 'monthly') {
+  if (!isToday) {
     const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
-    formattedTime = `${month} ${itemDate.getFullYear()}`;
-  } else {
-    if (!isToday) {
-      const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][itemDate.getMonth()];
-      const day = itemDate.getDate();
-      if (isThisYear) {
-        formattedTime = `${month} ${day} • ${timeStr}`;
-      } else {
-        formattedTime = `${month} ${day}, ${itemDate.getFullYear()} • ${timeStr}`;
-      }
+    const day = itemDate.getDate();
+    if (isThisYear) {
+      formattedTime = `${month} ${day} • ${timeStr}`;
+    } else {
+      formattedTime = `${month} ${day}, ${itemDate.getFullYear()} • ${timeStr}`;
     }
   }
 

@@ -318,16 +318,6 @@ export default function HomeScreen() {
       date = new Date();
     }
     const yyyy = String(date.getFullYear());
-    
-    if (settings.timelineMode === 'yearly') {
-      return yyyy;
-    }
-    
-    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    if (settings.timelineMode === 'monthly') {
-      return `${months[date.getMonth()]}  ${yyyy}`;
-    }
-
     const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
     const day = days[date.getDay()];
     const dd = String(date.getDate()).padStart(2, '0');
