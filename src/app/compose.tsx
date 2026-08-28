@@ -968,11 +968,8 @@ export default function ComposeScreen() {
       <StoryPicker mode="multi"
         visible={isStoryPickerVisible}
         onClose={() => setIsStoryPickerVisible(false)}
-        onSelect={(ids) => {
-          setStoryIds(ids);
-          setIsStoryPickerVisible(false);
-        }}
-        selectedIds={storyIds}
+        onToggle={(id) => setStoryIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+        selectedStoryIds={storyIds}
       />
       
       <GifPicker
