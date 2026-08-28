@@ -57,13 +57,13 @@ const ViewerCard = React.memo(({
     const scale = interpolate(
       scrollX.value,
       inputRange,
-      [0.9, 1, 0.9],
+      [0.92, 1, 0.92],
       Extrapolation.CLAMP
     );
     const opacity = interpolate(
       scrollX.value,
       inputRange,
-      [0.5, 1, 0.5],
+      [0.6, 1, 0.6],
       Extrapolation.CLAMP
     );
 
@@ -97,13 +97,14 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   
-  const scrollX = useSharedValue(initialIndex * (width * 0.8 + 16));
+  const scrollX = useSharedValue(initialIndex * (width * 0.75 + 16));
   const appearAnim = useSharedValue(0);
 
-  const ITEM_WIDTH = width * 0.8;
+  const ITEM_WIDTH = width * 0.75;
   const SPACING = 16;
   const SNAP_INTERVAL = ITEM_WIDTH + SPACING;
-  const PADDING_HORIZONTAL = (width - ITEM_WIDTH) / 2;
+  // Subtract SPACING / 2 because each item has marginHorizontal: SPACING / 2
+  const PADDING_HORIZONTAL = (width - ITEM_WIDTH) / 2 - SPACING / 2;
 
   const flatListRef = useRef<Animated.FlatList<StoryItem>>(null);
 
