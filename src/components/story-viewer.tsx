@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, useWindowDimensions, Pressable, Text } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
 import Animated, { 
   useAnimatedScrollHandler, 
   useSharedValue, 
@@ -42,7 +44,8 @@ const ViewerCard = React.memo(({
   ITEM_WIDTH,
   SPACING,
   SNAP_INTERVAL,
-  theme
+  theme,
+  onDoubleTap
 }: {
   item: StoryItem;
   index: number;
@@ -51,6 +54,7 @@ const ViewerCard = React.memo(({
   SPACING: number;
   SNAP_INTERVAL: number;
   theme: any;
+  onDoubleTap: (memoryId: number) => void;
 }) => {
   const cardStyle = useAnimatedStyle(() => {
     // distance from center of screen to center of this card (in pixels)
@@ -89,10 +93,17 @@ const ViewerCard = React.memo(({
     };
   });
 
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(() => {
+      runOnJS(onDoubleTap)(item.memoryId);
+    });
+
   return (
     <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
-      <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
-        {(item.type === 'image' || item.type === 'video') && (
+      <GestureDetector gesture={doubleTap}>
+        <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
+          {(item.type === 'image' || item.type === 'video') && (
           <Image
             source={{ uri: item.uri }}
             style={StyleSheet.absoluteFill}
@@ -134,7 +145,8 @@ const ViewerCard = React.memo(({
             </Text>
           </View>
         )}
-      </Animated.View>
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 });
@@ -201,6 +213,16 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
     opacity: appearAnim.value,
   }));
 
+  const router = useRouter();
+
+  const handleDoubleTap = useCallback((memoryId: number) => {
+    onClose();
+    // Delay routing slightly to let modal close animation start
+    setTimeout(() => {
+      router.push(`/memory/${memoryId}`);
+    }, 50);
+  }, [onClose, router]);
+
   const renderItem = ({ item, index }: { item: StoryItem; index: number }) => {
     return (
       <ViewerCard
@@ -211,6 +233,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
         SPACING={SPACING}
         SNAP_INTERVAL={SNAP_INTERVAL}
         theme={theme}
+        onDoubleTap={handleDoubleTap}
       />
     );
   };
