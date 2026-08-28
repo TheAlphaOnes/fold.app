@@ -124,6 +124,7 @@ const CarouselNode = React.memo(({
         </View>
       </Pressable>
     </Animated.View>
+  );
 }, (prev, next) => {
   return prev.item.id === next.item.id && prev.index === next.index && prev.total === next.total && prev.rotation === next.rotation;
 });
