@@ -357,23 +357,27 @@ export default function StoryDetailScreen() {
 
       {/* Header Overlay */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <Pressable 
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.iconBtn, 
-            { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
-          ]}
-        >
-          <ArrowLeft size={16} color={theme.text} />
-        </Pressable>
-
-        <View style={[styles.titleBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-          <ThemedText style={[styles.titleText, { color: theme.text }]}>
-            {activeStory.title}
-          </ThemedText>
+        <View style={styles.headerLeft}>
+          <Pressable 
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              styles.iconBtn, 
+              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
+            ]}
+          >
+            <ArrowLeft size={16} color={theme.text} />
+          </Pressable>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={styles.headerCenter} pointerEvents="none">
+          <View style={[styles.titleBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+            <ThemedText style={[styles.titleText, { color: theme.text }]}>
+              {activeStory.title}
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.headerRight}>
           <Pressable 
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -447,6 +451,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 100,
   },
+  headerLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  headerCenter: {
+    flex: 2,
+    alignItems: 'center',
+  },
+  headerRight: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
   iconBtn: {
     width: 40,
     height: 40,
@@ -466,9 +484,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   titleText: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
     textTransform: 'uppercase',
+    letterSpacing: 2,
   },
   emptyContainer: {
     justifyContent: 'center',
