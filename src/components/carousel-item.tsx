@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
-import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -107,23 +107,6 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     });
 
-  const flingLeft = Gesture.Fling()
-    .direction(Directions.LEFT)
-    .onStart(() => {
-      pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    })
-    .onEnd(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-      if (item.storyIds && item.storyIds.length > 0) {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
-      }
-    })
-    .onFinalize(() => {
-      pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-    });
-
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
       // Scale down slightly while pinching
@@ -142,7 +125,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
 
   const composed = Gesture.Simultaneous(
     pinch, 
-    Gesture.Exclusive(flingLeft, doubleTap, longPress)
+    Gesture.Exclusive(doubleTap, longPress)
   );
 
   return (
