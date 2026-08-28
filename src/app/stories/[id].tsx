@@ -112,6 +112,10 @@ export default function StoryDetailScreen() {
     if (storyItems.length <= MAX_SLOTS) return;
 
     const interval = setInterval(() => {
+      // Read shared value outside state updater to avoid reading during React's render phase
+      // (React can call state updaters during render in strict mode)
+      const currentRotation = rotation.value;
+      
       setActiveSlots(prev => {
         const nextQueue = [...queueRef.current];
         if (nextQueue.length === 0) return prev;
@@ -119,7 +123,6 @@ export default function StoryDetailScreen() {
         // Find the slots that are currently in the "back" of the wheel (near the top)
         // translateY = -Math.cos(currentAngle) * RADIUS
         // The back of the wheel is where cos(angle) is positive (closest to 1)
-        const currentRotation = rotation.value;
         const slotScores = prev.map((_, i) => {
           const baseAngle = (i / MAX_SLOTS) * Math.PI * 2;
           const currentAngle = baseAngle + currentRotation;
@@ -236,17 +239,16 @@ export default function StoryDetailScreen() {
         <Pressable onPress={handlePress} style={styles.itemPressable}>
           <Animated.View style={[StyleSheet.absoluteFill, contentStyle]}>
             <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-              {currentItem.type === 'image' && (
+              {currentItem.type === 'image' ? (
                 <Image source={{ uri: currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-              )}
-              {currentItem.type === 'video' && (
+              ) : currentItem.type === 'video' ? (
                 <>
                   <Image source={{ uri: videoThumb || currentItem.uri }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                   <View style={styles.videoOverlay}>
                     <Play size={20} color="#FFF" fill="#FFF" />
                   </View>
                 </>
-              )}
+              ) : null}
             </View>
           </Animated.View>
         </Pressable>
