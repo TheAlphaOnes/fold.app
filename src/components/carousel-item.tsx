@@ -107,24 +107,31 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     });
 
-  const flingLeft = Gesture.Fling()
-    .direction(Directions.LEFT)
+  const swipeLeft = Gesture.Pan()
+    // Require 30px of leftward movement before claiming the gesture
+    .activeOffsetX([-30, 0])
+    // If the user moves 20px vertically first, fail this gesture so the FlatList can scroll normally
+    .failOffsetY([-20, 20])
     .onStart(() => {
       pressedScale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
       runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
     })
-    .onEnd(() => {
+    .onEnd((e) => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-      if (item.storyIds && item.storyIds.length > 0) {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
+      
+      // Only trigger if they swiped significantly left or flicked it fast
+      if (e.translationX < -40 || e.velocityX < -500) {
+        if (item.storyIds && item.storyIds.length > 0) {
+          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+          runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
+        }
       }
     })
     .onFinalize(() => {
       pressedScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     });
 
-  const composed = Gesture.Exclusive(flingLeft, doubleTap, longPress);
+  const composed = Gesture.Exclusive(swipeLeft, doubleTap, longPress);
 
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
