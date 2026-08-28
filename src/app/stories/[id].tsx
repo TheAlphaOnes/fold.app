@@ -35,6 +35,94 @@ interface StoryItem {
   metadata?: any;
 }
 
+const CarouselNode = React.memo(({ 
+  item, 
+  index, 
+  total,
+  rotation 
+}: { 
+  item: StoryItem; 
+  index: number; 
+  total: number;
+  rotation: import('react-native-reanimated').SharedValue<number>;
+}) => {
+  const { width, height } = useWindowDimensions();
+  const theme = useTheme();
+  const router = useRouter();
+
+  const ITEM_WIDTH = width * 0.3;
+  const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
+  const RADIUS = width * 0.38;
+
+  // Strict circle layout
+  const baseAngle = (index / total) * Math.PI * 2;
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    const currentAngle = baseAngle + rotation.value;
+    const translateX = Math.sin(currentAngle) * RADIUS;
+    const translateY = -Math.cos(currentAngle) * RADIUS;
+
+    return {
+      transform: [{ translateX }, { translateY }],
+      zIndex: Math.round(translateY * 100),
+    };
+  });
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/memory/${item.memoryId}`);
+  };
+
+  const videoThumb = useVideoThumbnail(item.type === 'video' ? item.uri : undefined);
+
+  // Memoize the image source so expo-image doesn't re-trigger transitions on identical renders
+  const imageSource = useMemo(() => {
+    return item.type === 'video' && videoThumb ? { uri: videoThumb } : { uri: item.uri };
+  }, [item.type, item.uri, videoThumb]);
+
+  const [hasError, setHasError] = useState(false);
+
+  // Reset error state if the underlying item changes
+  useEffect(() => {
+    setHasError(false);
+  }, [item.uri]);
+
+  return (
+    <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
+      <Pressable onPress={handlePress} style={styles.itemPressable}>
+        <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+          
+          {/* Native expo-image crossfade when source changes */}
+          {!hasError && (
+            <Image 
+              source={imageSource} 
+              style={StyleSheet.absoluteFill} 
+              contentFit="cover" 
+              transition={800}
+              onError={() => setHasError(true)} 
+            />
+          )}
+
+          {hasError && (
+            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+              <ImageOff size={32} color={theme.text} opacity={0.3} />
+            </View>
+          )}
+
+          {item.type === 'video' && !hasError && (
+            <View style={styles.videoOverlay}>
+              <Play size={20} color="#FFF" fill="#FFF" />
+            </View>
+          )}
+
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}, (prev, next) => {
+  return prev.item.id === next.item.id && prev.index === next.index && prev.total === next.total && prev.rotation === next.rotation;
+});
+
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
