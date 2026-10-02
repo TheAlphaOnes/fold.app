@@ -86,10 +86,18 @@ function ComposeMediaPreview({
 }) {
   const isVideo = m.type === "video";
   const videoThumbnailUri = useVideoThumbnail(isVideo ? m.uri : undefined);
+
+  // A picked music track carries metadata with album artwork and previews
+  // with its art; a voice recording has neither and keeps the mic tile.
+  const artwork = m.metadata?.artwork;
+  const musicArtworkUri =
+    m.type === "audio" && artwork
+      ? artwork.replace("100x100", "300x300")
+      : undefined;
   
   return (
     <View style={styles.mediaPreviewWrapper}>
-      {m.type === "audio" ? (
+      {m.type === "audio" && !musicArtworkUri ? (
         <View
           style={[
             styles.mediaPreviewImage,
@@ -105,14 +113,17 @@ function ComposeMediaPreview({
       ) : (
         <Image
           source={{
-            uri: isVideo && videoThumbnailUri ? videoThumbnailUri : m.uri,
+            uri:
+              isVideo && videoThumbnailUri
+                ? videoThumbnailUri
+                : musicArtworkUri ?? m.uri,
           }}
           style={styles.mediaPreviewImage}
           contentFit="cover"
         />
       )}
 
-      {isVideo && (
+      {(isVideo || musicArtworkUri) && (
         <View
           style={[
             styles.videoOverlay,
@@ -125,7 +136,11 @@ function ComposeMediaPreview({
             },
           ]}
         >
-          <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
+          {isVideo ? (
+            <PlayCircle size={28} color="rgba(255,255,255,0.9)" />
+          ) : (
+            <Music size={24} color="rgba(255,255,255,0.9)" />
+          )}
         </View>
       )}
 
