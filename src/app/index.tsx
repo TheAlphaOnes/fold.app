@@ -32,6 +32,7 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import { copyWithinFileSize, alertFileTooLarge } from '@/utils/media-attach';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -119,8 +120,13 @@ export default function HomeScreen() {
       const ext = isVideo ? 'mp4' : isAudio ? 'm4a' : 'jpg';
       
       const dest = `${FileSystem.documentDirectory}shared_${Date.now()}.${ext}`;
-      FileSystem.copyAsync({ from: file.path, to: dest })
-        .then(() => {
+      copyWithinFileSize({ from: file.path, to: dest, kind: isVideo ? 'video' : isAudio ? 'audio' : 'image' })
+        .then((copied) => {
+          if (!copied) {
+            alertFileTooLarge(isVideo ? 'video' : isAudio ? 'audio' : 'image');
+            resetShareIntent();
+            return;
+          }
           setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : 'image', width: 1080, height: 1920 });
           resetShareIntent();
           router.push('/compose');

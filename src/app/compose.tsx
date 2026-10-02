@@ -56,6 +56,15 @@ import { VinylRecord } from "@/components/vinyl-record";
 import type { MediaElement } from "@/types/journal";
 import { formatMillis } from "@/utils/format-date";
 import { dobYear } from "@/utils/dob";
+import { MAX_MEDIA_ELEMENTS, type MediaKind } from "@/constants/media";
+import {
+  alertElementCap,
+  alertFileTooLarge,
+  copyWithinFileSize,
+  downloadWithinFileSize,
+  sliceToElementCap,
+  verifyFileSize,
+} from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { TextInputWrapper } from "expo-paste-input";
@@ -293,14 +302,33 @@ export default function ComposeScreen() {
 
   const handleAttachMedia = async () => {
     try {
+      if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+        alertElementCap();
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
       });
 
       if (!result.canceled) {
-        const newMedia: MediaElement[] = await Promise.all(
-          result.assets.map(async (asset) => {
+        const { accepted: assets, capped } = sliceToElementCap(
+          mediaElements.length,
+          result.assets,
+        );
+        if (capped) alertElementCap();
+
+        const oversized: Record<MediaKind, number> = {
+          image: 0,
+          video: 0,
+          audio: 0,
+        };
+
+        const newMedia = await Promise.all(
+          assets.map(async (asset): Promise<MediaElement | null> => {
+            const kind: MediaKind = asset.type === "video" ? "video" : "image";
+
             // Generate a random initial layout position.
             const stickerSize = 120;
             const safeW = screenWidth - 60 - stickerSize;
@@ -318,7 +346,16 @@ export default function ComposeScreen() {
                 : "jpg";
             const dest = `${FileSystem.documentDirectory}picked_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
-            await FileSystem.copyAsync({ from: asset.uri, to: dest });
+            const copied = await copyWithinFileSize({
+              from: asset.uri,
+              to: dest,
+              kind,
+              knownSizeBytes: asset.fileSize,
+            });
+            if (!copied) {
+              oversized[kind] += 1;
+              return null;
+            }
 
             return {
               id: Math.random().toString(36).substring(2, 9),
@@ -332,7 +369,13 @@ export default function ComposeScreen() {
           }),
         );
 
-        setMediaElements((prev) => [...prev, ...newMedia]);
+        const attached = newMedia.filter((m) => m !== null);
+        if (attached.length > 0) {
+          setMediaElements((prev) => [...prev, ...attached]);
+        }
+        for (const kind of ["image", "video"] as MediaKind[]) {
+          if (oversized[kind] > 0) alertFileTooLarge(kind, oversized[kind]);
+        }
       }
     } catch (error) {
       console.error("Failed to pick media:", error);
@@ -341,6 +384,11 @@ export default function ComposeScreen() {
 
   const handleCapturePhoto = async () => {
     try {
+      if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+        alertElementCap();
+        return;
+      }
+
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') return;
       
@@ -359,7 +407,16 @@ export default function ComposeScreen() {
         const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
-        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+        const copied = await copyWithinFileSize({
+          from: asset.uri,
+          to: dest,
+          kind: "image",
+          knownSizeBytes: asset.fileSize,
+        });
+        if (!copied) {
+          alertFileTooLarge("image");
+          return;
+        }
 
         setMediaElements((prev) => [
           ...prev,
@@ -381,6 +438,11 @@ export default function ComposeScreen() {
 
   const handleCaptureVideo = async () => {
     try {
+      if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+        alertElementCap();
+        return;
+      }
+
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') return;
       
@@ -398,7 +460,16 @@ export default function ComposeScreen() {
         const ext = extMatch ? extMatch[1].toLowerCase() : "mp4";
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
-        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+        const copied = await copyWithinFileSize({
+          from: asset.uri,
+          to: dest,
+          kind: "video",
+          knownSizeBytes: asset.fileSize,
+        });
+        if (!copied) {
+          alertFileTooLarge("video");
+          return;
+        }
 
         setMediaElements((prev) => [
           ...prev,
@@ -419,6 +490,18 @@ export default function ComposeScreen() {
   };
 
   const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
+    if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+      alertElementCap();
+      return;
+    }
+
+    // The picker downloads the preview before handing it over — verify it
+    // against the audio cap before attaching.
+    if (!(await verifyFileSize("audio", localUri))) {
+      alertFileTooLarge("audio");
+      return;
+    }
+
     const stickerSize = 120;
     const safeW = screenWidth - 60 - stickerSize;
     const safeH =
@@ -543,6 +626,11 @@ export default function ComposeScreen() {
         }
       } else {
         // Start recording
+        if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+          alertElementCap();
+          return;
+        }
+
         const { status } = await AudioModule.requestRecordingPermissionsAsync();
         if (status !== "granted") return;
 
@@ -822,8 +910,20 @@ export default function ComposeScreen() {
           <TextInputWrapper
             onPaste={async (payload) => {
               if (payload.type === "images") {
-                const newMedia: MediaElement[] = await Promise.all(
-                  payload.uris.map(async (uri) => {
+                if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+                  alertElementCap();
+                  return;
+                }
+
+                const { accepted: uris, capped } = sliceToElementCap(
+                  mediaElements.length,
+                  payload.uris,
+                );
+                if (capped) alertElementCap();
+
+                let oversizedImages = 0;
+                const newMedia = await Promise.all(
+                  uris.map(async (uri): Promise<MediaElement | null> => {
                     const stickerSize = 120;
                     const safeW = screenWidth - 60 - stickerSize;
                     const safeH =
@@ -835,7 +935,15 @@ export default function ComposeScreen() {
                     const ext = extMatch ? extMatch[1].toLowerCase() : "gif";
                     const dest = `${FileSystem.documentDirectory}pasted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
-                    await FileSystem.copyAsync({ from: uri, to: dest });
+                    const copied = await copyWithinFileSize({
+                      from: uri,
+                      to: dest,
+                      kind: "image",
+                    });
+                    if (!copied) {
+                      oversizedImages += 1;
+                      return null;
+                    }
 
                     return {
                       id: Math.random().toString(36).substring(2, 9),
@@ -846,7 +954,13 @@ export default function ComposeScreen() {
                     };
                   }),
                 );
-                setMediaElements((prev) => [...prev, ...newMedia]);
+                const attached = newMedia.filter((m) => m !== null);
+                if (attached.length > 0) {
+                  setMediaElements((prev) => [...prev, ...attached]);
+                }
+                if (oversizedImages > 0) {
+                  alertFileTooLarge("image", oversizedImages);
+                }
               } else if (payload.type === "text") {
                 setBody((prev) => prev + payload.value);
               }
@@ -977,13 +1091,25 @@ export default function ComposeScreen() {
         onClose={() => setShowGifPicker(false)}
         onSelect={async (gifUrl) => {
           setShowGifPicker(false);
+          if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+            alertElementCap();
+            return;
+          }
           // Download the GIF and attach it to mediaElements
           try {
             const extMatch = gifUrl.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
             const ext = extMatch ? extMatch[1].toLowerCase() : "gif";
             const dest = `${FileSystem.documentDirectory}klipy_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
             
-            await FileSystem.downloadAsync(gifUrl, dest);
+            const downloaded = await downloadWithinFileSize({
+              url: gifUrl,
+              to: dest,
+              kind: "image",
+            });
+            if (!downloaded) {
+              alertFileTooLarge("image");
+              return;
+            }
             
             const stickerSize = 120;
             const safeW = screenWidth - 60 - stickerSize;
