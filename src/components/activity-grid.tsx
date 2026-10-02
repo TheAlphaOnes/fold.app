@@ -20,8 +20,8 @@ interface WeekColumn {
   days: DayCell[];
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CELL_GAP = 1;
-const MIN_CELL = 3;
 
 export function ActivityGrid({ compositions }: ActivityGridProps) {
   const { width } = useWindowDimensions();
@@ -30,7 +30,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
 
   // Generate the year padded to whole Sunday-Saturday weeks, one entry per
   // day, grouped into week columns — the same grid the card always showed.
-  const weeks = useMemo<WeekColumn[]>(() => {
+  const { weeks, monthStarts } = useMemo(() => {
     const countMap: Record<string, number> = {};
     compositions.forEach(comp => {
       const d = new Date(comp.createdAt);
@@ -67,7 +67,16 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    return byWeek.map((days, index) => ({ index, days }));
+    // Which week column each month starts in, so labels sit exactly where
+    // their month begins.
+    const monthStarts = MONTHS.map((label, m) => {
+      const first = new Date(currentYear, m, 1);
+      const days = Math.round((first.getTime() - startDate.getTime()) / 86400000);
+      return { label, week: Math.floor(days / 7) };
+    });
+
+    const weeks: WeekColumn[] = byWeek.map((days, index) => ({ index, days }));
+    return { weeks, monthStarts };
   }, [compositions, currentYear]);
 
   let maxCount = 1;
@@ -75,22 +84,13 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
     if (day.count > maxCount) maxCount = day.count;
   }));
 
-  // All week columns in one horizontal strip, squares shrunk to whatever
-  // fits the card's inner width (page padding 32 + card padding 32). Only if
-  // the squares would drop below the legible minimum does the strip wrap
-  // onto more lines.
+  // One horizontal strip that fills the card's inner width exactly: the
+  // squares take whatever size remains after the gaps (page padding 32 +
+  // card padding 32), so there is no dead space at the right edge.
   const innerWidth = width - 64;
   const weekCount = weeks.length;
-  let cellSize = Math.floor((innerWidth - (weekCount - 1) * CELL_GAP) / weekCount);
-  let columnsPerLine = weekCount;
-  if (cellSize < MIN_CELL) {
-    columnsPerLine = Math.max(1, Math.floor((innerWidth + CELL_GAP) / (MIN_CELL + CELL_GAP)));
-    cellSize = MIN_CELL;
-  }
-  const lineCount = Math.ceil(weekCount / columnsPerLine);
-  const lines = Array.from({ length: lineCount }, (_, rowIdx) =>
-    weeks.slice(rowIdx * columnsPerLine, (rowIdx + 1) * columnsPerLine),
-  );
+  const cellSize = (innerWidth - (weekCount - 1) * CELL_GAP) / weekCount;
+  const columnPitch = cellSize + CELL_GAP;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -98,40 +98,35 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
         <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
       </View>
 
-      <View style={styles.gridBlock}>
-        {lines.map((line, rowIdx) => (
-          <Animated.View
-            key={`row-${rowIdx}`}
-            entering={FadeIn.delay(rowIdx * 120).duration(400)}
-            style={styles.grid}
-          >
-            {line.map(week => (
-              <View key={`week-${week.index}`} style={styles.column}>
-                {week.days.map(day => {
-                  const opacity = day.count > 0 ? 0.3 + 0.7 * (day.count / maxCount) : 0.1;
-                  return (
-                    <View
-                      key={day.date}
-                      style={[
-                        styles.cell,
-                        { width: cellSize, height: cellSize, backgroundColor: theme.text },
-                        day.inYear ? { opacity } : { opacity: 0 },
-                      ]}
-                    />
-                  );
-                })}
-              </View>
-            ))}
-          </Animated.View>
+      <Animated.View entering={FadeIn.duration(400)} style={styles.grid}>
+        {weeks.map(week => (
+          <View key={`week-${week.index}`} style={styles.column}>
+            {week.days.map(day => {
+              const opacity = day.count > 0 ? 0.3 + 0.7 * (day.count / maxCount) : 0.1;
+              return (
+                <View
+                  key={day.date}
+                  style={[
+                    styles.cell,
+                    { width: cellSize, height: cellSize, backgroundColor: theme.text },
+                    day.inYear ? { opacity } : { opacity: 0 },
+                  ]}
+                />
+              );
+            })}
+          </View>
         ))}
-      </View>
+      </Animated.View>
 
       <View style={styles.xLabels}>
-        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Jan</ThemedText>
-        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Apr</ThemedText>
-        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Jul</ThemedText>
-        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Oct</ThemedText>
-        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Dec</ThemedText>
+        {monthStarts.map(ms => (
+          <ThemedText
+            key={ms.label}
+            style={[styles.xLabel, { color: theme.textMuted, left: ms.week * columnPitch }]}
+          >
+            {ms.label}
+          </ThemedText>
+        ))}
       </View>
     </View>
   );
@@ -154,9 +149,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
   },
-  gridBlock: {
-    gap: CELL_GAP,
-  },
   grid: {
     flexDirection: 'row',
     gap: CELL_GAP,
@@ -169,11 +161,13 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   xLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    position: 'relative',
+    height: 12,
+    marginTop: 8,
   },
   xLabel: {
+    position: 'absolute',
+    top: 0,
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 9,
   },
