@@ -14,13 +14,25 @@ export default function OnboardingNameScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
+  const [showError, setShowError] = useState(false);
+
+  const isValid = name.trim().length > 0;
 
   const handleNext = () => {
     Keyboard.dismiss();
+    if (!isValid) {
+      setShowError(true);
+      return;
+    }
     router.push({
       pathname: '/onboarding/dob',
-      params: { name: name.trim() || 'Nollan' }
+      params: { name: name.trim() }
     });
+  };
+
+  const handleChangeText = (text: string) => {
+    setName(text);
+    setShowError(false);
   };
 
   const bg = theme.background;
@@ -58,12 +70,21 @@ export default function OnboardingNameScreen() {
               <View style={styles.inputContainer}>
                 <CleanInput
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleChangeText}
                   placeholder="NOLLAN"
                   autoCapitalize="characters"
                   maxLength={12}
                   autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleNext}
                 />
+                {showError && !isValid && (
+                  <Animated.View entering={FadeIn.duration(200)}>
+                    <ThemedText style={[styles.errorText, { color: '#FF3B30' }]}>
+                      DESIGNATION REQUIRED
+                    </ThemedText>
+                  </Animated.View>
+                )}
               </View>
             </Animated.View>
 
@@ -72,7 +93,8 @@ export default function OnboardingNameScreen() {
             <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
               <ActionLink 
                 text="CONTINUE" 
-                onPress={handleNext} 
+                onPress={handleNext}
+                disabled={!isValid}
               />
             </Animated.View>
 
@@ -131,6 +153,14 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: '100%',
+  },
+  errorText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 2,
+    marginTop: 12,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   ctaContainer: {
     marginBottom: 60,

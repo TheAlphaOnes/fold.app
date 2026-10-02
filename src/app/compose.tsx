@@ -55,6 +55,7 @@ import * as Location from "expo-location";
 import { VinylRecord } from "@/components/vinyl-record";
 import type { MediaElement } from "@/types/journal";
 import { formatMillis } from "@/utils/format-date";
+import { dobYear } from "@/utils/dob";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { TextInputWrapper } from "expo-paste-input";
@@ -459,21 +460,20 @@ export default function ComposeScreen() {
 
       if (settings.dataCollection) {
         let ageCategory = "Unknown";
-        if (settings.dob) {
-          try {
-            const birthYear = new Date(settings.dob).getFullYear();
-            const currentYear = new Date().getFullYear();
-            const age = currentYear - birthYear;
-            if (!isNaN(age)) {
-              if (age < 18) ageCategory = "Under 18";
-              else if (age <= 24) ageCategory = "18-24";
-              else if (age <= 34) ageCategory = "25-34";
-              else if (age <= 44) ageCategory = "35-44";
-              else if (age <= 54) ageCategory = "45-54";
-              else if (age <= 64) ageCategory = "55-64";
-              else ageCategory = "65+";
-            }
-          } catch (e) {}
+        // settings.dob is stored as DD.MM.YYYY (dots) — new Date() cannot
+        // parse that, so pull the year out explicitly.
+        const birthYear = dobYear(settings.dob);
+        if (birthYear !== null) {
+          const age = new Date().getFullYear() - birthYear;
+          if (age >= 0) {
+            if (age < 18) ageCategory = "Under 18";
+            else if (age <= 24) ageCategory = "18-24";
+            else if (age <= 34) ageCategory = "25-34";
+            else if (age <= 44) ageCategory = "35-44";
+            else if (age <= 54) ageCategory = "45-54";
+            else if (age <= 64) ageCategory = "55-64";
+            else ageCategory = "65+";
+          }
         }
 
         const mediaTypesCount = mediaElements.reduce(

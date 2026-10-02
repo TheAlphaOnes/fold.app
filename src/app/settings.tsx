@@ -14,6 +14,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { formatDobInput, isValidDob } from '@/utils/dob';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -101,19 +102,8 @@ export default function SettingsScreen() {
 
 
   const handleDOBChange = (t: string) => {
-    // Only allow numbers
-    const cleaned = t.replace(/[^\d]/g, '');
-    let formatted = cleaned;
-    
-    // Auto insert slashes
-    if (cleaned.length > 2) {
-      formatted = cleaned.substring(0, 2) + '/' + cleaned.substring(2);
-    }
-    if (cleaned.length > 4) {
-      formatted = formatted.substring(0, 5) + '/' + cleaned.substring(4, 8);
-    }
-    
-    updateSetting('dob', formatted);
+    // Canonical dot format, shared with the onboarding DOB screen
+    updateSetting('dob', formatDobInput(t));
   };
 
   const handleToggleSecurity = async (key: 'requireBiometrics' | 'privacyScreen', newValue: boolean) => {
@@ -169,20 +159,27 @@ export default function SettingsScreen() {
               onChangeText={(t) => updateSetting('name', t)}
               placeholder="ENTER NAME..."
               placeholderTextColor={theme.textMuted}
+              autoCapitalize="characters"
+              maxLength={12}
             />
           </View>
           
           <View style={styles.inputGroup}>
-            <ThemedText style={styles.inputLabel}>DOB (DD/MM/YYYY)</ThemedText>
+            <ThemedText style={styles.inputLabel}>DOB (DD.MM.YYYY)</ThemedText>
             <TextInput
               style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
               value={settings.dob}
               onChangeText={handleDOBChange}
-              placeholder="--/--/----"
+              placeholder="--.--.----"
               placeholderTextColor={theme.textMuted}
               keyboardType="number-pad"
               maxLength={10}
             />
+            {settings.dob.length > 0 && !isValidDob(settings.dob) && (
+              <ThemedText style={[styles.inputError, { color: '#FF3B30' }]}>
+                INVALID DATE - FORMAT DD.MM.YYYY
+              </ThemedText>
+            )}
           </View>
         </View>
 
@@ -461,6 +458,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: '#878787',
     marginBottom: 6,
+  },
+  inputError: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
+    letterSpacing: 1,
+    marginTop: 6,
   },
   input: {
     fontFamily: 'JetBrainsMono-Regular',

@@ -18,6 +18,7 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AddButton } from '@/components/add-button';
+import { isValidDob } from '@/utils/dob';
 
 export default function OnboardingGuideScreen() {
   const theme = useTheme();
@@ -31,6 +32,14 @@ export default function OnboardingGuideScreen() {
   const textScale = useSharedValue(1);
 
   const handleComplete = async () => {
+    // Onboarding is only complete once identity is on file — a deep link
+    // straight to this screen must not mark it done with name/dob missing.
+    const { name, dob } = useSettingsStore.getState().settings;
+    if (!name.trim() || !isValidDob(dob)) {
+      router.replace('/onboarding/name');
+      return;
+    }
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await updateSetting('hasOnboarded', true);
     router.replace('/');

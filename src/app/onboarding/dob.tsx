@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,44 +10,49 @@ import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
+import { formatDobInput, isValidDob } from '@/utils/dob';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { updateSetting } = useSettingsStore();
   const params = useLocalSearchParams();
-  const providedName = (params.name as string) || 'Nollan';
+  const providedName = params.name as string | undefined;
 
   const [dob, setDob] = useState('');
 
-  const formatDOB = (text: string) => {
-    // Remove all non-numeric characters
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    
-    if (cleaned.length > 2) {
-      formatted = `${cleaned.slice(0, 2)}.${cleaned.slice(2)}`;
+  // A deep link can land here without a name — send the user back to step one.
+  useEffect(() => {
+    if (!providedName || !providedName.trim()) {
+      router.replace('/onboarding/name');
     }
-    if (cleaned.length > 4) {
-      formatted = `${cleaned.slice(0, 2)}.${cleaned.slice(2, 4)}.${cleaned.slice(4, 8)}`;
-    }
-    
-    setDob(formatted);
-  };
+  }, [providedName]);
+
+  const isValid = isValidDob(dob);
+  const hasFullDigits = dob.replace(/\D/g, '').length === 8;
+  const errorText = hasFullDigits ? 'INVALID DATE' : 'ENTER FULL DATE - DD.MM.YYYY';
 
   const handleComplete = async () => {
     Keyboard.dismiss();
-    
-    // Save both values
+    if (!isValid || !providedName) return;
+
+    // Save both values — both are required, no placeholder fallbacks
     await updateSetting('name', providedName);
-    
-    // If empty, generate a fallback hex ID like '0x4a7B...Cef1'
-    const finalDob = dob.trim() || '0x4a7B...Cef1';
-    await updateSetting('dob', finalDob);
-    
+    await updateSetting('dob', dob);
+
     // Route to guide screen to finish onboarding
     router.push('/onboarding/guide');
   };
+
+  const handleChangeText = (text: string) => {
+    setDob(formatDobInput(text));
+  };
+
+  // Waiting on the redirect above — render nothing rather than flash a
+  // form that has no name to save.
+  if (!providedName || !providedName.trim()) {
+    return null;
+  }
 
   const bg = theme.background;
   const fg = theme.text;
@@ -88,12 +93,19 @@ export default function OnboardingDobScreen() {
               <View style={styles.inputContainer}>
                 <CleanInput
                   value={dob}
-                  onChangeText={formatDOB}
+                  onChangeText={handleChangeText}
                   placeholder="DD.MM.YYYY"
                   keyboardType="number-pad"
                   maxLength={10}
                   autoFocus
                 />
+                {dob.length > 0 && !isValid && (
+                  <Animated.View entering={FadeIn.duration(200)}>
+                    <ThemedText style={[styles.errorText, { color: '#FF3B30' }]}>
+                      {errorText}
+                    </ThemedText>
+                  </Animated.View>
+                )}
               </View>
             </Animated.View>
 
@@ -102,7 +114,8 @@ export default function OnboardingDobScreen() {
             <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
               <ActionLink 
                 text="INITIALIZE SYSTEM" 
-                onPress={handleComplete} 
+                onPress={handleComplete}
+                disabled={!isValid}
               />
             </Animated.View>
 
@@ -161,6 +174,14 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: '100%',
+  },
+  errorText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 2,
+    marginTop: 12,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   ctaContainer: {
     marginBottom: 60,

@@ -12,15 +12,18 @@ import * as Haptics from 'expo-haptics';
 interface ActionLinkProps {
   onPress: () => void;
   text: string;
+  /** Renders at 40% opacity and blocks all interaction. */
+  disabled?: boolean;
 }
 
-export function ActionLink({ onPress, text }: ActionLinkProps) {
+export function ActionLink({ onPress, text, disabled = false }: ActionLinkProps) {
   const theme = useTheme();
   
   const arrowOffset = useSharedValue(0);
   const opacity = useSharedValue(1);
 
   const handlePressIn = () => {
+    if (disabled) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     arrowOffset.value = withTiming(8, { duration: 150 });
     opacity.value = withTiming(0.6, { duration: 150 });
@@ -32,6 +35,7 @@ export function ActionLink({ onPress, text }: ActionLinkProps) {
   };
 
   const handlePress = () => {
+    if (disabled) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onPress();
   };
@@ -40,8 +44,10 @@ export function ActionLink({ onPress, text }: ActionLinkProps) {
     transform: [{ translateX: arrowOffset.value }],
   }));
 
+  // 40% resting opacity while disabled (design-system disabled rule). The
+  // validity gate flips as the user types, so the level snaps — no tween.
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+    opacity: disabled ? 0.4 : opacity.value,
   }));
 
   return (
@@ -49,6 +55,8 @@ export function ActionLink({ onPress, text }: ActionLinkProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
     >
       <Animated.View style={[styles.container, containerStyle]}>
         <Animated.Text style={[styles.text, { color: theme.text }]}>

@@ -60,11 +60,11 @@ export default function ProfileScreen() {
         <View style={styles.identityBadge}>
           <View style={styles.avatar} />
           <View>
-            <ThemedText style={[styles.identityName, { color: fg }]}>
-              {settings.name || 'Nollan'}
+            <ThemedText style={[styles.identityName, { color: settings.name ? fg : mutedText }]}>
+              {settings.name || 'NOT SET'}
             </ThemedText>
             <ThemedText style={[styles.identityMeta, { color: mutedText }]}>
-              {settings.dob || '0x4a7B...Cef1'}
+              {settings.dob || 'NOT SET'}
             </ThemedText>
           </View>
         </View>
