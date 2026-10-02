@@ -32,3 +32,13 @@ export const Colors = {
     glassTintDark: 'rgba(25, 25, 25, 0.85)',
   },
 };
+
+/** Card rail titles — CONTINUUM, ACTIVITY, VAULT, etc. */
+export const Type = {
+  rail: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    letterSpacing: 3,
+    lineHeight: 16,
+  },
+} as const;

@@ -1,28 +1,37 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Flame } from 'lucide-react-native';
 import Animated, {
   Easing,
   FadeIn,
-  FadeInDown,
-  useAnimatedProps,
+  useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
 import type { Composition } from '@/types/journal';
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { Type } from '@/constants/theme';
 
 interface StreakCardProps {
   compositions: Composition[];
-  todayCount?: number;
-  totalWords?: number;
-  audioCount?: number;
 }
 
 const MILESTONES = [3, 7, 14, 30, 60, 100, 365];
+const WINDOW_DAYS = 21;
+const WEEK_SIZE = 7;
+const WEEK_COUNT = WINDOW_DAYS / WEEK_SIZE;
+
+const EASE_OUT = Easing.bezier(0.19, 1, 0.22, 1);
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 
 function getStreakRank(streak: number): string {
   if (streak === 0) return 'Dormant';
@@ -37,168 +46,286 @@ function getStreakRank(streak: number): string {
   return 'Immortal';
 }
 
-function getMilestoneProgress(streak: number): { next: number; progress: number } {
-  const prev = MILESTONES.filter(m => m <= streak).pop() ?? 0;
-  const next = MILESTONES.find(m => m > streak) ?? MILESTONES[MILESTONES.length - 1];
-  if (streak >= next) return { next, progress: 1 };
+function getMilestone(streak: number): { next: number; progress: number; remaining: number } {
+  const prev = MILESTONES.filter((m) => m <= streak).pop() ?? 0;
+  const next = MILESTONES.find((m) => m > streak) ?? MILESTONES[MILESTONES.length - 1];
+  if (streak >= next) return { next, progress: 1, remaining: 0 };
   const range = next - prev;
-  const current = streak - prev;
-  return { next, progress: range > 0 ? current / range : 0 };
+  return {
+    next,
+    progress: range > 0 ? (streak - prev) / range : 0,
+    remaining: next - streak,
+  };
 }
 
-function getFlameColor(streak: number): string {
-  if (streak === 0) return '#4A4A4A';
-  if (streak < 3) return '#E45B00';
-  if (streak < 7) return '#FF6B1A';
-  if (streak < 14) return '#FF7F33';
-  if (streak < 30) return '#FF944D';
-  return '#FFAA66';
+function untilCopy(remaining: number, next: number, progress: number): string {
+  if (progress >= 1) return 'held';
+  const rank = getStreakRank(next).toLowerCase();
+  if (remaining === 1) return `one until ${rank}`;
+  return `${remaining} until ${rank}`;
 }
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+function computeStreak(compositions: Composition[]): {
+  currentStreak: number;
+  longestStreak: number;
+  activeDays: Set<string>;
+} {
+  if (compositions.length === 0) {
+    return { currentStreak: 0, longestStreak: 0, activeDays: new Set() };
+  }
 
-/**
- * Milestone gauge. The arc is its own animation segment: it sweeps in after
- * the readouts have landed, on a slower curve, so the card assembles in
- * layers instead of appearing all at once.
- */
-function FlameGauge({
-  progress, size, strokeWidth, color, trackColor,
+  const activeDays = new Set<string>();
+  compositions.forEach((c) => {
+    activeDays.add(dayKey(new Date(c.createdAt)));
+  });
+
+  const sortedDays = Array.from(activeDays).sort((a, b) => b.localeCompare(a));
+  let maxSoFar = 1;
+  let longest = 1;
+  for (let i = 0; i < sortedDays.length - 1; i++) {
+    const diff = Math.round(
+      (new Date(sortedDays[i]).getTime() - new Date(sortedDays[i + 1]).getTime()) / 86400000,
+    );
+    if (diff === 1) {
+      maxSoFar += 1;
+    } else {
+      longest = Math.max(longest, maxSoFar);
+      maxSoFar = 1;
+    }
+  }
+  longest = Math.max(longest, maxSoFar);
+
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86400000);
+  const todayStr = dayKey(today);
+  const yesterdayStr = dayKey(yesterday);
+
+  let current = 0;
+  if (activeDays.has(todayStr) || activeDays.has(yesterdayStr)) {
+    let checkDate = activeDays.has(todayStr) ? today : yesterday;
+    while (true) {
+      const s = dayKey(checkDate);
+      if (activeDays.has(s)) {
+        current += 1;
+        checkDate = new Date(checkDate.getTime() - 86400000);
+      } else {
+        break;
+      }
+    }
+  }
+
+  return { currentStreak: current, longestStreak: longest, activeDays };
+}
+
+interface DayMark {
+  key: string;
+  written: boolean;
+  inStreak: boolean;
+  isToday: boolean;
+}
+
+function buildWindow(activeDays: Set<string>, currentStreak: number): DayMark[] {
+  const today = new Date();
+  const todayStr = dayKey(today);
+  const marks: DayMark[] = [];
+
+  for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const key = dayKey(date);
+    const written = activeDays.has(key);
+    const daysAgo = Math.round((today.getTime() - date.getTime()) / 86400000);
+    const inStreak = currentStreak > 0 && written && daysAgo < currentStreak;
+    marks.push({ key, written, inStreak, isToday: key === todayStr });
+  }
+
+  return marks;
+}
+
+function ContinuumMark({
+  mark,
+  color,
+  idleColor,
+  delay,
+  reduceMotion,
 }: {
-  progress: number; size: number; strokeWidth: number; color: string; trackColor: string;
+  mark: DayMark;
+  color: string;
+  idleColor: string;
+  delay: number;
+  reduceMotion: boolean;
 }) {
-  const arc = useSharedValue(0);
+  const scale = useSharedValue(reduceMotion ? 1 : 0.16);
+  const opacity = useSharedValue(reduceMotion ? 1 : 0);
 
   useEffect(() => {
-    arc.value = withDelay(
-      300,
-      withTiming(progress, { duration: 1400, easing: Easing.out(Easing.cubic) }),
+    if (reduceMotion) return;
+    scale.value = withDelay(
+      delay,
+      withTiming(1, { duration: 240, easing: EASE_OUT }),
     );
-  }, [arc, progress]);
+    opacity.value = withDelay(
+      delay,
+      withTiming(1, { duration: 180, easing: EASE_OUT }),
+    );
+  }, [delay, opacity, reduceMotion, scale]);
 
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - arc.value),
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: scale.value }],
+    opacity: opacity.value,
   }));
 
+  const fill = mark.inStreak ? color : mark.written ? idleColor : 'transparent';
+  const border = mark.written ? 'transparent' : idleColor;
+
   return (
-    <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-      <Circle cx={size / 2} cy={size / 2} r={radius} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
-      <AnimatedCircle
-        cx={size / 2} cy={size / 2} r={radius}
-        stroke={color} strokeWidth={strokeWidth} fill="none"
-        strokeDasharray={`${circumference}`}
-        animatedProps={animatedProps}
-        strokeLinecap="round"
-        rotation="-90"
-        origin={`${size / 2}, ${size / 2}`}
-      />
-    </Svg>
+    <Animated.View
+      style={[
+        s.mark,
+        mark.isToday && s.markToday,
+        {
+          backgroundColor: fill,
+          borderColor: border,
+        },
+        animatedStyle,
+      ]}
+    />
   );
 }
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
+function ContinuumTrack({
+  days,
+  color,
+  idleColor,
+  progress,
+  reduceMotion,
+}: {
+  days: DayMark[];
+  color: string;
+  idleColor: string;
+  progress: number;
+  reduceMotion: boolean;
+}) {
+  const fill = useSharedValue(reduceMotion ? progress : 0);
 
-export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audioCount = 0 }: StreakCardProps) {
+  useEffect(() => {
+    if (reduceMotion) {
+      fill.value = progress;
+      return;
+    }
+    fill.value = withDelay(
+      280,
+      withTiming(progress, { duration: 420, easing: Easing.linear }),
+    );
+  }, [fill, progress, reduceMotion]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: fill.value }],
+  }));
+
+  return (
+    <View style={s.trackBlock}>
+      <View style={s.track}>
+        {Array.from({ length: WEEK_COUNT }, (_, week) => (
+          <View key={`week-${week}`} style={s.week}>
+            {days.slice(week * WEEK_SIZE, week * WEEK_SIZE + WEEK_SIZE).map((mark, i) => (
+              <ContinuumMark
+                key={mark.key}
+                mark={mark}
+                color={color}
+                idleColor={idleColor}
+                delay={40 + (week * WEEK_SIZE + i) * 22}
+                reduceMotion={reduceMotion}
+              />
+            ))}
+          </View>
+        ))}
+      </View>
+      <View style={[s.rule, { backgroundColor: idleColor }]}>
+        <Animated.View
+          style={[
+            s.ruleFill,
+            { backgroundColor: color },
+            fillStyle,
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+export function StreakCard({ compositions }: StreakCardProps) {
   const theme = useTheme();
+  const reduceMotion = useReducedMotion() ?? false;
 
-  const { currentStreak, longestStreak } = useMemo(() => {
-    if (compositions.length === 0) return { currentStreak: 0, longestStreak: 0 };
-    const activeDays = new Set<string>();
-    compositions.forEach(c => {
-      const date = new Date(c.createdAt);
-      activeDays.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`);
-    });
-    const sortedDays = Array.from(activeDays).sort((a, b) => b.localeCompare(a));
-    if (sortedDays.length === 0) return { currentStreak: 0, longestStreak: 0 };
-    let maxSoFar = 1, longest = 1;
-    for (let i = 0; i < sortedDays.length - 1; i++) {
-      const diff = Math.round((new Date(sortedDays[i]).getTime() - new Date(sortedDays[i + 1]).getTime()) / 86400000);
-      if (diff === 1) { maxSoFar++; } else { longest = Math.max(longest, maxSoFar); maxSoFar = 1; }
-    }
-    longest = Math.max(longest, maxSoFar);
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const yesterday = new Date(today.getTime() - 86400000);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    let current = 0;
-    if (activeDays.has(todayStr) || activeDays.has(yesterdayStr)) {
-      let checkDate = activeDays.has(todayStr) ? today : yesterday;
-      while (true) {
-        const s = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
-        if (activeDays.has(s)) { current++; checkDate = new Date(checkDate.getTime() - 86400000); } else { break; }
-      }
-    }
-    return { currentStreak: current, longestStreak: longest };
-  }, [compositions]);
+  const { currentStreak, longestStreak, activeDays } = useMemo(
+    () => computeStreak(compositions),
+    [compositions],
+  );
 
-  const flameColor = getFlameColor(currentStreak);
+  const days = useMemo(
+    () => buildWindow(activeDays, currentStreak),
+    [activeDays, currentStreak],
+  );
+
   const rank = getStreakRank(currentStreak);
-  const milestone = getMilestoneProgress(currentStreak);
-  const isActive = currentStreak > 0;
+  const milestone = getMilestone(currentStreak);
+  const live = currentStreak > 0;
+  const ink = live ? theme.accentWarm : theme.textMuted;
+  const until = untilCopy(milestone.remaining, milestone.next, milestone.progress);
 
-  const GAUGE_SIZE = 64;
-  const nextCaption = milestone.progress >= 1 ? 'MAX' : `NEXT ${pad2(milestone.next)}`;
+  const litInView = days.filter((d) => d.written).length;
+  const yearPrefix = `${new Date().getFullYear()}-`;
+  const daysThisYear = Array.from(activeDays).filter((key) => key.startsWith(yearPrefix)).length;
+  const metrics = `${pad2(litInView)} / ${WINDOW_DAYS} lit  ·  ${pad2(daysThisYear)} this year`;
 
   return (
     <View
       style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
-      accessibilityLabel={`Streak ${currentStreak} days, ${rank}. Best ${longestStreak} days. ${todayCount} today, ${totalWords} words, ${audioCount} clips.`}
+      accessibilityRole="summary"
+      accessibilityLabel={`Continuum. Streak ${currentStreak} days, ${rank}. Best ${longestStreak} days. ${metrics}.`}
     >
-      {/* ── Rail: panel labels ── */}
-      <Animated.View entering={FadeIn.duration(350)} style={s.rail}>
-        <ThemedText style={[s.railLabel, { color: theme.textMuted }]}>STREAK</ThemedText>
-        <ThemedText style={[s.railLabel, { color: theme.textMuted }]}>BEST {pad2(longestStreak)}</ThemedText>
+      <Animated.View
+        entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
+        style={s.rail}
+      >
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>CONTINUUM</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
+          BEST {pad2(longestStreak)}
+        </ThemedText>
       </Animated.View>
 
-      {/* ── Hero: readout left, gauge right ── */}
-      <View style={s.heroRow}>
-        <View style={s.readout}>
-          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
-            <ThemedText style={[s.heroNumber, { color: isActive ? theme.text : theme.textMuted }]}>
-              {pad2(currentStreak)}
-            </ThemedText>
-          </Animated.View>
-          <Animated.View entering={FadeIn.delay(220).duration(450)} style={s.heroCaption}>
-            <ThemedText style={[s.caption, { color: theme.textMuted }]}>DAYS</ThemedText>
-            <ThemedText style={[s.caption, { color: theme.textMuted }]}>·</ThemedText>
-            <ThemedText style={[s.caption, { color: isActive ? flameColor : theme.textMuted }]}>
-              {rank.toUpperCase()}
-            </ThemedText>
-          </Animated.View>
-        </View>
+      <ContinuumTrack
+        days={days}
+        color={ink}
+        idleColor={theme.border}
+        progress={milestone.progress}
+        reduceMotion={reduceMotion}
+      />
 
-        <Animated.View entering={FadeIn.delay(160).duration(450)} style={s.gaugeBlock}>
-          <View style={[s.gaugeBox, { width: GAUGE_SIZE, height: GAUGE_SIZE }]}>
-            <FlameGauge
-              progress={milestone.progress}
-              size={GAUGE_SIZE}
-              strokeWidth={3}
-              color={flameColor}
-              trackColor={theme.border}
-            />
-            <Flame size={22} color={flameColor} />
-          </View>
-          <ThemedText style={[s.caption, { color: theme.textMuted }]}>{nextCaption}</ThemedText>
-        </Animated.View>
-      </View>
+      <Animated.View
+        entering={reduceMotion ? undefined : FadeIn.delay(160).duration(280).easing(EASE_OUT)}
+        style={s.readout}
+      >
+        <View style={s.readoutLead}>
+          <ThemedText style={[s.count, { color: live ? theme.text : theme.textMuted }]}>
+            {pad2(currentStreak)}
+          </ThemedText>
+          <ThemedText style={[s.rank, { color: ink }]}>{rank.toLowerCase()}</ThemedText>
+        </View>
+        <ThemedText style={[s.hint, { color: theme.textMuted }]} numberOfLines={1}>
+          {live ? until : 'write today'}
+        </ThemedText>
+      </Animated.View>
 
-      {/* ── Stat columns ── */}
-      <Animated.View entering={FadeIn.delay(380).duration(500)} style={s.metricsRow}>
-        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
-          <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>TODAY</ThemedText>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{todayCount}</ThemedText>
-        </View>
-        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
-          <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>WORDS</ThemedText>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{totalWords.toLocaleString()}</ThemedText>
-        </View>
-        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
-          <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>CLIPS</ThemedText>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{audioCount}</ThemedText>
-        </View>
+      <Animated.View
+        entering={reduceMotion ? undefined : FadeIn.delay(280).duration(220).easing(EASE_OUT)}
+        style={[s.footer, { borderTopColor: theme.border }]}
+      >
+        <ThemedText style={[s.metrics, { color: theme.textMuted }]} numberOfLines={1}>
+          {metrics}
+        </ThemedText>
       </Animated.View>
     </View>
   );
@@ -214,74 +341,92 @@ const s = StyleSheet.create({
   rail: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 10,
+    paddingBottom: 12,
   },
-  railLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    letterSpacing: 3,
-  },
-  heroRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    gap: 24,
+  trackBlock: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 24,
-  },
-  readout: {
-    alignItems: 'flex-start',
-    gap: 6,
-  },
-  heroNumber: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 64,
-    lineHeight: 68,
-    includeFontPadding: false,
-  } as any,
-  heroCaption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  caption: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    letterSpacing: 3,
-  },
-  gaugeBlock: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  gaugeBox: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 18,
     gap: 12,
   },
-  metricItem: {
+  track: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
+    height: 28,
+  },
+  week: {
     flex: 1,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 8,
-    alignItems: 'flex-start',
-    gap: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
   },
-  metricNum: {
+  mark: {
+    width: 3,
+    height: 18,
+    borderRadius: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+    transformOrigin: 'bottom',
+  },
+  markToday: {
+    height: 28,
+    width: 3,
+  },
+  rule: {
+    height: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  ruleFill: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
+    transformOrigin: 'left',
+  },
+  readout: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  readoutLead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 12,
+    flexShrink: 0,
+  },
+  count: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 32,
+    lineHeight: 36,
+    fontVariant: ['tabular-nums'],
   },
-  metricLabel: {
+  rank: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    letterSpacing: 3,
+    fontSize: 13,
+    letterSpacing: 1,
+    lineHeight: 18,
+  },
+  hint: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    lineHeight: 16,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  metrics: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    lineHeight: 16,
   },
 });

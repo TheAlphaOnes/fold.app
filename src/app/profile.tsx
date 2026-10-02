@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { ActivityGrid } from '@/components/activity-grid';
 import { ProfileStats } from '@/components/profile-stats';
 import { StreakCard } from '@/components/streak-card';
 import { TECalendar } from '@/components/te-calendar';
+import { Type } from '@/constants/theme';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -28,26 +29,6 @@ export default function ProfileScreen() {
     getAllCompositions().then(setCompositions).catch(console.error);
   }, []);
 
-  // Aggregate fake "Portfolio" data from real compositions
-  const audioCount = useMemo(() => {
-    return compositions.filter(c => c.mediaElements.some(m => m.type === 'audio')).length;
-  }, [compositions]);
-
-  const totalWords = useMemo(() => {
-    return compositions.reduce((acc, c) => acc + (c.textContent?.trim().split(/\s+/).filter(Boolean).length || 0), 0);
-  }, [compositions]);
-
-  const todayCount = useMemo(() => {
-    const today = new Date();
-    return compositions.filter(c => {
-      const d = new Date(c.createdAt);
-      return d.getDate() === today.getDate() && 
-             d.getMonth() === today.getMonth() && 
-             d.getFullYear() === today.getFullYear();
-    }).length;
-  }, [compositions]);
-
-  // We now use theme colors instead of hardcoded terminal dark mode
   const bg = theme.background;
   const fg = theme.text;
   const elementBg = theme.backgroundElement;
@@ -95,12 +76,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
         {/* Combined Dashboard Card */}
-        <StreakCard 
-          compositions={compositions} 
-          todayCount={todayCount}
-          totalWords={totalWords}
-          audioCount={audioCount}
-        />
+        <StreakCard compositions={compositions} />
 
         {/* Sleek Story Board Row */}
         <Pressable 
@@ -114,10 +90,10 @@ export default function ProfileScreen() {
           onPress={() => router.push('/stories')}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Book size={18} color={fg} />
-            <ThemedText style={[styles.portfolioTitle, { color: fg, fontSize: 14 }]}>Story Board</ThemedText>
+            <Book size={14} color={theme.textMuted} />
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
           </View>
-          <ChevronRight size={18} color={mutedText} />
+          <ChevronRight size={16} color={mutedText} />
         </Pressable>
 
         {/* Heat Map (Activity Grid) */}
@@ -125,8 +101,8 @@ export default function ProfileScreen() {
 
         {/* Time Machine Section */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
-          <View style={[styles.portfolioHeader, { padding: 16, paddingBottom: 4, marginBottom: 0 }]}>
-            <ThemedText style={[styles.portfolioTitle, { color: fg }]}>Time Machine</ThemedText>
+          <View style={[styles.portfolioHeader, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, marginBottom: 0 }]}>
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
           </View>
           <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
         </View>
@@ -218,11 +194,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
-  },
-  portfolioTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-    color: '#E0E0E0',
   },
   mascotContainer: {
     marginTop: 40,

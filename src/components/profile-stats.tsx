@@ -4,6 +4,7 @@ import { FileText, Headphones, Image as ImageIcon, Video } from 'lucide-react-na
 import type { Composition } from '@/types/journal';
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { Type } from '@/constants/theme';
 
 interface ProfileStatsProps {
   compositions: Composition[];
@@ -35,8 +36,10 @@ export function ProfileStats({ compositions }: ProfileStatsProps) {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.header}>
-        <ThemedText style={[styles.title, { color: theme.text }]}>Your Vault</ThemedText>
-        <ThemedText style={styles.subText}>{compositions.length} Entries</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>VAULT</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
+          {String(compositions.length).padStart(2, '0')} ENTRIES
+        </ThemedText>
       </View>
 
       <View style={styles.row}>
@@ -86,15 +89,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-  },
-  title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-  },
-  subText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    color: '#878787',
   },
   row: {
     flexDirection: 'row',
