@@ -127,7 +127,7 @@ export default function HomeScreen() {
             resetShareIntent();
             return;
           }
-          setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : 'image', width: 1080, height: 1920 });
+          setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : isAudio ? 'audio' : 'image' });
           resetShareIntent();
           router.push('/compose');
         })

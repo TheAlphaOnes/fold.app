@@ -507,6 +507,21 @@ export default function ComposeScreen() {
     const safeH =
       Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
 
+    // Keep every piece of media in app space — the artwork too. Fall back
+    // to the remote URL only if the download fails.
+    let artworkUri = track.artworkUrl100;
+    try {
+      const artworkDest = `${FileSystem.documentDirectory}music_artwork_${track.trackId}_${Date.now()}.jpg`;
+      const downloaded = await downloadWithinFileSize({
+        url: track.artworkUrl100,
+        to: artworkDest,
+        kind: "image",
+      });
+      if (downloaded) artworkUri = artworkDest;
+    } catch (err) {
+      console.warn("Failed to download artwork, using remote URL", err);
+    }
+
     setMediaElements((prev) => [
       ...prev,
       {
@@ -518,7 +533,7 @@ export default function ComposeScreen() {
         metadata: {
           title: track.trackName,
           artist: track.artistName,
-          artwork: track.artworkUrl100,
+          artwork: artworkUri,
         },
       },
     ]);

@@ -12,9 +12,9 @@
 
 export interface PendingMedia {
   uri: string;
-  type: 'image' | 'video';
-  width: number;
-  height: number;
+  type: 'image' | 'video' | 'audio';
+  width?: number;
+  height?: number;
 }
 
 let _pending: PendingMedia | null = null;
