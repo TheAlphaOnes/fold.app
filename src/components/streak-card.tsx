@@ -185,24 +185,19 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
         </Animated.View>
       </View>
 
-      {/* ── Hairline divider ── */}
-      <View style={[s.divider, { backgroundColor: theme.border }]} />
-
-      {/* ── Metrics row ── */}
+      {/* ── Stat columns ── */}
       <Animated.View entering={FadeIn.delay(380).duration(500)} style={s.metricsRow}>
-        <View style={s.metricItem}>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{todayCount}</ThemedText>
+        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
           <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>TODAY</ThemedText>
+          <ThemedText style={[s.metricNum, { color: theme.text }]}>{todayCount}</ThemedText>
         </View>
-        <View style={[s.metricDivider, { backgroundColor: theme.border }]} />
-        <View style={s.metricItem}>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{totalWords.toLocaleString()}</ThemedText>
+        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
           <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>WORDS</ThemedText>
+          <ThemedText style={[s.metricNum, { color: theme.text }]}>{totalWords.toLocaleString()}</ThemedText>
         </View>
-        <View style={[s.metricDivider, { backgroundColor: theme.border }]} />
-        <View style={s.metricItem}>
-          <ThemedText style={[s.metricNum, { color: theme.text }]}>{audioCount}</ThemedText>
+        <View style={[s.metricItem, { borderTopColor: theme.border }]}>
           <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>CLIPS</ThemedText>
+          <ThemedText style={[s.metricNum, { color: theme.text }]}>{audioCount}</ThemedText>
         </View>
       </Animated.View>
     </View>
@@ -230,10 +225,12 @@ const s = StyleSheet.create({
   },
   heroRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'flex-end',
+    gap: 24,
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingTop: 14,
+    paddingBottom: 24,
   },
   readout: {
     alignItems: 'flex-start',
@@ -263,26 +260,23 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-  },
   metricsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 18,
+    gap: 12,
   },
   metricItem: {
     flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  metricDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 28,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 8,
+    alignItems: 'flex-start',
+    gap: 2,
   },
   metricNum: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 24,
+    fontSize: 26,
     lineHeight: 32,
   },
   metricLabel: {

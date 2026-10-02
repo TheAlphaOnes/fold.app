@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import type { Composition } from '@/types/journal';
@@ -11,141 +10,133 @@ interface ActivityGridProps {
 }
 
 interface DayCell {
-  key: string;
+  date: string;
   count: number;
-  isToday: boolean;
+  inYear: boolean;
 }
 
-interface MonthRow {
-  label: string;
-  cells: DayCell[];
+interface WeekColumn {
+  index: number;
+  days: DayCell[];
 }
 
-const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const MONTH_LABEL_WIDTH = 26;
-const MONTH_LABEL_GAP = 6;
-const CELL_GAP = 1;
-const DAY_SLOTS = 31;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const CELL_GAP = 2;
+const BAND_COUNT = 2;
 
 export function ActivityGrid({ compositions }: ActivityGridProps) {
   const { width } = useWindowDimensions();
   const theme = useTheme();
+  const currentYear = new Date().getFullYear();
 
-  // One stable clock for the card's lifetime — a fresh Date each render would
-  // invalidate every memo below it.
-  const today = useMemo(() => new Date(), []);
-  const currentYear = today.getFullYear();
-
-  const minYear = useMemo(() => {
-    if (compositions.length === 0) return currentYear;
-    return Math.min(...compositions.map(c => new Date(c.createdAt).getFullYear()));
-  }, [compositions, currentYear]);
-
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const isCurrentYear = selectedYear === currentYear;
-  const canGoPrev = selectedYear > minYear;
-  const canGoNext = selectedYear < currentYear;
-
-  const handlePrevYear = () => {
-    if (canGoPrev) setSelectedYear(selectedYear - 1);
-  };
-
-  const handleNextYear = () => {
-    if (canGoNext) setSelectedYear(selectedYear + 1);
-  };
-
-  // One row per month, one cell per calendar day — the whole year reads as a
-  // vertical tape, no scrolling, day columns aligned across every month.
-  const monthRows = useMemo<MonthRow[]>(() => {
+  // Generate the year padded to whole Sunday-Saturday weeks, one entry per
+  // day, grouped into week columns — the same grid the card always showed.
+  const { weeks, monthStarts } = useMemo(() => {
     const countMap: Record<string, number> = {};
     compositions.forEach(comp => {
       const d = new Date(comp.createdAt);
-      if (d.getFullYear() === selectedYear) {
-        const key = `${d.getMonth()}-${d.getDate()}`;
+      if (d.getFullYear() === currentYear) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         countMap[key] = (countMap[key] || 0) + 1;
       }
     });
 
-    return MONTH_LABELS.map((label, month) => {
-      const daysInMonth = new Date(selectedYear, month + 1, 0).getDate();
-      const cells: DayCell[] = [];
-      for (let day = 1; day <= daysInMonth; day++) {
-        cells.push({
-          key: `${month}-${day}`,
-          count: countMap[`${month}-${day}`] || 0,
-          isToday: isCurrentYear && month === today.getMonth() && day === today.getDate(),
-        });
-      }
-      return { label, cells };
+    const formatDate = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    // Start on the Sunday before Jan 1, end on the Saturday after Dec 31.
+    const startOfYear = new Date(currentYear, 0, 1);
+    const startDate = new Date(startOfYear);
+    startDate.setDate(startDate.getDate() - startOfYear.getDay());
+    const endOfYear = new Date(currentYear, 11, 31);
+    const endDate = new Date(endOfYear);
+    endDate.setDate(endDate.getDate() + (6 - endOfYear.getDay()));
+
+    const byWeek: DayCell[][] = [];
+
+    let currentDate = new Date(startDate);
+    let weekIndex = 0;
+    while (currentDate <= endDate) {
+      const key = formatDate(currentDate);
+      byWeek[weekIndex] = byWeek[weekIndex] || [];
+      byWeek[weekIndex].push({
+        date: key,
+        count: countMap[key] || 0,
+        inYear: currentDate.getFullYear() === currentYear,
+      });
+      if (currentDate.getDay() === 6) weekIndex++;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Which week column each month starts in, for the label rows.
+    const monthStarts = MONTHS.map((label, m) => {
+      const first = new Date(currentYear, m, 1);
+      const days = Math.round((first.getTime() - startDate.getTime()) / 86400000);
+      return { label, week: Math.floor(days / 7) };
     });
-  }, [compositions, selectedYear, isCurrentYear, today]);
+
+    const weeks: WeekColumn[] = byWeek.map((days, index) => ({ index, days }));
+    return { weeks, monthStarts };
+  }, [compositions, currentYear]);
 
   let maxCount = 1;
-  monthRows.forEach(row => row.cells.forEach(cell => {
-    if (cell.count > maxCount) maxCount = cell.count;
+  weeks.forEach(week => week.days.forEach(day => {
+    if (day.count > maxCount) maxCount = day.count;
   }));
 
-  // Day cells are sized so the longest month (31 days) fits the card's inner
-  // width exactly: window width minus page padding (32), card padding (32),
-  // the month label, its gap, and 30 inter-cell gaps.
+  // The year's ~53 week columns are split into two bands stacked vertically,
+  // each sized to the card's inner width, so the whole year fits with no
+  // horizontal scrolling. Page padding (32) + card padding (32).
+  const innerWidth = width - 64;
+  const columnsPerBand = Math.ceil(weeks.length / BAND_COUNT);
   const cellSize = Math.max(
-    4,
-    Math.floor((width - 64 - MONTH_LABEL_WIDTH - MONTH_LABEL_GAP - (DAY_SLOTS - 1) * CELL_GAP) / DAY_SLOTS),
+    3,
+    Math.floor((innerWidth - (columnsPerBand - 1) * CELL_GAP) / columnsPerBand),
   );
+
+  const bands = Array.from({ length: BAND_COUNT }, (_, bandIdx) => ({
+    from: bandIdx * columnsPerBand,
+    weeks: weeks.slice(bandIdx * columnsPerBand, (bandIdx + 1) * columnsPerBand),
+  }));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.header}>
-        <ThemedText style={[styles.headerLabel, { color: theme.textMuted }]}>ACTIVITY</ThemedText>
-        <View style={styles.yearSelector}>
-          <Pressable
-            onPress={handlePrevYear}
-            disabled={!canGoPrev}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Previous year"
-            accessibilityState={{ disabled: !canGoPrev }}
-            style={({ pressed }) => [styles.yearButton, (!canGoPrev || pressed) && styles.yearButtonFaded]}
-          >
-            <ChevronLeft size={14} color={theme.textMuted} />
-          </Pressable>
-          <ThemedText style={[styles.yearValue, { color: theme.text }]}>{selectedYear}</ThemedText>
-          <Pressable
-            onPress={handleNextYear}
-            disabled={!canGoNext}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Next year"
-            accessibilityState={{ disabled: !canGoNext }}
-            style={({ pressed }) => [styles.yearButton, (!canGoNext || pressed) && styles.yearButtonFaded]}
-          >
-            <ChevronRight size={14} color={theme.textMuted} />
-          </Pressable>
-        </View>
+        <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
       </View>
 
-      <View style={styles.grid}>
-        {monthRows.map((row, rowIdx) => (
+      <View style={styles.bands}>
+        {bands.map((band, bandIdx) => (
           <Animated.View
-            key={row.label}
-            entering={FadeIn.delay(rowIdx * 40).duration(300)}
-            style={styles.monthRow}
+            key={`band-${bandIdx}`}
+            entering={FadeIn.delay(bandIdx * 120).duration(400)}
+            style={styles.band}
           >
-            <ThemedText style={[styles.monthLabel, { color: theme.textMuted }]}>{row.label}</ThemedText>
-            <View style={styles.dayRow}>
-              {row.cells.map(cell => {
-                const opacity = cell.count > 0 ? 0.3 + 0.7 * (cell.count / maxCount) : 0.1;
-                return (
-                  <View
-                    key={cell.key}
-                    style={[
-                      styles.cell,
-                      { width: cellSize, height: cellSize, backgroundColor: theme.text, opacity },
-                      cell.isToday && { borderWidth: 1, borderColor: theme.accentWarm },
-                    ]}
-                  />
-                );
-              })}
+            <View style={styles.grid}>
+              {band.weeks.map(week => (
+                <View key={`week-${week.index}`} style={styles.column}>
+                  {week.days.map(day => {
+                    const opacity = day.count > 0 ? 0.3 + 0.7 * (day.count / maxCount) : 0.1;
+                    return (
+                      <View
+                        key={day.date}
+                        style={[
+                          styles.cell,
+                          { width: cellSize, height: cellSize, backgroundColor: theme.text },
+                          day.inYear ? { opacity } : { opacity: 0 },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+            <View style={styles.xLabels}>
+              {monthStarts
+                .filter(ms => ms.week >= band.from && ms.week < band.from + band.weeks.length)
+                .map(ms => (
+                  <ThemedText key={ms.label} style={[styles.xLabel, { color: theme.textMuted }]}>{ms.label}</ThemedText>
+                ))}
             </View>
           </Animated.View>
         ))}
@@ -167,49 +158,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  headerLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    letterSpacing: 3,
+  title: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
   },
-  yearSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  bands: {
+    gap: 12,
   },
-  yearButton: {
-    padding: 2,
+  band: {
+    gap: 6,
   },
-  yearButtonFaded: {
-    opacity: 0.3,
-  },
-  yearValue: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
-    lineHeight: 18,
-    includeFontPadding: false,
-  } as any,
   grid: {
-    gap: 4,
-  },
-  monthRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: CELL_GAP,
   },
-  monthLabel: {
-    width: MONTH_LABEL_WIDTH,
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 8,
-    lineHeight: 10,
-    letterSpacing: 1,
-    includeFontPadding: false,
-  } as any,
-  dayRow: {
-    flexDirection: 'row',
-    marginLeft: MONTH_LABEL_GAP,
+  column: {
+    flexDirection: 'column',
     gap: CELL_GAP,
   },
   cell: {
     borderRadius: 1,
+  },
+  xLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  xLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
   },
 });
