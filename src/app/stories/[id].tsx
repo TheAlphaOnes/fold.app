@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,10 +13,11 @@ import Animated, {
   interpolate, 
   Extrapolation,
   useFrameCallback,
+  useDerivedValue,
   withTiming,
   runOnJS,
   SlideInRight,
-  SlideOutLeft,
+  FadeOut,
   Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -31,6 +32,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
+import type { Composition } from '@/types/journal';
 
 interface StoryItem {
   id: string;
@@ -218,6 +220,11 @@ export default function StoryDetailScreen() {
   const [viewerState, setViewerState] = useState({ isOpen: false, initialIndex: 0 });
   const [viewMode, setViewMode] = useState<'wheel' | 'list'>('wheel');
 
+  // Mirrors viewMode into a shared value (worklets cannot read React state)
+  // so the auto-rotation loop stops driving the wheel the moment it leaves
+  // the screen — including during its own exit animation.
+  const wheelActive = useDerivedValue(() => viewMode === 'wheel', [viewMode]);
+
   // List view math
   const cardHeight = Math.min(width * 1.618, height * 0.78);
   const snapInterval = cardHeight + 21; // CARD_GAP from index.tsx
@@ -233,6 +240,31 @@ export default function StoryDetailScreen() {
   const listOffsets = useMemo(() => {
     return activeStoryMemories.map((_, i) => i * snapInterval);
   }, [activeStoryMemories, snapInterval]);
+
+  // List-mode props are memoized so screen re-renders (e.g. the wheel's
+  // slot-swap interval) never re-render the mounted list cells.
+  const listData = useMemo(
+    () => [...activeStoryMemories].reverse(),
+    [activeStoryMemories],
+  );
+
+  const handleUpdatePositions = useCallback((id: number, media: any) => {
+    useJournalStore.getState().updatePositions(id, media);
+  }, []);
+
+  const renderListItem = useCallback(
+    ({ item, index }: { item: Composition; index: number }) => (
+      <CarouselItem
+        item={item}
+        itemOffset={index * snapInterval}
+        snapInterval={snapInterval}
+        cardHeight={cardHeight}
+        scrollY={listScrollY}
+        updatePositions={handleUpdatePositions}
+      />
+    ),
+    [snapInterval, cardHeight, listScrollY, handleUpdatePositions],
+  );
 
   // 2D Ring math constants
   const ITEM_WIDTH = width * 0.3;
@@ -255,9 +287,10 @@ export default function StoryDetailScreen() {
     }
   }, [storyItems]);
 
-  // Queue swapping logic
+  // Queue swapping logic — gated on wheel mode so it never re-renders the
+  // screen (and through it, the mounted list cells) while the list is showing.
   useEffect(() => {
-    if (storyItems.length <= MAX_SLOTS || viewerState.isOpen) return;
+    if (storyItems.length <= MAX_SLOTS || viewerState.isOpen || viewMode !== 'wheel') return;
 
     const interval = setInterval(() => {
       // Read shared value outside state updater to avoid reading during React's render phase
@@ -298,11 +331,13 @@ export default function StoryDetailScreen() {
     }, 5000); // Swap an item every 5 seconds
 
     return () => clearInterval(interval);
-  }, [storyItems.length, viewerState.isOpen]);
+  }, [storyItems.length, viewerState.isOpen, viewMode]);
 
-  // Auto-rotation + momentum decay loop
+  // Auto-rotation + momentum decay loop — gated on wheel mode so it fully
+  // stops in list view (no per-frame wake-ups, and the exiting wheel
+  // freezes instead of rotating through its own exit animation).
   useFrameCallback((frameInfo) => {
-    if (isInteracting.value || viewerState.isOpen) return;
+    if (!wheelActive.value || isInteracting.value || viewerState.isOpen) return;
     const delta = frameInfo.timeSincePreviousFrame || 16;
     
     // base speed (approx 1 full rotation every 30 seconds)
@@ -360,8 +395,8 @@ export default function StoryDetailScreen() {
       {viewMode === 'wheel' ? (
         <Animated.View
           key="story-wheel"
-          entering={SlideInRight.duration(320).easing(Easing.bezier(0.19, 1, 0.22, 1))}
-          exiting={SlideOutLeft.duration(180).easing(Easing.bezier(0.55, 0.05, 0.68, 0.19))}
+          entering={SlideInRight.duration(220).easing(Easing.bezier(0.19, 1, 0.22, 1))}
+          exiting={FadeOut.duration(120)}
           style={StyleSheet.absoluteFill}
         >
           <GestureDetector gesture={panGesture}>
@@ -373,26 +408,15 @@ export default function StoryDetailScreen() {
       ) : (
         <Animated.View
           key="story-list"
-          entering={SlideInRight.duration(320).easing(Easing.bezier(0.19, 1, 0.22, 1))}
-          exiting={SlideOutLeft.duration(180).easing(Easing.bezier(0.55, 0.05, 0.68, 0.19))}
+          entering={SlideInRight.duration(220).easing(Easing.bezier(0.19, 1, 0.22, 1))}
+          exiting={FadeOut.duration(120)}
           style={StyleSheet.absoluteFill}
         >
           <Animated.FlatList
             style={{ flex: 1 }}
-            data={[...activeStoryMemories].reverse()}
+            data={listData}
             keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item, index }) => (
-              <CarouselItem
-                item={item}
-                itemOffset={index * snapInterval}
-                snapInterval={snapInterval}
-                cardHeight={cardHeight}
-                scrollY={listScrollY}
-                updatePositions={(id, media) => {
-                  useJournalStore.getState().updatePositions(id, media);
-                }}
-              />
-            )}
+            renderItem={renderListItem}
             onScroll={listScrollHandler}
             snapToOffsets={listOffsets}
             decelerationRate="fast"
