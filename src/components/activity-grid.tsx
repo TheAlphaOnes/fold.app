@@ -20,9 +20,8 @@ interface WeekColumn {
   days: DayCell[];
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const CELL_GAP = 2;
-const BAND_COUNT = 2;
+const CELL_GAP = 1;
+const MIN_CELL = 3;
 
 export function ActivityGrid({ compositions }: ActivityGridProps) {
   const { width } = useWindowDimensions();
@@ -31,7 +30,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
 
   // Generate the year padded to whole Sunday-Saturday weeks, one entry per
   // day, grouped into week columns — the same grid the card always showed.
-  const { weeks, monthStarts } = useMemo(() => {
+  const weeks = useMemo<WeekColumn[]>(() => {
     const countMap: Record<string, number> = {};
     compositions.forEach(comp => {
       const d = new Date(comp.createdAt);
@@ -68,15 +67,7 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Which week column each month starts in, for the label rows.
-    const monthStarts = MONTHS.map((label, m) => {
-      const first = new Date(currentYear, m, 1);
-      const days = Math.round((first.getTime() - startDate.getTime()) / 86400000);
-      return { label, week: Math.floor(days / 7) };
-    });
-
-    const weeks: WeekColumn[] = byWeek.map((days, index) => ({ index, days }));
-    return { weeks, monthStarts };
+    return byWeek.map((days, index) => ({ index, days }));
   }, [compositions, currentYear]);
 
   let maxCount = 1;
@@ -84,20 +75,22 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
     if (day.count > maxCount) maxCount = day.count;
   }));
 
-  // The year's ~53 week columns are split into two bands stacked vertically,
-  // each sized to the card's inner width, so the whole year fits with no
-  // horizontal scrolling. Page padding (32) + card padding (32).
+  // All week columns in one horizontal strip, squares shrunk to whatever
+  // fits the card's inner width (page padding 32 + card padding 32). Only if
+  // the squares would drop below the legible minimum does the strip wrap
+  // onto more lines.
   const innerWidth = width - 64;
-  const columnsPerBand = Math.ceil(weeks.length / BAND_COUNT);
-  const cellSize = Math.max(
-    3,
-    Math.floor((innerWidth - (columnsPerBand - 1) * CELL_GAP) / columnsPerBand),
+  const weekCount = weeks.length;
+  let cellSize = Math.floor((innerWidth - (weekCount - 1) * CELL_GAP) / weekCount);
+  let columnsPerLine = weekCount;
+  if (cellSize < MIN_CELL) {
+    columnsPerLine = Math.max(1, Math.floor((innerWidth + CELL_GAP) / (MIN_CELL + CELL_GAP)));
+    cellSize = MIN_CELL;
+  }
+  const lineCount = Math.ceil(weekCount / columnsPerLine);
+  const lines = Array.from({ length: lineCount }, (_, rowIdx) =>
+    weeks.slice(rowIdx * columnsPerLine, (rowIdx + 1) * columnsPerLine),
   );
-
-  const bands = Array.from({ length: BAND_COUNT }, (_, bandIdx) => ({
-    from: bandIdx * columnsPerBand,
-    weeks: weeks.slice(bandIdx * columnsPerBand, (bandIdx + 1) * columnsPerBand),
-  }));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
@@ -105,41 +98,40 @@ export function ActivityGrid({ compositions }: ActivityGridProps) {
         <ThemedText style={[styles.title, { color: theme.text }]}>Activity</ThemedText>
       </View>
 
-      <View style={styles.bands}>
-        {bands.map((band, bandIdx) => (
+      <View style={styles.gridBlock}>
+        {lines.map((line, rowIdx) => (
           <Animated.View
-            key={`band-${bandIdx}`}
-            entering={FadeIn.delay(bandIdx * 120).duration(400)}
-            style={styles.band}
+            key={`row-${rowIdx}`}
+            entering={FadeIn.delay(rowIdx * 120).duration(400)}
+            style={styles.grid}
           >
-            <View style={styles.grid}>
-              {band.weeks.map(week => (
-                <View key={`week-${week.index}`} style={styles.column}>
-                  {week.days.map(day => {
-                    const opacity = day.count > 0 ? 0.3 + 0.7 * (day.count / maxCount) : 0.1;
-                    return (
-                      <View
-                        key={day.date}
-                        style={[
-                          styles.cell,
-                          { width: cellSize, height: cellSize, backgroundColor: theme.text },
-                          day.inYear ? { opacity } : { opacity: 0 },
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-              ))}
-            </View>
-            <View style={styles.xLabels}>
-              {monthStarts
-                .filter(ms => ms.week >= band.from && ms.week < band.from + band.weeks.length)
-                .map(ms => (
-                  <ThemedText key={ms.label} style={[styles.xLabel, { color: theme.textMuted }]}>{ms.label}</ThemedText>
-                ))}
-            </View>
+            {line.map(week => (
+              <View key={`week-${week.index}`} style={styles.column}>
+                {week.days.map(day => {
+                  const opacity = day.count > 0 ? 0.3 + 0.7 * (day.count / maxCount) : 0.1;
+                  return (
+                    <View
+                      key={day.date}
+                      style={[
+                        styles.cell,
+                        { width: cellSize, height: cellSize, backgroundColor: theme.text },
+                        day.inYear ? { opacity } : { opacity: 0 },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            ))}
           </Animated.View>
         ))}
+      </View>
+
+      <View style={styles.xLabels}>
+        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Jan</ThemedText>
+        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Apr</ThemedText>
+        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Jul</ThemedText>
+        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Oct</ThemedText>
+        <ThemedText style={[styles.xLabel, { color: theme.textMuted }]}>Dec</ThemedText>
       </View>
     </View>
   );
@@ -162,11 +154,8 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
   },
-  bands: {
-    gap: 12,
-  },
-  band: {
-    gap: 6,
+  gridBlock: {
+    gap: CELL_GAP,
   },
   grid: {
     flexDirection: 'row',
@@ -182,6 +171,7 @@ const styles = StyleSheet.create({
   xLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
   xLabel: {
     fontFamily: 'JetBrainsMono-Medium',
