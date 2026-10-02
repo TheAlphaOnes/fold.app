@@ -13,6 +13,7 @@ import { VinylRecord } from '@/components/vinyl-record';
 import { StoryPicker } from '@/components/story-picker';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
+import { memoryTextMetrics } from '@/utils/memory-text';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { usePostHog } from 'posthog-react-native';
@@ -69,8 +70,7 @@ function TextSlide({ text, width, fontFamily, fontSize }: { text: string; width:
         { 
           color: theme.text,
           fontFamily: fontFamily || 'JetBrainsMono-Regular',
-          fontSize: fontSize || 24,
-          lineHeight: (fontSize || 24) * 1.5,
+          ...memoryTextMetrics(fontFamily, fontSize || 24),
           textAlign: 'center'
         }
       ]}>

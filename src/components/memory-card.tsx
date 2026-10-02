@@ -22,6 +22,7 @@ import * as Sharing from "expo-sharing";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { usePathname } from "expo-router";
+import { memoryTextMetrics } from "@/utils/memory-text";
 import { usePostHog } from "posthog-react-native";
 
 interface MemoryCardProps {
@@ -327,8 +328,7 @@ export function MemoryCard({
                 {
                   color: theme.text,
                   fontFamily: item.fontFamily || "JetBrainsMono-Regular",
-                  fontSize: item.fontSize || 21,
-                  lineHeight: (item.fontSize || 21) * 1.5,
+                  ...memoryTextMetrics(item.fontFamily, item.fontSize || 21),
                 },
               ]}
               numberOfLines={13}
@@ -376,8 +376,7 @@ export function MemoryCard({
                     {
                       color: theme.text,
                       fontFamily: item.fontFamily || "JetBrainsMono-Regular",
-                      fontSize: item.fontSize || 18,
-                      lineHeight: (item.fontSize || 18) * 1.4,
+                      ...memoryTextMetrics(item.fontFamily, item.fontSize || 18),
                     },
                   ]}
                   numberOfLines={8}
@@ -399,8 +398,7 @@ export function MemoryCard({
                   {
                     color: theme.text,
                     fontFamily: item.fontFamily || "JetBrainsMono-Regular",
-                    fontSize: item.fontSize || 21,
-                    lineHeight: (item.fontSize || 21) * 1.5,
+                    ...memoryTextMetrics(item.fontFamily, item.fontSize || 21),
                   },
                 ]}
                 numberOfLines={13}

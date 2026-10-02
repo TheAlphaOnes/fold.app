@@ -55,6 +55,7 @@ import * as Location from "expo-location";
 import { VinylRecord } from "@/components/vinyl-record";
 import type { MediaElement } from "@/types/journal";
 import { formatMillis } from "@/utils/format-date";
+import { memoryTextMetrics } from "@/utils/memory-text";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { TextInputWrapper } from "expo-paste-input";
 import { usePostHog } from "posthog-react-native";
@@ -857,8 +858,7 @@ export default function ComposeScreen() {
                 {
                   color: theme.text,
                   fontFamily,
-                  fontSize,
-                  lineHeight: Math.round(fontSize * 1.5),
+                  ...memoryTextMetrics(fontFamily, fontSize),
                 },
               ]}
               placeholder="What's on your mind?"
