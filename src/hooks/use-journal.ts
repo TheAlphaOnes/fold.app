@@ -272,7 +272,27 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       allCompositions: state.allCompositions.map(patch),
       hydratedById,
     }));
-    await updateMediaPositions({ id, mediaElements: newMediaElements });
+    try {
+      await updateMediaPositions({ id, mediaElements: newMediaElements });
+    } catch (err) {
+      // The UI was patched optimistically; re-read the stored row so the
+      // interface reflects the database rather than a write that never landed.
+      console.error('Failed to persist sticker positions, reverting to stored state', err);
+      try {
+        const stored = await getCompositionById(id);
+        if (stored) {
+          const revertedHydratedById = { ...get().hydratedById };
+          if (revertedHydratedById[id]) revertedHydratedById[id] = stored;
+          set((state) => ({
+            compositions: state.compositions.map((c) => (c.id === id ? stored : c)),
+            allCompositions: state.allCompositions.map((c) => (c.id === id ? stored : c)),
+            hydratedById: revertedHydratedById,
+          }));
+        }
+      } catch (revertErr) {
+        console.error('Failed to revert sticker positions after write failure', revertErr);
+      }
+    }
   },
 
   toggleStoryId: async (id: number, storyId: number) => {

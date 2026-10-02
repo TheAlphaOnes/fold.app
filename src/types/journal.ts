@@ -7,6 +7,7 @@ export interface MediaElement {
   width?: number;
   height?: number;
   scale?: number;
+  zIndex?: number; // Paint order among stickers on the canvas; higher paints later
   metadata?: {
     title: string;
     artist: string;

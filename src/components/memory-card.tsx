@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -282,19 +282,40 @@ export function MemoryCard({
     singleMediaIsVideo ? item.mediaElements[0].uri : undefined,
   );
 
-  const handleDragEnd = (
-    mediaId: string,
-    newX: number,
-    newY: number,
-    newScale?: number,
-  ) => {
-    const updatedMedia = item.mediaElements.map((m) =>
-      m.id === mediaId
-        ? { ...m, x_pos: newX, y_pos: newY, scale: newScale ?? m.scale ?? 1 }
-        : m,
-    );
-    onUpdatePositions(item.id, updatedMedia);
-  };
+  const handleDragEnd = useCallback(
+    (mediaId: string, newX: number, newY: number, newScale?: number) => {
+      const updatedMedia = item.mediaElements.map((m) =>
+        m.id === mediaId
+          ? { ...m, x_pos: newX, y_pos: newY, scale: newScale ?? m.scale ?? 1 }
+          : m,
+      );
+      onUpdatePositions(item.id, updatedMedia);
+    },
+    [item.id, item.mediaElements, onUpdatePositions],
+  );
+
+  const handleStickerFront = useCallback(
+    (mediaId: string) => {
+      // Renormalize so the tapped sticker paints last (topmost) and every
+      // sticker keeps a bounded 1..n zIndex.
+      const below = item.mediaElements
+        .filter((m) => m.id !== mediaId)
+        .sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1));
+      const rank = new Map<string, number>();
+      below.forEach((m, i) => rank.set(m.id, i + 1));
+      rank.set(mediaId, below.length + 1);
+
+      let changed = false;
+      const updatedMedia = item.mediaElements.map((m) => {
+        const z = rank.get(m.id) ?? 1;
+        if (z === m.zIndex) return m;
+        changed = true;
+        return { ...m, zIndex: z };
+      });
+      if (changed) onUpdatePositions(item.id, updatedMedia);
+    },
+    [item.id, item.mediaElements, onUpdatePositions],
+  );
 
   return (
     <View
@@ -413,6 +434,7 @@ export function MemoryCard({
                 key={m.id}
                 media={m}
                 onDragEnd={handleDragEnd}
+                onFront={handleStickerFront}
                 cardWidth={cardWidth}
                 cardHeight={height}
                 compositionId={item.id}
@@ -426,8 +448,9 @@ export function MemoryCard({
         )}
       </View>
 
-      {/* LAYER 3: Time (Bottom) */}
-      <View style={styles.timeRow} pointerEvents="box-none">
+      {/* LAYER 3: Time (Bottom) — paints above stickers but is transparent to
+          touches, so a sticker underneath stays grabbable. */}
+      <View style={styles.timeRow} pointerEvents="none">
         <View style={{ alignItems: "center" }}>
           <Text
             style={[
