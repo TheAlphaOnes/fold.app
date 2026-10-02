@@ -8,6 +8,8 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
+import { AsciiArt } from '@/components/ascii-art';
+import { CANVAS_TERMINAL_ART } from '@/constants/ascii-art';
 import type { Story } from '@/types/journal';
 
 // ─── Single-select mode (compose screen: one story per entry) ───────────────
@@ -294,13 +296,8 @@ export function StoryPicker(props: StoryPickerProps) {
               />
 
               {/* ASCII art — cyber-minimalist canvas init terminal */}
-              <View style={{ marginTop: 'auto', alignItems: 'center', opacity: 0.5 }}>
-                <ThemedText style={styles.ascii}>
-                  {[
-                    '█║▌│█│║▌║││█║▌║▌',
-                    ' c a n v a s _  ',
-                  ].join('\n')}
-                </ThemedText>
+              <View style={{ marginTop: 'auto', alignItems: 'center', opacity: 0.3 }}>
+                <AsciiArt art={CANVAS_TERMINAL_ART} color={theme.text} fontSize={10} />
               </View>
             </View>
           ) : (
@@ -461,13 +458,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 28,
     gap: 32,
-  },
-  ascii: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    lineHeight: 12,
-    textAlign: 'center',
-    opacity: 0.6,
   },
   input: {
     fontFamily: 'JetBrainsMono-Regular',

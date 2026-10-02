@@ -8,6 +8,8 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { AsciiArt } from '@/components/ascii-art';
+import { BOOK_ART } from '@/constants/ascii-art';
 import { useTheme } from '@/hooks/use-theme';
 import Animated, {
   useSharedValue,
@@ -18,26 +20,6 @@ import Animated, {
   withRepeat,
   Easing,
 } from 'react-native-reanimated';
-
-// A classic, highly-detailed top-down open book.
-// Exact ASCII art requested from asciiart.eu
-const ASCII_ART = [
-  '    __________________   __________________',
-  '.-/|                  \\ /                  |\\-.',
-  '||||                   |                   ||||',
-  '||||                   |       ~~*~~       ||||',
-  '||||    --==*==--      |                   ||||',
-  '||||                   |                   ||||',
-  '||||                   |                   ||||',
-  '||||                   |     --==*==--     ||||',
-  '||||                   |                   ||||',
-  '||||                   |                   ||||',
-  '||||                   |                   ||||',
-  '||||                   |                   ||||',
-  '||||__________________ | __________________||||',
-  '||/===================\\|/===================\\||',
-  '`--------------------~___~-------------------\'\'',
-].join('\n');
 
 export function EmptyState() {
   const theme = useTheme();
@@ -114,9 +96,7 @@ export function EmptyState() {
     <View style={styles.container}>
       {/* ASCII art */}
       <Animated.View style={artStyle}>
-        <ThemedText style={styles.ascii} themeColor="textMuted">
-          {ASCII_ART}
-        </ThemedText>
+        <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={10} />
       </Animated.View>
 
       {/* Status label */}
@@ -136,13 +116,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 34,
     gap: 21,
-  },
-  ascii: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    lineHeight: 10, // Force tight vertical packing so | connects perfectly
-    letterSpacing: 0,
-    textAlign: 'left',
   },
   labelRow: {
     marginTop: 8,

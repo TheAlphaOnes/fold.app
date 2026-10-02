@@ -9,6 +9,8 @@ import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
+import { AsciiArt } from '@/components/ascii-art';
+import { MASTER_SWORD_ART } from '@/constants/ascii-art';
 
 export default function OnboardingNameScreen() {
   const theme = useTheme();
@@ -54,9 +56,7 @@ export default function OnboardingNameScreen() {
 
             {/* Easter Egg ASCII: Master Sword */}
             <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
-              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
-{`o=={::::::::::>`}
-              </ThemedText>
+              <AsciiArt art={MASTER_SWORD_ART} color={mutedText} fontSize={14} />
             </Animated.View>
 
             <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
@@ -124,12 +124,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     width: '100%',
-  },
-  asciiText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    letterSpacing: 0,
-    textAlign: 'center',
   },
   centerSection: {
     width: '100%',

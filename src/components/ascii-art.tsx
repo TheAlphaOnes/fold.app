@@ -29,15 +29,17 @@ interface AsciiArtProps {
   art: string;
   /** Glyph color. */
   color: string;
-  /** Rendered width in dp; the height follows the art's aspect ratio. */
-  width: number;
+  /** Effective glyph size in dp; the piece sizes itself from its grid. */
+  fontSize: number;
 }
 
-export function AsciiArt({ art, color, width }: AsciiArtProps) {
+export function AsciiArt({ art, color, fontSize }: AsciiArtProps) {
   const lines = art.split('\n');
   const cols = Math.max(...lines.map((line) => line.length));
   const rows = lines.length;
-  const height = (width * rows * CELL_H) / (cols * CELL_W);
+  const scale = fontSize / CELL_H;
+  const width = cols * CELL_W * scale;
+  const height = rows * CELL_H * scale;
 
   return (
     <Svg

@@ -11,6 +11,8 @@ import type { Composition } from '@/types/journal';
 
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { AsciiArt } from '@/components/ascii-art';
+import { SYS_READY_ART } from '@/constants/ascii-art';
 import { ActivityGrid } from '@/components/activity-grid';
 import { ProfileStats } from '@/components/profile-stats';
 import { StreakCard } from '@/components/streak-card';
@@ -134,18 +136,7 @@ export default function ProfileScreen() {
 
         {/* ASCII Easter Egg Mascot */}
         <View style={styles.mascotContainer}>
-          <ThemedText style={styles.mascotText}>
-{`.-----------.
-| .-------. |
-| |>_     | |
-| '-------' |
-|       ( ) |
-|   _       |
-| _| |_  (B)|
-||_   _|(A) |
-|  |_|      |
-'-----------'`}
-          </ThemedText>
+          <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
           <ThemedText style={styles.mascotSubtitle}>SYS.READY</ThemedText>
         </View>
 
@@ -238,13 +229,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
     opacity: 0.5,
-  },
-  mascotText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    lineHeight: 12,
-    color: '#878787',
-    textAlign: 'left',
   },
   mascotSubtitle: {
     fontFamily: 'JetBrainsMono-Bold',

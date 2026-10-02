@@ -16,6 +16,8 @@ import { useSettings } from '@/hooks/use-settings';
 import { useThemeContext } from '@/hooks/use-theme';
 import { GrainBackground } from './grain-background';
 import { ThemedText } from './themed-text';
+import { AsciiArt } from '@/components/ascii-art';
+import { SYS_CORE_ART, CAT_ART } from '@/constants/ascii-art';
 
 interface BiometricGateProps {
   children: React.ReactNode;
@@ -141,13 +143,6 @@ export function BiometricGate({ children }: BiometricGateProps) {
     opacity: coreOpacity.value,
   }));
 
-  const CAT_ASCII = 
-`    /\\_/\\
-   (=o.o=)
- .-(     )-.
-(           )
- '---------'`;
-
   return (
     <View style={styles.container}>
       <BiometricContext.Provider value={{ isLocked }}>
@@ -158,15 +153,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
         <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.background }]}>
           <GrainBackground />
           <View style={styles.center}>
-            <ThemedText style={[styles.ascii, { color: colors.textMuted }]}>
-{`.================.
-| .--.      .-.  |
-| |__|      |_|  |
-|                |
-|  .----------.  |
-|  |          |  |
-'=='=========='=='`}
-            </ThemedText>
+            <AsciiArt art={SYS_CORE_ART} color={colors.textMuted} fontSize={14} />
             <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>SYSTEM SECURED</ThemedText>
           </View>
         </View>
@@ -176,9 +163,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
         <Animated.View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.background }, animatedOverlayStyle]}>
           <GrainBackground />
           <Animated.View style={[styles.center, animatedCoreStyle]}>
-            <ThemedText style={[styles.ascii, { color: colors.text }]}>
-              {CAT_ASCII}
-            </ThemedText>
+            <AsciiArt art={CAT_ART} color={colors.text} fontSize={14} />
             
             {authStatus === 'success' ? (
               <ThemedText style={[styles.subtitle, { color: colors.text }]}>
@@ -214,12 +199,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  ascii: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 18,
-    textAlign: 'left',
   },
   subtitle: {
     fontFamily: 'JetBrainsMono-Bold',

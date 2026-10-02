@@ -11,6 +11,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
 import { formatDobInput, isValidDob } from '@/utils/dob';
+import { AsciiArt } from '@/components/ascii-art';
+import { ROBOT_ART } from '@/constants/ascii-art';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
@@ -73,13 +75,7 @@ export default function OnboardingDobScreen() {
 
             {/* Easter Egg ASCII: Robot */}
             <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
-              <ThemedText style={[styles.asciiText, { color: mutedText }]}>
-{`  .-------.
-  |  o o  |
-  |   ^   |
-  |  ___  |
-  '-------'`}
-              </ThemedText>
+              <AsciiArt art={ROBOT_ART} color={mutedText} fontSize={11} />
             </Animated.View>
 
             <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
@@ -145,12 +141,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
     width: '100%',
-  },
-  asciiText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 11,
-    letterSpacing: 0,
-    textAlign: 'center',
   },
   centerSection: {
     width: '100%',

@@ -33,32 +33,8 @@ import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
 import { AsciiArt } from '@/components/ascii-art';
+import { CASSETTE_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
-
-/**
- * Empty-state art: a blank cassette, SIDE A, nothing recorded yet — the
- * story is a tape waiting for its first entry. Lines are pinned to an
- * exact character grid and rendered through <AsciiArt> as SVG.
- */
-const CASSETTE_ART = [
-  "    ______________________________________",
-  ".-/|                                      |\\-.",
-  "   |   ________________________________   |",
-  "   |  |   __________________________   |  |",
-  "   |  |  |    .--.          .--.    |  |  |",
-  "   |  |  |   ( () )        ( () )   |  |  |",
-  "   |  |  |    `--'          `--'    |  |  |",
-  "   |  |  |__________________________|  |  |",
-  "   |  |                                |  |",
-  "   |  |           S I D E  A           |  |",
-  "   |  |                                |  |",
-  "   |  |________________________________|  |",
-  "   |      __________________________      |",
-  "   |     |##########################|     |",
-  "   |      --------------------------      |",
-  "   |                                      |",
-  "`-\\|______________________________________|/-'",
-].join("\n");
 
 interface StoryItem {
   id: string;
@@ -521,7 +497,7 @@ export default function StoryDetailScreen() {
               <AsciiArt
                 art={CASSETTE_ART}
                 color={theme.textMuted}
-                width={Math.min(width - 96, 220)}
+                fontSize={8}
               />
             </View>
             <Pressable

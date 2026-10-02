@@ -14,6 +14,8 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { AsciiArt } from '@/components/ascii-art';
+import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
 
 export default function SettingsScreen() {
@@ -384,15 +386,7 @@ export default function SettingsScreen() {
 
         {/* ASCII System Core Mascot */}
         <View style={styles.mascotContainer}>
-          <ThemedText style={[styles.mascotText, { color: theme.textMuted }]}>
-{`.================.
-| .--.      .-.  |
-| |__|      |_|  |
-|                |
-|  .----------.  |
-|  |          |  |
-'=='=========='=='`}
-          </ThemedText>
+          <AsciiArt art={SYS_CORE_ART} color={theme.textMuted} fontSize={10} />
           <ThemedText style={styles.mascotSubtitle}>SYS.CORE</ThemedText>
         </View>
 
@@ -518,12 +512,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
     opacity: 0.5,
-  },
-  mascotText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    lineHeight: 12,
-    textAlign: 'left',
   },
   mascotSubtitle: {
     fontFamily: 'JetBrainsMono-Bold',

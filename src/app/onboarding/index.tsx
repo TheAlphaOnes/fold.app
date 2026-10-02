@@ -8,6 +8,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
+import { AsciiArt } from '@/components/ascii-art';
+import { CONTROLLER_ART } from '@/constants/ascii-art';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -28,14 +30,7 @@ export default function OnboardingStartScreen() {
 
         {/* Easter Egg ASCII: Retro Controller */}
         <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.mascotContainer}>
-          <ThemedText style={[styles.mascotText, { color: fg }]}>
-{`  +--------------------+
-  |   +             _  |
-  | + + +    ;;    ( ) |
-  |   +      ;;   _    |
-  |              ( )   |
-  +--------------------+`}
-          </ThemedText>
+          <AsciiArt art={CONTROLLER_ART} color={fg} fontSize={12} />
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(300).duration(800)} style={styles.textContainer}>
@@ -78,12 +73,6 @@ const styles = StyleSheet.create({
   mascotContainer: {
     alignItems: 'center',
     marginBottom: 40,
-  },
-  mascotText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 14,
-    textAlign: 'center',
   },
   textContainer: {
     alignItems: 'center',
