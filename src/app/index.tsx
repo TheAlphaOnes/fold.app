@@ -1,7 +1,7 @@
 import * as Device from 'expo-device';
 import * as Haptics from 'expo-haptics';
 import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Modal, Platform } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Platform } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue, FadeOut,
@@ -36,9 +36,7 @@ import { copyWithinFileSize, alertFileTooLarge } from '@/utils/media-attach';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
-import { VinylRecord } from '@/components/vinyl-record';
-import { formatMillis } from '@/utils/format-date';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { RecordingOverlay } from '@/components/recording-overlay';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -475,30 +473,12 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Quick Record Overlay using Modal for guaranteed centering and top-level z-index */}
-      <Modal 
-        visible={recorderState.isRecording} 
-        transparent={true} 
-        animationType="fade"
-      >
-        <View style={styles.recordingOverlay}>
-          <Svg style={StyleSheet.absoluteFill}>
-            <Defs>
-              <RadialGradient id="vignette" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
-                <Stop offset="0%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.4" />
-                <Stop offset="40%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.7" />
-                <Stop offset="100%" stopColor={theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000'} stopOpacity="0.95" />
-              </RadialGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#vignette)" />
-          </Svg>
-          
-          <VinylRecord isPlaying={true} />
-          <Text style={[styles.recordingTime, { color: theme.text }]}>
-            {formatMillis(recorderState.durationMillis)}
-          </Text>
-        </View>
-      </Modal>
+      {/* Quick Record Overlay — shared with the compose record chip */}
+      <RecordingOverlay
+        visible={recorderState.isRecording}
+        durationMillis={recorderState.durationMillis}
+        onStop={handleLongPressEnd}
+      />
     </View>
   );
 }
@@ -556,18 +536,5 @@ const styles = StyleSheet.create({
   carouselItem: {
     justifyContent: 'center',
     paddingHorizontal: 21,
-  },
-  recordingOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Removed the black background per user request, just a subtle shadow/tint to keep text legible if needed
-    backgroundColor: 'transparent',
-  },
-  recordingTime: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 24,
-    marginTop: 40,
-    letterSpacing: 2,
   },
 });

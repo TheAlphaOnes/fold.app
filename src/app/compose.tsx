@@ -18,9 +18,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
-  Modal,
 } from "react-native";
-import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemedText } from "@/components/themed-text";
@@ -52,9 +50,9 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Location from "expo-location";
-import { VinylRecord } from "@/components/vinyl-record";
+import * as Haptics from "expo-haptics";
+import { RecordingOverlay } from "@/components/recording-overlay";
 import type { MediaElement } from "@/types/journal";
-import { formatMillis } from "@/utils/format-date";
 import { dobYear } from "@/utils/dob";
 import { MAX_MEDIA_ELEMENTS, type MediaKind } from "@/constants/media";
 import {
@@ -193,7 +191,7 @@ export default function ComposeScreen() {
   const posthog = usePostHog();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder);
+  const recorderState = useAudioRecorderState(recorder, 100);
 
   const [locationName, setLocationName] = useState<string>();
   const [locationCoords, setLocationCoords] = useState<{
@@ -655,6 +653,7 @@ export default function ComposeScreen() {
         });
 
         await recorder.prepareToRecordAsync();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         await recorder.record();
       }
     } catch (err) {
@@ -1026,67 +1025,12 @@ export default function ComposeScreen() {
         <View style={{ height: insets.bottom || 12 }} />
       </KeyboardAvoidingView>
 
-      {/* Full-screen recording overlay using Modal for guaranteed centering and top-level z-index */}
-      <Modal
+      {/* Full-screen recording overlay — shared with the home quick-record */}
+      <RecordingOverlay
         visible={recorderState.isRecording}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={styles.recordingOverlay}>
-          <Svg style={StyleSheet.absoluteFill}>
-            <Defs>
-              <RadialGradient
-                id="vignetteCompose"
-                cx="50%"
-                cy="50%"
-                rx="70%"
-                ry="70%"
-                fx="50%"
-                fy="50%"
-              >
-                <Stop
-                  offset="0%"
-                  stopColor={
-                    theme.background === "#FFFFFF" ? "#FFFFFF" : "#000000"
-                  }
-                  stopOpacity="0.4"
-                />
-                <Stop
-                  offset="40%"
-                  stopColor={
-                    theme.background === "#FFFFFF" ? "#FFFFFF" : "#000000"
-                  }
-                  stopOpacity="0.7"
-                />
-                <Stop
-                  offset="100%"
-                  stopColor={
-                    theme.background === "#FFFFFF" ? "#FFFFFF" : "#000000"
-                  }
-                  stopOpacity="0.95"
-                />
-              </RadialGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#vignetteCompose)" />
-          </Svg>
-
-          <Pressable
-            style={styles.recordingOverlayInner}
-            onPress={handleRecordToggle}
-          >
-            <VinylRecord size={300} isRecording={true} isPlaying={false} />
-            <ThemedText style={styles.recordingText}>Tap to stop</ThemedText>
-            <ThemedText
-              style={[
-                styles.recordingText,
-                { fontSize: 24, marginTop: 12, opacity: 0.8 },
-              ]}
-            >
-              {formatMillis(recorderState.durationMillis)}
-            </ThemedText>
-          </Pressable>
-        </View>
-      </Modal>
+        durationMillis={recorderState.durationMillis}
+        onStop={handleRecordToggle}
+      />
 
       <MusicPicker
         visible={isMusicPickerVisible}
@@ -1338,23 +1282,5 @@ const styles = StyleSheet.create({
   metaRight: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  recordingOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  recordingOverlayInner: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  recordingText: {
-    marginTop: 40,
-    fontFamily: "JetBrainsMono-Medium",
-    fontSize: 11,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: "#878787",
   },
 });
