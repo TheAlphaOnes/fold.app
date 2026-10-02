@@ -7,13 +7,14 @@ import {
   useWindowDimensions,
   Pressable,
 } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useTheme } from "@/hooks/use-theme";
 import { CelebrationBurst } from "@/components/celebration-burst";
 import { DiagonalStripes } from "@/components/diagonal-stripes";
 import type { Composition, MediaElement } from "@/types/journal";
 import { DraggableSticker } from "@/components/draggable-sticker";
 import { Image } from "expo-image";
-import { PlayCircle, Share, MapPin, Book } from "lucide-react-native";
+import { Music, Pause, PlayCircle, Share, MapPin, Book } from "lucide-react-native";
 import { useStoriesStore } from "@/hooks/use-stories";
 import { VinylRecord } from "@/components/vinyl-record";
 import { Logo } from "@/components/logo";
@@ -155,6 +156,12 @@ function SingleAudioCard({
     }
   };
 
+  // Music (a picked track) vs voice recording: a picked track carries
+  // metadata with album artwork and renders as an artwork thumbnail; a
+  // voice recording has no metadata and keeps the vinyl record. Music with
+  // missing artwork falls back to the vinyl rather than an empty square.
+  const artworkUri = media.metadata?.artwork?.replace("100x100", "600x600");
+
   return (
     <Pressable
       style={{
@@ -164,13 +171,47 @@ function SingleAudioCard({
         alignItems: "center",
       }}
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={
+        media.metadata
+          ? `${isPlaying ? "Pause" : "Play"} ${media.metadata.title} by ${media.metadata.artist}`
+          : `${isPlaying ? "Pause" : "Play"} audio recording`
+      }
     >
-      <VinylRecord
-        size={cardWidth - 80}
-        isPlaying={isPlaying}
-        isRecording={false}
-        imageUrl={media.metadata?.artwork?.replace("100x100", "600x600")}
-      />
+      {media.metadata && artworkUri ? (
+        <View
+          style={[
+            styles.musicArtWrapper,
+            { width: cardWidth - 80, height: cardWidth - 80 },
+          ]}
+        >
+          <Image
+            source={{ uri: artworkUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          {isPlaying && (
+            <Animated.View
+              entering={FadeIn.duration(150)}
+              exiting={FadeOut.duration(150)}
+              style={styles.musicArtOverlay}
+            >
+              <Pause size={40} color="#FFFFFF" fill="#FFFFFF" />
+            </Animated.View>
+          )}
+          <View style={styles.musicBadge}>
+            <Text style={styles.musicBadgeText}>MUSIC</Text>
+            <Music size={10} color="#FFFFFF" />
+          </View>
+        </View>
+      ) : (
+        <VinylRecord
+          size={cardWidth - 80}
+          isPlaying={isPlaying}
+          isRecording={false}
+          imageUrl={artworkUri}
+        />
+      )}
       {media.metadata ? (
         <View
           style={{ alignItems: "center", marginTop: 24, paddingHorizontal: 16 }}
@@ -615,6 +656,44 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: "#FFFFFF",
     letterSpacing: 0.5,
+  },
+  // ─── Single Music Layout ───
+  musicArtWrapper: {
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  musicBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  musicBadgeText: {
+    fontFamily: "JetBrainsMono-Bold",
+    fontSize: 8,
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  musicArtOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
   // ─── Canvas Layout ───
 });
