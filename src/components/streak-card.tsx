@@ -1,6 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Flame } from 'lucide-react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeInDown,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import type { Composition } from '@/types/journal';
 import { ThemedText } from './themed-text';
@@ -46,22 +55,41 @@ function getFlameColor(streak: number): string {
   return '#FFAA66';
 }
 
-function ProgressRing({
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/**
+ * Milestone gauge. The arc is its own animation segment: it sweeps in after
+ * the readouts have landed, on a slower curve, so the card assembles in
+ * layers instead of appearing all at once.
+ */
+function FlameGauge({
   progress, size, strokeWidth, color, trackColor,
 }: {
   progress: number; size: number; strokeWidth: number; color: string; trackColor: string;
 }) {
+  const arc = useSharedValue(0);
+
+  useEffect(() => {
+    arc.value = withDelay(
+      300,
+      withTiming(progress, { duration: 1400, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [arc, progress]);
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progress);
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - arc.value),
+  }));
+
   return (
     <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
-      <Circle cx={size / 2} cy={size / 2} r={radius} stroke={trackColor} strokeWidth={strokeWidth} fill="none" opacity={0.3} />
-      <Circle
+      <Circle cx={size / 2} cy={size / 2} r={radius} stroke={trackColor} strokeWidth={strokeWidth} fill="none" />
+      <AnimatedCircle
         cx={size / 2} cy={size / 2} r={radius}
         stroke={color} strokeWidth={strokeWidth} fill="none"
         strokeDasharray={`${circumference}`}
-        strokeDashoffset={strokeDashoffset}
+        animatedProps={animatedProps}
         strokeLinecap="round"
         rotation="-90"
         origin={`${size / 2}, ${size / 2}`}
@@ -69,6 +97,8 @@ function ProgressRing({
     </Svg>
   );
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
 
 export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audioCount = 0 }: StreakCardProps) {
   const theme = useTheme();
@@ -107,45 +137,59 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
   const rank = getStreakRank(currentStreak);
   const milestone = getMilestoneProgress(currentStreak);
   const isActive = currentStreak > 0;
-  const RING_SIZE = 56;
-  const streakFormatted = String(currentStreak).padStart(2, '0');
-  const numberColor = isActive ? '#A3A3A3' : theme.textMuted;
+
+  const GAUGE_SIZE = 64;
+  const nextCaption = milestone.progress >= 1 ? 'MAX' : `NEXT ${pad2(milestone.next)}`;
 
   return (
-    <View style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View
+      style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+      accessible
+      accessibilityLabel={`Streak ${currentStreak} days, ${rank}. Best ${longestStreak} days. ${todayCount} today, ${totalWords} words, ${audioCount} clips.`}
+    >
+      {/* ── Rail: panel labels ── */}
+      <Animated.View entering={FadeIn.duration(350)} style={s.rail}>
+        <ThemedText style={[s.railLabel, { color: theme.textMuted }]}>STREAK</ThemedText>
+        <ThemedText style={[s.railLabel, { color: theme.textMuted }]}>BEST {pad2(longestStreak)}</ThemedText>
+      </Animated.View>
 
-      {/* ── Hero row: number + labels on left, flame ring on right ── */}
+      {/* ── Hero: readout left, gauge right ── */}
       <View style={s.heroRow}>
-        <View style={s.numberBlock}>
-          <View style={[s.hugeNumberContainer, { borderBottomColor: numberColor }]}>
-            <ThemedText style={[s.hugeNumber, { color: numberColor }]}>
-              {streakFormatted}
+        <View style={s.readout}>
+          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+            <ThemedText style={[s.heroNumber, { color: isActive ? theme.text : theme.textMuted }]}>
+              {pad2(currentStreak)}
             </ThemedText>
-          </View>
-          <View style={s.labelStack}>
-            <ThemedText style={[s.dayStreakLabel, { color: theme.textMuted }]}>DAYS</ThemedText>
-            <ThemedText style={[s.rankBadge, { color: isActive ? flameColor : theme.textMuted }]}>
+          </Animated.View>
+          <Animated.View entering={FadeIn.delay(220).duration(450)} style={s.heroCaption}>
+            <ThemedText style={[s.caption, { color: theme.textMuted }]}>DAYS</ThemedText>
+            <ThemedText style={[s.caption, { color: theme.textMuted }]}>·</ThemedText>
+            <ThemedText style={[s.caption, { color: isActive ? flameColor : theme.textMuted }]}>
               {rank.toUpperCase()}
             </ThemedText>
-          </View>
+          </Animated.View>
         </View>
 
-        <View style={s.ringWrap}>
-          <View style={[s.ringBox, { width: RING_SIZE, height: RING_SIZE }]}>
-            <ProgressRing progress={milestone.progress} size={RING_SIZE} strokeWidth={2.5} color={flameColor} trackColor={theme.border} />
-            <Flame size={20} color={flameColor} />
+        <Animated.View entering={FadeIn.delay(160).duration(450)} style={s.gaugeBlock}>
+          <View style={[s.gaugeBox, { width: GAUGE_SIZE, height: GAUGE_SIZE }]}>
+            <FlameGauge
+              progress={milestone.progress}
+              size={GAUGE_SIZE}
+              strokeWidth={3}
+              color={flameColor}
+              trackColor={theme.border}
+            />
+            <Flame size={22} color={flameColor} />
           </View>
-          {longestStreak > 0 && (
-            <ThemedText style={[s.bestLabel, { color: theme.textMuted }]}>BEST {longestStreak}</ThemedText>
-          )}
-        </View>
+          <ThemedText style={[s.caption, { color: theme.textMuted }]}>{nextCaption}</ThemedText>
+        </Animated.View>
       </View>
 
       {/* ── Hairline divider ── */}
       <View style={[s.divider, { backgroundColor: theme.border }]} />
 
       {/* ── Metrics row ── */}
-      <View style={s.metricsRow}>
+      <Animated.View entering={FadeIn.delay(380).duration(500)} style={s.metricsRow}>
         <View style={s.metricItem}>
           <ThemedText style={[s.metricNum, { color: theme.text }]}>{todayCount}</ThemedText>
           <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>TODAY</ThemedText>
@@ -160,8 +204,7 @@ export function StreakCard({ compositions, todayCount = 0, totalWords = 0, audio
           <ThemedText style={[s.metricNum, { color: theme.text }]}>{audioCount}</ThemedText>
           <ThemedText style={[s.metricLabel, { color: theme.textMuted }]}>CLIPS</ThemedText>
         </View>
-      </View>
-
+      </Animated.View>
     </View>
   );
 }
@@ -173,59 +216,52 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 24,
   },
+  rail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  railLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 3,
+  },
   heroRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
-  numberBlock: {
+  readout: {
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  heroNumber: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 64,
+    lineHeight: 68,
+    includeFontPadding: false,
+  } as any,
+  heroCaption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 6,
   },
-  hugeNumberContainer: {
-    borderBottomWidth: 2,
-    paddingBottom: 2,
-  },
-  hugeNumber: {
+  caption: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 56,
-    lineHeight: 64,
-    includeFontPadding: false,
-    marginLeft: -4, // Optical adjustment for JetBrains Mono's internal left padding
-  } as any,
-  labelStack: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 0,
+    fontSize: 9,
+    letterSpacing: 3,
   },
-  dayStreakLabel: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32.5,
-    letterSpacing: 2,
-    lineHeight: 34,
-  },
-  rankBadge: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16.25,
-    letterSpacing: 2,
-    lineHeight: 18,
-  },
-  ringWrap: {
+  gaugeBlock: {
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  ringBox: {
+  gaugeBox: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  bestLabel: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 10,
-    letterSpacing: 1.5,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -250,8 +286,8 @@ const s = StyleSheet.create({
     lineHeight: 32,
   },
   metricLabel: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    letterSpacing: 1.5,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
+    letterSpacing: 3,
   },
 });
