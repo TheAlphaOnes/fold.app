@@ -32,7 +32,33 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
+import { AsciiArt } from '@/components/ascii-art';
 import type { Composition } from '@/types/journal';
+
+/**
+ * Empty-state art: a blank cassette, SIDE A, nothing recorded yet — the
+ * story is a tape waiting for its first entry. Lines are pinned to an
+ * exact character grid and rendered through <AsciiArt> as SVG.
+ */
+const CASSETTE_ART = [
+  "    ______________________________________",
+  ".-/|                                      |\\-.",
+  "   |   ________________________________   |",
+  "   |  |   __________________________   |  |",
+  "   |  |  |    .--.          .--.    |  |  |",
+  "   |  |  |   ( () )        ( () )   |  |  |",
+  "   |  |  |    `--'          `--'    |  |  |",
+  "   |  |  |__________________________|  |  |",
+  "   |  |                                |  |",
+  "   |  |           S I D E  A           |  |",
+  "   |  |                                |  |",
+  "   |  |________________________________|  |",
+  "   |      __________________________      |",
+  "   |     |##########################|     |",
+  "   |      --------------------------      |",
+  "   |                                      |",
+  "`-\\|______________________________________|/-'",
+].join("\n");
 
 interface StoryItem {
   id: string;
@@ -490,17 +516,26 @@ export default function StoryDetailScreen() {
       {/* Empty State */}
       {storyItems.length === 0 && (
         <View style={[StyleSheet.absoluteFill, styles.emptyContainer, { pointerEvents: 'box-none' }]}>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.ctaButton, 
-              { borderColor: theme.border, backgroundColor: pressed ? theme.background : 'transparent' }
-            ]}
-            onPress={() => router.push({ pathname: '/compose', params: { storyId: id } })}
-          >
-            <ThemedText style={[styles.ctaText, { color: theme.text }]}>
-              + ADD TO STORY
-            </ThemedText>
-          </Pressable>
+          <View style={styles.emptyColumn} pointerEvents="box-none">
+            <View pointerEvents="none">
+              <AsciiArt
+                art={CASSETTE_ART}
+                color={theme.textMuted}
+                width={Math.min(width - 96, 300)}
+              />
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.ctaButton,
+                { borderColor: theme.border, backgroundColor: pressed ? theme.background : 'transparent' }
+              ]}
+              onPress={() => router.push({ pathname: '/compose', params: { storyId: id } })}
+            >
+              <ThemedText style={[styles.ctaText, { color: theme.text }]}>
+                + ADD TO STORY
+              </ThemedText>
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -577,6 +612,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 0,
+  },
+  emptyColumn: {
+    alignItems: 'center',
+    gap: 32,
   },
   ctaButton: {
     paddingHorizontal: 24,
