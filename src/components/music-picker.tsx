@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, Modal, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Search, X, Music, Heart } from 'lucide-react-native';
@@ -47,7 +47,12 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
   const [defaultSearch, setDefaultSearch] = useState('viral hits');
 
-  const { savedTracks, recentSearches, init, saveTrack, removeTrack, addRecentSearch } = useMusicStore();
+  // Guards the search effect against stale responses: a slow fetch for an
+  // old term must not overwrite the results of a newer one, and a hung one
+  // must not pin the loading state forever.
+  const searchRequestRef = useRef(0);
+
+  const { savedTracks, recentSearches, initialized, init, saveTrack, removeTrack, addRecentSearch } = useMusicStore();
 
   const PAGE_SIZE = 25;
 
@@ -88,22 +93,26 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     setPage(0);
     setHasMore(true);
 
+    const requestId = ++searchRequestRef.current;
     const isDefault = query.trim().length < 2;
     const searchTerm = isDefault ? defaultSearch : query.trim();
-    
+
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
         const country = Localization.getLocales()[0]?.regionCode || 'US';
         const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=${PAGE_SIZE}&offset=0&country=${country}`);
         const data = await response.json();
+        if (searchRequestRef.current !== requestId) return;
         const tracks = data.results.filter((t: any) => t.previewUrl);
         setResults(tracks);
         setHasMore(data.results.length === PAGE_SIZE);
       } catch (e) {
         console.error('Failed to search music', e);
       } finally {
-        setLoading(false);
+        if (searchRequestRef.current === requestId) {
+          setLoading(false);
+        }
       }
     }, isDefault ? 0 : 500);
 
@@ -111,6 +120,9 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   }, [query, visible]);
 
   const loadMore = async () => {
+    // The Saved tab has nothing to paginate — its list is short and local,
+    // and onEndReached firing on layout there was the "always loading" bug.
+    if (activeTab !== 'search') return;
     if (!visible || loading || loadingMore || !hasMore) return;
 
     const isDefault = query.trim().length < 2;
@@ -144,7 +156,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   };
 
   const handleSelect = async (track: MusicTrack) => {
-    if (downloading) return;
+    if (downloading !== null) return;
     setDownloading(track.trackId);
     try {
       if (query.trim().length > 2) {
@@ -209,6 +221,8 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
         </View>
 
         {loading && results.length === 0 && activeTab === 'search' ? (
+          <ActivityIndicator style={{ marginTop: 40 }} color={theme.text} />
+        ) : activeTab === 'saved' && !initialized ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={theme.text} />
         ) : (
           <FlatList

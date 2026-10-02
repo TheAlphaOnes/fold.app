@@ -13,29 +13,43 @@ const FILE_URI = `${FileSystem.documentDirectory}music-preferences.json`;
 interface MusicStoreState {
   savedTracks: MusicTrack[];
   recentSearches: string[];
+  /** True once the preferences file has been read (or found missing). */
+  initialized: boolean;
   init: () => Promise<void>;
   saveTrack: (track: MusicTrack) => Promise<void>;
   removeTrack: (trackId: number) => Promise<void>;
   addRecentSearch: (query: string) => Promise<void>;
 }
 
+// One in-flight init across all callers — the picker re-mounts with every
+// compose screen entry, and only the first load should touch the filesystem.
+let initPromise: Promise<void> | null = null;
+
 export const useMusicStore = create<MusicStoreState>((set, get) => ({
   savedTracks: [],
   recentSearches: [],
-  init: async () => {
-    try {
-      const info = await FileSystem.getInfoAsync(FILE_URI);
-      if (info.exists) {
-        const content = await FileSystem.readAsStringAsync(FILE_URI);
-        const data = JSON.parse(content);
-        set({ 
-          savedTracks: data.savedTracks || [], 
-          recentSearches: data.recentSearches || [] 
-        });
-      }
-    } catch (e) {
-      console.error('Failed to load music preferences', e);
+  initialized: false,
+  init: () => {
+    if (!initPromise) {
+      initPromise = (async () => {
+        try {
+          const info = await FileSystem.getInfoAsync(FILE_URI);
+          if (info.exists) {
+            const content = await FileSystem.readAsStringAsync(FILE_URI);
+            const data = JSON.parse(content);
+            set({
+              savedTracks: data.savedTracks || [],
+              recentSearches: data.recentSearches || []
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load music preferences', e);
+        } finally {
+          set({ initialized: true });
+        }
+      })();
     }
+    return initPromise;
   },
   saveTrack: async (track) => {
     const { savedTracks, recentSearches } = get();
@@ -44,7 +58,9 @@ export const useMusicStore = create<MusicStoreState>((set, get) => ({
     set({ savedTracks: newTracks });
     try {
       await FileSystem.writeAsStringAsync(FILE_URI, JSON.stringify({ savedTracks: newTracks, recentSearches }));
-    } catch(e) {}
+    } catch (e) {
+      console.error('Failed to persist saved tracks', e);
+    }
   },
   removeTrack: async (trackId) => {
     const { savedTracks, recentSearches } = get();
@@ -52,7 +68,9 @@ export const useMusicStore = create<MusicStoreState>((set, get) => ({
     set({ savedTracks: newTracks });
     try {
       await FileSystem.writeAsStringAsync(FILE_URI, JSON.stringify({ savedTracks: newTracks, recentSearches }));
-    } catch(e) {}
+    } catch (e) {
+      console.error('Failed to persist saved tracks', e);
+    }
   },
   addRecentSearch: async (query) => {
     if (query.trim().length < 2) return;
@@ -61,6 +79,8 @@ export const useMusicStore = create<MusicStoreState>((set, get) => ({
     set({ recentSearches: newSearches });
     try {
       await FileSystem.writeAsStringAsync(FILE_URI, JSON.stringify({ savedTracks, recentSearches: newSearches }));
-    } catch(e) {}
+    } catch (e) {
+      console.error('Failed to persist recent searches', e);
+    }
   }
 }));
