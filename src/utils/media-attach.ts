@@ -2,6 +2,7 @@ import { Alert } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
 
 import { MAX_FILE_SIZE_BYTES, MAX_MEDIA_ELEMENTS, type MediaKind } from "@/constants/media";
+import type { MediaElement } from "@/types/journal";
 
 /** True when a known file size fits under the per-file cap for its kind. */
 export function withinFileSize(
@@ -39,6 +40,22 @@ export function alertFileTooLarge(kind: MediaKind, count = 1) {
     count > 1
       ? `${count} files were skipped - the ${kind} limit is ${mb} MB.`
       : `That ${kind} is over the ${mb} MB limit and was skipped.`,
+  );
+}
+
+/**
+ * Music tracks are audio elements with metadata (title/artist) — the same
+ * classification the analytics counter uses. Voice recordings and shared
+ * audio files carry no metadata and are not music.
+ */
+export function hasMusicElement(elements: MediaElement[]): boolean {
+  return elements.some((el) => el.type === "audio" && !!el.metadata);
+}
+
+export function alertMusicLimit() {
+  Alert.alert(
+    "ONE TRACK PER MEMORY",
+    "A memory holds a single music track. Remove the current one to change it.",
   );
 }
 

@@ -58,8 +58,10 @@ import { MAX_MEDIA_ELEMENTS, type MediaKind } from "@/constants/media";
 import {
   alertElementCap,
   alertFileTooLarge,
+  alertMusicLimit,
   copyWithinFileSize,
   downloadWithinFileSize,
+  hasMusicElement,
   sliceToElementCap,
   verifyFileSize,
 } from "@/utils/media-attach";
@@ -488,13 +490,22 @@ export default function ComposeScreen() {
   };
 
   const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
-    if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
-      alertElementCap();
+    // One track per memory. The picker has already downloaded the preview
+    // by the time we're called — delete it so nothing is orphaned in app
+    // space when we reject.
+    if (hasMusicElement(mediaElements)) {
+      alertMusicLimit();
+      await FileSystem.deleteAsync(localUri, { idempotent: true });
       return;
     }
 
-    // The picker downloads the preview before handing it over — verify it
-    // against the audio cap before attaching.
+    if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+      alertElementCap();
+      await FileSystem.deleteAsync(localUri, { idempotent: true });
+      return;
+    }
+
+    // Verify the downloaded preview against the audio cap before attaching.
     if (!(await verifyFileSize("audio", localUri))) {
       alertFileTooLarge("audio");
       return;
@@ -828,7 +839,15 @@ export default function ComposeScreen() {
                 </ThemedText>
               </Pressable>
               <Pressable
-                onPress={() => setIsMusicPickerVisible(true)}
+                onPress={() => {
+                  // One track per memory — don't even open the picker when a
+                  // track is already attached.
+                  if (hasMusicElement(mediaElements)) {
+                    alertMusicLimit();
+                    return;
+                  }
+                  setIsMusicPickerVisible(true);
+                }}
                 style={({ pressed }) => [
                   styles.attachButton,
                   { opacity: pressed ? 0.5 : 1 },
