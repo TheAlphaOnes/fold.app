@@ -317,21 +317,23 @@ export default function MemoryDetailScreen() {
 
   // Search allCompositions (full timeline) first, then fall back to compositions (On-This-Day).
   // This ensures memories from any date resolve, not just today's.
+  const numericId = Number(id);
   const composition = useJournalStore(state =>
-    state.allCompositions.find(c => c.id === Number(id)) ??
-    state.compositions.find(c => c.id === Number(id)) ??
+    state.hydratedById[numericId] ??
+    state.allCompositions.find(c => c.id === numericId) ??
+    state.compositions.find(c => c.id === numericId) ??
     null
   );
-  const { loadAllCompositions } = useJournalStore();
+  const ensureComposition = useJournalStore(state => state.ensureComposition);
+  const pinComposition = useJournalStore(state => state.pinComposition);
+  const unpinComposition = useJournalStore(state => state.unpinComposition);
 
-  // If allCompositions is empty (store hasn't loaded yet), trigger a load.
-  // This handles navigating directly to a memory URL / deep-link.
-  const allCount = useJournalStore(state => state.allCompositions.length);
   React.useEffect(() => {
-    if (allCount === 0) {
-      loadAllCompositions();
-    }
-  }, [allCount, loadAllCompositions]);
+    if (!Number.isFinite(numericId)) return;
+    pinComposition(numericId);
+    ensureComposition(numericId);
+    return () => unpinComposition(numericId);
+  }, [numericId, ensureComposition, pinComposition, unpinComposition]);
 
   const theme = useTheme();
   const { width, height } = useWindowDimensions();

@@ -270,19 +270,19 @@ function RootLayoutNav() {
               <Stack.Screen
                 name="memory/[id]"
                 options={{
-                  animation: "fade",
+                  animation: "slide_from_right",
                 }}
               />
               <Stack.Screen
                 name="stories/index"
                 options={{
-                  animation: "fade",
+                  animation: "slide_from_right",
                 }}
               />
               <Stack.Screen
                 name="stories/[id]"
                 options={{
-                  animation: "fade",
+                  animation: "slide_from_right",
                 }}
               />
             </Stack>

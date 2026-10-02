@@ -43,17 +43,29 @@ const CARD_GAP = 21; // Fibonacci sequence
 
 import { CarouselItem } from '@/components/carousel-item';
 import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separator';
-import type { TimelineMode } from '@/hooks/use-settings';
-
-export type TimelineItemType = 
-  | { type: 'memory'; id: string; item: Composition; offset: number }
-  | { type: 'separator'; id: string; date: Date; mode: TimelineMode; offset: number };
+import { TimelinePlaceholder } from '@/components/timeline-placeholder';
+import { buildTimelineRows, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { allCompositions, loading, refresh, loadAllCompositions, loadMoreCompositions, updatePositions, setTargetDate, addComposition, setActiveCompositionId } = useJournalStore();
+  const {
+    timelineSpine,
+    timelineKey,
+    hydratedById,
+    hydrationVersion,
+    refresh,
+    loadTimeline,
+    hydrateAround,
+    updatePositions,
+    setTargetDate,
+    addComposition,
+    setActiveCompositionId,
+  } = useJournalStore();
+  const hydratedRef = useRef(hydratedById);
+  hydratedRef.current = hydratedById;
+  const timelineError = useJournalStore((state) => state.error);
   
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
@@ -70,41 +82,13 @@ export default function HomeScreen() {
   const symmetricPadding = (height - snapInterval) / 2;
 
   const timelineData = useMemo(() => {
-    const reversed = [...allCompositions].reverse();
-    const items: TimelineItemType[] = [];
-    const offsets: number[] = [];
-    let currentOffset = 0;
-    const seen = new Set<string>();
-    let lastBlockKey: string | null = null;
-    
-    for (const c of reversed) {
-      const d = new Date(c.createdAt);
-      if (isNaN(d.getTime())) {
-        items.push({ type: 'memory', id: `mem-${c.id}`, item: c, offset: currentOffset });
-        offsets.push(currentOffset);
-        currentOffset += snapInterval;
-        continue;
-      }
-      
-      const blockKey = settings.timelineMode === 'infinite'
-        ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        : settings.timelineMode === 'yearly'
-          ? `${d.getFullYear()}`
-          : `${d.getFullYear()}-${d.getMonth()}`;
-
-      if (lastBlockKey !== null && lastBlockKey !== blockKey) {
-        items.push({ type: 'separator', id: `sep-${c.id}-${blockKey}`, date: d, mode: settings.timelineMode, offset: currentOffset });
-        currentOffset += DATE_SEPARATOR_HEIGHT;
-      }
-      lastBlockKey = blockKey;
-      
-      items.push({ type: 'memory', id: `mem-${c.id}`, item: c, offset: currentOffset });
-      offsets.push(currentOffset);
-      currentOffset += snapInterval;
-    }
-
-    return { items, offsets };
-  }, [allCompositions, settings.timelineMode, snapInterval]);
+    return buildTimelineRows(
+      timelineSpine,
+      settings.timelineMode,
+      snapInterval,
+      DATE_SEPARATOR_HEIGHT,
+    );
+  }, [timelineSpine, settings.timelineMode, snapInterval]);
 
   
   // Handle incoming shared media (e.g. from Photos app, Chrome, Files, etc.)
@@ -159,9 +143,10 @@ export default function HomeScreen() {
   // Ensure we are viewing today's data on the home screen
   useFocusEffect(
     useCallback(() => {
-      setTargetDate(new Date());
-      loadAllCompositions();
-    }, [setTargetDate, loadAllCompositions])
+      const today = new Date();
+      setTargetDate(today);
+      loadTimeline(settings.timelineMode, today);
+    }, [setTargetDate, loadTimeline, settings.timelineMode])
   );
 
   useFocusEffect(
@@ -292,8 +277,14 @@ export default function HomeScreen() {
     }
   };
 
-  const listRef = useRef<Animated.FlatList<Composition>>(null);
+  const listRef = useRef<Animated.FlatList<TimelineRow>>(null);
   const prevCount = useRef(timelineData.items.length);
+  const offsetsRef = useRef(timelineData.offsets);
+  offsetsRef.current = timelineData.offsets;
+  const spineRef = useRef(timelineSpine);
+  spineRef.current = timelineSpine;
+  const hydrateAroundRef = useRef(hydrateAround);
+  hydrateAroundRef.current = hydrateAround;
 
   // Auto-scroll to the bottom when a new item is added
   const [activeDate, setActiveDate] = useState(() => new Date());
@@ -330,13 +321,18 @@ export default function HomeScreen() {
                          viewableItems.find((v: any) => v.item.type === 'memory');
                          
       if (centerView && centerView.item && centerView.item.type === 'memory') {
-        const memory = centerView.item.item as Composition;
-        setActiveCompositionId(memory.id);
+        const createdAt = centerView.item.createdAt as number;
+        const compositionId = centerView.item.compositionId as number;
+        const spineIndex = spineRef.current.findIndex((entry) => entry.id === compositionId);
+        if (spineIndex >= 0) {
+          hydrateAroundRef.current(spineIndex);
+        }
+        setActiveCompositionId(compositionId);
         
         if (isAtBottom) {
           setActiveDate(new Date());
-        } else if (memory.createdAt) {
-          const parsed = new Date(memory.createdAt);
+        } else if (createdAt) {
+          const parsed = new Date(createdAt);
           if (!isNaN(parsed.getTime())) {
             setActiveDate(parsed);
           }
@@ -359,19 +355,33 @@ export default function HomeScreen() {
   // so that the previous card and next card peek by the exact same number of pixels.
 
   const scrollY = useSharedValue(0);
+  const lastSyncOffset = useSharedValue(0);
+  const syncWindow = useCallback((offsetY: number) => {
+    const index = memoryIndexNearOffset(offsetsRef.current, offsetY);
+    hydrateAround(index);
+  }, [hydrateAround]);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
+      if (Math.abs(event.contentOffset.y - lastSyncOffset.value) > snapInterval * 0.85) {
+        lastSyncOffset.value = event.contentOffset.y;
+        runOnJS(syncWindow)(event.contentOffset.y);
+      }
     },
   });
 
-  const renderItem = useCallback(({ item }: { item: TimelineItemType }) => {
+  const renderItem = useCallback(({ item }: { item: TimelineRow }) => {
     if (item.type === 'separator') {
       return <DateSeparator date={item.date} timelineMode={item.mode} />;
     }
+    const composition = hydratedRef.current[item.compositionId];
+    if (!composition) {
+      return <TimelinePlaceholder height={snapInterval} cardHeight={cardHeight} />;
+    }
     return (
       <CarouselItem
-        item={item.item}
+        item={composition}
         itemOffset={item.offset}
         snapInterval={snapInterval}
         cardHeight={cardHeight}
@@ -404,30 +414,32 @@ export default function HomeScreen() {
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </Pressable>
 
-      {timelineData.items.length === 0 && !loading ? (
+      {(timelineKey !== null || timelineError) && timelineData.items.length === 0 ? (
         <EmptyState />
-      ) : (
+      ) : timelineData.items.length > 0 ? (
         <Animated.FlatList
           ref={listRef}
+          key={settings.timelineMode}
           data={timelineData.items}
+          extraData={hydrationVersion}
           inverted={true}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          // Perfect mathematical snapping, accounting for DateSeparators
           snapToOffsets={timelineData.offsets}
           decelerationRate="fast"
           disableIntervalMomentum
-          // iOS specific fixes
+          windowSize={5}
+          initialNumToRender={3}
+          maxToRenderPerBatch={3}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews={Platform.OS === 'android'}
           contentInsetAdjustmentBehavior="never"
           automaticallyAdjustContentInsets={false}
-          // Smooth scroll animations tracking
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
-          onEndReached={loadMoreCompositions}
-          onEndReachedThreshold={0.5}
           // Center cards perfectly in the absolute physical screen.
           // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
           // We use symmetricPadding for both to ensure every card perfectly snaps to the physical center of the screen.
@@ -436,7 +448,7 @@ export default function HomeScreen() {
             paddingTop: symmetricPadding, // visual bottom
           }}
         />
-      )}
+      ) : null}
 
       {/* Floating bottom bar with Date and Add Button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>

@@ -14,7 +14,10 @@ import Animated, {
   Extrapolation,
   useFrameCallback,
   withTiming,
-  runOnJS
+  runOnJS,
+  SlideInRight,
+  SlideOutLeft,
+  Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
@@ -110,7 +113,7 @@ const CarouselNode = React.memo(({
               source={imageSource} 
               style={StyleSheet.absoluteFill} 
               contentFit="cover" 
-              transition={800}
+              transition={0}
               onError={() => setHasError(true)} 
             />
           )}
@@ -355,38 +358,57 @@ export default function StoryDetailScreen() {
       <GrainBackground />
 
       {viewMode === 'wheel' ? (
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={StyleSheet.absoluteFill}>
-            {activeSlots.map((item, index) => renderItem(item, index))}
-          </Animated.View>
-        </GestureDetector>
+        <Animated.View
+          key="story-wheel"
+          entering={SlideInRight.duration(320).easing(Easing.bezier(0.19, 1, 0.22, 1))}
+          exiting={SlideOutLeft.duration(180).easing(Easing.bezier(0.55, 0.05, 0.68, 0.19))}
+          style={StyleSheet.absoluteFill}
+        >
+          <GestureDetector gesture={panGesture}>
+            <Animated.View style={StyleSheet.absoluteFill}>
+              {activeSlots.map((item, index) => renderItem(item, index))}
+            </Animated.View>
+          </GestureDetector>
+        </Animated.View>
       ) : (
-        <Animated.FlatList
-          data={[...activeStoryMemories].reverse()}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item, index }) => (
-            <CarouselItem
-              item={item}
-              itemOffset={index * snapInterval}
-              snapInterval={snapInterval}
-              cardHeight={cardHeight}
-              scrollY={listScrollY}
-              updatePositions={(id, media) => {
-                useJournalStore.getState().updatePositions(id, media);
-              }}
-            />
-          )}
-          onScroll={listScrollHandler}
-          snapToOffsets={listOffsets}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          scrollEventThrottle={16}
-          contentContainerStyle={{ 
-            paddingTop: symmetricPadding, 
-            paddingBottom: symmetricPadding 
-          }}
-          showsVerticalScrollIndicator={false}
-        />
+        <Animated.View
+          key="story-list"
+          entering={SlideInRight.duration(320).easing(Easing.bezier(0.19, 1, 0.22, 1))}
+          exiting={SlideOutLeft.duration(180).easing(Easing.bezier(0.55, 0.05, 0.68, 0.19))}
+          style={StyleSheet.absoluteFill}
+        >
+          <Animated.FlatList
+            style={{ flex: 1 }}
+            data={[...activeStoryMemories].reverse()}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item, index }) => (
+              <CarouselItem
+                item={item}
+                itemOffset={index * snapInterval}
+                snapInterval={snapInterval}
+                cardHeight={cardHeight}
+                scrollY={listScrollY}
+                updatePositions={(id, media) => {
+                  useJournalStore.getState().updatePositions(id, media);
+                }}
+              />
+            )}
+            onScroll={listScrollHandler}
+            snapToOffsets={listOffsets}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            scrollEventThrottle={16}
+            windowSize={5}
+            initialNumToRender={2}
+            maxToRenderPerBatch={3}
+            removeClippedSubviews={Platform.OS === 'android'}
+            contentContainerStyle={{ 
+              paddingTop: symmetricPadding, 
+              paddingBottom: symmetricPadding 
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        </Animated.View>
       )}
 
       {/* Header Overlay */}

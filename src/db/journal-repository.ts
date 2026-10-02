@@ -1,6 +1,7 @@
 import { getDatabase } from './client';
 import { mapRow } from './schema';
 import type { Composition, CompositionRow, MediaElement, LocationData } from '@/types/journal';
+import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import * as FileSystem from 'expo-file-system/legacy';
 
 /**
@@ -91,6 +92,68 @@ export async function getAllCompositions(limit: number = 100, offset: number = 0
   );
   // We reverse the result to maintain the ASC order expected by the app for the feed
   return rows.reverse().map((row) => rowToComposition(mapRow(row)));
+}
+
+const COMPOSITION_SELECT = `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids FROM compositions c`;
+
+function anchorParts(anchor: Date): { monthDay: string; day: string } {
+  const month = String(anchor.getMonth() + 1).padStart(2, '0');
+  const day = String(anchor.getDate()).padStart(2, '0');
+  return { monthDay: `${month}-${day}`, day };
+}
+
+/**
+ * Lightweight index for the active feed.
+ * Yearly keeps this calendar day across every year.
+ * Monthly keeps this day-of-month across every month.
+ * Infinite keeps every memory.
+ * Ordered newest-first so the present sits at the bottom of the inverted list.
+ */
+export async function getTimelineSpine(
+  mode: TimelineFeedMode,
+  anchor: Date,
+): Promise<TimelineSpineEntry[]> {
+  const db = await getDatabase();
+  const { monthDay, day } = anchorParts(anchor);
+
+  let where = '';
+  const params: string[] = [];
+  if (mode === 'yearly') {
+    where = `WHERE strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    params.push(monthDay);
+  } else if (mode === 'monthly') {
+    where = `WHERE strftime('%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    params.push(day);
+  }
+
+  const rows = await db.getAllAsync<{ id: number; created_at: number }>(
+    `SELECT c.id as id, c.created_at as created_at FROM compositions c ${where} ORDER BY c.created_at DESC`,
+    params,
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    createdAt: Number(row.created_at),
+  }));
+}
+
+export async function getCompositionsByIds(ids: number[]): Promise<Composition[]> {
+  if (ids.length === 0) return [];
+  const db = await getDatabase();
+  const placeholders = ids.map(() => '?').join(', ');
+  const rows = await db.getAllAsync(
+    `${COMPOSITION_SELECT} WHERE c.id IN (${placeholders})`,
+    ids,
+  );
+  const byId = new Map<number, Composition>();
+  for (const row of rows) {
+    const composition = rowToComposition(mapRow(row));
+    byId.set(composition.id, composition);
+  }
+  return ids.flatMap((id) => {
+    const composition = byId.get(id);
+    return composition ? [composition] : [];
+  });
 }
 
 export async function getOnThisDayCompositions(month: number, date: number): Promise<Composition[]> {

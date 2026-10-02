@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, useWindowDimensions, Pressable, Text } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
@@ -8,10 +8,11 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
-  withSpring,
   withTiming,
+  withDelay,
   runOnJS,
-  useAnimatedReaction
+  useAnimatedReaction,
+  Easing,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Play, X } from 'lucide-react-native';
@@ -69,22 +70,21 @@ const ViewerCard = React.memo(({
       Extrapolation.CLAMP
     );
     
+    // Neighbours stay visible and slide aside. They do not dissolve.
     const opacity = interpolate(
       progress,
-      [-2, -1, 0, 1, 2],
-      [0, 0.5, 1, 0.5, 0],
+      [-1.4, -0.45, 0, 0.45, 1.4],
+      [0.72, 1, 1, 1, 0.72],
       Extrapolation.CLAMP
     );
 
-    // Create a beautiful parabolic arc
-    // When progress is 1 or -1, the card dips down by 60px
-    const translateY = Math.pow(progress, 2) * 60;
-    
-    // Tilt the cards along the arc (-15deg on left, +15deg on right)
-    const rotateZ = `${progress * -15}deg`;
+    const translateY = Math.pow(progress, 2) * 36;
+    const translateX = interpolate(progress, [-1, 0, 1], [18, 0, -18], Extrapolation.CLAMP);
+    const rotateZ = `${progress * -8}deg`;
 
     return {
       transform: [
+        { translateX },
         { translateY },
         { scale },
         { rotateZ }
@@ -108,7 +108,7 @@ const ViewerCard = React.memo(({
             source={{ uri: item.uri }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            transition={300}
+            transition={0}
           />
         )}
         {item.type === 'video' && (
@@ -156,16 +156,12 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   
-  // Fake infinite looping by duplicating the array 100 times
-  const LOOP_COPIES = 100;
-  const loopedItems = useMemo(() => Array(LOOP_COPIES).fill(items).flat(), [items]);
-  
-  // Start in the middle of the giant array
-  const middleCopyIndex = Math.floor(LOOP_COPIES / 2);
-  const startScrollIndex = (middleCopyIndex * items.length) + initialIndex;
+  const startScrollIndex = Math.min(initialIndex, Math.max(items.length - 1, 0));
 
   const scrollX = useSharedValue(startScrollIndex * (width * 0.75 + 16));
-  const appearAnim = useSharedValue(0);
+  const overlayOpacity = useSharedValue(0);
+  const contentX = useSharedValue(width);
+  const headerX = useSharedValue(36);
 
   const ITEM_WIDTH = width * 0.75;
   const SPACING = 16;
@@ -181,18 +177,26 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
     () => Math.round(scrollX.value / SNAP_INTERVAL),
     (currentIndex, prevIndex) => {
       if (currentIndex !== prevIndex && currentIndex >= 0) {
-        runOnJS(setActiveIndex)(currentIndex % items.length);
+        if (items.length > 0) {
+          runOnJS(setActiveIndex)(currentIndex % items.length);
+        }
       }
     }
   );
 
   useEffect(() => {
-    appearAnim.value = withTiming(1, { duration: 250 });
-  }, []);
+    const enter = Easing.bezier(0.19, 1, 0.22, 1);
+    overlayOpacity.value = withTiming(1, { duration: 180, easing: enter });
+    contentX.value = withTiming(0, { duration: 320, easing: enter });
+    headerX.value = withDelay(80, withTiming(0, { duration: 240, easing: enter }));
+  }, [contentX, headerX, overlayOpacity]);
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    appearAnim.value = withTiming(0, { duration: 250 }, (finished) => {
+    const exit = Easing.bezier(0.55, 0.05, 0.68, 0.19);
+    overlayOpacity.value = withTiming(0, { duration: 150, easing: exit });
+    headerX.value = withTiming(24, { duration: 150, easing: exit });
+    contentX.value = withTiming(width, { duration: 200, easing: exit }, (finished) => {
       if (finished) runOnJS(onClose)();
     });
   };
@@ -204,13 +208,16 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   });
 
   const overlayStyle = useAnimatedStyle(() => ({
-    opacity: appearAnim.value,
-    backgroundColor: theme.background, // full background color
+    opacity: overlayOpacity.value,
+    backgroundColor: theme.background,
   }));
 
   const containerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(appearAnim.value, [0, 1], [0.9, 1]) }],
-    opacity: appearAnim.value,
+    transform: [{ translateX: contentX.value }],
+  }));
+
+  const headerSlideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: headerX.value }],
   }));
 
   const router = useRouter();
@@ -241,7 +248,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, overlayStyle, { zIndex: 1000 }]}>
       {/* Header */}
-      <View style={[styles.header, { top: Math.max(insets.top, 20) }]}>
+      <Animated.View style={[styles.header, headerSlideStyle, { top: Math.max(insets.top, 20) }]}>
         <Pressable 
           onPress={handleClose}
           style={({ pressed }) => [
@@ -251,13 +258,13 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
         >
           <X size={20} color={theme.text} />
         </Pressable>
-      </View>
+      </Animated.View>
 
       {/* Carousel */}
       <Animated.View style={[StyleSheet.absoluteFill, containerStyle, { justifyContent: 'center' }]}>
         <Animated.FlatList
           ref={flatListRef}
-          data={loopedItems}
+          data={items}
           keyExtractor={(_, idx) => idx.toString()}
           horizontal
           showsHorizontalScrollIndicator={false}
