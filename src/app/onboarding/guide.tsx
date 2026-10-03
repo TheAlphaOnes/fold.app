@@ -335,7 +335,7 @@ export default function OnboardingGuideScreen() {
       <GrainBackground />
 
       <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={[styles.textContainer, (phase === 4 || phase === 5) && { position: 'absolute', top: insets.top + 2, marginTop: 0 }]}>
+        <View style={[styles.textContainer, (phase === 4 || phase === 5) && { position: 'absolute', top: insets.top + 24, marginTop: 0 }]}>
           {phase === 1 && (
             <Animated.View key="phase1" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 1</ThemedText>
@@ -411,7 +411,7 @@ export default function OnboardingGuideScreen() {
             entering={FadeIn.duration(500)}
             style={{
               position: 'absolute',
-              bottom: Math.max(insets.bottom, 16) + 80,
+              bottom: Math.max(insets.bottom, 16) + 40,
               left: 21,
               right: 21,
               height: cardHeight,
