@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { AsciiArt } from '@/components/ascii-art';
-import { QUILL_ART } from '@/constants/ascii-art';
+import { COFFEE_ART } from '@/constants/ascii-art';
 import { CANVAS_TERMINAL_ART } from '@/constants/ascii-art';
 import type { Story } from '@/types/journal';
 
@@ -320,7 +320,7 @@ export function StoryPicker(props: StoryPickerProps) {
                 />
               </View>
               <View style={{ alignItems: 'center', marginTop: 24, opacity: 0.3 }}>
-                <AsciiArt art={QUILL_ART} color={theme.textMuted} fontSize={10} />
+                <AsciiArt art={COFFEE_ART} color={theme.textMuted} fontSize={10} />
               </View>
             </View>
           ) : (
