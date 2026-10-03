@@ -268,6 +268,20 @@ function RootLayoutNav() {
                 }}
               />
               <Stack.Screen
+                name="archive"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="time-machine"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
                 name="memory/[id]"
                 options={{
                   animation: "slide_from_right",

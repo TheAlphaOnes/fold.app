@@ -64,6 +64,17 @@ export function TECalendar({ onSelect }: TECalendarProps) {
     currentDate.getMonth() === today.month &&
     currentDate.getFullYear() === today.year;
 
+  const isFuture = (dayNum: number): boolean => {
+    const candidate = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+    return (
+      candidate.getFullYear() > today.year ||
+      (candidate.getFullYear() === today.year && candidate.getMonth() > today.month) ||
+      (candidate.getFullYear() === today.year &&
+        candidate.getMonth() === today.month &&
+        dayNum > today.day)
+    );
+  };
+
   const hasMemory = (dayNum: number): boolean => {
     const y = currentDate.getFullYear();
     const m = String(currentDate.getMonth() + 1).padStart(2, '0');
@@ -102,17 +113,23 @@ export function TECalendar({ onSelect }: TECalendarProps) {
 
       const isTodayCell = isToday(dayNum);
       const hasMemoryCell = hasMemory(dayNum);
+      const future = isFuture(dayNum);
 
       cells.push(
         <Pressable
           key={`d-${dayNum}`}
-          onPress={() => onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
+          disabled={future}
+          onPress={() => {
+            if (future) return;
+            onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum));
+          }}
           style={({ pressed }) => [
             styles.dayCell,
             { height: cellWidth },
             !isLastCol && { borderRightWidth: 1, borderRightColor: theme.border },
             !isLastRow && { borderBottomWidth: 1, borderBottomColor: theme.border },
-            pressed && { backgroundColor: theme.text },
+            !future && pressed && { backgroundColor: theme.text },
+            future && { opacity: 0.4 },
           ]}
         >
           {({ pressed }) => {

@@ -18,6 +18,7 @@ import { ProfileStats } from '@/components/profile-stats';
 import { StreakCard } from '@/components/streak-card';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
+import { toDayKey } from '@/utils/format-date';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -104,7 +105,9 @@ export default function ProfileScreen() {
           <View style={[styles.portfolioHeader, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, marginBottom: 0 }]}>
             <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
           </View>
-          <TECalendar onSelect={(date) => router.push(`/archive?ts=${date.getTime()}`)} />
+          <TECalendar
+            onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)}
+          />
         </View>
 
         {/* Stats */}
@@ -191,6 +194,7 @@ const styles = StyleSheet.create({
   },
   portfolioHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,

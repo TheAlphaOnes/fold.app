@@ -169,6 +169,18 @@ export async function getOnThisDayCompositions(month: number, date: number): Pro
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
+export async function getCompositionsOnDate(dayKey: string): Promise<Composition[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids
+     FROM compositions c
+     WHERE strftime('%Y-%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?
+     ORDER BY c.created_at ASC`,
+    dayKey,
+  );
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
 export async function getDatesWithMemories(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ date_str: string }>(
