@@ -202,7 +202,7 @@ export const ShareTray = memo(function ShareTray({
         <View style={s.row}>
           <ShareItem
             icon={<ImageIcon size={20} color={theme.text} />}
-            label="Export Canvas"
+            label="Canvas"
             onPress={() => { onClose(); onExportCanvas(); }}
           />
           <ShareItem
@@ -211,7 +211,7 @@ export const ShareTray = memo(function ShareTray({
                 ? <Download size={20} color={theme.text} />
                 : <FileText size={20} color={theme.text} />
             }
-            label="Share Original"
+            label="Original"
             onPress={() => { onClose(); onShareOriginal(); }}
           />
 
