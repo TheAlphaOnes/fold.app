@@ -483,10 +483,11 @@ const styles = StyleSheet.create({
   themeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
-    paddingHorizontal: 12,
     paddingVertical: 8,
+    width: 110,
   },
   themeBtnText: {
     fontFamily: 'JetBrainsMono-Bold',
