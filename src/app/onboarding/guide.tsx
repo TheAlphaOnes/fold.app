@@ -258,15 +258,18 @@ export default function OnboardingGuideScreen() {
         runOnJS(setScanKey)(prev => prev + 1);
         
         setTimeout(() => {
+          const advance = () => {
+            setIsSharing(false);
+            handleActionSuccess();
+          };
           if (hiddenCardRef.current) {
-            captureRef(hiddenCardRef, { format: 'png', quality: 1 }).then(uri => {
-              Sharing.shareAsync(uri).then(() => {
-                runOnJS(setIsSharing)(false);
-                runOnJS(handleActionSuccess)();
-              }).catch(() => {
-                runOnJS(setIsSharing)(false);
-              });
-            });
+            captureRef(hiddenCardRef, { format: 'png', quality: 1 })
+              .then(uri => Sharing.shareAsync(uri))
+              .catch(() => {}) // swallow — share dismissed or captureRef failed
+              .finally(() => advance()); // ALWAYS advance regardless of outcome
+          } else {
+            // Ref not ready — advance anyway so phase never gets stuck
+            advance();
           }
         }, 1750);
       }
