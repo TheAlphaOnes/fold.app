@@ -108,3 +108,14 @@ export const CANVAS_TERMINAL_ART = [
   "█║▌│█│║▌║││█║▌║▌",
   " c a n v a s _  ",
 ].join("\n");
+
+/** Time machine empty state: a small ASCII flower representing an empty memory. */
+export const FLOWER_ART = [
+  "     _     ",
+  "   _(_)_   ",
+  "  (_)@(_)  ",
+  "    (_)    ",
+  "    /      ",
+  "  \\|/      ",
+  "   |       ",
+].join("\n");

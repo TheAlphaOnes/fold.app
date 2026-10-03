@@ -11,11 +11,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useHaptics } from '@/hooks/use-haptics';
 import { startOfDay, toDayKey } from '@/utils/format-date';
 
-export const TAPE_CELL = 48;
-export const TAPE_HEIGHT = 44;
+export const TAPE_CELL = 80;
+export const TAPE_HEIGHT = 28;
+export const TAPE_DATE_LINE = 16;
+const TICK = 4;
 
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 interface TimeMachineTapeProps {
   days: Date[];
@@ -36,8 +37,10 @@ function indexFromOffset(offset: number, count: number): number {
   return Math.max(0, Math.min(count - 1, Math.round(offset / TAPE_CELL)));
 }
 
-function formatDateLine(date: Date): string {
-  return `${WEEKDAYS[date.getDay()]}  ·  ${String(date.getDate()).padStart(2, '0')} ${MONTHS[date.getMonth()]}`;
+export function formatTapeDate(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${WEEKDAYS[date.getDay()]} ${day}.${month}.${date.getFullYear()}`;
 }
 
 const TapeCell = memo(function TapeCell({
@@ -45,33 +48,31 @@ const TapeCell = memo(function TapeCell({
   active,
   lit,
   ink,
-  accent,
+  dotColor,
   onPress,
 }: {
   date: Date;
   active: boolean;
   lit: boolean;
   ink: string;
-  accent: string;
+  dotColor: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      hitSlop={{ top: 8, bottom: 8 }}
       style={({ pressed }) => [s.cell, pressed && s.pressed]}
       accessibilityRole="button"
       accessibilityLabel={`${date.getDate()} ${date.getMonth() + 1}`}
       accessibilityState={{ selected: active }}
     >
+      <View style={[s.dot, { left: -1, backgroundColor: dotColor }]} />
+      <View style={[s.dot, { left: 19, backgroundColor: dotColor }]} />
       <ThemedText style={[s.num, { color: ink }]}>
         {String(date.getDate()).padStart(2, '0')}
       </ThemedText>
-      <View
-        style={[
-          s.tick,
-          { backgroundColor: active || lit ? accent : 'transparent' },
-        ]}
-      />
+      <View style={[s.dot, { right: 19, backgroundColor: dotColor }]} />
     </Pressable>
   );
 });
@@ -103,7 +104,6 @@ export const TimeMachineTape = memo(function TimeMachineTape({
     () => tapeDays.map((_, index) => index * TAPE_CELL),
     [tapeDays],
   );
-  const active = tapeDays[activeIndex] ?? selected;
 
   useEffect(() => {
     if (skipAlign.current) {
@@ -147,7 +147,8 @@ export const TimeMachineTape = memo(function TimeMachineTape({
       });
       if (!sameDay(next, selected)) {
         haptics.selection();
-        onSelect(next);
+        // Let the tape scroll smoothly before loading heavy data
+        setTimeout(() => onSelect(next), 250);
       }
     },
     [tapeDays, haptics, onSelect, selected],
@@ -156,85 +157,83 @@ export const TimeMachineTape = memo(function TimeMachineTape({
   const renderItem = useCallback(
     ({ item, index }: { item: Date; index: number }) => {
       const isActive = index === activeIndex;
+      const isLit = litDates.has(toDayKey(item));
+      
+      let inkColor = isActive ? theme.text : theme.textMuted;
+      if (isLit) {
+        inkColor = isActive ? theme.accentWarm : `${theme.accentWarm}80`;
+      }
+
       return (
         <TapeCell
           date={item}
           active={isActive}
-          lit={litDates.has(toDayKey(item))}
-          ink={isActive ? theme.accentWarm : theme.textMuted}
-          accent={theme.accentWarm}
+          lit={isLit}
+          ink={inkColor}
+          dotColor={theme.textMuted} // Brighter than border so it's visible
           onPress={() => pressIndex(index)}
         />
       );
     },
-    [activeIndex, litDates, pressIndex, theme.accentWarm, theme.textMuted],
+    [activeIndex, litDates, pressIndex, theme.text, theme.textMuted, theme.accentWarm],
   );
 
   return (
-    <View>
-      <ThemedText style={[s.dateLine, { color: theme.textMuted }]}>
-        {formatDateLine(active)}
-      </ThemedText>
-      <View style={s.wrap}>
-        <FlatList
-          ref={listRef}
-          data={tapeDays}
-          extraData={activeIndex}
-          keyExtractor={toDayKey}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToOffsets={snapOffsets}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          bounces={false}
-          overScrollMode="never"
-          initialNumToRender={11}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          getItemLayout={(_, index) => ({
-            length: TAPE_CELL,
-            offset: TAPE_CELL * index,
-            index,
-          })}
-          contentContainerStyle={{ paddingHorizontal: sidePad }}
-          onScrollEndDrag={(event) => settle(event.nativeEvent.contentOffset.x)}
-          onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.x)}
-          renderItem={renderItem}
-        />
-      </View>
+    <View style={s.wrap}>
+      <FlatList
+        ref={listRef}
+        data={tapeDays}
+        extraData={activeIndex}
+        keyExtractor={toDayKey}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToOffsets={snapOffsets}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        bounces={false}
+        overScrollMode="never"
+        initialNumToRender={11}
+        maxToRenderPerBatch={8}
+        windowSize={5}
+        getItemLayout={(_, index) => ({
+          length: TAPE_CELL,
+          offset: TAPE_CELL * index,
+          index,
+        })}
+        contentContainerStyle={{ paddingHorizontal: sidePad }}
+        onScrollEndDrag={(event) => settle(event.nativeEvent.contentOffset.x)}
+        onMomentumScrollEnd={(event) => settle(event.nativeEvent.contentOffset.x)}
+        renderItem={renderItem}
+      />
     </View>
   );
 });
 
 const s = StyleSheet.create({
-  dateLine: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    letterSpacing: 0.8,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
   wrap: {
     height: TAPE_HEIGHT,
     justifyContent: 'center',
   },
   cell: {
     width: TAPE_CELL,
-    minHeight: 40,
+    height: TAPE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+  },
+  dot: {
+    position: 'absolute',
+    top: TAPE_HEIGHT / 2 - 1,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    opacity: 0.4,
   },
   num: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 18,
-    lineHeight: 22,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 14,
+    lineHeight: 16,
     fontVariant: ['tabular-nums'],
-  },
-  tick: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    letterSpacing: 0.5,
   },
   pressed: {
     transform: [{ scale: 0.96 }],

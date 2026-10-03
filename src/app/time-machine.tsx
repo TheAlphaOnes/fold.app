@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,11 +10,20 @@ import Animated, {
   useAnimatedScrollHandler,
   useReducedMotion,
   useSharedValue,
+  runOnJS,
+  withTiming,
 } from 'react-native-reanimated';
 
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { TimeMachineTape } from '@/components/time-machine-tape';
+import { AsciiArt } from '@/components/ascii-art';
+import { FLOWER_ART } from '@/constants/ascii-art';
+import {
+  TimeMachineTape,
+  TAPE_HEIGHT,
+  TAPE_DATE_LINE,
+  formatTapeDate,
+} from '@/components/time-machine-tape';
 import { CarouselItem } from '@/components/carousel-item';
 import { useDayLog } from '@/hooks/use-day-log';
 import { useJournalStore } from '@/hooks/use-journal';
@@ -24,6 +33,8 @@ import type { Composition } from '@/types/journal';
 
 const EASE_OUT = Easing.bezier(0.19, 1, 0.22, 1);
 const CARD_GAP = 21;
+const CLOSE_SIZE = 34;
+const ADJACENT_SCALE = 0.95;
 
 function parseDayParam(day?: string): Date {
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
@@ -58,6 +69,11 @@ export default function TimeMachineScreen() {
   const cardHeight = Math.min(width * 1.618, height * 0.78);
   const snapInterval = cardHeight + CARD_GAP;
   const symmetricPadding = (height - snapInterval) / 2;
+  const cardTop = (height - cardHeight) / 2;
+  const cardBottom = cardTop + cardHeight;
+  const visualGap = CARD_GAP + cardHeight * (1 - ADJACENT_SCALE) * 0.5;
+  const tapeTop = cardTop - visualGap / 2 - TAPE_HEIGHT / 2;
+  const dateTop = cardBottom + visualGap / 2 - TAPE_DATE_LINE / 2;
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -70,74 +86,121 @@ export default function TimeMachineScreen() {
     select(date);
   }, [select]);
 
+  const contentOpacity = useSharedValue(1);
+  const [displayData, setDisplayData] = useState({ entries, key: selectedKey, isToday });
+
   useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-    scrollY.value = 0;
-    setActiveCompositionId(entries[0]?.id ?? null);
-  }, [entries, scrollY, setActiveCompositionId]);
+    if (selectedKey !== displayData.key) {
+      if (loading) {
+        contentOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 150 });
+      } else {
+        const swap = () => {
+          setDisplayData({ entries, key: selectedKey, isToday });
+          listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          scrollY.value = 0;
+          setActiveCompositionId(entries[0]?.id ?? null);
+          contentOpacity.value = withTiming(1, { duration: reduceMotion ? 0 : 250, easing: EASE_OUT });
+        };
+        if (contentOpacity.value > 0) {
+          contentOpacity.value = withTiming(0, { duration: reduceMotion ? 0 : 150 }, (finished) => {
+            if (finished) runOnJS(swap)();
+          });
+        } else {
+          swap();
+        }
+      }
+    } else {
+      setDisplayData({ entries, key: selectedKey, isToday });
+      if (!loading) {
+        contentOpacity.value = withTiming(1, { duration: reduceMotion ? 0 : 250, easing: EASE_OUT });
+      }
+    }
+  }, [entries, selectedKey, isToday, loading, reduceMotion]);
+
+  // Initial setup for the first render
+  useEffect(() => {
+    if (entries.length > 0) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      scrollY.value = 0;
+      setActiveCompositionId(entries[0]?.id ?? null);
+    }
+  }, []);
 
   return (
     <View style={[s.screen, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      {loading ? (
-        <View style={s.empty} />
-      ) : entries.length === 0 ? (
-        <Animated.View
-          key={`empty-${selectedKey}`}
-          entering={reduceMotion ? undefined : FadeIn.duration(200).easing(EASE_OUT)}
-          exiting={reduceMotion ? undefined : FadeOut.duration(140).easing(Easing.in(Easing.cubic))}
-          style={s.empty}
-        >
-          <ThemedText style={[s.emptyTitle, { color: theme.textMuted }]}>NO MEMORIES</ThemedText>
-          <ThemedText style={[s.emptyCopy, { color: theme.textMuted }]}>
-            {isToday ? 'nothing filed today' : 'this day is blank'}
-          </ThemedText>
-          {isToday ? (
-            <Pressable
-              onPress={() => router.push('/compose')}
-              accessibilityRole="button"
-              accessibilityLabel="Write today"
-              style={({ pressed }) => [
-                s.write,
-                { borderColor: theme.border },
-                pressed && s.pressed,
-              ]}
-            >
-              <ThemedText style={[s.writeLabel, { color: theme.text }]}>WRITE</ThemedText>
-            </Pressable>
-          ) : null}
-        </Animated.View>
-      ) : (
-        <Animated.FlatList
-          key={selectedKey}
-          ref={listRef}
-          data={entries}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item, index }) => (
-            <CarouselItem
-              item={item}
-              itemOffset={index * snapInterval}
-              snapInterval={snapInterval}
-              cardHeight={cardHeight}
-              scrollY={scrollY}
-              updatePositions={updatePositions}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          snapToOffsets={entries.map((_, index) => index * snapInterval)}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          contentContainerStyle={{
-            paddingTop: symmetricPadding,
-            paddingBottom: symmetricPadding,
-          }}
+      <Animated.View style={[{ flex: 1 }, { opacity: contentOpacity }]}>
+        {displayData.entries.length === 0 ? (
+          <View style={s.empty}>
+            <View style={{ marginBottom: 16 }}>
+              <AsciiArt art={FLOWER_ART} color={theme.textMuted} fontSize={10} />
+            </View>
+            <ThemedText style={[s.emptyTitle, { color: theme.textMuted }]}>NO MEMORIES</ThemedText>
+            <ThemedText style={[s.emptyCopy, { color: theme.textMuted }]}>
+              {displayData.isToday ? 'nothing filed today' : 'this day is blank'}
+            </ThemedText>
+            {displayData.isToday ? (
+              <Pressable
+                onPress={() => router.push('/compose')}
+                accessibilityRole="button"
+                accessibilityLabel="Write today"
+                style={({ pressed }) => [
+                  s.write,
+                  { borderColor: theme.border },
+                  pressed && s.pressed,
+                ]}
+              >
+                <ThemedText style={[s.writeLabel, { color: theme.text }]}>WRITE</ThemedText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <Animated.FlatList
+            ref={listRef}
+            data={displayData.entries}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item, index }) => (
+              <CarouselItem
+                item={item}
+                itemOffset={index * snapInterval}
+                snapInterval={snapInterval}
+                cardHeight={cardHeight}
+                scrollY={scrollY}
+                updatePositions={updatePositions}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+            snapToOffsets={displayData.entries.map((_, index) => index * snapInterval)}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
+            contentContainerStyle={{
+              paddingTop: symmetricPadding,
+              paddingBottom: symmetricPadding,
+            }}
+          />
+        )}
+      </Animated.View>
+
+      <View pointerEvents="box-none" style={[s.tapeHud, { top: tapeTop }]}>
+        <TimeMachineTape
+          days={days}
+          selected={selected}
+          litDates={litDates}
+          onSelect={onSelectDay}
         />
-      )}
+      </View>
+
+      <ThemedText
+        pointerEvents="none"
+        style={[s.dateLine, { top: dateTop, color: theme.textSecondary }]}
+      >
+        {formatTapeDate(selected)}
+      </ThemedText>
 
       <Pressable
         onPress={() => router.back()}
@@ -146,27 +209,16 @@ export default function TimeMachineScreen() {
         style={({ pressed }) => [
           s.close,
           {
-            top: Math.max(insets.top, 20),
-            backgroundColor: pressed ? '#E0E0E0' : theme.backgroundElement,
+            top: tapeTop + TAPE_HEIGHT / 2 - CLOSE_SIZE / 2,
+            backgroundColor: theme.background,
             borderColor: theme.border,
+            opacity: pressed ? 0.5 : 1,
           },
           pressed && s.pressed,
         ]}
       >
-        <X size={16} color={theme.text} strokeWidth={2.5} />
+        <X size={16} color={theme.text} />
       </Pressable>
-
-      <View
-        pointerEvents="box-none"
-        style={[s.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
-      >
-        <TimeMachineTape
-          days={days}
-          selected={selected}
-          litDates={litDates}
-          onSelect={onSelectDay}
-        />
-      </View>
     </View>
   );
 }
@@ -175,30 +227,40 @@ const s = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  close: {
-    position: 'absolute',
-    right: 0,
-    zIndex: 100,
-    width: 56,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-    borderWidth: 1,
-    borderRightWidth: 0,
-  },
-  bottomBar: {
+  tapeHud: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     zIndex: 20,
-    paddingTop: 12,
+    height: TAPE_HEIGHT,
+    justifyContent: 'center',
+  },
+  dateLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    height: TAPE_DATE_LINE,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 14,
+    lineHeight: TAPE_DATE_LINE,
+    letterSpacing: 0.8,
+    fontVariant: ['tabular-nums'],
+    textAlign: 'center',
+  },
+  close: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 100,
+    width: CLOSE_SIZE,
+    height: CLOSE_SIZE,
+    borderRadius: CLOSE_SIZE / 2,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pressed: {
     transform: [{ scale: 0.96 }],
-    opacity: 0.7,
   },
   empty: {
     flex: 1,

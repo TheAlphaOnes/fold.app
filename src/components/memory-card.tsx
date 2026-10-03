@@ -59,6 +59,8 @@ function SingleAudioCard({
   const hasAutoPlayed = React.useRef(false);
   const pathname = usePathname();
   const isHomeScreen = pathname === "/";
+  // Audio should auto-play on screens where memory cards are visible
+  const isPlayableScreen = isHomeScreen || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
   const posthog = usePostHog();
   const hasTrackedPlay = React.useRef(false);
 
@@ -86,7 +88,7 @@ function SingleAudioCard({
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId && isHomeScreen) {
+    if (activeCompositionId === compositionId && isPlayableScreen) {
       if (
         isAppVisible &&
         autoPlayMusicRef.current &&
@@ -105,11 +107,7 @@ function SingleAudioCard({
         }
       }
     } else {
-      if (!isHomeScreen) {
-        hasAutoPlayed.current = false;
-      } else {
-        hasAutoPlayed.current = false; // Reset when scrolled away
-      }
+      hasAutoPlayed.current = false;
 
       if (isPlaying) {
         try {
@@ -123,7 +121,7 @@ function SingleAudioCard({
     isPlaying,
     isLoaded,
     player,
-    isHomeScreen,
+    isPlayableScreen,
     safeTryPlay,
   ]);
 

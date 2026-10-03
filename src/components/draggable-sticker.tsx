@@ -105,7 +105,9 @@ function CanvasAudioSticker({
   const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
   const pathname = usePathname();
-  const isHomeScreen = pathname === "/";
+  // Audio should auto-play on screens where memory cards are visible:
+  // home (/), time machine (/time-machine), and memory detail (/memory/*)
+  const isPlayableScreen = pathname === "/" || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
   const posthog = usePostHog();
   const hasTrackedPlay = React.useRef(false);
 
@@ -127,7 +129,7 @@ function CanvasAudioSticker({
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId && isHomeScreen) {
+    if (activeCompositionId === compositionId && isPlayableScreen) {
       if (
         isAppVisible &&
         autoPlayMusicRef.current &&
@@ -147,11 +149,7 @@ function CanvasAudioSticker({
         }
       }
     } else {
-      if (!isHomeScreen) {
-        hasAutoPlayed.current = false;
-      } else {
-        hasAutoPlayed.current = false; // Reset when scrolled away
-      }
+      hasAutoPlayed.current = false;
 
       if (isPlaying) {
         try {
@@ -166,7 +164,7 @@ function CanvasAudioSticker({
     isLoaded,
     player,
     isFirstAudio,
-    isHomeScreen,
+    isPlayableScreen,
     safeTryPlay,
   ]);
 
