@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { StyleSheet, View, Alert, Platform, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -19,7 +19,7 @@ import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets 
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Device from 'expo-device';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
@@ -303,53 +303,33 @@ export default function OnboardingGuideScreen() {
     }
   }, [triggerShare]);
 
-  // Gesture scale feedback helper — runs on UI thread
-  const scaleDown = () => {
-    'worklet';
-    console.log('[GESTURE] scaleDown worklet fired');
-    pressedScale.value = withTiming(0.96, { duration: 150 });
-  };
-  const scaleUp = () => {
-    'worklet';
-    console.log('[GESTURE] scaleUp worklet fired');
-    pressedScale.value = withTiming(1, { duration: 150 });
-  };
 
-  const logWorklet = (msg: string) => {
-    'worklet';
-    console.log(msg);
-  };
+  // --- NATIVE TOUCH HANDLERS (No RNGH) ---
+  const lastTapRef = useRef(0);
 
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .maxDuration(300)
-    .onStart(() => {
-      'worklet';
-      logWorklet('[GESTURE] doubleTap onStart');
-      scaleDown();
-    })
-    .onEnd(() => {
-      'worklet';
-      logWorklet('[GESTURE] doubleTap onEnd');
-      scaleUp();
-      runOnJS(handleDoubleTap)();
-    })
-    .onFinalize(() => {
-      'worklet';
-      logWorklet('[GESTURE] doubleTap onFinalize');
-      scaleUp();
-    });
+  const handleCardPress = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current;
+    
+    if (timeSinceLastTap < 300) {
+      // Double Tap Detected natively
+      console.log('[NATIVE] Double tap detected! Phase:', phaseRef.current);
+      if (phaseRef.current === 4) {
+        handleDoubleTap();
+      }
+      lastTapRef.current = 0; // Reset
+    } else {
+      lastTapRef.current = now;
+    }
+  }, [handleDoubleTap]);
 
-  const longPress = Gesture.LongPress()
-    .minDuration(500)
-    .onStart(() => {
-      'worklet';
-      scaleDown();
-      runOnJS(handleLongPressCard)();
-    })
-    .onFinalize(scaleUp);
+  const handleCardLongPress = useCallback(() => {
+    console.log('[NATIVE] Long press detected! Phase:', phaseRef.current);
+    if (phaseRef.current === 5) {
+      handleLongPressCard();
+    }
+  }, [handleLongPressCard]);
 
-  const composedGestures = Gesture.Exclusive(doubleTap, longPress);
   const cardAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }));
 
   // ---------------------------------------------------------------------------
@@ -458,30 +438,37 @@ export default function OnboardingGuideScreen() {
           ) : null}
         </Animated.View>
 
-        {/* Full-size memory card for phases 4 & 5 */}
+        {/* SCRAPPED AND REBUILT: Full-size memory card for phases 4 & 5 using pure React Native Pressable */}
         {phase >= 4 && phase <= 5 && firstMemory && (
           <Animated.View
             entering={FadeIn.duration(500)}
-            style={{
+            style={[{
               position: 'absolute',
               bottom: Math.max(insets.bottom, 16) + 40,
               left: 21,
               right: 21,
               height: cardHeight,
-            }}
+              zIndex: 500, // Guarantee it sits on top of text/backgrounds
+            }, cardAnimatedStyle]}
           >
-            <GestureDetector gesture={composedGestures}>
-              <Animated.View style={[{ width: '100%', height: cardHeight }, cardAnimatedStyle]}>
-                <View pointerEvents="none" style={{ flex: 1 }}>
-                  <MemoryCard
-                    item={firstMemory}
-                    height={cardHeight}
-                    onUpdatePositions={() => {}}
-                    isExporting={isSharing}
-                  />
-                </View>
-              </Animated.View>
-            </GestureDetector>
+            <Pressable
+              onPressIn={() => { pressedScale.value = withTiming(0.96, { duration: 150 }); }}
+              onPressOut={() => { pressedScale.value = withTiming(1, { duration: 150 }); }}
+              onPress={handleCardPress}
+              onLongPress={handleCardLongPress}
+              delayLongPress={500}
+              style={{ flex: 1, width: '100%', height: '100%' }}
+            >
+              {/* Box-only prevents children from stealing the touch, but lets the Pressable catch it */}
+              <View pointerEvents="none" style={{ flex: 1, width: '100%', height: '100%' }}>
+                <MemoryCard
+                  item={firstMemory}
+                  height={cardHeight}
+                  onUpdatePositions={() => {}}
+                  isExporting={isSharing}
+                />
+              </View>
+            </Pressable>
           </Animated.View>
         )}
 
