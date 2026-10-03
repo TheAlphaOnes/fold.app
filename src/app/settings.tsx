@@ -300,7 +300,7 @@ export default function SettingsScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY SCREEN (APP SWITCHER)</ThemedText>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY SCREEN</ThemedText>
             </View>
             <Switch
               value={settings.privacyScreen}
