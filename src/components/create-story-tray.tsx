@@ -8,7 +8,7 @@ import Animated, {
   runOnJS 
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Check } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { AsciiArt } from '@/components/ascii-art';
 import { QUILL_ART } from '@/constants/ascii-art';
 
@@ -121,20 +121,6 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
                 ]}
               >
                 <Check size={16} color={title.trim() ? theme.text : theme.textMuted} />
-              </Pressable>
-              
-              <Pressable
-                onPress={handleClose}
-                hitSlop={12}
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: pressed ? theme.backgroundElement : 'transparent',
-                  },
-                ]}
-              >
-                <X size={16} color={theme.text} />
               </Pressable>
             </View>
           </View>
