@@ -15,6 +15,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Play, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -57,6 +58,14 @@ const ViewerCard = React.memo(({
   theme: any;
   onDoubleTap: (memoryId: number) => void;
 }) => {
+
+  // For videos
+  const player = useVideoPlayer(item.type === 'video' && item.uri ? item.uri : null, player => {
+    player.loop = true;
+    player.muted = true; // start muted for autoplay
+    player.play();
+  });
+
   const cardStyle = useAnimatedStyle(() => {
     // distance from center of screen to center of this card (in pixels)
     const distance = scrollX.value - (index * SNAP_INTERVAL);
@@ -103,7 +112,7 @@ const ViewerCard = React.memo(({
     <View style={{ width: ITEM_WIDTH, marginHorizontal: SPACING / 2, justifyContent: 'center' }}>
       <GestureDetector gesture={doubleTap}>
         <Animated.View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }, cardStyle]}>
-          {(item.type === 'image' || item.type === 'video') && (
+                  {item.type === 'image' && (
           <Image
             source={{ uri: item.uri }}
             style={StyleSheet.absoluteFill}
@@ -112,9 +121,12 @@ const ViewerCard = React.memo(({
           />
         )}
         {item.type === 'video' && (
-          <View style={styles.videoOverlay}>
-            <Play size={32} color="#FFF" fill="#FFF" />
-          </View>
+          <VideoView
+            player={player}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            nativeControls={false}
+          />
         )}
         {item.type === 'audio' && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>

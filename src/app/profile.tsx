@@ -27,6 +27,10 @@ export default function ProfileScreen() {
   const { settings } = useSettings();
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const { stories, refreshStories } = useStoriesStore();
+  const randomStories = React.useMemo(() => {
+    const shuffled = [...stories].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 5);
+  }, [stories]);
 
   useEffect(() => {
     refreshStories();
@@ -112,7 +116,7 @@ export default function ProfileScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}
             >
-              {stories.slice(0, 5).map(story => (
+              {randomStories.map(story => (
                 <Pressable
                   key={story.id}
                   onPress={() => router.push(`/stories/${story.id}`)}
@@ -140,7 +144,7 @@ export default function ProfileScreen() {
                   )}
                   <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
                   <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8 }}>
-                    <ThemedText style={{ color: '#fff', fontFamily: 'JetBrainsMono-Bold', fontSize: 10 }} numberOfLines={2}>
+                    <ThemedText style={{ color: '#fff', fontFamily: 'JetBrainsMono-Bold', fontSize: 10, textTransform: 'uppercase' }} numberOfLines={1}>
                       {story.title}
                     </ThemedText>
                   </View>
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
   },
   identityMeta: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
+    fontSize: 10, textTransform: 'uppercase',
     color: '#878787',
   },
   headerActions: {

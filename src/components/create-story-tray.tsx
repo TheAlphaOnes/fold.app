@@ -67,15 +67,22 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
     }
   };
 
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  }));
+
+  const trayStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }]
+  }));
+
   if (!mounted) return null;
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
       {/* Backdrop — absolutely positioned tap target */}
-      <Animated.View style={[StyleSheet.absoluteFill, useAnimatedStyle(() => ({
-        opacity: overlayOpacity.value,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-      }))]}>
+      <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
 
@@ -90,9 +97,7 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
 
         <Animated.View style={[
           styles.modalContent, 
-          useAnimatedStyle(() => ({
-            transform: [{ translateY: translateY.value }]
-          })), 
+          trayStyle, 
           { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }
         ]}>
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
