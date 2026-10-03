@@ -455,7 +455,7 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Floating bottom bar with Date and Add Button */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View pointerEvents="box-none" style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.dateContainer}>
           <Text 
             style={[styles.dateText, { color: theme.textMuted }]}
@@ -495,7 +495,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     zIndex: 999,
     elevation: 99,
-    pointerEvents: 'box-none',
   },
   dateContainer: {
     alignItems: 'center',

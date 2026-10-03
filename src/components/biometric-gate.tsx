@@ -35,6 +35,10 @@ export function BiometricGate({ children }: BiometricGateProps) {
   const [authStatus, setAuthStatus] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const initialMount = useRef(true);
 
+  // Debounce re-lock after system dialogs (permission prompts, Face ID, etc.)
+  const lastUnlockTime = useRef(0);
+  const RELOCK_DEBOUNCE_MS = 1500;
+
   // Reanimated values
   const overlayOpacity = useSharedValue(1);
   const coreScale = useSharedValue(1);
@@ -69,6 +73,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
 
   const handleSuccess = () => {
     setAuthStatus('success');
+    lastUnlockTime.current = Date.now();
     
     // Smooth fade out without bouncing
     coreOpacity.value = withTiming(0, { duration: 300 });
@@ -110,17 +115,26 @@ export function BiometricGate({ children }: BiometricGateProps) {
     };
   }, [settings.privacyScreen, loading]);
 
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      const prev = appState.current;
+
+      // Only re-lock when returning from genuine background, NOT from
+      // 'inactive' which is just a system dialog overlay (permission
+      // prompts, Face ID, share sheets). This prevents the biometric
+      // gate from firing when the user is mid-interaction.
+      if (prev === 'background' && nextAppState === 'active') {
         setShowPrivacy(false);
-        if (settings.requireBiometrics && !initialMount.current) {
+        const elapsed = Date.now() - lastUnlockTime.current;
+        if (settings.requireBiometrics && !initialMount.current && elapsed > RELOCK_DEBOUNCE_MS) {
           setIsLocked(true);
           resetAnimation();
           authenticate();
         }
       } 
-      else if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
+      // Show privacy screen when going to background (not inactive)
+      else if (prev === 'active' && nextAppState === 'background') {
         if (settings.privacyScreen) {
           setShowPrivacy(true);
         }
@@ -129,6 +143,16 @@ export function BiometricGate({ children }: BiometricGateProps) {
           resetAnimation();
         }
       }
+      // Handle inactive for privacy screen only (app switcher preview)
+      else if (prev === 'active' && nextAppState === 'inactive') {
+        if (settings.privacyScreen) {
+          setShowPrivacy(true);
+        }
+      }
+      else if (prev === 'inactive' && nextAppState === 'active') {
+        setShowPrivacy(false);
+      }
+
       appState.current = nextAppState;
     });
 

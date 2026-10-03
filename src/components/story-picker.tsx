@@ -221,10 +221,22 @@ export function StoryPicker(props: StoryPickerProps) {
   if (!mounted) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <Animated.View style={[styles.modalOverlay, overlayStyle]}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+      {/* Backdrop — absolutely positioned tap target */}
+      <Animated.View style={[StyleSheet.absoluteFill, overlayStyle, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={props.onClose} />
+      </Animated.View>
+
+      {/* Content — flex-based so KeyboardAvoidingView works */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+        pointerEvents="box-none"
+        keyboardVerticalOffset={0}
+      >
+        {/* Spacer that absorbs remaining space, making tray stick to bottom */}
+        <View style={{ flex: 1 }} pointerEvents="none" />
+
         <Animated.View style={[styles.modalContent, trayStyle, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle */}
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
@@ -324,7 +336,6 @@ export function StoryPicker(props: StoryPickerProps) {
             </>
           )}
         </Animated.View>
-      </Animated.View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -332,12 +343,7 @@ export function StoryPicker(props: StoryPickerProps) {
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    flex: 1,
     justifyContent: 'flex-end',
   },
   modalContent: {
