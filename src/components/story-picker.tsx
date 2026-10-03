@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Modal, Pressable, FlatList, TextInput, Platform, Keyboard, Animated } from 'react-native';
+import { View, StyleSheet, Pressable, FlatList, TextInput, Platform, Keyboard } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
 import { X, Plus, Book, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -39,6 +40,11 @@ function StoryThumbnail({ media, style }: { media: { uri: string; type: string }
   return null;
 }
 
+
+const TRAY_HEIGHT = 400; // approximate, dynamic is better but we use translateY translation
+const SPRING_IN = { damping: 22, stiffness: 280, mass: 0.8 };
+const TIMING_OUT = { duration: 180 };
+
 export function StoryPicker(props: StoryPickerProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -47,6 +53,40 @@ export function StoryPicker(props: StoryPickerProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  const [mounted, setMounted] = useState(false);
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    if (props.visible) {
+      setMounted(true);
+      progress.value = withSpring(1, SPRING_IN);
+    } else if (mounted) {
+      progress.value = withTiming(0, TIMING_OUT, (finished) => {
+        if (finished) runOnJS(setMounted)(false);
+      });
+    }
+  }, [props.visible]);
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+  }));
+
+  const trayStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          progress.value,
+          [0, 1],
+          [800, 0], // arbitrary large value to start below screen
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  if (!mounted) return null;
+
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -201,15 +241,16 @@ export function StoryPicker(props: StoryPickerProps) {
   };
 
   return (
-    <Modal visible={props.visible} animationType="slide" transparent>
-      <Animated.View style={[styles.modalOverlay, { paddingBottom: keyboardHeight }]}>
-        <View style={[styles.modalContent, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
+      <Animated.View style={[styles.modalOverlay, overlayStyle, { paddingBottom: keyboardHeight }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={props.onClose} />
+        <Animated.View style={[styles.modalContent, trayStyle, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle */}
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
 
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <ThemedText style={styles.headerTitle}>Add to Canvas</ThemedText>
+            <ThemedText style={styles.headerTitle}>Add to Story</ThemedText>
             <View style={styles.headerActions}>
               {isCreating ? (
                 <>
@@ -246,7 +287,7 @@ export function StoryPicker(props: StoryPickerProps) {
                 </>
               ) : (
                 <>
-                  {/* Circular + New Canvas button */}
+                  {/* Circular + New Story button */}
                   <Pressable
                     onPress={() => setIsCreating(true)}
                     hitSlop={12}
@@ -284,7 +325,7 @@ export function StoryPicker(props: StoryPickerProps) {
             <View style={[styles.createContainer, { minHeight: 240 }]}>
               <TextInput
                 style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                placeholder="Canvas title..."
+                placeholder="Story title..."
                 placeholderTextColor={theme.textMuted}
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -301,7 +342,7 @@ export function StoryPicker(props: StoryPickerProps) {
               </View>
             </View>
           ) : (
-            // ── Story list + inline "New Canvas" row ─────────────────────
+            // ── Story list + inline "New Story" row ─────────────────────
             <>
               <FlatList
                 data={stories}
@@ -313,23 +354,27 @@ export function StoryPicker(props: StoryPickerProps) {
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
                     <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-                      No canvases yet.
+                      No stories yet.
                     </ThemedText>
                   </View>
                 }
               />
             </>
           )}
-        </View>
+        </Animated.View>
       </Animated.View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -440,7 +485,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 24,
   },
-  // ── Inline "New Canvas" footer row ──────────────────────────────────────
+  // ── Inline "New Story" footer row ──────────────────────────────────────
   newCanvasRow: {
     flexDirection: 'row',
     alignItems: 'center',
