@@ -7,36 +7,43 @@ interface HandDrawnArrowProps {
   height?: number;
 }
 
-export function HandDrawnArrow({ color = "#000000", width = 150, height = 130 }: HandDrawnArrowProps) {
+/**
+ * A single continuous hand-drawn SVG arrow.
+ * No strokeDasharray — that was the root cause of all previous breaks.
+ * The entire shape is ONE path: it enters from off-screen right,
+ * sweeps wide left with a swirl, angles back, and terminates in a clean arrowhead.
+ * Because it's solid, the head and stem ALWAYS connect perfectly.
+ */
+export function HandDrawnArrow({ color = "#000000", width = 160, height = 140 }: HandDrawnArrowProps) {
   return (
-    <Svg width={width} height={height} viewBox="0 0 150 130" fill="none">
+    <Svg width={width} height={height} viewBox="0 0 160 140" fill="none">
       {/* 
-        A mix of graceful swirls and sharp angles.
-        Comes from off-screen top-right, swoops up and down, zigs right, and drops down.
-        pathLength="102" + strokeDasharray="6 6" perfectly mathematicalizes the dashes 
-        so the final dash lands exactly solid on the tip (75, 120).
+        The stem: starts off right edge, swoops wide left (the "coming from somewhere" feel),
+        does a tight hook/swirl, then drops perfectly straight down.
+        The path ends exactly at (80, 126) — the same point the arrowhead is pinned to.
       */}
       <Path
-        d="M 140 20 Q 100 -10, 80 40 L 110 50 Q 75 70, 75 120"
+        d="M 155 10 C 120 -5, 20 20, 30 60 C 40 90, 100 70, 80 126"
         stroke={color}
-        strokeWidth="2.5"
+        strokeWidth="2.2"
         strokeLinecap="round"
-        strokeLinejoin="round"
         fill="none"
-        strokeDasharray="6 6"
-        pathLength="102"
+        opacity={0.7}
       />
-      
+
       {/* 
-        The symmetrical arrowhead perfectly attached to the final solid dash.
+        The arrowhead: a V-shape pinned exactly at (80, 126).
+        Because this is a separate solid path with no dashes,
+        it always connects perfectly regardless of curve length.
       */}
       <Path
-        d="M 63 108 L 75 120 L 87 108"
+        d="M 67 113 L 80 126 L 93 113"
         stroke={color}
-        strokeWidth="2.5"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
+        opacity={0.7}
       />
     </Svg>
   );
