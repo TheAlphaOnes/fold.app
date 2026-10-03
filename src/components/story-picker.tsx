@@ -85,7 +85,6 @@ export function StoryPicker(props: StoryPickerProps) {
     ],
   }));
 
-  if (!mounted) return null;
 
 
   useEffect(() => {
@@ -239,6 +238,8 @@ export function StoryPicker(props: StoryPickerProps) {
       </Pressable>
     );
   };
+
+  if (!mounted) return null;
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
