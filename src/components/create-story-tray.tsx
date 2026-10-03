@@ -12,6 +12,7 @@ import { Check } from 'lucide-react-native';
 import { AsciiArt } from '@/components/ascii-art';
 import { COFFEE_ART } from '@/constants/ascii-art';
 
+import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
@@ -27,6 +28,7 @@ interface CreateStoryTrayProps {
 
 export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
   const theme = useTheme();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [title, setTitle] = useState('');

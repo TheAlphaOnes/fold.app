@@ -76,6 +76,7 @@ import { AppThemeProvider, useThemeContext } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/hooks/use-settings";
 import { AnimatedSplashScreen } from "@/components/splash-screen";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
+import { getAgeRange } from '@/utils/dob';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -117,6 +118,20 @@ function PostHogSync() {
       posthog.screen(pathname, params as Record<string, any>);
     }
   }, [posthog, pathname, params]);
+
+  // Sync user demographic props
+  useEffect(() => {
+    if (posthog) {
+      const ageRange = getAgeRange(settings.dob);
+      const props = {
+        has_name: !!settings.name,
+        
+        ...(ageRange ? { age_range: ageRange } : {})
+      };
+      posthog.register(props);
+      posthog.capture("$set", { $set: props });
+    }
+  }, [posthog, settings.dob, settings.name, ]);
 
   // Global Error Handler
   useEffect(() => {

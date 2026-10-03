@@ -24,6 +24,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 
+import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
@@ -63,6 +64,7 @@ const CarouselNode = React.memo(({
 }) => {
   const { width, height } = useWindowDimensions();
   const theme = useTheme();
+  const posthog = usePostHog();
 
   const ITEM_WIDTH = width * 0.3;
   const ITEM_HEIGHT = ITEM_WIDTH * 1.3;
@@ -147,6 +149,7 @@ export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   
@@ -183,6 +186,7 @@ export default function StoryDetailScreen() {
     if (activeStory) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       removeStory(activeStory.id);
+      posthog?.capture('Story Deleted');
       router.back();
     }
   };

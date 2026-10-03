@@ -27,24 +27,29 @@ export default function PrivacyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ThemedText style={[styles.heading, { color: theme.text }]}>1. Data Collection</ThemedText>
+        <ThemedText style={[styles.heading, { color: theme.text }]}>1. Local Storage First</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          Fold is designed with privacy as a core principle. All of your memories, media, and entries are stored entirely locally on your device. We do not have access to your personal data.
+          Fold is architected with a strict privacy-by-design approach. All of your memories, journal entries, audio recordings, and media are stored securely and exclusively on your local device storage. We do not transmit, access, or store any of your generated content on our servers.
         </ThemedText>
 
-        <ThemedText style={[styles.heading, { color: theme.text }]}>2. Analytics & Telemetry</ThemedText>
+        <ThemedText style={[styles.heading, { color: theme.text }]}>2. Telemetry and Usage Data</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          To help us improve Fold, we collect anonymous usage data and crash reports using PostHog. This data includes screen views, feature usage (like when a memory is created or shared), and stack traces for app crashes. This data is strictly anonymous and cannot be traced back to your personal identity or your contents. You can opt out of non-essential analytics in the Settings menu.
+          To ensure the stability and improvement of Fold, we collect anonymized telemetry via PostHog. This includes crash reports, screen views, and generalized demographic brackets (such as an aggregated age range derived from your provided Date of Birth, e.g., "18-24"). This data is strictly stripped of PII (Personally Identifiable Information) and cannot be traced back to your individual device or identity.
         </ThemedText>
 
-        <ThemedText style={[styles.heading, { color: theme.text }]}>3. Third-Party Services</ThemedText>
+        <ThemedText style={[styles.heading, { color: theme.text }]}>3. Third-Party Integrations</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          We use the iTunes Search API to provide music search functionality. When you search for music, your query (and your device's region code) is sent directly to Apple's servers to retrieve results.
+          We utilize the Apple iTunes Search API strictly to facilitate the music tagging features within the app. Search queries made in the music picker are routed to Apple's servers. No internal journal data is ever attached to these external requests.
         </ThemedText>
 
-        <ThemedText style={[styles.heading, { color: theme.text }]}>4. Changes</ThemedText>
+        <ThemedText style={[styles.heading, { color: theme.text }]}>4. Children's Privacy</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          We may update this Privacy Policy from time to time. Any changes will be reflected in the app.
+          Fold is not directed towards children under the age of 13. By utilizing the demographic bucket features (Date of Birth verification), we actively avoid profiling or collecting data from underage users.
+        </ThemedText>
+        
+        <ThemedText style={[styles.heading, { color: theme.text }]}>5. Policy Updates</ThemedText>
+        <ThemedText style={[styles.paragraph, { color: theme.text }]}>
+          We reserve the right to modify this privacy policy at any time. Material changes will be communicated via in-app notifications.
         </ThemedText>
       </ScrollView>
     </View>
@@ -52,44 +57,11 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 21,
-    paddingBottom: 21,
-  },
-  title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 18,
-    letterSpacing: 2,
-  },
-  closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    paddingHorizontal: 21,
-    paddingBottom: 40,
-  },
-  heading: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-    letterSpacing: 1,
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  paragraph: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 22,
-    letterSpacing: -0.2,
-  }
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 21, paddingBottom: 21 },
+  title: { fontFamily: 'JetBrainsMono-Bold', fontSize: 18, letterSpacing: 2 },
+  closeBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
+  content: { paddingHorizontal: 21, paddingBottom: 40 },
+  heading: { fontFamily: 'JetBrainsMono-Bold', fontSize: 14, letterSpacing: 1, marginTop: 24, marginBottom: 8 },
+  paragraph: { fontFamily: 'JetBrainsMono-Regular', fontSize: 14, lineHeight: 22, letterSpacing: -0.2 }
 });
