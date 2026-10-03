@@ -30,6 +30,7 @@ import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AddButton } from '@/components/add-button';
 import { RecordingOverlay } from '@/components/recording-overlay';
+import { HandDrawnArrow } from '@/components/hand-drawn-arrow';
 import { MemoryCard } from '@/components/memory-card';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { ActionLink } from '@/components/action-link';
@@ -444,15 +445,9 @@ export default function OnboardingGuideScreen() {
             <View style={{ alignItems: 'center', gap: 12 }}>
               {!isSuccess && (
                 <Animated.View entering={FadeIn.delay(1000).duration(800)} style={arrowStyle}>
-                  <ThemedText style={{ 
-                    fontFamily: 'Caveat_700Bold', 
-                    fontSize: 32, 
-                    color: theme.text,
-                    opacity: 0.6,
-                    transform: [{ rotate: '5deg' }]
-                  }}>
-                    {phase === 1 ? 'tap here ↓' : phase === 2 ? 'hold here ↓' : 'swipe up ↑'}
-                  </ThemedText>
+                  <View style={{ opacity: 0.5, transform: [{ rotate: phase === 3 ? '180deg' : '0deg' }] }}>
+                    <HandDrawnArrow color={theme.text} />
+                  </View>
                 </Animated.View>
               )}
               <AddButton
