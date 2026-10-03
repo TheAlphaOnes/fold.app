@@ -518,7 +518,7 @@ export default function StoryDetailScreen() {
               <AsciiArt
                 art={CASSETTE_ART}
                 color={theme.textMuted}
-                fontSize={8}
+                fontSize={5}
               />
             </View>
             <Pressable
