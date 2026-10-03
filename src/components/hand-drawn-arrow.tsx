@@ -17,11 +17,11 @@ export function HandDrawnArrow({ color = "#000000", width = 40, height = 70 }: H
         strokeWidth="2.5"
         strokeLinecap="round"
         fill="none"
-        strokeDasharray="5 5"
+        strokeDasharray="6 6"
       />
-      {/* The arrowhead perfectly attached at 20,60 */}
+      {/* The arrowhead perfectly attached, extending slightly UP the stem to cover any dash gaps */}
       <Path
-        d="M12 50 L 20 60 L 28 50"
+        d="M23 48 Q 21 55, 20 60 M12 50 L 20 60 L 28 50"
         stroke={color}
         strokeWidth="2.5"
         strokeLinecap="round"
