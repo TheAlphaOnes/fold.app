@@ -96,7 +96,7 @@ export function EmptyState() {
     <View style={styles.container}>
       {/* ASCII art */}
       <Animated.View style={artStyle}>
-        <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={10} />
+        <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={6} />
       </Animated.View>
 
       {/* Status label */}
