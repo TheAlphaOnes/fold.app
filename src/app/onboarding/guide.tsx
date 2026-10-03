@@ -3,7 +3,7 @@ import { StyleSheet, View, Alert, Platform, useWindowDimensions } from 'react-na
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  FadeIn,
+  FadeIn, FadeInUp,
   SlideInRight,
   SlideOutLeft,
   useSharedValue,
@@ -30,6 +30,7 @@ import { AddButton } from '@/components/add-button';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { MemoryCard } from '@/components/memory-card';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
+import { ActionLink } from '@/components/action-link';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { isValidDob } from '@/utils/dob';
 
@@ -91,16 +92,17 @@ export default function OnboardingGuideScreen() {
     router.replace('/');
   };
 
-  // Auto-complete when Phase 6 is reached — no action needed from the user,
-  // just show SYSTEM INITIALIZED for 1.5s then navigate to the timeline.
+
+  // Phase 6: show a CTA button after a brief dramatic pause
+  const [showProceedBtn, setShowProceedBtn] = useState(false);
   useEffect(() => {
     if (phase === 6) {
-      const timer = setTimeout(() => {
-        handleComplete();
-      }, 1500);
+      setShowProceedBtn(false);
+      const timer = setTimeout(() => setShowProceedBtn(true), 2000);
       return () => clearTimeout(timer);
     }
   }, [phase]);
+
 
   const handleActionSuccess = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -333,7 +335,7 @@ export default function OnboardingGuideScreen() {
       <GrainBackground />
 
       <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={styles.textContainer}>
+        <View style={[styles.textContainer, (phase === 4 || phase === 5) && { position: 'absolute', top: insets.top + 2, marginTop: 0 }]}>
           {phase === 1 && (
             <Animated.View key="phase1" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 1</ThemedText>
@@ -384,7 +386,7 @@ export default function OnboardingGuideScreen() {
 
         </View>
 
-        {/* Action Area — AddButton for phases 1-3, card for phases 4-5 */}
+        {/* Action Area — AddButton for phases 1-3, card for phases 4-5, button for 6 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -396,6 +398,10 @@ export default function OnboardingGuideScreen() {
               onLongPressStart={() => { if (phase === 2) handleLongPressStart(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressEnd={() => { if (phase === 2) handleLongPressEnd(); }}
             />
+          ) : phase === 6 && showProceedBtn ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink text="ENTER FOLD" onPress={handleComplete} />
+            </Animated.View>
           ) : null}
         </Animated.View>
 
@@ -450,8 +456,8 @@ export default function OnboardingGuideScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
-  textContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -150 },
-  phaseBlock: { alignItems: 'center', position: 'absolute' },
+  textContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -150, zIndex: 100, width: '100%' },
+  phaseBlock: { alignItems: 'center', position: 'absolute', top: 0, left: 0, right: 0 },
   phaseTitle: { fontFamily: 'BitcountGridDouble-Light', fontSize: 24, letterSpacing: 4, marginBottom: 16, opacity: 0.5 },
   instruction: { fontFamily: 'JetBrainsMono-Regular', fontSize: 24, lineHeight: 36, textAlign: 'center' },
   bottomBar: { position: 'absolute', bottom: 40, left: 0, right: 0, zIndex: 999, alignItems: 'center' },
