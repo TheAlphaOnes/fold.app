@@ -480,8 +480,11 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: 'JetBrainsMono-Bold',
     textTransform: 'uppercase',
-    fontSize: 18,
-    padding: 16,
+    fontSize: 14,
+    height: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+    borderWidth: 0,
     borderRadius: 12,
   },
   createActions: {
