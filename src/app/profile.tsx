@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Settings as SettingsIcon, Book, ChevronRight } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { useSettings } from '@/hooks/use-settings';
 import { getAllCompositions } from '@/db/journal-repository';
 import type { Composition } from '@/types/journal';
 
+import { useStoriesStore } from '@/hooks/use-stories';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -25,6 +26,11 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const [compositions, setCompositions] = useState<Composition[]>([]);
+  const { stories, refreshStories } = useStoriesStore();
+
+  useEffect(() => {
+    refreshStories();
+  }, []);
 
   useEffect(() => {
     getAllCompositions().then(setCompositions).catch(console.error);
@@ -79,23 +85,70 @@ export default function ProfileScreen() {
         {/* Combined Dashboard Card */}
         <StreakCard compositions={compositions} />
 
-        {/* Sleek Story Board Row */}
-        <Pressable 
-          style={({ pressed }) => [
-            styles.sleekRow, 
-            { 
-              backgroundColor: pressed ? '#E0E0E0' : elementBg, 
-              borderColor: borderColor,
-            }
-          ]}
-          onPress={() => router.push('/stories')}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Book size={14} color={theme.textMuted} />
-            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
-          </View>
-          <ChevronRight size={16} color={mutedText} />
-        </Pressable>
+                {/* Extended Story Board Card */}
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
+          <Pressable 
+            style={({ pressed }) => [
+              { 
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 16,
+                backgroundColor: pressed ? 'rgba(255,255,255,0.05)' : 'transparent', 
+              }
+            ]}
+            onPress={() => router.push('/stories')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Book size={14} color={theme.textMuted} />
+              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
+            </View>
+            <ChevronRight size={16} color={mutedText} />
+          </Pressable>
+
+          {stories.length > 0 && (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}
+            >
+              {stories.slice(0, 5).map(story => (
+                <Pressable
+                  key={story.id}
+                  onPress={() => router.push(`/stories/${story.id}`)}
+                  style={({ pressed }) => [
+                    {
+                      width: 100,
+                      height: 140,
+                      borderRadius: 8,
+                      overflow: 'hidden',
+                      backgroundColor: theme.backgroundElement,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      opacity: pressed ? 0.8 : 1,
+                    }
+                  ]}
+                >
+                  {story.coverImageUri ? (
+                    <Image source={{ uri: story.coverImageUri }} style={{ width: '100%', height: '100%' }} />
+                  ) : story.sampleMedia && story.sampleMedia.length > 0 ? (
+                    <Image source={{ uri: story.sampleMedia[0].uri }} style={{ width: '100%', height: '100%' }} />
+                  ) : (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                      <ThemedText style={{ color: theme.textMuted, fontFamily: 'JetBrainsMono-Bold' }}>///</ThemedText>
+                    </View>
+                  )}
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
+                  <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8 }}>
+                    <ThemedText style={{ color: '#fff', fontFamily: 'JetBrainsMono-Bold', fontSize: 10 }} numberOfLines={2}>
+                      {story.title}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
 
         {/* Heat Map (Activity Grid) */}
         <ActivityGrid compositions={compositions} />

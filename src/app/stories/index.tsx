@@ -23,6 +23,7 @@ function StoryThumbnail({ media, style }: { media: { uri: string; type: string }
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
+import { CreateStoryTray } from '@/components/create-story-tray';
 import { useStoriesStore } from '@/hooks/use-stories';
 import type { Story } from '@/types/journal';
 
@@ -33,8 +34,7 @@ export default function StoryBoardScreen() {
   
   const { stories, refreshStories, addStory } = useStoriesStore();
   const [isCreating, setIsCreating] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-
+  
   type SortOption = 'updated_desc' | 'updated_asc' | 'alpha_asc' | 'alpha_desc';
   type FilterOption = 'all' | 'month' | 'year';
   const [sortBy, setSortBy] = useState<SortOption>('updated_desc');
@@ -65,22 +65,6 @@ export default function StoryBoardScreen() {
   useEffect(() => {
     refreshStories();
   }, []);
-
-  const handleCreate = async () => {
-    if (!newTitle.trim()) {
-      setIsCreating(false);
-      return;
-    }
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const story = await addStory({ title: newTitle.trim() });
-    setNewTitle('');
-    setIsCreating(false);
-    Keyboard.dismiss();
-    
-    // Jump straight into the new story
-    router.push(`/stories/${story.id}`);
-  };
 
   const renderItem = ({ item }: { item: Story }) => {
     const formattedDate = new Intl.DateTimeFormat('en-US', {
@@ -182,8 +166,7 @@ export default function StoryBoardScreen() {
           </ThemedText>
         </View>
 
-        {!isCreating && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {(filterBy !== 'all' || sortBy !== 'updated_desc') && (
               <ThemedText style={{ fontSize: 10, color: theme.accentWarm, fontFamily: 'JetBrainsMono-Bold', marginRight: 4 }}>
                 {filterBy !== 'all' ? (filterBy === 'month' ? '30D' : '1Y') : ''}
@@ -235,30 +218,10 @@ export default function StoryBoardScreen() {
               <Plus size={16} color={theme.background} strokeWidth={3} />
             </Pressable>
           </View>
-        )}
       </View>
 
-      {/* Create Mode Inline */}
-      {isCreating && (
-        <View style={[styles.createSection, { borderBottomColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-          <TextInput
-            style={[styles.input, { color: theme.text }]}
-            placeholder="STORY.TITLE..."
-            placeholderTextColor={theme.textMuted}
-            value={newTitle}
-            onChangeText={setNewTitle}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleCreate}
-          />
-          <Pressable onPress={() => setIsCreating(false)} style={styles.cancelBtn}>
-            <X size={20} color={theme.textMuted} />
-          </Pressable>
-        </View>
-      )}
-
       {/* Empty State */}
-      {stories.length === 0 && !isCreating ? (
+      {stories.length === 0 ? (
         <View style={styles.emptyContainer}>
           <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
             NO STORIES FOUND.
@@ -275,6 +238,9 @@ export default function StoryBoardScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
+      )}
+      {isCreating && (
+        <CreateStoryTray onClose={() => setIsCreating(false)} />
       )}
     </View>
   );

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -205,19 +205,19 @@ export default function TimeMachineScreen() {
       <Pressable
         onPress={() => router.back()}
         accessibilityRole="button"
-        accessibilityLabel="Close time machine"
+        accessibilityLabel="Go back"
         style={({ pressed }) => [
           s.close,
           {
-            top: tapeTop + TAPE_HEIGHT / 2 - CLOSE_SIZE / 2,
-            backgroundColor: theme.background,
+            top: Math.max(insets.top, 20),
+            backgroundColor: theme.backgroundElement,
             borderColor: theme.border,
-            opacity: pressed ? 0.5 : 1,
+            opacity: pressed ? 0.8 : 1,
           },
           pressed && s.pressed,
         ]}
       >
-        <X size={16} color={theme.text} />
+        <ArrowLeft size={16} color={theme.text} />
       </Pressable>
     </View>
   );
@@ -250,7 +250,7 @@ const s = StyleSheet.create({
   },
   close: {
     position: 'absolute',
-    right: 16,
+    left: 24,
     zIndex: 100,
     width: CLOSE_SIZE,
     height: CLOSE_SIZE,

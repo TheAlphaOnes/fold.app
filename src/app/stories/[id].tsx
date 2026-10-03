@@ -452,8 +452,8 @@ export default function StoryDetailScreen() {
         </View>
 
         <View style={styles.headerCenter} pointerEvents="none">
-          <View style={[styles.titleBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-            <ThemedText style={[styles.titleText, { color: theme.text }]}>
+          <View style={[styles.titleBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border, maxWidth: '60%' }]}>
+            <ThemedText style={[styles.titleText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
               {activeStory.title}
             </ThemedText>
           </View>
