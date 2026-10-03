@@ -135,7 +135,8 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
           <View style={styles.createContainer}>
             <TextInput
               style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-              placeholder="Name your story..."
+              placeholder="STORY.TITLE..."
+              autoCapitalize="characters"
               placeholderTextColor={theme.textMuted}
               value={title}
               onChangeText={setTitle}
@@ -205,7 +206,8 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   input: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: 'JetBrainsMono-Bold',
+    textTransform: 'uppercase',
     fontSize: 14,
     borderWidth: 0,
     borderRadius: 12,

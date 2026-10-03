@@ -304,7 +304,8 @@ export function StoryPicker(props: StoryPickerProps) {
             <View style={[styles.createContainer]}>
               <TextInput
                 style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-                placeholder="Name your story..."
+                placeholder="STORY.TITLE..."
+              autoCapitalize="characters"
                 placeholderTextColor={theme.textMuted}
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -370,7 +371,8 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   sectionLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: 'JetBrainsMono-Bold',
+    textTransform: 'uppercase',
     fontSize: 10,
     letterSpacing: 2.5,
   },
@@ -476,7 +478,8 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   input: {
-    fontFamily: 'JetBrainsMono-Medium',
+    fontFamily: 'JetBrainsMono-Bold',
+    textTransform: 'uppercase',
     fontSize: 18,
     padding: 16,
     borderRadius: 12,
