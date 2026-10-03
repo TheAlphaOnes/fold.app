@@ -249,29 +249,36 @@ export default function OnboardingGuideScreen() {
       pressedScale.value = withTiming(1, { duration: 150 });
     });
 
+  // All async share logic lives here on the JS thread.
+  // Called via runOnJS from the longPress gesture so the worklet runtime
+  // never tries to call React state setters or async APIs directly.
+  const triggerShare = useCallback(() => {
+    setIsSharing(true);
+    setScanKey(prev => prev + 1);
+
+    setTimeout(() => {
+      const advance = () => {
+        setIsSharing(false);
+        handleActionSuccess();
+      };
+      if (hiddenCardRef.current) {
+        captureRef(hiddenCardRef, { format: 'png', quality: 1 })
+          .then(uri => Sharing.shareAsync(uri))
+          .catch(() => {})
+          .finally(() => advance());
+      } else {
+        advance();
+      }
+    }, 1750);
+  }, [handleActionSuccess]);
+
   const longPress = Gesture.LongPress().minDuration(500)
     .onStart(() => {
       if (phase === 5 && firstMemory) {
         pressedScale.value = withTiming(0.96, { duration: 150 });
         runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Heavy);
-        runOnJS(setIsSharing)(true);
-        runOnJS(setScanKey)(prev => prev + 1);
-        
-        setTimeout(() => {
-          const advance = () => {
-            setIsSharing(false);
-            handleActionSuccess();
-          };
-          if (hiddenCardRef.current) {
-            captureRef(hiddenCardRef, { format: 'png', quality: 1 })
-              .then(uri => Sharing.shareAsync(uri))
-              .catch(() => {}) // swallow — share dismissed or captureRef failed
-              .finally(() => advance()); // ALWAYS advance regardless of outcome
-          } else {
-            // Ref not ready — advance anyway so phase never gets stuck
-            advance();
-          }
-        }, 1750);
+        // Hand off entirely to JS thread — no state/async calls on UI thread
+        runOnJS(triggerShare)();
       }
     })
     .onFinalize(() => {
