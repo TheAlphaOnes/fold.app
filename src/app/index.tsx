@@ -71,7 +71,7 @@ export default function HomeScreen() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 100);
   
-  const { updateSetting } = useSettingsStore();
+  const { settings, updateSetting } = useSettingsStore();
   
   // The user wants the active card perfectly physically centered in the absolute screen
   // so that the previous card and next card peek by the exact same number of pixels.
