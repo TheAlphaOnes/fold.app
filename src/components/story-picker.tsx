@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { AsciiArt } from '@/components/ascii-art';
+import { BOOK_ART } from '@/constants/ascii-art';
 import { CANVAS_TERMINAL_ART } from '@/constants/ascii-art';
 import type { Story } from '@/types/journal';
 
@@ -302,19 +303,25 @@ export function StoryPicker(props: StoryPickerProps) {
           {isCreating ? (
             // ── Create form ──────────────────────────────────────────────
             <View style={[styles.createContainer]}>
-              <TextInput
-                style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
-                placeholder="STORY.TITLE..."
-              autoCapitalize="characters"
-                placeholderTextColor={theme.textMuted}
-                value={newTitle}
-                onChangeText={setNewTitle}
-                cursorColor={theme.text}
-                selectionColor={theme.text}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleCreate}
-              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: theme.border, paddingBottom: 8 }}>
+                <ThemedText style={{ color: theme.accentWarm, fontFamily: 'JetBrainsMono-Bold', fontSize: 18, marginRight: 12 }}>{'>'}</ThemedText>
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="STORY.TITLE..."
+                  autoCapitalize="characters"
+                  placeholderTextColor={theme.textMuted}
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  cursorColor={theme.accentWarm}
+                  selectionColor={theme.accentWarm}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreate}
+                />
+              </View>
+              <View style={{ alignItems: 'center', marginTop: 40, opacity: 0.6 }}>
+                <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={12} />
+              </View>
             </View>
           ) : (
             // ── Story list + inline "New Story" row ─────────────────────
@@ -480,12 +487,11 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: 'JetBrainsMono-Bold',
     textTransform: 'uppercase',
-    fontSize: 14,
-    height: 52,
-    paddingHorizontal: 16,
+    fontSize: 18,
+    flex: 1,
+    height: 40,
+    paddingHorizontal: 0,
     paddingVertical: 0,
-    borderWidth: 0,
-    borderRadius: 12,
   },
   createActions: {
     flexDirection: 'row',
