@@ -243,7 +243,7 @@ export function StoryPicker(props: StoryPickerProps) {
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
-      <Animated.View style={[styles.modalOverlay, overlayStyle, { paddingBottom: keyboardHeight }]}>
+      <Animated.View style={[styles.modalOverlay, overlayStyle, { paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={props.onClose} />
         <Animated.View style={[styles.modalContent, trayStyle, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle */}
@@ -309,10 +309,10 @@ export function StoryPicker(props: StoryPickerProps) {
 
           {isCreating ? (
             // ── Create form ──────────────────────────────────────────────
-            <View style={[styles.createContainer, { minHeight: 240 }]}>
+            <View style={[styles.createContainer]}>
               <TextInput
-                style={[styles.input, { color: theme.text, borderColor: theme.border }]}
-                placeholder="Story title..."
+                style={[styles.input, { color: theme.text, backgroundColor: theme.backgroundElement }]}
+                placeholder="Name your story..."
                 placeholderTextColor={theme.textMuted}
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -322,11 +322,6 @@ export function StoryPicker(props: StoryPickerProps) {
                 returnKeyType="done"
                 onSubmitEditing={handleCreate}
               />
-
-              {/* ASCII art — cyber-minimalist canvas init terminal */}
-              <View style={{ marginTop: 'auto', alignItems: 'center', opacity: 0.3 }}>
-                <AsciiArt art={CANVAS_TERMINAL_ART} color={theme.text} fontSize={10} />
-              </View>
             </View>
           ) : (
             // ── Story list + inline "New Story" row ─────────────────────
@@ -490,17 +485,14 @@ const styles = StyleSheet.create({
   // ── Create form ─────────────────────────────────────────────────────────
   createContainer: {
     padding: 24,
-    paddingTop: 28,
-    gap: 32,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
   input: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 22,
-    lineHeight: 28,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingBottom: 10,
-    paddingTop: 0,
-    paddingHorizontal: 0,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 18,
+    padding: 16,
+    borderRadius: 12,
   },
   createActions: {
     flexDirection: 'row',
