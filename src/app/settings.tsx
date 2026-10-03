@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput, Switch } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Share, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity } from 'lucide-react-native';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
@@ -48,23 +46,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleExport = async () => {
-    await requireAuth('Authenticate to export your memories', async () => {
-      try {
-        const dataStr = JSON.stringify(compositions, null, 2);
-        const fileUri = `${FileSystem.documentDirectory}fold_export.json`;
-        await FileSystem.writeAsStringAsync(fileUri, dataStr);
-        
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri);
-        } else {
-          Alert.alert('Export Error', 'Sharing is not available on this device');
-        }
-      } catch (e) {
-        Alert.alert('Export Error', 'Failed to export data');
-      }
-    });
-  };
 
   const handleDeleteAll = () => {
     requireAuth('Authenticate to wipe all device memory', () => {
@@ -302,17 +283,6 @@ export default function SettingsScreen() {
           <ThemedText style={styles.sectionTitle}>SYSTEM OPERATIONS</ThemedText>
           <View style={[styles.divider, { backgroundColor: theme.text }]} />
           
-          <Pressable 
-            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={handleExport}
-          >
-            <View style={styles.settingRowLeft}>
-              <Share size={16} color={theme.text} />
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>EXPORT JSON DATA</ThemedText>
-            </View>
-          </Pressable>
-
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
