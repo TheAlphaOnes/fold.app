@@ -250,8 +250,8 @@ export function StoryPicker(props: StoryPickerProps) {
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
 
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.border }]}>
-            <ThemedText style={styles.headerTitle}>Add to Story</ThemedText>
+          <View style={styles.header}>
+            <ThemedText style={[styles.sectionLabel, { color: theme.textMuted }]}>ADD TO STORY</ThemedText>
             <View style={styles.headerActions}>
               {isCreating ? (
                 <>
@@ -301,20 +301,6 @@ export function StoryPicker(props: StoryPickerProps) {
                     ]}
                   >
                     <Plus size={16} color={theme.text} />
-                  </Pressable>
-                  {/* Circular X close modal button */}
-                  <Pressable
-                    onPress={props.onClose}
-                    hitSlop={12}
-                    style={({ pressed }) => [
-                      styles.closeBtn,
-                      {
-                        borderColor: theme.border,
-                        backgroundColor: pressed ? theme.backgroundElement : 'transparent',
-                      },
-                    ]}
-                  >
-                    <X size={16} color={theme.text} />
                   </Pressable>
                 </>
               )}
@@ -385,24 +371,26 @@ const styles = StyleSheet.create({
     // Content drives the height now, so it hugs the bottom tightly
   },
   handle: {
-    width: 36,
+    width: 32,
     height: 4,
     borderRadius: 2,
+    opacity: 0.4,
     alignSelf: 'center',
-    marginTop: 12,
+    marginTop: 10,
     marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  headerTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 15,
+  sectionLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 2.5,
   },
   headerActions: {
     flexDirection: 'row',
