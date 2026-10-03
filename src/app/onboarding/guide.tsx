@@ -45,6 +45,8 @@ export default function OnboardingGuideScreen() {
   const { compositions, addComposition } = useJournalStore();
 
   const [phase, setPhase] = useState(1);
+  const phaseRef = useRef(phase);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [isSuccess, setIsSuccess] = useState(false);
   const initialCount = useRef(compositions.length);
   const isCameraOpenRef = useRef(false);
@@ -247,6 +249,14 @@ export default function OnboardingGuideScreen() {
   // Phase 5: Hold to share
   const firstMemory = compositions[0]; // The memory they made in Phase 1, 2, or 3
 
+  const onDoubleTapJS = useCallback(() => {
+    if (phaseRef.current === 4 && compositions[0]) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      router.push(`/memory/${compositions[0].id}`);
+      handleActionSuccess();
+    }
+  }, [compositions, handleActionSuccess]);
+
   const doubleTap = Gesture.Tap().numberOfTaps(2)
     .onStart(() => {
       pressedScale.value = withTiming(0.96, { duration: 150 });
@@ -254,11 +264,7 @@ export default function OnboardingGuideScreen() {
     })
     .onEnd(() => {
       pressedScale.value = withTiming(1, { duration: 150 });
-      if (phase === 4 && firstMemory) {
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-        runOnJS(router.push)(`/memory/${firstMemory.id}`);
-        runOnJS(handleActionSuccess)();
-      }
+      runOnJS(onDoubleTapJS)();
     })
     .onFinalize(() => {
       pressedScale.value = withTiming(1, { duration: 150 });
@@ -287,14 +293,17 @@ export default function OnboardingGuideScreen() {
     }, 1750);
   }, [handleActionSuccess]);
 
+  const onLongPressJS = useCallback(() => {
+    if (phaseRef.current === 5 && compositions[0]) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      triggerShare();
+    }
+  }, [compositions, triggerShare]);
+
   const longPress = Gesture.LongPress().minDuration(500)
     .onStart(() => {
-      if (phase === 5 && firstMemory) {
-        pressedScale.value = withTiming(0.96, { duration: 150 });
-        runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Heavy);
-        // Hand off entirely to JS thread — no state/async calls on UI thread
-        runOnJS(triggerShare)();
-      }
+      pressedScale.value = withTiming(0.96, { duration: 150 });
+      runOnJS(onLongPressJS)();
     })
     .onFinalize(() => {
       pressedScale.value = withTiming(1, { duration: 150 });

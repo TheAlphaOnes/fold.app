@@ -247,7 +247,6 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isAppReady) {
-      if (!segments.length) return;
       const inOnboarding = segments[0] === "onboarding";
       const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose" || segments[0] === "memory";
       
