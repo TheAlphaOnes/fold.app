@@ -335,37 +335,37 @@ export default function OnboardingGuideScreen() {
       <GrainBackground />
 
       <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <View style={[styles.textContainer, (phase === 4 || phase === 5) && { position: 'absolute', top: insets.top + 24, marginTop: 0 }]}>
+        <View style={styles.textContainer}>
           {phase === 1 && (
-            <Animated.View key="phase1" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
+            <Animated.View key="phase1" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -150 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 1</ThemedText>
               {renderInstruction('tap to write.')}
             </Animated.View>
           )}
 
           {phase === 2 && (
-            <Animated.View key="phase2" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
+            <Animated.View key="phase2" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -150 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 2</ThemedText>
               {renderInstruction('press and hold to capture your voice.')}
             </Animated.View>
           )}
 
           {phase === 3 && (
-            <Animated.View key="phase3" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
+            <Animated.View key="phase3" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -150 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 3</ThemedText>
               {renderInstruction('swipe up to capture a moment.')}
             </Animated.View>
           )}
           
           {phase === 4 && (
-            <Animated.View key="phase4" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
+            <Animated.View key="phase4" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'flex-start', paddingTop: 24 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 4</ThemedText>
               {renderInstruction('double tap memory to open.')}
             </Animated.View>
           )}
 
           {phase === 5 && (
-            <Animated.View key="phase5" entering={SlideInRight} exiting={SlideOutLeft} style={styles.phaseBlock}>
+            <Animated.View key="phase5" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'flex-start', paddingTop: 24 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 5</ThemedText>
               {renderInstruction('hold memory to share.')}
             </Animated.View>
@@ -373,7 +373,7 @@ export default function OnboardingGuideScreen() {
 
 
           {phase === 6 && (
-            <Animated.View key="phase6" entering={SlideInRight} style={[styles.phaseBlock, { alignItems: 'center', gap: 16 }]}>
+            <Animated.View key="phase6" entering={SlideInRight} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100, gap: 16 }]}>
               <ThemedText style={[styles.phaseTitle, { color: accent }]}>YOU'RE READY</ThemedText>
               <ThemedText style={[styles.instruction, { color: fg, textAlign: 'center', lineHeight: 40 }]}>
                 {'every memory,\nevery voice,\nevery moment.\n'}
@@ -456,8 +456,8 @@ export default function OnboardingGuideScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
-  textContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -150, zIndex: 100, width: '100%' },
-  phaseBlock: { alignItems: 'center', position: 'absolute' },
+  textContainer: { flex: 1, width: '100%', zIndex: 100 },
+  phaseBlock: { alignItems: 'center', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   phaseTitle: { fontFamily: 'BitcountGridDouble-Light', fontSize: 24, letterSpacing: 4, marginBottom: 16, opacity: 0.5 },
   instruction: { fontFamily: 'JetBrainsMono-Regular', fontSize: 24, lineHeight: 36, textAlign: 'center' },
   bottomBar: { position: 'absolute', bottom: 40, left: 0, right: 0, zIndex: 999, alignItems: 'center' },
