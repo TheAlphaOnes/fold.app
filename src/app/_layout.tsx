@@ -248,7 +248,9 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isAppReady) {
       const inOnboarding = segments[0] === "onboarding";
-      if (!settings.hasOnboarded && !inOnboarding) {
+      const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose";
+      
+      if (!settings.hasOnboarded && !isAllowedDuringOnboarding) {
         setTimeout(() => {
           router.replace("/onboarding");
         }, 0);
