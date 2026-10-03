@@ -8,6 +8,8 @@ import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { ActionLink } from "@/components/action-link";
+
 
 export default function FeedbackScreen() {
   const theme = useTheme();
@@ -73,7 +75,6 @@ export default function FeedbackScreen() {
                 styles.input, 
                 { 
                   color: theme.text, 
-                  borderColor: theme.border, 
                   backgroundColor: theme.backgroundElement 
                 }
               ]}
@@ -86,25 +87,19 @@ export default function FeedbackScreen() {
               autoFocus
             />
 
-            <Pressable
-              onPress={handleSubmit}
-              disabled={!feedback.trim() || status === 'submitting'}
-              style={({ pressed }) => [
-                styles.submitBtn,
-                { 
-                  backgroundColor: !feedback.trim() ? theme.border : theme.text,
-                  opacity: pressed ? 0.8 : 1 
-                }
-              ]}
-            >
-              {status === 'submitting' ? (
-                <ActivityIndicator color={theme.background} />
-              ) : (
-                <ThemedText style={[styles.submitBtnText, { color: theme.background }]}>
-                  SUBMIT
-                </ThemedText>
-              )}
-            </Pressable>
+            {status === 'submitting' ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color={theme.text} />
+              </View>
+            ) : (
+              <View style={styles.ctaContainer}>
+                <ActionLink
+                  text="SUBMIT"
+                  onPress={handleSubmit}
+                  disabled={!feedback.trim()}
+                />
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -151,22 +146,20 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 16,
-    borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     height: 200,
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  submitBtn: {
-    paddingVertical: 16,
-    borderRadius: 30,
+  ctaContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  loadingContainer: {
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  submitBtnText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-    letterSpacing: 2,
+    marginBottom: 40,
   },
   successState: {
     flex: 1,
