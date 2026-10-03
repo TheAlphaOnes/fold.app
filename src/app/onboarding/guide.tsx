@@ -402,7 +402,10 @@ export default function OnboardingGuideScreen() {
           {phase === 3 && (
             <Animated.View key="phase3" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -150 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 3</ThemedText>
-              {renderInstruction('swipe up to capture a moment.')}
+              <View style={{ gap: 2 }}>
+                {renderInstruction('swipe up for photo.')}
+                {renderInstruction('swipe higher for video.')}
+              </View>
             </Animated.View>
           )}
 
