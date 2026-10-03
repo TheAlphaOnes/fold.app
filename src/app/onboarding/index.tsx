@@ -36,7 +36,7 @@ export default function OnboardingStartScreen() {
         <Animated.View entering={FadeIn.delay(300).duration(800)} style={styles.textContainer}>
           <ThemedText style={[styles.title, { color: fg }]}>FOLD</ThemedText>
           <ThemedText style={[styles.description, { color: mutedText }]}>
-            OFFLINE MEMORY ENGINE
+            CAPTURE EVERYTHING. FORGET NOTHING.
           </ThemedText>
         </Animated.View>
 

@@ -112,31 +112,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       pressedScale.value = withTiming(1, { duration: 150 });
     });
 
-  const swipeLeft = Gesture.Pan()
-    // Require 30px of leftward movement before claiming the gesture
-    .activeOffsetX([-30, 0])
-    // If the user moves 20px vertically first, fail this gesture so the FlatList can scroll normally
-    .failOffsetY([-20, 20])
-    .onStart(() => {
-      pressedScale.value = withTiming(0.96, { duration: 150 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    })
-    .onEnd((e) => {
-      pressedScale.value = withTiming(1, { duration: 150 });
-      
-      // Only trigger if they swiped significantly left or flicked it fast
-      if (e.translationX < -40 || e.velocityX < -500) {
-        if (item.storyIds && item.storyIds.length > 0) {
-          runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-          runOnJS(router.push)(`/stories/${item.storyIds[0]}`);
-        }
-      }
-    })
-    .onFinalize(() => {
-      pressedScale.value = withTiming(1, { duration: 150 });
-    });
-
-  const composed = Gesture.Exclusive(swipeLeft, doubleTap, longPress);
+  const composed = Gesture.Exclusive(doubleTap, longPress);
 
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
