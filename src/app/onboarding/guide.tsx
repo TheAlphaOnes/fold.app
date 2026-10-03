@@ -406,60 +406,64 @@ export default function OnboardingGuideScreen() {
               {renderInstruction('swipe to capture.')}
 
               {/* 
-                Technical diagram: a schematic cross-section of the swipe track.
-                Shows the two threshold "gates" the user passes through.
-                Animates in sequentially so each step is learned, not dumped all at once.
+                Centered vertical schematic diagram.
+                Each stage staggered in from bottom to top — mirrors the physical upward swipe.
               */}
-              <Animated.View entering={FadeIn.delay(600).duration(500)} style={{ marginTop: 40, flexDirection: 'row', gap: 24, alignItems: 'flex-start' }}>
-                {/* Left side: the animated travel axis */}
-                <View style={{ alignItems: 'center', width: 20 }}>
-                  {/* Top label — start of travel */}
-                  <Animated.View entering={FadeIn.delay(1800).duration(400)}>
-                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: theme.textMuted, opacity: 0.5, transform: [{ rotate: '-90deg' }], width: 40 }}>
-                      HIGHER
+              <View style={{ marginTop: 40, alignItems: 'center' }}>
+
+                {/* STAGE II — Video — top of the travel arc */}
+                <Animated.View entering={FadeInDown.delay(1400).springify().damping(14)} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <View style={{ 
+                    width: 36, height: 36, borderRadius: 8, 
+                    borderWidth: 1, borderColor: theme.border, 
+                    backgroundColor: theme.backgroundElement, 
+                    alignItems: 'center', justifyContent: 'center' 
+                  }}>
+                    <Video size={15} color={theme.textMuted} strokeWidth={2} />
+                  </View>
+                  <View>
+                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 11, color: theme.text, letterSpacing: 3 }}>
+                      STAGE II
                     </ThemedText>
-                  </Animated.View>
+                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 2 }}>
+                      video capture
+                    </ThemedText>
+                  </View>
+                </Animated.View>
 
-                  {/* Vertical ruler line */}
-                  <Animated.View entering={FadeIn.delay(700).duration(800)} style={{ width: 1, height: 130, backgroundColor: theme.border, opacity: 0.3, marginVertical: 6 }} />
-                  
-                  {/* Tick mark at video zone */}
-                  <Animated.View entering={FadeIn.delay(1600).duration(400)} style={{ position: 'absolute', top: 26, left: 10, width: 10, height: 1, backgroundColor: theme.textMuted, opacity: 0.5 }} />
-                  {/* Tick mark at photo zone */}
-                  <Animated.View entering={FadeIn.delay(1200).duration(400)} style={{ position: 'absolute', top: 76, left: 10, width: 10, height: 1, backgroundColor: theme.textMuted, opacity: 0.5 }} />
-                </View>
+                {/* Connector — the distance between thresholds */}
+                <Animated.View entering={FadeIn.delay(900).duration(700)} style={{ alignItems: 'center', marginVertical: 6 }}>
+                  <View style={{ width: 1, height: 50, borderLeftWidth: 1.5, borderColor: theme.border, borderStyle: 'dashed', opacity: 0.4 }} />
+                  <ThemedText style={{ 
+                    fontFamily: 'JetBrainsMono-Regular', fontSize: 9, 
+                    color: theme.textMuted, letterSpacing: 3,
+                    opacity: 0.4, marginTop: 6
+                  }}>
+                    ↑  SWIPE HIGHER
+                  </ThemedText>
+                </Animated.View>
 
-                {/* Right side: the labeled zones */}
-                <View style={{ gap: 0, paddingTop: 14 }}>
-                  {/* ZONE 2: Video threshold */}
-                  <Animated.View entering={FadeInDown.delay(1500).springify().damping(15)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.backgroundElement, alignItems: 'center', justifyContent: 'center' }}>
-                      <Video size={13} color={theme.text} strokeWidth={2} />
-                    </View>
-                    <View>
-                      <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 10, color: theme.text, letterSpacing: 2 }}>STAGE II</ThemedText>
-                      <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 1 }}>video</ThemedText>
-                    </View>
-                  </Animated.View>
+                {/* STAGE I — Photo — first threshold */}
+                <Animated.View entering={FadeInDown.delay(700).springify().damping(14)} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  <View style={{ 
+                    width: 36, height: 36, borderRadius: 8, 
+                    borderWidth: 1.5, borderColor: accent, 
+                    backgroundColor: theme.backgroundElement, 
+                    alignItems: 'center', justifyContent: 'center' 
+                  }}>
+                    <Camera size={15} color={accent} strokeWidth={2} />
+                  </View>
+                  <View>
+                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 11, color: theme.text, letterSpacing: 3 }}>
+                      STAGE I
+                    </ThemedText>
+                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 2 }}>
+                      photo capture
+                    </ThemedText>
+                  </View>
+                </Animated.View>
 
-                  {/* The gap between zones — the travel distance */}
-                  <Animated.View entering={FadeIn.delay(1000).duration(600)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 4, opacity: 0.35 }}>
-                    <View style={{ width: 1, height: 36, borderLeftWidth: 1, borderColor: theme.textMuted, borderStyle: 'dashed', marginLeft: 13 }} />
-                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 9, color: theme.textMuted, letterSpacing: 2 }}>swipe higher</ThemedText>
-                  </Animated.View>
-
-                  {/* ZONE 1: Photo threshold */}
-                  <Animated.View entering={FadeInDown.delay(900).springify().damping(15)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 6, borderWidth: 1.5, borderColor: accent, backgroundColor: theme.backgroundElement, alignItems: 'center', justifyContent: 'center' }}>
-                      <Camera size={13} color={accent} strokeWidth={2} />
-                    </View>
-                    <View>
-                      <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 10, color: theme.text, letterSpacing: 2 }}>STAGE I</ThemedText>
-                      <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 1 }}>photo</ThemedText>
-                    </View>
-                  </Animated.View>
-                </View>
-              </Animated.View>
+              </View>
             </Animated.View>
           )}
 
