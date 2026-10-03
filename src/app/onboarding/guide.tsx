@@ -10,6 +10,7 @@ import Animated, {
   useAnimatedStyle,
   withSequence,
   withRepeat,
+  Easing,
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
@@ -305,13 +306,13 @@ export default function OnboardingGuideScreen() {
   }, [triggerShare]);
 
 
-  // Bouncing arrow animation
+  // Subtle, premium breathing arrow animation
   const arrowOffset = useSharedValue(0);
   useEffect(() => {
     arrowOffset.value = withRepeat(
       withSequence(
-        withTiming(10, { duration: 600 }),
-        withTiming(0, { duration: 600 })
+        withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.quad) })
       ),
       -1,
       true
