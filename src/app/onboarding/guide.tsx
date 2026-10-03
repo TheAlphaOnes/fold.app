@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSequence,
+  withRepeat,
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
@@ -304,6 +305,20 @@ export default function OnboardingGuideScreen() {
   }, [triggerShare]);
 
 
+  // Bouncing arrow animation
+  const arrowOffset = useSharedValue(0);
+  useEffect(() => {
+    arrowOffset.value = withRepeat(
+      withSequence(
+        withTiming(10, { duration: 600 }),
+        withTiming(0, { duration: 600 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+  const arrowStyle = useAnimatedStyle(() => ({ transform: [{ translateY: arrowOffset.value }] }));
+
   // --- NATIVE TOUCH HANDLERS (No RNGH) ---
   const lastTapRef = useRef(0);
 
@@ -425,12 +440,27 @@ export default function OnboardingGuideScreen() {
           style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
         >
           {phase <= 3 ? (
-            <AddButton
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              {!isSuccess && (
+                <Animated.View entering={FadeIn.delay(1000).duration(800)} style={arrowStyle}>
+                  <ThemedText style={{ 
+                    fontFamily: 'Caveat_700Bold', 
+                    fontSize: 32, 
+                    color: theme.text,
+                    opacity: 0.6,
+                    transform: [{ rotate: '5deg' }]
+                  }}>
+                    {phase === 1 ? 'tap here ↓' : phase === 2 ? 'hold here ↓' : 'swipe up ↑'}
+                  </ThemedText>
+                </Animated.View>
+              )}
+              <AddButton
               onPress={() => { if (phase === 1) handleTap(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onSwipeUp={(type) => { if (phase === 3) handleSwipeUp(type); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressStart={() => { if (phase === 2) handleLongPressStart(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressEnd={() => { if (phase === 2) handleLongPressEnd(); }}
             />
+            </View>
           ) : phase === 6 && showProceedBtn ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink text="ENTER FOLD" onPress={handleComplete} />
