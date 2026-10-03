@@ -87,6 +87,17 @@ export default function OnboardingGuideScreen() {
     router.replace('/');
   };
 
+  // Auto-complete when Phase 6 is reached — no action needed from the user,
+  // just show SYSTEM INITIALIZED for 1.5s then navigate to the timeline.
+  useEffect(() => {
+    if (phase === 6) {
+      const timer = setTimeout(() => {
+        handleComplete();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+
   const handleActionSuccess = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 60);
@@ -98,15 +109,13 @@ export default function OnboardingGuideScreen() {
       withTiming(1, { duration: 150 })
     );
 
+    // Always just advance the phase — Phase 6 useEffect handles completion
     setTimeout(() => {
       setIsSuccess(false);
-      if (phase === 6) {
-        handleComplete();
-      } else {
-        setPhase(phase + 1);
-      }
+      setPhase(prev => prev + 1);
     }, 1000);
   };
+
 
   // Phase 1: Tap to write
   const handleTap = () => {
