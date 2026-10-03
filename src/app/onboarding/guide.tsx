@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { StyleSheet, View, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -36,6 +36,10 @@ import { isValidDob } from '@/utils/dob';
 export default function OnboardingGuideScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  // Match the card height the timeline uses: full screen minus top/bottom chrome
+  const cardHeight = screenHeight - insets.top - insets.bottom - 160;
+  const cardWidth = screenWidth - 42; // 21px each side, same as carousel
   const { updateSetting } = useSettingsStore();
   const { compositions, addComposition } = useJournalStore();
 
@@ -380,7 +384,7 @@ export default function OnboardingGuideScreen() {
 
         </View>
 
-        {/* Action Area */}
+        {/* Action Area — AddButton for phases 1-3, card for phases 4-5 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -392,33 +396,48 @@ export default function OnboardingGuideScreen() {
               onLongPressStart={() => { if (phase === 2) handleLongPressStart(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressEnd={() => { if (phase === 2) handleLongPressEnd(); }}
             />
-          ) : phase <= 5 && firstMemory ? (
+          ) : null}
+        </Animated.View>
+
+        {/* Full-size memory card for phases 4 & 5 */}
+        {phase >= 4 && phase <= 5 && firstMemory && (
+          <Animated.View
+            entering={FadeIn.duration(500)}
+            style={{
+              position: 'absolute',
+              bottom: Math.max(insets.bottom, 16) + 80,
+              left: 21,
+              right: 21,
+              height: cardHeight,
+            }}
+          >
             <GestureDetector gesture={composedGestures}>
-              <Animated.View style={[{ width: '100%', height: 350, paddingHorizontal: 21 }, cardAnimatedStyle]}>
+              <Animated.View style={[{ width: '100%', height: cardHeight }, cardAnimatedStyle]}>
                 <MemoryCard 
                   item={firstMemory} 
-                  height={350} 
+                  height={cardHeight} 
                   onUpdatePositions={() => {}} 
                   isExporting={isSharing}
                 />
               </Animated.View>
             </GestureDetector>
-          ) : null}
-        </Animated.View>
+          </Animated.View>
+        )}
         
         {/* Hidden Card For Sharing */}
         {isSharing && firstMemory && (
-          <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width: '100%', height: 350, alignItems: 'center' }}>
-            <View ref={hiddenCardRef} collapsable={false} style={{ width: '100%', paddingHorizontal: 21, height: 350 }}>
+          <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width: cardWidth, height: cardHeight }}>
+            <View ref={hiddenCardRef} collapsable={false} style={{ width: cardWidth, height: cardHeight }}>
               <MemoryCard 
                 item={firstMemory} 
-                height={350} 
+                height={cardHeight} 
                 onUpdatePositions={() => {}} 
                 isExporting={true}
               />
             </View>
           </View>
         )}
+
       </View>
       
       {/* Flight Animation & Recording Overlay */}
