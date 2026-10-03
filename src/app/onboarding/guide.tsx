@@ -262,11 +262,15 @@ export default function OnboardingGuideScreen() {
 
   // JS-thread handler for double-tap (Phase 4)
   const handleDoubleTap = useCallback(() => {
+    console.log('[GESTURE] handleDoubleTap fired in JS! phase:', phaseRef.current);
     const mem = useJournalStore.getState().compositions[0];
     if (phaseRef.current === 4 && mem) {
+      console.log('[GESTURE] handleDoubleTap condition met! Pushing router...');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       router.push(`/memory/${mem.id}`);
       handleActionSuccess();
+    } else {
+      console.log('[GESTURE] handleDoubleTap condition failed. Phase:', phaseRef.current, 'Mem:', mem?.id);
     }
   }, [handleActionSuccess]);
 
@@ -302,23 +306,39 @@ export default function OnboardingGuideScreen() {
   // Gesture scale feedback helper — runs on UI thread
   const scaleDown = () => {
     'worklet';
+    console.log('[GESTURE] scaleDown worklet fired');
     pressedScale.value = withTiming(0.96, { duration: 150 });
   };
   const scaleUp = () => {
     'worklet';
+    console.log('[GESTURE] scaleUp worklet fired');
     pressedScale.value = withTiming(1, { duration: 150 });
+  };
+
+  const logWorklet = (msg: string) => {
+    'worklet';
+    console.log(msg);
   };
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .maxDuration(300)
-    .onStart(scaleDown)
+    .onStart(() => {
+      'worklet';
+      logWorklet('[GESTURE] doubleTap onStart');
+      scaleDown();
+    })
     .onEnd(() => {
       'worklet';
+      logWorklet('[GESTURE] doubleTap onEnd');
       scaleUp();
       runOnJS(handleDoubleTap)();
     })
-    .onFinalize(scaleUp);
+    .onFinalize(() => {
+      'worklet';
+      logWorklet('[GESTURE] doubleTap onFinalize');
+      scaleUp();
+    });
 
   const longPress = Gesture.LongPress()
     .minDuration(500)
@@ -451,7 +471,7 @@ export default function OnboardingGuideScreen() {
           >
             <GestureDetector gesture={composedGestures}>
               <Animated.View style={[{ width: '100%', height: cardHeight }, cardAnimatedStyle]}>
-                <View pointerEvents="box-none" style={{ flex: 1 }}>
+                <View pointerEvents="none" style={{ flex: 1 }}>
                   <MemoryCard
                     item={firstMemory}
                     height={cardHeight}
