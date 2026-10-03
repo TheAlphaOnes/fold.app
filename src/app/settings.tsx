@@ -245,20 +245,6 @@ export default function SettingsScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>ANALYTICS OPT-IN</ThemedText>
-            </View>
-            <Switch
-              value={settings.dataCollection}
-              onValueChange={(val) => updateSetting('dataCollection', val)}
-              trackColor={{ false: theme.border, true: '#FF4B00' }}
-              thumbColor={theme.background}
-            />
-          </View>
-
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO LOCATION TAGGING</ThemedText>
             </View>
             <Switch

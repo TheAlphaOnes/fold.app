@@ -580,7 +580,7 @@ export default function ComposeScreen() {
         storyIds,
       });
 
-      if (settings.dataCollection) {
+      {
         let ageCategory = "Unknown";
         // settings.dob is stored as DD.MM.YYYY (dots) — new Date() cannot
         // parse that, so pull the year out explicitly.

@@ -11,7 +11,6 @@ export type TimelineMode = 'yearly' | 'monthly' | 'infinite';
 export interface UserSettings {
   name: string;
   dob: string;
-  dataCollection: boolean;
   theme: ThemeMode;
   requireBiometrics: boolean;
   privacyScreen: boolean;
@@ -24,7 +23,6 @@ export interface UserSettings {
 const defaultSettings: UserSettings = {
   name: "",
   dob: "",
-  dataCollection: true,
   theme: "system",
   requireBiometrics: false,
   privacyScreen: false,
@@ -57,7 +55,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         settings: {
           name: stored.name || "",
           dob: stored.dob || "",
-          dataCollection: stored.dataCollection === "true",
           theme: (stored.theme as ThemeMode) || "light",
           requireBiometrics: stored.requireBiometrics === "true",
           privacyScreen: stored.privacyScreen === "true",
