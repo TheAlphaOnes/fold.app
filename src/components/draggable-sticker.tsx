@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { StyleSheet, View, Text } from "react-native";
+import { StyleSheet, View, Text, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { Play, Music, Pause } from "lucide-react-native";
 import { VinylRecord } from "@/components/vinyl-record";
@@ -176,43 +176,31 @@ function CanvasAudioSticker({
     };
   }, [player]);
 
-  // GestureDetector hot-swaps callbacks onto the same native handlers when
-  // the gesture object is rebuilt (same shape), so reading state directly in
-  // these closures is safe and always current.
-  const tapGesture = Gesture.Tap()
-    // Only a tap shorter than the drag-lift hold counts, so hold-to-drag
-    // never toggles playback.
-    .maxDuration(LIFT_HOLD_MS)
-    // eslint-disable-next-line react-hooks/refs -- RNGH invokes this from a native tap event after render (.runOnJS(true)); the compiler cannot see that. The refs must persist across renders without re-rendering.
-    .onEnd(() => {
-      if (isPlaying) {
-        try {
-          player.pause();
-        } catch {}
-      } else {
-        // If track ended naturally, allow it to restart
-        const dur = player.duration ?? 0;
-        const cur = player.currentTime ?? 0;
-        if (dur > 0 && cur >= dur - 0.5) {
-          hasAutoPlayed.current = false;
-        }
-        safeTryPlay();
-        if (!hasTrackedPlay.current) {
-          posthog?.capture("Audio Played", {
-            context: "canvas_sticker",
-            auto_play: false,
-          });
-          hasTrackedPlay.current = true;
-        }
+  const handlePress = () => {
+    if (isPlaying) {
+      try {
+        player.pause();
+      } catch {}
+    } else {
+      const dur = player.duration ?? 0;
+      const cur = player.currentTime ?? 0;
+      if (dur > 0 && cur >= dur - 0.5) {
+        hasAutoPlayed.current = false;
       }
-      onFront?.(media.id);
-    })
-    .runOnJS(true);
-
-  const finalGesture = Gesture.Simultaneous(composedGesture, tapGesture);
+      safeTryPlay();
+      if (!hasTrackedPlay.current) {
+        posthog?.capture("Audio Played", {
+          context: "canvas_sticker",
+          auto_play: false,
+        });
+        hasTrackedPlay.current = true;
+      }
+    }
+    onFront?.(media.id);
+  };
 
   return (
-    <GestureDetector gesture={finalGesture}>
+    <GestureDetector gesture={composedGesture}>
       <Animated.View
         style={[
           styles.musicVerticalCard,
@@ -260,6 +248,8 @@ function CanvasAudioSticker({
             {media.metadata?.artist}
           </Text>
         </View>
+        <Pressable style={[StyleSheet.absoluteFill, { zIndex: 10 }]} onPress={handlePress} />
+        
       </Animated.View>
     </GestureDetector>
   );
