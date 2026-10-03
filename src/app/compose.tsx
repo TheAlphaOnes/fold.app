@@ -18,6 +18,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
+  LayoutAnimation,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -38,7 +39,8 @@ import {
   Camera,
   Video,
   Smile,
-  Book
+  Book,
+  ChevronDown
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
@@ -175,6 +177,8 @@ export default function ComposeScreen() {
   const { sharedText, storyId: paramStoryId } = useLocalSearchParams<{ sharedText?: string; storyId?: string }>();
 
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [isCameraExpanded, setIsCameraExpanded] = useState(false);
+
   const [body, setBody] = useState(sharedText ?? "");
   const [storyIds, setStoryIds] = useState<number[]>(paramStoryId ? [Number(paramStoryId)] : []);
 
@@ -827,33 +831,66 @@ export default function ComposeScreen() {
             >
               <View style={{ width: 24 }} /> {/* left padding spacer for scroll */}
               
-              {/* 1. Camera (Photo) */}
-              <Pressable
-                onPress={handleCapturePhoto}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Camera size={16} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Camera
-                </ThemedText>
-              </Pressable>
-
-              {/* 2. Video */}
-              <Pressable
-                onPress={handleCaptureVideo}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Video size={16} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Video
-                </ThemedText>
-              </Pressable>
+              {/* 1. Camera Inline Dropdown */}
+              {isCameraExpanded ? (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable
+                      onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsCameraExpanded(false); }}
+                      style={({ pressed }) => [
+                        styles.attachButton,
+                        { opacity: pressed ? 0.5 : 1, paddingHorizontal: 12 },
+                      ]}
+                    >
+                      <X size={16} color={theme.textMuted} />
+                    </Pressable>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable
+                      onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsCameraExpanded(false); handleCapturePhoto(); }}
+                      style={({ pressed }) => [
+                        styles.attachButton,
+                        { opacity: pressed ? 0.5 : 1 },
+                      ]}
+                    >
+                      <Camera size={16} color={theme.textMuted} />
+                      <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                        Photo
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Pressable
+                      onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsCameraExpanded(false); handleCaptureVideo(); }}
+                      style={({ pressed }) => [
+                        styles.attachButton,
+                        { opacity: pressed ? 0.5 : 1 },
+                      ]}
+                    >
+                      <Video size={16} color={theme.textMuted} />
+                      <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                        Video
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Pressable
+                    onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsCameraExpanded(true); }}
+                    style={({ pressed }) => [
+                      styles.attachButton,
+                      { opacity: pressed ? 0.5 : 1 },
+                    ]}
+                  >
+                    <Camera size={16} color={theme.textMuted} />
+                    <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                      Capture
+                    </ThemedText>
+                    <ChevronDown size={14} color={theme.textMuted} style={{ marginLeft: -4 }} />
+                  </Pressable>
+                </View>
+              )}
 
               {/* 3. Attach Gallery */}
               <Pressable
