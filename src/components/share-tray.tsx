@@ -135,7 +135,6 @@ export const ShareTray = memo(function ShareTray({
 
   const overlayStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 1], [0, 0.6], Extrapolation.CLAMP),
-    pointerEvents: progress.value > 0.01 ? 'auto' : 'none',
   }));
 
   const trayStyle = useAnimatedStyle(() => ({
