@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
@@ -32,6 +32,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
+import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { AsciiArt } from '@/components/ascii-art';
 import { CASSETTE_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
@@ -158,9 +159,29 @@ export default function StoryDetailScreen() {
     return () => clearActiveStory();
   }, [id]);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = () => {
+    if (!activeStory) return;
+    Alert.alert(
+      'Delete Story',
+      'Are you sure you want to delete this story? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => {
+            setIsDeleting(true);
+          }
+        }
+      ]
+    );
+  };
+
+  const finalizeDelete = () => {
     if (activeStory) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       removeStory(activeStory.id);
       router.back();
     }
@@ -523,6 +544,8 @@ export default function StoryDetailScreen() {
           onClose={() => setViewerState({ ...viewerState, isOpen: false })} 
         />
       )}
+
+      {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
     </View>
   );
 }
