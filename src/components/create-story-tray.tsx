@@ -90,7 +90,7 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
 
       {/* Content — flex-based so KeyboardAvoidingView works */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'position' : 'height'}
         style={styles.modalOverlay}
         pointerEvents="box-none"
         keyboardVerticalOffset={0}
