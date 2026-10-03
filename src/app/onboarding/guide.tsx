@@ -365,12 +365,19 @@ export default function OnboardingGuideScreen() {
             </Animated.View>
           )}
 
+
           {phase === 6 && (
-            <Animated.View key="phase6" entering={SlideInRight} style={styles.phaseBlock}>
-              <ThemedText style={[styles.phaseTitle, { color: accent }]}>PHASE 6</ThemedText>
-              {renderInstruction('SYSTEM INITIALIZED')}
+            <Animated.View key="phase6" entering={SlideInRight} style={[styles.phaseBlock, { alignItems: 'center', gap: 16 }]}>
+              <ThemedText style={[styles.phaseTitle, { color: accent }]}>YOU'RE READY</ThemedText>
+              <ThemedText style={[styles.instruction, { color: fg, textAlign: 'center', lineHeight: 40 }]}>
+                {'every memory,\nevery voice,\nevery moment.\n'}
+              </ThemedText>
+              <ThemedText style={[styles.instruction, { color: accent, fontFamily: 'JetBrainsMono-Bold' }]}>
+                {'fold keeps it all.'}
+              </ThemedText>
             </Animated.View>
           )}
+
         </View>
 
         {/* Action Area */}
