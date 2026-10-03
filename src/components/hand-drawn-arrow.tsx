@@ -7,30 +7,35 @@ interface HandDrawnArrowProps {
   height?: number;
 }
 
-export function HandDrawnArrow({ color = "#000000", width = 50, height = 110 }: HandDrawnArrowProps) {
+export function HandDrawnArrow({ color = "#000000", width = 150, height = 130 }: HandDrawnArrowProps) {
   return (
-    <Svg width={width} height={height} viewBox="0 0 50 110" fill="none">
+    <Svg width={width} height={height} viewBox="0 0 150 130" fill="none">
       {/* 
-        A longer, elegant swoop. 
-        Ends with a perfectly vertical tangent so the arrowhead sits naturally.
-        pathLength="106" + strokeDasharray="6 4" guarantees it ends exactly on a solid dash.
+        A playful, dynamic, hand-drawn swirly arrow.
+        It enters from the top-right, does a loop-de-loop, 
+        and drops perfectly straight down to point at the button.
       */}
       <Path
-        d="M25 10 C 55 50, 25 80, 25 100"
+        d="
+          M 130 10 
+          C 80 -10, 30 30, 40 60 
+          C 50 90, 100 80, 90 40 
+          C 80 0, 75 90, 75 120
+        "
         stroke={color}
         strokeWidth="2.5"
         strokeLinecap="round"
         fill="none"
-        strokeDasharray="6 4"
-        pathLength="106"
+        strokeDasharray="7 5"
       />
       
       {/* 
-        A clean, symmetrical arrowhead pointing straight down.
-        No extra stems or hacks. 
+        The solid arrowhead. It includes a 10px solid stem line (M 75 110 L 75 120) 
+        that perfectly overlaps the path to completely hide any dash gaps, 
+        making it look like the pen pressed firmly at the tip!
       */}
       <Path
-        d="M16 90 L 25 100 L 34 90"
+        d="M 75 110 L 75 120 M 65 110 L 75 120 L 85 110"
         stroke={color}
         strokeWidth="2.5"
         strokeLinecap="round"
