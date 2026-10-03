@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, FlatList, TextInput, Platform, Keyboard } from 'react-native';
+import { View, StyleSheet, Pressable, FlatList, TextInput, Platform, Keyboard, KeyboardAvoidingView } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
 import { X, Plus, Book, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,7 +52,6 @@ export function StoryPicker(props: StoryPickerProps) {
 
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const [mounted, setMounted] = useState(false);
   const progress = useSharedValue(0);
@@ -84,26 +83,6 @@ export function StoryPicker(props: StoryPickerProps) {
       },
     ],
   }));
-
-
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
   useEffect(() => {
     if (props.visible) {
       refreshStories();
@@ -243,7 +222,8 @@ export function StoryPicker(props: StoryPickerProps) {
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
-      <Animated.View style={[styles.modalOverlay, overlayStyle, { paddingBottom: Platform.OS === 'ios' ? keyboardHeight : 0 }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Animated.View style={[styles.modalOverlay, overlayStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={props.onClose} />
         <Animated.View style={[styles.modalContent, trayStyle, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle */}
@@ -345,6 +325,7 @@ export function StoryPicker(props: StoryPickerProps) {
           )}
         </Animated.View>
       </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
