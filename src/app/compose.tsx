@@ -397,41 +397,39 @@ export default function ComposeScreen() {
     }
   };
 
-  const handleCamera = async () => {
+  const handleCapturePhoto = async () => {
     try {
       if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
         alertElementCap();
         return;
       }
 
-      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      // On some OS versions, camera handles both, but request mic just in case for video
-      if (camStatus !== 'granted') return;
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') return;
       
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images', 'videos'],
+        mediaTypes: ['images'],
         quality: 1,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
-        const kind = asset.type === 'video' ? 'video' : 'image';
         const stickerSize = 120;
         const safeW = screenWidth - 60 - stickerSize;
         const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
 
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : (kind === 'video' ? "mp4" : "jpg");
+        const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
         const copied = await copyWithinFileSize({
           from: asset.uri,
           to: dest,
-          kind: kind,
+          kind: "image",
           knownSizeBytes: asset.fileSize,
         });
         if (!copied) {
-          alertFileTooLarge(kind);
+          alertFileTooLarge("image");
           return;
         }
 
@@ -440,7 +438,7 @@ export default function ComposeScreen() {
           {
             id: Math.random().toString(36).substring(2, 9),
             uri: dest,
-            type: kind,
+            type: "image",
             x_pos: 30 + Math.random() * safeW,
             y_pos: 30 + Math.random() * safeH,
             width: asset.width,
@@ -449,7 +447,60 @@ export default function ComposeScreen() {
         ]);
       }
     } catch (error) {
-      console.error("Failed to capture media:", error);
+      console.error("Failed to capture photo:", error);
+    }
+  };
+
+  const handleCaptureVideo = async () => {
+    try {
+      if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+        alertElementCap();
+        return;
+      }
+
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') return;
+      
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['videos'],
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const stickerSize = 120;
+        const safeW = screenWidth - 60 - stickerSize;
+        const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+
+        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : "mp4";
+        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        const copied = await copyWithinFileSize({
+          from: asset.uri,
+          to: dest,
+          kind: "video",
+          knownSizeBytes: asset.fileSize,
+        });
+        if (!copied) {
+          alertFileTooLarge("video");
+          return;
+        }
+
+        setMediaElements((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(2, 9),
+            uri: dest,
+            type: "video",
+            x_pos: 30 + Math.random() * safeW,
+            y_pos: 30 + Math.random() * safeH,
+            width: asset.width,
+            height: asset.height,
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to capture video:", error);
     }
   };
 
@@ -768,7 +819,7 @@ export default function ComposeScreen() {
               </Pressable>
             </View>
 
-                        <ScrollView
+                                    <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.metaActionsRow}
@@ -776,9 +827,9 @@ export default function ComposeScreen() {
             >
               <View style={{ width: 24 }} /> {/* left padding spacer for scroll */}
               
-              {/* 1. Camera (Consolidated Photo + Video) */}
+              {/* 1. Camera (Photo) */}
               <Pressable
-                onPress={handleCamera}
+                onPress={handleCapturePhoto}
                 style={({ pressed }) => [
                   styles.attachButton,
                   { opacity: pressed ? 0.5 : 1 },
@@ -790,7 +841,21 @@ export default function ComposeScreen() {
                 </ThemedText>
               </Pressable>
 
-              {/* 2. Attach Gallery */}
+              {/* 2. Video */}
+              <Pressable
+                onPress={handleCaptureVideo}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Video size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Video
+                </ThemedText>
+              </Pressable>
+
+              {/* 3. Attach Gallery */}
               <Pressable
                 onPress={handleAttachMedia}
                 style={({ pressed }) => [
@@ -801,20 +866,6 @@ export default function ComposeScreen() {
                 <ImageIcon size={16} color={theme.textMuted} />
                 <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
                   Attach
-                </ThemedText>
-              </Pressable>
-
-              {/* 3. Record Audio */}
-              <Pressable
-                onPress={handleRecordToggle}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Mic size={16} color={theme.textMuted} />
-                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
-                  Record
                 </ThemedText>
               </Pressable>
 
@@ -852,7 +903,21 @@ export default function ComposeScreen() {
                 </ThemedText>
               </Pressable>
 
-              {/* 6. Location */}
+              {/* 6. Record Audio (Pushed back) */}
+              <Pressable
+                onPress={handleRecordToggle}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Mic size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Record
+                </ThemedText>
+              </Pressable>
+
+              {/* 7. Location */}
               {!settings.autoLocationTagging && !locationName && (
                 <Pressable
                   onPress={fetchLocation}
