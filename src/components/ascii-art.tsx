@@ -38,14 +38,16 @@ export function AsciiArt({ art, color, fontSize }: AsciiArtProps) {
   const cols = Math.max(...lines.map((line) => line.length));
   const rows = lines.length;
   const scale = fontSize / CELL_H;
+  // Add one extra row of padding at the top so ascenders on the first line never clip
+  const paddingTop = CELL_H * 0.4;
   const width = cols * CELL_W * scale;
-  const height = rows * CELL_H * scale;
+  const height = (rows * CELL_H + paddingTop) * scale;
 
   return (
     <Svg
       width={width}
       height={height}
-      viewBox={`0 0 ${cols * CELL_W} ${rows * CELL_H}`}
+      viewBox={`0 ${-paddingTop} ${cols * CELL_W} ${rows * CELL_H + paddingTop}`}
     >
       {lines.map((line, index) => (
         <SvgText

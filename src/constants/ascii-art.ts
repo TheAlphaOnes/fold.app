@@ -122,9 +122,10 @@ export const FLOWER_ART = [
 
 /** Story creation tray: a cozy hot coffee mug. */
 export const COFFEE_ART = [
-  "  ( (",
-  "   ) )",
-  ".-----.",
-  "|     |-|",
-  "|_____|-'",
+  "  ) )",
+  " ( ( ",
+  " ) ) ",
+  ".----.",
+  "|    |]",
+  "`----'",
 ].join("\n");
