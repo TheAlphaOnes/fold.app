@@ -406,18 +406,23 @@ export default function OnboardingGuideScreen() {
               {renderInstruction('swipe to capture.')}
 
               {/* 
-                Centered vertical schematic diagram.
-                Each stage staggered in from bottom to top — mirrors the physical upward swipe.
+                Clean, centered spec diagram.
+                No spring bounces — premium eased entrances only.
+                Connector sits precisely between the two stage chips.
+                Layout order mirrors the actual swipe direction: I at bottom, II at top.
               */}
               <View style={{ marginTop: 40, alignItems: 'center' }}>
 
-                {/* STAGE II — Video — top of the travel arc */}
-                <Animated.View entering={FadeInDown.delay(1400).springify().damping(14)} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                  <View style={{ 
-                    width: 36, height: 36, borderRadius: 8, 
-                    borderWidth: 1, borderColor: theme.border, 
-                    backgroundColor: theme.backgroundElement, 
-                    alignItems: 'center', justifyContent: 'center' 
+                {/* STAGE II — Video — upper threshold */}
+                <Animated.View
+                  entering={FadeIn.delay(1200).duration(400)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+                >
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    borderWidth: 1, borderColor: theme.border,
+                    backgroundColor: theme.backgroundElement,
+                    alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Video size={15} color={theme.textMuted} strokeWidth={2} />
                   </View>
@@ -431,25 +436,37 @@ export default function OnboardingGuideScreen() {
                   </View>
                 </Animated.View>
 
-                {/* Connector — the distance between thresholds */}
-                <Animated.View entering={FadeIn.delay(900).duration(700)} style={{ alignItems: 'center', marginVertical: 6 }}>
-                  <View style={{ width: 1, height: 50, borderLeftWidth: 1.5, borderColor: theme.border, borderStyle: 'dashed', opacity: 0.4 }} />
-                  <ThemedText style={{ 
-                    fontFamily: 'JetBrainsMono-Regular', fontSize: 9, 
+                {/* Connector — sits flush between the two chips */}
+                <Animated.View
+                  entering={FadeIn.delay(750).duration(600)}
+                  style={{ alignItems: 'center', marginVertical: 10 }}
+                >
+                  <ThemedText style={{
+                    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
                     color: theme.textMuted, letterSpacing: 3,
-                    opacity: 0.4, marginTop: 6
+                    opacity: 0.4, marginBottom: 6,
                   }}>
                     ↑  SWIPE HIGHER
                   </ThemedText>
+                  <View style={{
+                    width: 1, height: 32,
+                    borderLeftWidth: 1.5,
+                    borderColor: theme.border,
+                    borderStyle: 'dashed',
+                    opacity: 0.4,
+                  }} />
                 </Animated.View>
 
-                {/* STAGE I — Photo — first threshold */}
-                <Animated.View entering={FadeInDown.delay(700).springify().damping(14)} style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                  <View style={{ 
-                    width: 36, height: 36, borderRadius: 8, 
-                    borderWidth: 1.5, borderColor: accent, 
-                    backgroundColor: theme.backgroundElement, 
-                    alignItems: 'center', justifyContent: 'center' 
+                {/* STAGE I — Photo — first threshold hit */}
+                <Animated.View
+                  entering={FadeIn.delay(350).duration(400)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+                >
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 8,
+                    borderWidth: 1.5, borderColor: accent,
+                    backgroundColor: theme.backgroundElement,
+                    alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Camera size={15} color={accent} strokeWidth={2} />
                   </View>
