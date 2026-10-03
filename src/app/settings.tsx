@@ -325,6 +325,14 @@ export default function SettingsScreen() {
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => router.push('/faq' as any)}
+          >
+            <ThemedText style={[styles.settingText, { color: theme.text }]}>FAQ & GESTURES</ThemedText>
+          </Pressable>
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <Pressable 
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => router.push('/privacy' as any)}
           >
             <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY POLICY</ThemedText>
