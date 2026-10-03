@@ -38,19 +38,20 @@ export default function OnboardingGuideScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  // Match the card height the timeline uses: full screen minus top/bottom chrome
   const cardHeight = screenHeight - insets.top - insets.bottom - 160;
-  const cardWidth = screenWidth - 42; // 21px each side, same as carousel
+  const cardWidth = screenWidth - 42;
   const { updateSetting } = useSettingsStore();
   const { compositions, addComposition } = useJournalStore();
 
   const [phase, setPhase] = useState(1);
-  const phaseRef = useRef(phase);
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
   const [isSuccess, setIsSuccess] = useState(false);
   const initialCount = useRef(compositions.length);
   const isCameraOpenRef = useRef(false);
-  
+
+  // Keep a ref in sync with phase so gesture callbacks always read current value
+  const phaseRef = useRef(1);
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
   // Phase 5 Flight animation
   const [scanKey, setScanKey] = useState<number>(0);
   const [isSharing, setIsSharing] = useState(false);
@@ -64,22 +65,41 @@ export default function OnboardingGuideScreen() {
   const recorderState = useAudioRecorderState(recorder);
   const recordIntentRef = useRef(false);
 
+  // ---------------------------------------------------------------------------
+  // Phase advancement
+  // ---------------------------------------------------------------------------
+
+  const handleActionSuccess = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 60);
+
+    setIsSuccess(true);
+
+    textScale.value = withSequence(
+      withTiming(0.92, { duration: 50 }),
+      withTiming(1, { duration: 150 })
+    );
+
+    setTimeout(() => {
+      setIsSuccess(false);
+      setPhase(prev => prev + 1);
+    }, 1000);
+  }, [textScale]);
+
   // Monitor Composition Count to auto-advance Phase 1, 2, and 3
   useFocusEffect(
     useCallback(() => {
-      // Whenever screen focuses or compositions change, see if we advance
       if (isSuccess) return;
 
       if ((phase === 1 || phase === 2 || phase === 3) && compositions.length > initialCount.current) {
-        initialCount.current = compositions.length; // update baseline
+        initialCount.current = compositions.length;
         handleActionSuccess();
       }
-      
-      // Edge case: if they deleted a memory and came back
+
       if (compositions.length < initialCount.current) {
         initialCount.current = compositions.length;
       }
-    }, [compositions.length, phase, isSuccess])
+    }, [compositions.length, phase, isSuccess, handleActionSuccess])
   );
 
   const handleComplete = async () => {
@@ -94,7 +114,6 @@ export default function OnboardingGuideScreen() {
     router.replace('/');
   };
 
-
   // Phase 6: show a CTA button after a brief dramatic pause
   const [showProceedBtn, setShowProceedBtn] = useState(false);
   useEffect(() => {
@@ -105,33 +124,19 @@ export default function OnboardingGuideScreen() {
     }
   }, [phase]);
 
-
-  const handleActionSuccess = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 60);
-
-    setIsSuccess(true);
-    
-    textScale.value = withSequence(
-      withTiming(0.92, { duration: 50 }),
-      withTiming(1, { duration: 150 })
-    );
-
-    // Always just advance the phase — Phase 6 useEffect handles completion
-    setTimeout(() => {
-      setIsSuccess(false);
-      setPhase(prev => prev + 1);
-    }, 1000);
-  };
-
-
+  // ---------------------------------------------------------------------------
   // Phase 1: Tap to write
+  // ---------------------------------------------------------------------------
+
   const handleTap = () => {
     if (phase !== 1) return;
     router.push({ pathname: '/compose', params: { sharedText: 'Today I started using Fold.' } });
   };
 
+  // ---------------------------------------------------------------------------
   // Phase 2: Hold to record
+  // ---------------------------------------------------------------------------
+
   const handleLongPressStart = async () => {
     if (phase !== 2) return;
     try {
@@ -141,10 +146,10 @@ export default function OnboardingGuideScreen() {
         Alert.alert('Microphone Required', 'Fold needs the mic to capture your voice.', [{ text: 'Skip', onPress: handleActionSuccess }]);
         return;
       }
-      
+
       await AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
-      
+
       if (!recordIntentRef.current) return;
       await recorder.record();
     } catch (err) {
@@ -163,7 +168,7 @@ export default function OnboardingGuideScreen() {
           const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
           const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
           const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-          
+
           await FileSystem.copyAsync({ from: uri, to: dest });
 
           const newMedia = {
@@ -173,14 +178,13 @@ export default function OnboardingGuideScreen() {
             x_pos: 30 + Math.random() * 100,
             y_pos: 30 + Math.random() * 100,
           };
-          
+
           await addComposition({
             textContent: '',
             mediaElements: [newMedia],
             fontFamily: 'JetBrainsMono-Regular',
             fontSize: 16
           });
-          // Note: useFocusEffect will detect the new composition and advance us to Phase 3.
         }
       }
     } catch (err) {
@@ -188,7 +192,10 @@ export default function OnboardingGuideScreen() {
     }
   };
 
+  // ---------------------------------------------------------------------------
   // Phase 3: Swipe up to capture
+  // ---------------------------------------------------------------------------
+
   const handleSwipeUp = async (type: 'photo' | 'video') => {
     if (phase !== 3) return;
     if (isCameraOpenRef.current) return;
@@ -225,7 +232,7 @@ export default function OnboardingGuideScreen() {
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
         const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mp4' : 'jpg');
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-        
+
         await FileSystem.copyAsync({ from: asset.uri, to: dest });
 
         setPendingCameraMedia({
@@ -234,8 +241,7 @@ export default function OnboardingGuideScreen() {
           width: asset.width,
           height: asset.height
         });
-        
-        // Pushing to compose ensures they can write a caption for the photo
+
         router.push('/compose');
       }
     } catch (error) {
@@ -245,34 +251,26 @@ export default function OnboardingGuideScreen() {
     }
   };
 
-  // Phase 4: Double-tap to open
-  // Phase 5: Hold to share
-  const firstMemory = compositions[0]; // The memory they made in Phase 1, 2, or 3
+  // ---------------------------------------------------------------------------
+  // Phase 4 & 5: Card gestures
+  // All logic runs on JS thread via runOnJS to avoid stale closures.
+  // phaseRef.current is always the latest phase value.
+  // compositions is read fresh from the store via useJournalStore.
+  // ---------------------------------------------------------------------------
 
-  const onDoubleTapJS = useCallback(() => {
-    if (phaseRef.current === 4 && compositions[0]) {
+  const firstMemory = compositions[0];
+
+  // JS-thread handler for double-tap (Phase 4)
+  const handleDoubleTap = useCallback(() => {
+    const mem = useJournalStore.getState().compositions[0];
+    if (phaseRef.current === 4 && mem) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      router.push(`/memory/${compositions[0].id}`);
+      router.push(`/memory/${mem.id}`);
       handleActionSuccess();
     }
-  }, [compositions, handleActionSuccess]);
+  }, [handleActionSuccess]);
 
-  const doubleTap = Gesture.Tap().numberOfTaps(2)
-    .onStart(() => {
-      pressedScale.value = withTiming(0.96, { duration: 150 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
-    })
-    .onEnd(() => {
-      pressedScale.value = withTiming(1, { duration: 150 });
-      runOnJS(onDoubleTapJS)();
-    })
-    .onFinalize(() => {
-      pressedScale.value = withTiming(1, { duration: 150 });
-    });
-
-  // All async share logic lives here on the JS thread.
-  // Called via runOnJS from the longPress gesture so the worklet runtime
-  // never tries to call React state setters or async APIs directly.
+  // JS-thread handler for long-press share (Phase 5)
   const triggerShare = useCallback(() => {
     setIsSharing(true);
     setScanKey(prev => prev + 1);
@@ -293,24 +291,50 @@ export default function OnboardingGuideScreen() {
     }, 1750);
   }, [handleActionSuccess]);
 
-  const onLongPressJS = useCallback(() => {
-    if (phaseRef.current === 5 && compositions[0]) {
+  const handleLongPressCard = useCallback(() => {
+    const mem = useJournalStore.getState().compositions[0];
+    if (phaseRef.current === 5 && mem) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       triggerShare();
     }
-  }, [compositions, triggerShare]);
+  }, [triggerShare]);
 
-  const longPress = Gesture.LongPress().minDuration(500)
-    .onStart(() => {
-      pressedScale.value = withTiming(0.96, { duration: 150 });
-      runOnJS(onLongPressJS)();
+  // Gesture scale feedback helper — runs on UI thread
+  const scaleDown = () => {
+    'worklet';
+    pressedScale.value = withTiming(0.96, { duration: 150 });
+  };
+  const scaleUp = () => {
+    'worklet';
+    pressedScale.value = withTiming(1, { duration: 150 });
+  };
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDuration(300)
+    .onStart(scaleDown)
+    .onEnd(() => {
+      'worklet';
+      scaleUp();
+      runOnJS(handleDoubleTap)();
     })
-    .onFinalize(() => {
-      pressedScale.value = withTiming(1, { duration: 150 });
-    });
+    .onFinalize(scaleUp);
+
+  const longPress = Gesture.LongPress()
+    .minDuration(500)
+    .onStart(() => {
+      'worklet';
+      scaleDown();
+      runOnJS(handleLongPressCard)();
+    })
+    .onFinalize(scaleUp);
 
   const composedGestures = Gesture.Exclusive(doubleTap, longPress);
   const cardAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pressedScale.value }] }));
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   const bg = theme.background;
   const fg = theme.text;
@@ -365,7 +389,7 @@ export default function OnboardingGuideScreen() {
               {renderInstruction('swipe up to capture a moment.')}
             </Animated.View>
           )}
-          
+
           {phase === 4 && (
             <Animated.View key="phase4" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'flex-start', paddingTop: 24 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 4</ThemedText>
@@ -379,7 +403,6 @@ export default function OnboardingGuideScreen() {
               {renderInstruction('hold memory to share.')}
             </Animated.View>
           )}
-
 
           {phase === 6 && (
             <Animated.View key="phase6" entering={SlideInRight} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100, gap: 16 }]}>
@@ -395,7 +418,7 @@ export default function OnboardingGuideScreen() {
 
         </View>
 
-        {/* Action Area — AddButton for phases 1-3, card for phases 4-5, button for 6 */}
+        {/* Action Area — AddButton for phases 1-3, button for 6 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -428,11 +451,11 @@ export default function OnboardingGuideScreen() {
           >
             <GestureDetector gesture={composedGestures}>
               <Animated.View style={[{ width: '100%', height: cardHeight }, cardAnimatedStyle]}>
-                <View pointerEvents="none">
-                  <MemoryCard 
-                    item={firstMemory} 
-                    height={cardHeight} 
-                    onUpdatePositions={() => {}} 
+                <View pointerEvents="box-none" style={{ flex: 1 }}>
+                  <MemoryCard
+                    item={firstMemory}
+                    height={cardHeight}
+                    onUpdatePositions={() => {}}
                     isExporting={isSharing}
                   />
                 </View>
@@ -440,15 +463,15 @@ export default function OnboardingGuideScreen() {
             </GestureDetector>
           </Animated.View>
         )}
-        
+
         {/* Hidden Card For Sharing */}
         {isSharing && firstMemory && (
           <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width: cardWidth, height: cardHeight }}>
             <View ref={hiddenCardRef} collapsable={false} style={{ width: cardWidth, height: cardHeight }}>
-              <MemoryCard 
-                item={firstMemory} 
-                height={cardHeight} 
-                onUpdatePositions={() => {}} 
+              <MemoryCard
+                item={firstMemory}
+                height={cardHeight}
+                onUpdatePositions={() => {}}
                 isExporting={true}
               />
             </View>
@@ -456,7 +479,7 @@ export default function OnboardingGuideScreen() {
         )}
 
       </View>
-      
+
       {/* Flight Animation & Recording Overlay */}
       {isSharing && <LogoUploadFlight color={fg} key={scanKey} />}
       <RecordingOverlay visible={recorderState.isRecording} durationMillis={recorderState.durationMillis} onStop={handleLongPressEnd} />
