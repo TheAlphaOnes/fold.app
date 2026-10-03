@@ -119,3 +119,10 @@ export const FLOWER_ART = [
   "  \\|/      ",
   "   |       ",
 ].join("\n");
+
+/** Story creation tray: a tiny quill writing on a page. */
+export const QUILL_ART = [
+  "  _/)",
+  " / / ",
+  "/_/  ",
+].join("\n");

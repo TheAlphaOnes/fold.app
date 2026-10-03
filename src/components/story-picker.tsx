@@ -10,7 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { AsciiArt } from '@/components/ascii-art';
-import { BOOK_ART } from '@/constants/ascii-art';
+import { QUILL_ART } from '@/constants/ascii-art';
 import { CANVAS_TERMINAL_ART } from '@/constants/ascii-art';
 import type { Story } from '@/types/journal';
 
@@ -319,8 +319,8 @@ export function StoryPicker(props: StoryPickerProps) {
                   onSubmitEditing={handleCreate}
                 />
               </View>
-              <View style={{ alignItems: 'center', marginTop: 40, opacity: 0.6 }}>
-                <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={12} />
+              <View style={{ alignItems: 'center', marginTop: 24, opacity: 0.3 }}>
+                <AsciiArt art={QUILL_ART} color={theme.textMuted} fontSize={10} />
               </View>
             </View>
           ) : (
