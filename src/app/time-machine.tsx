@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -217,7 +217,7 @@ export default function TimeMachineScreen() {
           pressed && s.pressed,
         ]}
       >
-        <ArrowLeft size={16} color={theme.text} />
+        <X size={16} color={theme.text} />
       </Pressable>
     </View>
   );
@@ -250,7 +250,7 @@ const s = StyleSheet.create({
   },
   close: {
     position: 'absolute',
-    left: 24,
+    right: 20,
     zIndex: 100,
     width: CLOSE_SIZE,
     height: CLOSE_SIZE,
