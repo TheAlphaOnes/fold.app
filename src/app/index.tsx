@@ -46,11 +46,6 @@ import { TimelinePlaceholder } from '@/components/timeline-placeholder';
 import { buildTimelineRows, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
 
 export default function HomeScreen() {
-  const { settings } = useSettingsStore();
-  if (!settings.hasOnboarded) {
-    return <Redirect href="/onboarding" />;
-  }
-
   const theme = useTheme();
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
