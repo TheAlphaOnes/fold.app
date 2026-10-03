@@ -428,12 +428,14 @@ export default function OnboardingGuideScreen() {
           >
             <GestureDetector gesture={composedGestures}>
               <Animated.View style={[{ width: '100%', height: cardHeight }, cardAnimatedStyle]}>
-                <MemoryCard 
-                  item={firstMemory} 
-                  height={cardHeight} 
-                  onUpdatePositions={() => {}} 
-                  isExporting={isSharing}
-                />
+                <View pointerEvents="none">
+                  <MemoryCard 
+                    item={firstMemory} 
+                    height={cardHeight} 
+                    onUpdatePositions={() => {}} 
+                    isExporting={isSharing}
+                  />
+                </View>
               </Animated.View>
             </GestureDetector>
           </Animated.View>
