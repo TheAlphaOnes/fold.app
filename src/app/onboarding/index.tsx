@@ -88,7 +88,9 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
     letterSpacing: 4,
-    marginTop: 8,
+    marginTop: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   ctaContainer: {
     marginBottom: 60,
