@@ -397,39 +397,41 @@ export default function ComposeScreen() {
     }
   };
 
-  const handleCapturePhoto = async () => {
+  const handleCamera = async () => {
     try {
       if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
         alertElementCap();
         return;
       }
 
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') return;
+      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      // On some OS versions, camera handles both, but request mic just in case for video
+      if (camStatus !== 'granted') return;
       
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ['images', 'videos'],
         quality: 1,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
+        const kind = asset.type === 'video' ? 'video' : 'image';
         const stickerSize = 120;
         const safeW = screenWidth - 60 - stickerSize;
         const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
 
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : "jpg";
+        const ext = extMatch ? extMatch[1].toLowerCase() : (kind === 'video' ? "mp4" : "jpg");
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
         const copied = await copyWithinFileSize({
           from: asset.uri,
           to: dest,
-          kind: "image",
+          kind: kind,
           knownSizeBytes: asset.fileSize,
         });
         if (!copied) {
-          alertFileTooLarge("image");
+          alertFileTooLarge(kind);
           return;
         }
 
@@ -438,7 +440,7 @@ export default function ComposeScreen() {
           {
             id: Math.random().toString(36).substring(2, 9),
             uri: dest,
-            type: "image",
+            type: kind,
             x_pos: 30 + Math.random() * safeW,
             y_pos: 30 + Math.random() * safeH,
             width: asset.width,
@@ -447,62 +449,11 @@ export default function ComposeScreen() {
         ]);
       }
     } catch (error) {
-      console.error("Failed to capture photo:", error);
+      console.error("Failed to capture media:", error);
     }
   };
 
-  const handleCaptureVideo = async () => {
-    try {
-      if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
-        alertElementCap();
-        return;
-      }
 
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') return;
-      
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['videos'],
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        const stickerSize = 120;
-        const safeW = screenWidth - 60 - stickerSize;
-        const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
-
-        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : "mp4";
-        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-
-        const copied = await copyWithinFileSize({
-          from: asset.uri,
-          to: dest,
-          kind: "video",
-          knownSizeBytes: asset.fileSize,
-        });
-        if (!copied) {
-          alertFileTooLarge("video");
-          return;
-        }
-
-        setMediaElements((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substring(2, 9),
-            uri: dest,
-            type: "video",
-            x_pos: 30 + Math.random() * safeW,
-            y_pos: 30 + Math.random() * safeH,
-            width: asset.width,
-            height: asset.height,
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error("Failed to capture video:", error);
-    }
-  };
 
   const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
     // One track per memory. The picker has already downloaded the preview
@@ -817,28 +768,29 @@ export default function ComposeScreen() {
               </Pressable>
             </View>
 
-            <ScrollView
+                        <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.metaActionsRow}
               style={{ marginTop: 12, marginHorizontal: -24 }}
             >
-              <View style={{ width: 24 }} />{" "}
-              {/* left padding spacer for scroll */}
+              <View style={{ width: 24 }} /> {/* left padding spacer for scroll */}
+              
+              {/* 1. Camera (Consolidated Photo + Video) */}
               <Pressable
-                onPress={handleRecordToggle}
+                onPress={handleCamera}
                 style={({ pressed }) => [
                   styles.attachButton,
                   { opacity: pressed ? 0.5 : 1 },
                 ]}
               >
-                <Mic size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
-                  Record
+                <Camera size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Camera
                 </ThemedText>
               </Pressable>
+
+              {/* 2. Attach Gallery */}
               <Pressable
                 onPress={handleAttachMedia}
                 style={({ pressed }) => [
@@ -847,16 +799,28 @@ export default function ComposeScreen() {
                 ]}
               >
                 <ImageIcon size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
                   Attach
                 </ThemedText>
               </Pressable>
+
+              {/* 3. Record Audio */}
+              <Pressable
+                onPress={handleRecordToggle}
+                style={({ pressed }) => [
+                  styles.attachButton,
+                  { opacity: pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Mic size={16} color={theme.textMuted} />
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
+                  Record
+                </ThemedText>
+              </Pressable>
+
+              {/* 4. Music */}
               <Pressable
                 onPress={() => {
-                  // One track per memory — don't even open the picker when a
-                  // track is already attached.
                   if (hasMusicElement(mediaElements)) {
                     alertMusicLimit();
                     return;
@@ -869,12 +833,12 @@ export default function ComposeScreen() {
                 ]}
               >
                 <Music size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
                   Music
                 </ThemedText>
               </Pressable>
+
+              {/* 5. GIF */}
               <Pressable
                 onPress={() => setShowGifPicker(true)}
                 style={({ pressed }) => [
@@ -883,12 +847,12 @@ export default function ComposeScreen() {
                 ]}
               >
                 <Smile size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
+                <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
                   GIF
                 </ThemedText>
               </Pressable>
+
+              {/* 6. Location */}
               {!settings.autoLocationTagging && !locationName && (
                 <Pressable
                   onPress={fetchLocation}
@@ -899,9 +863,7 @@ export default function ComposeScreen() {
                   ]}
                 >
                   <MapPin size={16} color={theme.textMuted} />
-                  <ThemedText
-                    style={[styles.attachText, { color: theme.textMuted }]}
-                  >
+                  <ThemedText style={[styles.attachText, { color: theme.textMuted }]}>
                     {isFetchingLocation ? "Locating" : "Location"}
                   </ThemedText>
                 </Pressable>
@@ -909,45 +871,13 @@ export default function ComposeScreen() {
               {locationName && (
                 <View style={styles.locationBadge}>
                   <MapPin size={14} color={theme.textMuted} />
-                  <ThemedText
-                    style={styles.locationText}
-                    themeColor="textMuted"
-                    numberOfLines={1}
-                  >
+                  <ThemedText style={styles.locationText} themeColor="textMuted" numberOfLines={1}>
                     {locationName.toUpperCase()}
                   </ThemedText>
                 </View>
               )}
-              <Pressable
-                onPress={handleCapturePhoto}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Camera size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
-                  Capture
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                onPress={handleCaptureVideo}
-                style={({ pressed }) => [
-                  styles.attachButton,
-                  { opacity: pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Video size={16} color={theme.textMuted} />
-                <ThemedText
-                  style={[styles.attachText, { color: theme.textMuted }]}
-                >
-                  Video
-                </ThemedText>
-              </Pressable>
-              <View style={{ width: 24 }} />{" "}
-              {/* right padding spacer for scroll */}
+
+              <View style={{ width: 24 }} /> {/* right padding spacer for scroll */}
             </ScrollView>
           </View>
 
