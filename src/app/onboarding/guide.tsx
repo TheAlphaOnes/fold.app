@@ -465,7 +465,7 @@ export default function OnboardingGuideScreen() {
                   item={firstMemory}
                   height={cardHeight}
                   onUpdatePositions={() => {}}
-                  isExporting={isSharing}
+                  isExporting={false}
                 />
               </View>
             </Pressable>
