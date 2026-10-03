@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1 },
   textContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: -150, zIndex: 100, width: '100%' },
-  phaseBlock: { alignItems: 'center', position: 'absolute', top: 0, left: 0, right: 0 },
+  phaseBlock: { alignItems: 'center', position: 'absolute' },
   phaseTitle: { fontFamily: 'BitcountGridDouble-Light', fontSize: 24, letterSpacing: 4, marginBottom: 16, opacity: 0.5 },
   instruction: { fontFamily: 'JetBrainsMono-Regular', fontSize: 24, lineHeight: 36, textAlign: 'center' },
   bottomBar: { position: 'absolute', bottom: 40, left: 0, right: 0, zIndex: 999, alignItems: 'center' },

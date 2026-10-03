@@ -93,19 +93,14 @@ export function VinylRecord({ isRecording = false, isPlaying = false, size = 200
           { width: size, height: size, borderRadius: size / 2 },
           spinStyle
         ]}
-      >
-        <GrainBackground />
+      ><GrainBackground />
 
         {/* Fine crosshair lines */}
-        <View style={[styles.crosshair, { width: '100%', height: 1 }]} />
-        <View style={[styles.crosshair, { width: 1, height: '100%' }]} />
+        <View style={[styles.crosshair, { width: '100%', height: 1 }]} /><View style={[styles.crosshair, { width: 1, height: '100%' }]} />
 
         {/* Text Decals on the wheel */}
-        <View style={{ position: 'absolute', top: size * 0.22, left: size * 0.22, transform: [{ rotate: '-45deg' }] }}>
-           <Text style={[styles.wheelText, { fontSize }]}>96 / 24</Text>
-        </View>
-        <View style={{ position: 'absolute', bottom: size * 0.22, right: size * 0.22, transform: [{ rotate: '-45deg' }] }}>
-           <Text style={[styles.wheelText, { fontSize }]}>3 ◯ M</Text>
+        <View style={{ position: 'absolute', top: size * 0.22, left: size * 0.22, transform: [{ rotate: '-45deg' }] }}><Text style={[styles.wheelText, { fontSize }]}>96 / 24</Text>
+        </View><View style={{ position: 'absolute', bottom: size * 0.22, right: size * 0.22, transform: [{ rotate: '-45deg' }] }}><Text style={[styles.wheelText, { fontSize }]}>3 ◯ M</Text>
         </View>
 
         {/* Center Metal Cap or Album Art */}
@@ -119,9 +114,7 @@ export function VinylRecord({ isRecording = false, isPlaying = false, size = 200
           ) : (
             <View style={styles.capInner}>
                {/* 3 small mechanical divots/screws */}
-               <View style={[styles.screw, { top: '15%' }]} />
-               <View style={[styles.screw, { bottom: '20%', left: '20%' }]} />
-               <View style={[styles.screw, { bottom: '20%', right: '20%' }]} />
+               <View style={[styles.screw, { top: '15%' }]} /><View style={[styles.screw, { bottom: '20%', left: '20%' }]} /><View style={[styles.screw, { bottom: '20%', right: '20%' }]} />
             </View>
           )}
         </View>
@@ -129,8 +122,7 @@ export function VinylRecord({ isRecording = false, isPlaying = false, size = 200
 
       {/* Recording Indicator Overlay (Flashing TE Orange Dot in center) */}
       {isRecording && (
-        <Animated.View style={[styles.recordingIndicator, pulseStyle]}>
-          <View style={styles.orangeDot} />
+        <Animated.View style={[styles.recordingIndicator, pulseStyle]}><View style={styles.orangeDot} />
         </Animated.View>
       )}
     </View>

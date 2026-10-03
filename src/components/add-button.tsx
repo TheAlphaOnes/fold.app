@@ -195,11 +195,9 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
       ]} />
       
       {/* Threshold Markers: Icons placed precisely at their thresholds */}
-      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }, photoIconStyle]} pointerEvents="none">
-         <Camera size={18} color={theme.text} strokeWidth={2.5} />
+      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(PHOTO_THRESHOLD) }, photoIconStyle]} pointerEvents="none"><Camera size={18} color={theme.text} strokeWidth={2.5} />
       </Animated.View>
-      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }, videoIconStyle]} pointerEvents="none">
-         <Video size={18} color={theme.text} strokeWidth={2.5} />
+      <Animated.View style={[styles.trackIcon, { bottom: 17 + Math.abs(VIDEO_THRESHOLD) }, videoIconStyle]} pointerEvents="none"><Video size={18} color={theme.text} strokeWidth={2.5} />
       </Animated.View>
 
       <GestureDetector gesture={composedGesture}>
@@ -209,8 +207,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
             { backgroundColor: theme.accentWarm },
             buttonAnimatedStyle,
           ]}
-        >
-          <DiagonalStripes color="#863800" opacity={1} />
+        ><DiagonalStripes color="#863800" opacity={1} />
         </Animated.View>
       </GestureDetector>
     </View>
