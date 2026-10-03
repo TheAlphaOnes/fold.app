@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Modal, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2, Image as ImageIcon, FileText, MapPin, Book, BookMinus, BookPlus, Check } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -26,6 +26,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
+import { ShareTray } from '@/components/share-tray';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 
@@ -690,50 +691,14 @@ export default function MemoryDetailScreen() {
         )}
       </View>
 
-      {/* Custom Share Menu */}
-      <Modal visible={isShareMenuVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setIsShareMenuVisible(false)} />
-          
-          <View style={[styles.shareMenu, { backgroundColor: theme.backgroundElement, borderColor: theme.border, paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <View style={styles.shareMenuHeader}>
-              <View style={[styles.shareMenuHandle, { backgroundColor: theme.border }]} />
-              <Text style={[styles.shareMenuTitle, { color: theme.text }]}>Share options</Text>
-            </View>
-            
-            <Pressable 
-              style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
-              onPress={captureAndShareCard}
-            >
-              <View style={[styles.shareIconBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                <ImageIcon size={18} color={theme.text} />
-              </View>
-              <View style={styles.shareOptionText}>
-                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Export as Canvas</Text>
-                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>A beautifully framed canvas, ready to share</Text>
-              </View>
-            </Pressable>
-            
-            <Pressable 
-              style={({ pressed }) => [styles.shareOption, { backgroundColor: pressed ? theme.background : 'transparent' }]} 
-              onPress={() => shareRawContent(slides)}
-            >
-              <View style={[styles.shareIconBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                {slides[currentIndex]?.type === 'media' ? (
-                  <Download size={18} color={theme.text} />
-                ) : (
-                  <FileText size={18} color={theme.text} />
-                )}
-              </View>
-              <View style={styles.shareOptionText}>
-                <Text style={[styles.shareOptionTitle, { color: theme.text }]}>Share Original</Text>
-                <Text style={[styles.shareOptionDesc, { color: theme.textMuted }]}>The raw, untouched source media</Text>
-              </View>
-            </Pressable>
-
-          </View>
-        </View>
-      </Modal>
+      {/* Share Tray */}
+      <ShareTray
+        visible={isShareMenuVisible}
+        currentSlideIsMedia={slides[currentIndex]?.type === 'media'}
+        onClose={() => setIsShareMenuVisible(false)}
+        onExportCanvas={captureAndShareCard}
+        onShareOriginal={() => shareRawContent(slides)}
+      />
 
       <StoryPicker
         mode="multi"
@@ -823,77 +788,5 @@ const styles = StyleSheet.create({
   beadInactive: {
     width: 4, // Small square
     opacity: 0.4,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    justifyContent: 'flex-end',
-  },
-  shareMenu: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 0,
-    borderTopWidth: 1,
-    overflow: 'hidden',
-  },
-  shareMenuHeader: {
-    padding: 24,
-    paddingBottom: 24,
-    alignItems: 'center',
-    gap: 16,
-  },
-  shareMenuHandle: {
-    width: 36,
-    height: 5,
-    borderRadius: 2.5,
-    opacity: 0.5,
-  },
-  shareMenuTitle: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 16,
-    letterSpacing: -0.3,
-  },
-  shareOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingHorizontal: 20,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: 16,
-  },
-  shareIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shareIconBoxStack: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerSticker: {
-    position: 'absolute',
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    backgroundColor: '#000',
-    overflow: 'hidden',
-  },
-  shareOptionText: {
-    flex: 1,
-  },
-  shareOptionTitle: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 15,
-  },
-  shareOptionDesc: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    marginTop: 4,
-    opacity: 0.7,
   },
 });
