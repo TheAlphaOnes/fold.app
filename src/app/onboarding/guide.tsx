@@ -441,6 +441,7 @@ export default function OnboardingGuideScreen() {
         {/* Action Area — AddButton for phases 1-3, button for 6 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
+          pointerEvents="box-none"
           style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
         >
           {phase <= 3 ? (
