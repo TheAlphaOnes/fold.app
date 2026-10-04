@@ -30,6 +30,7 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
       <Pressable
         style={styles.overlay}
         onPress={onStop}
+        onPressOut={onStop}
         accessibilityRole="button"
         accessibilityLabel="Stop recording"
       >

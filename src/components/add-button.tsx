@@ -129,7 +129,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
         translateY.value = raw;
       }
     })
-    .onFinalize(() => {
+    .onEnd(() => {
       isActive.value = false;
       if (swipeStage.value === 2) {
         runOnJS(fireSwipeUp)('video');
