@@ -248,8 +248,8 @@ export default function HomeScreen() {
   const handleLongPressEnd = async () => {
     try {
       recordIntentRef.current = false;
-      // Use the recorder's live state rather than the React state which might be a tick behind
-      if (recorder.isRecording) {
+      // Check live state or if URI exists from a race condition
+      if (recorder.isRecording || recorder.uri) {
         await recorder.stop();
         const uri = recorder.uri;
         if (uri) {

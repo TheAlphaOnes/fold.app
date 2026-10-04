@@ -164,7 +164,7 @@ export default function OnboardingGuideScreen() {
     if (phase !== 2) return;
     try {
       recordIntentRef.current = false;
-      if (recorder.isRecording) {
+      if (recorder.isRecording || recorder.uri) {
         await recorder.stop();
         const uri = recorder.uri;
         if (uri) {

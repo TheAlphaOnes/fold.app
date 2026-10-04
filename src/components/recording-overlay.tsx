@@ -38,10 +38,11 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
   if (!visible) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       <Pressable
         style={styles.overlay}
         onPress={onStop}
+        pointerEvents="auto"
         accessibilityRole="button"
         accessibilityLabel="Stop recording"
       >
@@ -74,15 +75,16 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFill as any,
-    zIndex: 9999,
-    elevation: 9999,
+    ...(StyleSheet.absoluteFill as any),
+    zIndex: 99999, // Super high z-index
+    elevation: 99999,
   },
   overlay: {
-    flex: 1,
+    ...(StyleSheet.absoluteFill as any), // Force full screen
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    // In some RN versions, transparent won't capture touches on absolute views. Use near-invisible color.
+    backgroundColor: 'rgba(0,0,0,0.01)', 
   },
   hint: {
     marginTop: 40,
