@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -17,24 +17,35 @@ interface RecordingOverlayProps {
 }
 
 /**
- * The single recording overlay used everywhere (home quick-record and the
- * compose record chip): vignette, TP-7 wheel spinning with the pulsing
- * recording dot, elapsed time, tap anywhere to stop.
+ * Full-screen recording overlay: vignette, TP-7 wheel, elapsed time.
+ *
+ * **Architecture note:** This intentionally uses an absolutely positioned View
+ * instead of a Modal. A Modal creates a separate native view hierarchy which
+ * rips the active touch away from gesture handlers (GestureDetector). When the
+ * AddButton's LongPress gesture starts recording and this overlay appears
+ * mid-hold, a Modal would steal the touch — the gesture's onFinalize would
+ * never fire, and the user couldn't stop recording by releasing.
+ *
+ * With an absolute View in the same tree, the gesture handler keeps tracking
+ * the original touch. Releasing the finger fires onFinalize → stops recording.
+ * Tapping the overlay also works because the Pressable is the sole interactive
+ * element (all visuals are pointerEvents="none").
  */
 export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingOverlayProps) {
   const theme = useTheme();
   const vignetteColor = theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000';
 
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onStop}>
+    <View style={styles.container}>
       <Pressable
         style={styles.overlay}
         onPress={onStop}
         accessibilityRole="button"
         accessibilityLabel="Stop recording"
       >
-        {/* pointerEvents="none" ensures SVG vignette and VinylRecord 
-            don't swallow touches — everything passes to the Pressable */}
+        {/* Vignette background — pointerEvents="none" so taps pass to Pressable */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <Svg style={StyleSheet.absoluteFill}>
             <Defs>
@@ -48,6 +59,7 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
           </Svg>
         </View>
 
+        {/* Content — also non-interactive so taps pass through */}
         <View pointerEvents="none" style={{ alignItems: 'center' }}>
           <VinylRecord size={300} isRecording />
           <ThemedText style={styles.hint}>TAP TO STOP</ThemedText>
@@ -56,11 +68,16 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
           </ThemedText>
         </View>
       </Pressable>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFill as any,
+    zIndex: 9999,
+    elevation: 9999,
+  },
   overlay: {
     flex: 1,
     justifyContent: 'center',
