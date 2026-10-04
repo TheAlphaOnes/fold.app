@@ -439,21 +439,30 @@ export default function OnboardingGuideScreen() {
                 {/* Connector — sits flush between the two chips */}
                 <Animated.View
                   entering={FadeIn.delay(750).duration(600)}
-                  style={{ alignItems: 'center', marginVertical: 10 }}
+                  style={{ alignItems: 'center', marginVertical: 12 }}
                 >
+                  <View style={{
+                    width: 1, height: 16,
+                    borderLeftWidth: 1.5,
+                    borderColor: theme.border,
+                    borderStyle: 'dashed',
+                    opacity: 0.5,
+                    marginBottom: 8,
+                  }} />
                   <ThemedText style={{
-                    fontFamily: 'JetBrainsMono-Regular', fontSize: 9,
+                    fontFamily: 'JetBrainsMono-Regular', fontSize: 11,
                     color: theme.textMuted, letterSpacing: 3,
-                    opacity: 0.4, marginBottom: 6,
+                    opacity: 0.8,
                   }}>
                     ↑  SWIPE HIGHER
                   </ThemedText>
                   <View style={{
-                    width: 1, height: 32,
+                    width: 1, height: 16,
                     borderLeftWidth: 1.5,
                     borderColor: theme.border,
                     borderStyle: 'dashed',
-                    opacity: 0.4,
+                    opacity: 0.5,
+                    marginTop: 8,
                   }} />
                 </Animated.View>
 
