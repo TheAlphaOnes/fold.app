@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/hooks/use-theme';
@@ -30,26 +30,31 @@ export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingO
       <Pressable
         style={styles.overlay}
         onPress={onStop}
-        onPressOut={onStop}
         accessibilityRole="button"
         accessibilityLabel="Stop recording"
       >
-        <Svg style={StyleSheet.absoluteFill}>
-          <Defs>
-            <RadialGradient id="recordingVignette" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
-              <Stop offset="0%" stopColor={vignetteColor} stopOpacity="0.4" />
-              <Stop offset="40%" stopColor={vignetteColor} stopOpacity="0.7" />
-              <Stop offset="100%" stopColor={vignetteColor} stopOpacity="0.95" />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#recordingVignette)" />
-        </Svg>
+        {/* pointerEvents="none" ensures SVG vignette and VinylRecord 
+            don't swallow touches — everything passes to the Pressable */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg style={StyleSheet.absoluteFill}>
+            <Defs>
+              <RadialGradient id="recordingVignette" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
+                <Stop offset="0%" stopColor={vignetteColor} stopOpacity="0.4" />
+                <Stop offset="40%" stopColor={vignetteColor} stopOpacity="0.7" />
+                <Stop offset="100%" stopColor={vignetteColor} stopOpacity="0.95" />
+              </RadialGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#recordingVignette)" />
+          </Svg>
+        </View>
 
-        <VinylRecord size={300} isRecording />
-        <ThemedText style={styles.hint}>TAP TO STOP</ThemedText>
-        <ThemedText style={[styles.timer, { color: theme.text }]}>
-          {formatMillis(durationMillis)}
-        </ThemedText>
+        <View pointerEvents="none" style={{ alignItems: 'center' }}>
+          <VinylRecord size={300} isRecording />
+          <ThemedText style={styles.hint}>TAP TO STOP</ThemedText>
+          <ThemedText style={[styles.timer, { color: theme.text }]}>
+            {formatMillis(durationMillis)}
+          </ThemedText>
+        </View>
       </Pressable>
     </Modal>
   );
