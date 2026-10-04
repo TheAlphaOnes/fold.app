@@ -92,7 +92,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
       runOnJS(fireHapticHeavy)();
       runOnJS(fireLongPressStart)();
     })
-    .onEnd(() => {
+    .onFinalize(() => {
       isActive.value = false;
       scale.value = withTiming(1, { duration: 150 });
       runOnJS(fireLongPressEnd)();
@@ -129,7 +129,7 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
         translateY.value = raw;
       }
     })
-    .onEnd(() => {
+    .onFinalize(() => {
       isActive.value = false;
       if (swipeStage.value === 2) {
         runOnJS(fireSwipeUp)('video');
