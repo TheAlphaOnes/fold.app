@@ -366,7 +366,7 @@ export default function OnboardingGuideScreen() {
       return (
         <Animated.View style={animatedTextStyle}>
           <ThemedText style={[styles.instruction, { color: accent, fontFamily: 'JetBrainsMono-Bold' }]}>
-            [ ACCEPTED ]
+            [ CAPTURED ]
           </ThemedText>
         </Animated.View>
       );
@@ -550,7 +550,7 @@ export default function OnboardingGuideScreen() {
             </View>
           ) : phase === 6 && showProceedBtn ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
-              <ActionLink text="ENTER FOLD" onPress={handleComplete} />
+              <ActionLink text="START JOURNALING" onPress={handleComplete} />
             </Animated.View>
           ) : null}
         </Animated.View>

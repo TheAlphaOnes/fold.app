@@ -73,16 +73,13 @@ export default function OnboardingDobScreen() {
             
             <View style={styles.topSpacer} />
 
-            {/* Easter Egg ASCII: Robot */}
-            <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
-              <AsciiArt art={ROBOT_ART} color={mutedText} fontSize={11} />
-            </Animated.View>
+            
 
             <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
               <View style={styles.header}>
-                <ThemedText style={[styles.title, { color: fg }]}>ACTIVATION</ThemedText>
+                <ThemedText style={[styles.title, { color: fg }]}>ORIGIN</ThemedText>
                 <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                  DATE OF BIRTH
+                  WHEN DID YOUR STORY BEGIN?
                 </ThemedText>
               </View>
 
@@ -109,7 +106,7 @@ export default function OnboardingDobScreen() {
 
             <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
               <ActionLink 
-                text="INITIALIZE SYSTEM" 
+                text="CONTINUE" 
                 onPress={handleComplete}
                 disabled={!isValid}
               />

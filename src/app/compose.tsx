@@ -264,7 +264,7 @@ export default function ComposeScreen() {
   }, [settings.autoLocationTagging]);
 
   const AVAILABLE_FONTS = [
-    { id: "JetBrainsMono-Medium", name: "SYS.MONO" },
+    { id: "JetBrainsMono-Medium", name: "MONO" },
     { id: "BitcountGridDouble-Light", name: "BITCOUNT" },
     { id: "RockSalt-Regular", name: "ROCK SALT" },
     { id: "BigelowRules-Regular", name: "BIGELOW" },
@@ -306,7 +306,7 @@ export default function ComposeScreen() {
   };
 
   const currentFontName =
-    AVAILABLE_FONTS.find((f) => f.id === fontFamily)?.name || "SYS.MONO";
+    AVAILABLE_FONTS.find((f) => f.id === fontFamily)?.name || "MONO";
   const currentSizeName =
     FONT_SIZES.find((s) => s.id === fontSize)?.name || "M";
 
@@ -1021,7 +1021,7 @@ export default function ComposeScreen() {
                   ...memoryTextMetrics(fontFamily, fontSize),
                 },
               ]}
-              placeholder="What's on your mind?"
+              placeholder="Capture a thought, moment, or feeling..."
               placeholderTextColor={theme.textMuted}
               multiline
               autoFocus

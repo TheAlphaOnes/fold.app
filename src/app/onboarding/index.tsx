@@ -28,15 +28,12 @@ export default function OnboardingStartScreen() {
         
         <View style={styles.topSpacer} />
 
-        {/* Easter Egg ASCII: Retro Controller */}
-        <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.mascotContainer}>
-          <AsciiArt art={CONTROLLER_ART} color={fg} fontSize={12} />
-        </Animated.View>
+        
 
         <Animated.View entering={FadeIn.delay(300).duration(800)} style={styles.textContainer}>
           <ThemedText style={[styles.title, { color: fg }]}>FOLD</ThemedText>
           <ThemedText style={[styles.description, { color: mutedText }]}>
-            CAPTURE EVERYTHING.{'\n'}FORGET NOTHING.
+            CAPTURE YOUR MEMORIES.{'\n'}TELL YOUR STORY.
           </ThemedText>
         </Animated.View>
 
@@ -45,7 +42,7 @@ export default function OnboardingStartScreen() {
         {/* Minimalist CTA Link */}
         <Animated.View entering={FadeInUp.delay(600).duration(800).springify()} style={styles.ctaContainer}>
           <ActionLink 
-            text="INITIALIZE" 
+            text="BEGIN" 
             onPress={() => router.push('/onboarding/name')} 
           />
         </Animated.View>

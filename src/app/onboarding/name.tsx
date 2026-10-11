@@ -54,16 +54,13 @@ export default function OnboardingNameScreen() {
             
             <View style={styles.topSpacer} />
 
-            {/* Easter Egg ASCII: Master Sword */}
-            <Animated.View entering={FadeInDown.duration(800).springify()} style={styles.asciiContainer}>
-              <AsciiArt art={MASTER_SWORD_ART} color={mutedText} fontSize={14} />
-            </Animated.View>
+            
 
             <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
               <View style={styles.header}>
-                <ThemedText style={[styles.title, { color: fg }]}>IDENTIFY</ThemedText>
+                <ThemedText style={[styles.title, { color: fg }]}>YOUR NAME</ThemedText>
                 <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                  WHAT IS YOUR DESIGNATION?
+                  HOW SHOULD YOUR JOURNAL ADDRESS YOU?
                 </ThemedText>
               </View>
 
@@ -71,7 +68,7 @@ export default function OnboardingNameScreen() {
                 <CleanInput
                   value={name}
                   onChangeText={handleChangeText}
-                  placeholder="NOLLAN"
+                  placeholder="NOAH"
                   autoCapitalize="characters"
                   maxLength={12}
                   autoFocus
@@ -81,7 +78,7 @@ export default function OnboardingNameScreen() {
                 {showError && !isValid && (
                   <Animated.View entering={FadeIn.duration(200)}>
                     <ThemedText style={[styles.errorText, { color: '#FF3B30' }]}>
-                      DESIGNATION REQUIRED
+                      NAME REQUIRED
                     </ThemedText>
                   </Animated.View>
                 )}

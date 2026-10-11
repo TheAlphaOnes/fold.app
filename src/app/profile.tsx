@@ -208,7 +208,7 @@ export default function ProfileScreen() {
         {/* ASCII Easter Egg Mascot */}
         <View style={styles.mascotContainer}>
           <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
-          <ThemedText style={styles.mascotSubtitle}>SYS.READY</ThemedText>
+          <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
         </View>
 
       </ScrollView>

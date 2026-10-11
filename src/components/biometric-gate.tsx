@@ -57,7 +57,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'SYS.AUTH REQUIRED',
+        promptMessage: 'Unlock your journal',
         disableDeviceFallback: false,
       });
 
@@ -178,7 +178,7 @@ export function BiometricGate({ children }: BiometricGateProps) {
           <GrainBackground />
           <View style={styles.center}>
             <AsciiArt art={SYS_CORE_ART} color={colors.textMuted} fontSize={14} />
-            <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>SYSTEM SECURED</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>JOURNAL LOCKED</ThemedText>
           </View>
         </View>
       )}
@@ -191,12 +191,12 @@ export function BiometricGate({ children }: BiometricGateProps) {
             
             {authStatus === 'success' ? (
               <ThemedText style={[styles.subtitle, { color: colors.text }]}>
-                ACCESS GRANTED
+                UNLOCKED
               </ThemedText>
             ) : (
               <>
                 <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>
-                  AWAITING BIOMETRICS
+                  AUTHENTICATE TO OPEN
                 </ThemedText>
                 {authStatus === 'idle' && (
                   <Pressable onPress={authenticate} style={[styles.retryBtn, { borderColor: colors.border }]}>

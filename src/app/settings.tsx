@@ -48,14 +48,14 @@ export default function SettingsScreen() {
 
 
   const handleDeleteAll = () => {
-    requireAuth('Authenticate to wipe all device memory', () => {
+    requireAuth('Authenticate to clear all memories', () => {
       Alert.alert(
-        'ERASE SYSTEM MEMORY',
-        'Are you sure you want to permanently delete all compositions? This action cannot be undone.',
+        'CLEAR ALL MEMORIES',
+        'Are you sure you want to permanently delete all journal entries? This action cannot be undone.',
         [
           { text: 'CANCEL', style: 'cancel' },
           { 
-            text: 'ERASE', 
+            text: 'DELETE ALL', 
             style: 'destructive',
             onPress: async () => {
               await removeAllCompositions();
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <ThemedText style={[styles.title, { color: theme.text }]}>SYS SETTINGS</ThemedText>
+        <ThemedText style={[styles.title, { color: theme.text }]}>SETTINGS</ThemedText>
         <Pressable 
           onPress={() => router.back()}
           style={({ pressed }) => [
@@ -131,7 +131,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Data Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>USER IDENTITY</ThemedText>
+          <ThemedText style={styles.sectionTitle}>PROFILE</ThemedText>
           <View style={[styles.divider, { backgroundColor: theme.text }]} />
           
           <View style={styles.inputGroup}>
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
               style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
               value={settings.name}
               onChangeText={(t) => updateSetting('name', t)}
-              placeholder="ENTER NAME..."
+              placeholder="YOUR NAME..."
               placeholderTextColor={theme.textMuted}
               autoCapitalize="characters"
               maxLength={12}
@@ -280,7 +280,7 @@ export default function SettingsScreen() {
 
         {/* System Actions Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>SYSTEM OPERATIONS</ThemedText>
+          <ThemedText style={styles.sectionTitle}>STORAGE & DATA</ThemedText>
           <View style={[styles.divider, { backgroundColor: theme.text }]} />
           
 
@@ -305,7 +305,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingRowLeft}>
               <Trash2 size={16} color="#FF3B30" />
-              <ThemedText style={[styles.settingText, { color: '#FF3B30' }]}>WIPE DEVICE MEMORY</ThemedText>
+              <ThemedText style={[styles.settingText, { color: '#FF3B30' }]}>CLEAR ALL MEMORIES</ThemedText>
             </View>
           </Pressable>
         </View>
@@ -348,10 +348,10 @@ export default function SettingsScreen() {
         </View>
 
 
-        {/* ASCII System Core Mascot */}
+        {/* ASCII Mascot */}
         <View style={styles.mascotContainer}>
           <AsciiArt art={SYS_CORE_ART} color={theme.textMuted} fontSize={10} />
-          <ThemedText style={styles.mascotSubtitle}>SYS.CORE</ThemedText>
+          <ThemedText style={styles.mascotSubtitle}>FOLD JOURNAL</ThemedText>
         </View>
 
       </ScrollView>

@@ -309,7 +309,7 @@ export function StoryPicker(props: StoryPickerProps) {
                 <ThemedText style={{ color: theme.accentWarm, fontFamily: 'JetBrainsMono-Bold', fontSize: 18, marginRight: 12 }}>{'>'}</ThemedText>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="STORY.TITLE..."
+                  placeholder="NAME YOUR STORY..."
                   autoCapitalize="characters"
                   placeholderTextColor={theme.textMuted}
                   value={newTitle}

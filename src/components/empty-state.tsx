@@ -102,7 +102,7 @@ export function EmptyState() {
       {/* Status label */}
       <Animated.View style={[styles.labelRow, labelStyle]}>
         <ThemedText style={styles.label} themeColor="textMuted">
-          TAP TO CAPTURE YOURSELF
+          TAP + TO CAPTURE A MEMORY
         </ThemedText>
       </Animated.View>
     </View>
