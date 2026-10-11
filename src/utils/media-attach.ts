@@ -113,3 +113,18 @@ export async function downloadWithinFileSize(params: {
 
   return (await verifyFileSize(kind, to)) ? uri : null;
 }
+
+/**
+ * Upgrades standard iTunes / music thumbnail URLs (100x100, 300x300, 600x600)
+ * to high-resolution (1000x1000) retina assets for crisp rendering when zoomed.
+ */
+export function getHighResArtwork(url?: string): string | undefined {
+  if (!url) return undefined;
+  return url
+    .replace(/\/100x100bb\.jpg$/i, '/1000x1000bb.jpg')
+    .replace(/\/100x100\.jpg$/i, '/1000x1000bb.jpg')
+    .replace('100x100', '1000x1000')
+    .replace('300x300', '1000x1000')
+    .replace('600x600', '1000x1000');
+}
+

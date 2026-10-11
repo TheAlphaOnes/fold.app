@@ -9,6 +9,7 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Localization from 'expo-localization';
 
 import { useMusicStore, type MusicTrack } from '@/hooks/use-music-store';
+import { getHighResArtwork } from '@/utils/media-attach';
 
 
 function TrackPreviewPlayer({ url }: { url: string }) {
@@ -240,7 +241,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
                   onPress={() => handleRowPress(item)}
                 >
                   <View style={styles.artworkContainer}>
-                    <Image source={{ uri: item.artworkUrl100 }} style={styles.artwork} />
+                    <Image source={{ uri: getHighResArtwork(item.artworkUrl100) }} style={styles.artwork} />
                     {isPreviewing && !isDownloading && (
                       <View style={styles.playingOverlay}>
                         <Music size={20} color="#FFFFFF" />

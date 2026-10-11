@@ -25,6 +25,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { usePathname } from "expo-router";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { usePostHog } from "posthog-react-native";
+import { getHighResArtwork } from "@/utils/media-attach";
 
 interface MemoryCardProps {
   item: Composition;
@@ -158,7 +159,7 @@ function SingleAudioCard({
   // metadata with album artwork and renders as an artwork thumbnail; a
   // voice recording has no metadata and keeps the vinyl record. Music with
   // missing artwork falls back to the vinyl rather than an empty square.
-  const artworkUri = media.metadata?.artwork?.replace("100x100", "600x600");
+  const artworkUri = getHighResArtwork(media.metadata?.artwork);
 
   return (
     <Pressable

@@ -20,6 +20,7 @@ import type { MediaElement } from "@/types/journal";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useTheme } from "@/hooks/use-theme";
 import { useHaptics } from "@/hooks/use-haptics";
+import { getHighResArtwork } from "@/utils/media-attach";
 
 interface DraggableStickerProps {
   media: MediaElement;
@@ -209,7 +210,7 @@ function CanvasAudioSticker({
         ]}
       >
         <View style={styles.musicVerticalArtContainer}>
-          <Image source={{ uri: media.metadata?.artwork?.replace('100x100', '300x300') }} style={styles.musicVerticalArt} contentFit="cover" />
+          <Image source={{ uri: getHighResArtwork(media.metadata?.artwork) }} style={styles.musicVerticalArt} contentFit="cover" />
           {isPlaying && (
             <View style={styles.musicVerticalIcon}>
               <Pause size={36} color="#FFFFFF" fill="#FFFFFF" />
@@ -516,7 +517,7 @@ export function DraggableSticker({
                 size={90}
                 isPlaying={false}
                 isRecording={false}
-                imageUrl={media.metadata?.artwork}
+                imageUrl={getHighResArtwork(media.metadata?.artwork)}
               />
             </View>
           ) : (

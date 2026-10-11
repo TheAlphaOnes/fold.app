@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import * as Haptics from 'expo-haptics';
 import { VinylRecord } from '@/components/vinyl-record';
+import { getHighResArtwork } from '@/utils/media-attach';
 
 interface StoryItem {
   id: string;
@@ -130,7 +131,7 @@ const ViewerCard = React.memo(({
         )}
         {item.type === 'audio' && (
           <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-            <VinylRecord size={160} isPlaying={true} imageUrl={item.metadata?.artwork} />
+            <VinylRecord size={160} isPlaying={true} imageUrl={getHighResArtwork(item.metadata?.artwork)} />
             <Text style={[styles.audioTitle, { color: theme.text, marginTop: 40 }]}>
               {item.metadata?.title || 'Audio Note'}
             </Text>

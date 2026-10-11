@@ -14,6 +14,7 @@ import { StoryPicker } from '@/components/story-picker';
 import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
 import { formatMillis } from '@/utils/format-date';
 import { memoryTextMetrics } from '@/utils/memory-text';
+import { getHighResArtwork } from '@/utils/media-attach';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { usePostHog } from 'posthog-react-native';
@@ -208,7 +209,7 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
               isRecording={false} 
               isPlaying={isActuallyPlaying} 
               scrubOffset={scrubRotationOffset}
-              imageUrl={media.metadata?.artwork?.replace('100x100', '600x600')} 
+              imageUrl={getHighResArtwork(media.metadata?.artwork)} 
             />
           </View>
         </GestureDetector>

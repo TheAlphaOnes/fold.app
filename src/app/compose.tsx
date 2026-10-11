@@ -63,6 +63,7 @@ import {
   alertMusicLimit,
   copyWithinFileSize,
   downloadWithinFileSize,
+  getHighResArtwork,
   hasMusicElement,
   sliceToElementCap,
   verifyFileSize,
@@ -93,7 +94,7 @@ function ComposeMediaPreview({
   const artwork = m.metadata?.artwork;
   const musicArtworkUri =
     m.type === "audio" && artwork
-      ? artwork.replace("100x100", "300x300")
+      ? getHighResArtwork(artwork)
       : undefined;
   
   return (
@@ -535,13 +536,14 @@ export default function ComposeScreen() {
     const safeH =
       Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
 
-    // Keep every piece of media in app space — the artwork too. Fall back
-    // to the remote URL only if the download fails.
-    let artworkUri = track.artworkUrl100;
+    // Keep every piece of media in app space — the artwork too. Always upgrade
+    // to full 1000x1000 retina master resolution so zooming remains crisp.
+    const highResArtworkUrl = getHighResArtwork(track.artworkUrl100) || track.artworkUrl100;
+    let artworkUri = highResArtworkUrl;
     try {
       const artworkDest = `${FileSystem.documentDirectory}music_artwork_${track.trackId}_${Date.now()}.jpg`;
       const downloaded = await downloadWithinFileSize({
-        url: track.artworkUrl100,
+        url: highResArtworkUrl,
         to: artworkDest,
         kind: "image",
       });
