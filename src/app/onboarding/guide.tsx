@@ -15,7 +15,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Camera, Video } from 'lucide-react-native';
+import { Camera } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -199,17 +199,11 @@ export default function OnboardingGuideScreen() {
   // Phase 3: Swipe up to capture
   // ---------------------------------------------------------------------------
 
-  const handleSwipeUp = async (type: 'photo' | 'video') => {
+  const handleSwipeUp = async () => {
     if (phase !== 3) return;
     if (isCameraOpenRef.current) return;
     try {
       isCameraOpenRef.current = true;
-      if (type === 'video' && !Device.isDevice && Platform.OS === 'ios') {
-        Alert.alert('Simulator Unsupported', 'Skipping camera.', [{ text: 'OK', onPress: handleActionSuccess }]);
-        isCameraOpenRef.current = false;
-        return;
-      }
-
       const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
       if (camStatus !== 'granted') {
         Alert.alert('Camera Required', 'Fold needs the camera to capture moments.', [{ text: 'Skip', onPress: handleActionSuccess }]);
@@ -217,32 +211,24 @@ export default function OnboardingGuideScreen() {
         return;
       }
 
-      if (type === 'video') {
-        const { status: micStatus } = await AudioModule.requestRecordingPermissionsAsync();
-        if (micStatus !== 'granted') {
-          isCameraOpenRef.current = false;
-          return;
-        }
-      }
-
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: type === 'video' ? ['videos'] : ['images'],
+        mediaTypes: ['images'],
         allowsEditing: false,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mp4' : 'jpg');
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
         await FileSystem.copyAsync({ from: asset.uri, to: dest });
 
         setPendingCameraMedia({
           uri: dest,
-          type: asset.type === 'video' ? 'video' : 'image',
+          type: 'image',
           width: asset.width,
-          height: asset.height
+          height: asset.height,
         });
 
         router.push('/compose');
@@ -403,50 +389,42 @@ export default function OnboardingGuideScreen() {
           {phase === 3 && (
             <Animated.View key="phase3" entering={SlideInRight} exiting={SlideOutLeft} style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -150 }]}>
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 3</ThemedText>
-              {renderInstruction('swipe to capture.')}
+              {renderInstruction('swipe up orange trigger for photo capture.')}
 
-              {/* 
-                Clean, centered spec diagram.
-                No spring bounces — premium eased entrances only.
-                Connector sits precisely between the two stage chips.
-                Layout order mirrors the actual swipe direction: I at bottom, II at top.
-              */}
               <View style={{ marginTop: 40, alignItems: 'center' }}>
-
-                {/* STAGE II — Video — upper threshold */}
                 <Animated.View
-                  entering={FadeIn.delay(1200).duration(400)}
+                  entering={FadeIn.delay(350).duration(400)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
                 >
                   <View style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    borderWidth: 1, borderColor: theme.border,
+                    width: 38, height: 38, borderRadius: 10,
+                    borderWidth: 1.5, borderColor: accent,
                     backgroundColor: theme.backgroundElement,
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Video size={15} color={theme.textMuted} strokeWidth={2} />
+                    <Camera size={18} color={accent} strokeWidth={2} />
                   </View>
                   <View>
-                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 11, color: theme.text, letterSpacing: 3 }}>
-                      STAGE II
+                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 12, color: theme.text, letterSpacing: 3 }}>
+                      HARDWARE SHUTTER
                     </ThemedText>
                     <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 2 }}>
-                      video capture
+                      swipe past notch for instant camera
                     </ThemedText>
                   </View>
                 </Animated.View>
 
-                {/* Connector — sits flush between the two chips */}
+                {/* Connector */}
                 <Animated.View
-                  entering={FadeIn.delay(750).duration(600)}
-                  style={{ alignItems: 'center', marginVertical: 12 }}
+                  entering={FadeIn.delay(650).duration(500)}
+                  style={{ alignItems: 'center', marginTop: 16 }}
                 >
                   <View style={{
-                    width: 1, height: 16,
+                    width: 1, height: 24,
                     borderLeftWidth: 1.5,
                     borderColor: theme.border,
                     borderStyle: 'dashed',
-                    opacity: 0.5,
+                    opacity: 0.6,
                     marginBottom: 8,
                   }} />
                   <ThemedText style={{
@@ -454,41 +432,9 @@ export default function OnboardingGuideScreen() {
                     color: theme.textMuted, letterSpacing: 3,
                     opacity: 0.8,
                   }}>
-                    ↑  SWIPE HIGHER
+                    ↑  NOTCH TRIGGER (-110MM)
                   </ThemedText>
-                  <View style={{
-                    width: 1, height: 16,
-                    borderLeftWidth: 1.5,
-                    borderColor: theme.border,
-                    borderStyle: 'dashed',
-                    opacity: 0.5,
-                    marginTop: 8,
-                  }} />
                 </Animated.View>
-
-                {/* STAGE I — Photo — first threshold hit */}
-                <Animated.View
-                  entering={FadeIn.delay(350).duration(400)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
-                >
-                  <View style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    borderWidth: 1.5, borderColor: accent,
-                    backgroundColor: theme.backgroundElement,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Camera size={15} color={accent} strokeWidth={2} />
-                  </View>
-                  <View>
-                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 11, color: theme.text, letterSpacing: 3 }}>
-                      STAGE I
-                    </ThemedText>
-                    <ThemedText style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 10, color: theme.textMuted, letterSpacing: 1, marginTop: 2 }}>
-                      photo capture
-                    </ThemedText>
-                  </View>
-                </Animated.View>
-
               </View>
             </Animated.View>
           )}
@@ -525,7 +471,7 @@ export default function OnboardingGuideScreen() {
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           pointerEvents="box-none"
-          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
+          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 24) + (Platform.OS === 'android' ? 14 : 0) }]}
         >
           {phase <= 3 ? (
             <View style={{ alignItems: 'center', gap: 12 }}>
@@ -543,7 +489,7 @@ export default function OnboardingGuideScreen() {
               )}
               <AddButton
               onPress={() => { if (phase === 1) handleTap(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
-              onSwipeUp={(type) => { if (phase === 3) handleSwipeUp(type); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
+              onSwipeUp={() => { if (phase === 3) handleSwipeUp(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressStart={() => { if (phase === 2) handleLongPressStart(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
               onLongPressEnd={() => { if (phase === 2) handleLongPressEnd(); }}
             />

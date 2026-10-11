@@ -14,6 +14,8 @@ export interface GuideProgress {
   capture: boolean;
   inspect: boolean;
   share: boolean;
+  stickers: boolean;
+  stories: boolean;
 }
 
 export const defaultGuideProgress: GuideProgress = {
@@ -22,6 +24,8 @@ export const defaultGuideProgress: GuideProgress = {
   capture: false,
   inspect: false,
   share: false,
+  stickers: false,
+  stories: false,
 };
 
 export interface UserSettings {

@@ -167,29 +167,15 @@ export default function HomeScreen() {
 
   const isCameraOpenRef = useRef(false);
 
-  const handleSwipeUp = async (type: 'photo' | 'video') => {
-    
+  const handleSwipeUp = async () => {
     if (isCameraOpenRef.current) return;
     try {
       isCameraOpenRef.current = true;
-      if (type === 'video' && !Device.isDevice && Platform.OS === 'ios') {
-        Alert.alert(
-          'Simulator Unsupported',
-          'Video capture is not supported on the iOS Simulator. Please test this on a physical device.'
-        );
-        return;
-      }
-
       const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
       if (camStatus !== 'granted') return;
 
-      if (type === 'video') {
-        const { status: micStatus } = await AudioModule.requestRecordingPermissionsAsync();
-        if (micStatus !== 'granted') return;
-      }
-
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: type === 'video' ? ['videos'] : ['images'],
+        mediaTypes: ['images'],
         allowsEditing: false,
       });
 
@@ -198,14 +184,14 @@ export default function HomeScreen() {
         
         // Copy to safe document directory
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : (asset.type === 'video' ? 'mp4' : 'jpg');
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
         
         await FileSystem.copyAsync({ from: asset.uri, to: dest });
 
         setPendingCameraMedia({
           uri: dest,
-          type: asset.type === 'video' ? 'video' : 'image',
+          type: 'image',
           width: asset.width,
           height: asset.height
         });
@@ -461,7 +447,15 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Floating bottom bar with Date and Add Button */}
-      <View pointerEvents="box-none" style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.bottomBar,
+          {
+            paddingBottom: Math.max(insets.bottom, 24) + (Platform.OS === 'android' ? 14 : 0),
+          },
+        ]}
+      >
         <View style={styles.dateContainer}>
           <Text 
             style={[styles.dateText, { color: theme.textMuted }]}

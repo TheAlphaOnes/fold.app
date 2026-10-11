@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, ScrollView, Image as RNImage } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -15,13 +15,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Camera, Video, X, Check } from 'lucide-react-native';
+import { Camera, X, Check, Book } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import * as Device from 'expo-device';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
@@ -34,7 +33,7 @@ import { MemoryCard } from '@/components/memory-card';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { ActionLink } from '@/components/action-link';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
-import type { Composition } from '@/types/journal';
+import type { Composition, MediaElement } from '@/types/journal';
 
 export default function FieldGuideScreen() {
   const theme = useTheme();
@@ -54,7 +53,8 @@ export default function FieldGuideScreen() {
     if (!rawProgress.voice) return 2;
     if (!rawProgress.capture) return 3;
     if (!rawProgress.inspect) return 4;
-    if (!rawProgress.share) return 5;
+    if (!rawProgress.stickers) return 5;
+    if (!rawProgress.stories) return 6;
     return 1;
   };
 
@@ -68,7 +68,7 @@ export default function FieldGuideScreen() {
     phaseRef.current = phase;
   }, [phase]);
 
-  // Phase 5 Flight animation
+  // Flight animation
   const [scanKey, setScanKey] = useState<number>(0);
   const [isSharing, setIsSharing] = useState(false);
   const hiddenCardRef = useRef<View>(null);
@@ -87,7 +87,8 @@ export default function FieldGuideScreen() {
     if (phaseNum === 2) completeGuideStep('voice');
     if (phaseNum === 3) completeGuideStep('capture');
     if (phaseNum === 4) completeGuideStep('inspect');
-    if (phaseNum === 5) completeGuideStep('share');
+    if (phaseNum === 5) completeGuideStep('stickers');
+    if (phaseNum === 6) completeGuideStep('stories');
   }, [completeGuideStep]);
 
   const handleActionSuccess = useCallback(() => {
@@ -104,7 +105,7 @@ export default function FieldGuideScreen() {
 
     setTimeout(() => {
       setIsSuccess(false);
-      setPhase((prev) => (prev < 5 ? prev + 1 : 6));
+      setPhase((prev) => (prev < 6 ? prev + 1 : 7));
     }, 1000);
   }, [textScale, syncStepProgress]);
 
@@ -146,6 +147,76 @@ export default function FieldGuideScreen() {
       storyIds: [],
     };
   }, [compositions]);
+
+  // Phase 5 Sticker Demo State — 2 local stickers for moving, layering & resizing
+  const initialStickerElements = useMemo<MediaElement[]>(() => {
+    let iconUri = '';
+    let logoUri = '';
+    try {
+      iconUri = RNImage.resolveAssetSource(require('../../assets/images/icon.png'))?.uri || '';
+      logoUri = RNImage.resolveAssetSource(require('../../assets/fold-logo.png'))?.uri || '';
+    } catch {
+      // fallback
+    }
+    return [
+      {
+        id: 'guide-sticker-1',
+        uri: iconUri,
+        type: 'image',
+        x_pos: 24,
+        y_pos: 60,
+        scale: 1,
+      },
+      {
+        id: 'guide-sticker-2',
+        uri: logoUri,
+        type: 'image',
+        x_pos: 150,
+        y_pos: 170,
+        scale: 1,
+      },
+    ];
+  }, []);
+
+  const [guideStickers, setGuideStickers] = useState<MediaElement[]>(initialStickerElements);
+
+  const guideStickerMemory: Composition = useMemo(() => ({
+    id: 999998,
+    textContent: 'Hold 220ms to lift. Drag to place.\nPinch with 2 fingers to scale.',
+    createdAt: Date.now() - 3600000,
+    mediaElements: guideStickers,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 17,
+    storyIds: [],
+  }), [guideStickers]);
+
+  const handleStickerUpdatePositions = useCallback((_id: number, updatedMedia: MediaElement[]) => {
+    setGuideStickers(updatedMedia);
+    if (phaseRef.current === 5 && !isSuccess) {
+      handleActionSuccess();
+    }
+  }, [handleActionSuccess, isSuccess]);
+
+  // Phase 6 Story Demo State
+  const [isStoryTagged, setIsStoryTagged] = useState(false);
+
+  const guideStoryMemory: Composition = useMemo(() => ({
+    id: 999997,
+    textContent: 'Archival chapters organize life into permanent narratives. Road trips, seasons, and projects.',
+    createdAt: Date.now() - 7200000,
+    mediaElements: [],
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 18,
+    storyIds: isStoryTagged ? [1] : [],
+  }), [isStoryTagged]);
+
+  const handleToggleStoryTag = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsStoryTagged(true);
+    if (phaseRef.current === 6 && !isSuccess) {
+      handleActionSuccess();
+    }
+  }, [handleActionSuccess, isSuccess]);
 
   // Phase 1 handler
   const handleTap = () => {
@@ -215,20 +286,12 @@ export default function FieldGuideScreen() {
     }
   };
 
-  // Phase 3 handler
-  const handleSwipeUp = async (type: 'photo' | 'video') => {
+  // Phase 3 handler (photo only camera capture)
+  const handleSwipeUp = async () => {
     if (phase !== 3) return;
     if (isCameraOpenRef.current) return;
     try {
       isCameraOpenRef.current = true;
-      if (type === 'video' && !Device.isDevice && Platform.OS === 'ios') {
-        Alert.alert('Simulator Unsupported', 'Skipping camera.', [
-          { text: 'OK', onPress: handleActionSuccess },
-        ]);
-        isCameraOpenRef.current = false;
-        return;
-      }
-
       const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
       if (camStatus !== 'granted') {
         Alert.alert('Camera Required', 'Fold needs the camera to capture moments.', [
@@ -238,30 +301,22 @@ export default function FieldGuideScreen() {
         return;
       }
 
-      if (type === 'video') {
-        const { status: micStatus } = await AudioModule.requestRecordingPermissionsAsync();
-        if (micStatus !== 'granted') {
-          isCameraOpenRef.current = false;
-          return;
-        }
-      }
-
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: type === 'video' ? ['videos'] : ['images'],
+        mediaTypes: ['images'],
         allowsEditing: false,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
         const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : asset.type === 'video' ? 'mp4' : 'jpg';
+        const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
         const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
 
         await FileSystem.copyAsync({ from: asset.uri, to: dest });
 
         setPendingCameraMedia({
           uri: dest,
-          type: asset.type === 'video' ? 'video' : 'image',
+          type: 'image',
           width: asset.width,
           height: asset.height,
         });
@@ -269,7 +324,7 @@ export default function FieldGuideScreen() {
         router.push('/compose');
       }
     } catch (error) {
-      console.error(error);
+      console.error('Failed to open camera in guide', error);
     } finally {
       isCameraOpenRef.current = false;
     }
@@ -393,7 +448,9 @@ export default function FieldGuideScreen() {
     { num: 2, id: 'voice' as const, label: '02' },
     { num: 3, id: 'capture' as const, label: '03' },
     { num: 4, id: 'inspect' as const, label: '04' },
-    { num: 5, id: 'share' as const, label: '05' },
+    { num: 5, id: 'stickers' as const, label: '05' },
+    { num: 6, id: 'stories' as const, label: '06' },
+    { num: 7, id: 'ready' as const, label: '07' },
   ];
 
   return (
@@ -424,10 +481,14 @@ export default function FieldGuideScreen() {
           <X size={16} color={theme.text} strokeWidth={2} />
         </Pressable>
 
-        <View style={styles.phaseSelector}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.phaseSelectorScroll}
+        >
           {phaseSteps.map((s) => {
             const isCurrent = phase === s.num;
-            const isDone = rawProgress[s.id];
+            const isDone = s.id !== 'ready' && rawProgress[s.id as keyof typeof rawProgress];
             return (
               <Pressable
                 key={s.num}
@@ -464,7 +525,7 @@ export default function FieldGuideScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
 
       <View style={[styles.content, { paddingBottom: insets.bottom }]}>
@@ -507,39 +568,38 @@ export default function FieldGuideScreen() {
               <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>
                 PHASE 3
               </ThemedText>
-              {renderInstruction('swipe to capture.')}
+              {renderInstruction('swipe up orange trigger for photo capture.')}
 
-              {/* Centered spec diagram */}
+              {/* Hardware Shutter Spec Diagram */}
               <View style={{ marginTop: 24, alignItems: 'center' }}>
-                {/* STAGE II — Video */}
                 <Animated.View
-                  entering={FadeIn.delay(1200).duration(400)}
+                  entering={FadeIn.delay(350).duration(400)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
                 >
                   <View
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: theme.border,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      borderWidth: 1.5,
+                      borderColor: accent,
                       backgroundColor: theme.backgroundElement,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Video size={15} color={theme.textMuted} strokeWidth={2} />
+                    <Camera size={18} color={accent} strokeWidth={2} />
                   </View>
                   <View>
                     <ThemedText
                       style={{
                         fontFamily: 'JetBrainsMono-Bold',
-                        fontSize: 11,
+                        fontSize: 12,
                         color: theme.text,
                         letterSpacing: 3,
                       }}
                     >
-                      STAGE II
+                      HARDWARE SHUTTER
                     </ThemedText>
                     <ThemedText
                       style={{
@@ -550,24 +610,24 @@ export default function FieldGuideScreen() {
                         marginTop: 2,
                       }}
                     >
-                      video capture
+                      swipe past notch for instant camera
                     </ThemedText>
                   </View>
                 </Animated.View>
 
-                {/* Connector */}
+                {/* Upward Guide Indicator */}
                 <Animated.View
-                  entering={FadeIn.delay(750).duration(600)}
-                  style={{ alignItems: 'center', marginVertical: 12 }}
+                  entering={FadeIn.delay(650).duration(500)}
+                  style={{ alignItems: 'center', marginTop: 16 }}
                 >
                   <View
                     style={{
                       width: 1,
-                      height: 16,
+                      height: 24,
                       borderLeftWidth: 1.5,
                       borderColor: theme.border,
                       borderStyle: 'dashed',
-                      opacity: 0.5,
+                      opacity: 0.6,
                       marginBottom: 8,
                     }}
                   />
@@ -580,63 +640,8 @@ export default function FieldGuideScreen() {
                       opacity: 0.8,
                     }}
                   >
-                    ↑  SWIPE HIGHER
+                    ↑  NOTCH TRIGGER (-110MM)
                   </ThemedText>
-                  <View
-                    style={{
-                      width: 1,
-                      height: 16,
-                      borderLeftWidth: 1.5,
-                      borderColor: theme.border,
-                      borderStyle: 'dashed',
-                      opacity: 0.5,
-                      marginTop: 8,
-                    }}
-                  />
-                </Animated.View>
-
-                {/* STAGE I — Photo */}
-                <Animated.View
-                  entering={FadeIn.delay(350).duration(400)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
-                >
-                  <View
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      borderWidth: 1.5,
-                      borderColor: accent,
-                      backgroundColor: theme.backgroundElement,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Camera size={15} color={accent} strokeWidth={2} />
-                  </View>
-                  <View>
-                    <ThemedText
-                      style={{
-                        fontFamily: 'JetBrainsMono-Bold',
-                        fontSize: 11,
-                        color: theme.text,
-                        letterSpacing: 3,
-                      }}
-                    >
-                      STAGE I
-                    </ThemedText>
-                    <ThemedText
-                      style={{
-                        fontFamily: 'JetBrainsMono-Regular',
-                        fontSize: 10,
-                        color: theme.textMuted,
-                        letterSpacing: 1,
-                        marginTop: 2,
-                      }}
-                    >
-                      photo capture
-                    </ThemedText>
-                  </View>
                 </Animated.View>
               </View>
             </Animated.View>
@@ -652,7 +657,7 @@ export default function FieldGuideScreen() {
               <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
                 PHASE 4
               </ThemedText>
-              {renderInstruction('double tap memory to open.', true)}
+              {renderInstruction('double tap memory to inspect full record.', true)}
             </Animated.View>
           )}
 
@@ -666,7 +671,7 @@ export default function FieldGuideScreen() {
               <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
                 PHASE 5
               </ThemedText>
-              {renderInstruction('hold memory to share.', true)}
+              {renderInstruction('hold to lift. drag & pinch to scale.', true)}
             </Animated.View>
           )}
 
@@ -674,26 +679,70 @@ export default function FieldGuideScreen() {
             <Animated.View
               key="phase6"
               entering={SlideInRight}
-              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100, gap: 16 }]}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 6
+              </ThemedText>
+              {renderInstruction('tap [📖] to tag into an archival chapter.', true)}
+            </Animated.View>
+          )}
+
+          {phase === 7 && (
+            <Animated.View
+              key="phase7"
+              entering={SlideInRight}
+              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -60, gap: 14 }]}
             >
               <ThemedText style={[styles.phaseTitle, { color: accent }]}>
-                YOU'RE READY
+                FIELD GUIDE COMPLETE
               </ThemedText>
-              <ThemedText style={[styles.instruction, { color: fg, textAlign: 'center', lineHeight: 24 }]}>
-                {'every memory,\nevery voice,\nevery moment.\n'}
+              <ThemedText style={[styles.instruction, { color: fg, textAlign: 'center', lineHeight: 22 }]}>
+                {'all hardware gestures calibrated.\nevery memory, every voice, every moment.\nfold keeps it all.'}
               </ThemedText>
-              <ThemedText style={[styles.instruction, { color: accent, fontFamily: 'JetBrainsMono-Bold' }]}>
-                {'fold keeps it all.'}
-              </ThemedText>
+
+              {/* Hardware Spec Recap */}
+              <View style={styles.recapList}>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>01 COMPOSE · TAP TRIGGER</ThemedText>
+                </View>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>02 VOICE · HOLD TP-7 RECORD</ThemedText>
+                </View>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>03 PHOTO · SWIPE NOTCH SHUTTER</ThemedText>
+                </View>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>04 INSPECT · DOUBLE TAP & EXPORT</ThemedText>
+                </View>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>05 STICKERS · LIFT, DRAG & PINCH</ThemedText>
+                </View>
+                <View style={styles.recapItem}>
+                  <Check size={13} color={accent} strokeWidth={2.5} />
+                  <ThemedText style={[styles.recapText, { color: fg }]}>06 STORIES · ARCHIVAL CHAPTERS</ThemedText>
+                </View>
+              </View>
             </Animated.View>
           )}
         </View>
 
-        {/* Action Area — AddButton for phases 1-3, Return button for 6 */}
+        {/* Action Area — AddButton for phases 1-3, Return button for 7 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           pointerEvents="box-none"
-          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
+          style={[
+            styles.bottomBar,
+            {
+              paddingBottom: Math.max(insets.bottom, 24) + (Platform.OS === 'android' ? 14 : 0),
+            },
+          ]}
         >
           {phase <= 3 ? (
             <View style={{ alignItems: 'center', gap: 12 }}>
@@ -716,8 +765,8 @@ export default function FieldGuideScreen() {
                   if (phase === 1) handleTap();
                   else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 }}
-                onSwipeUp={(type) => {
-                  if (phase === 3) handleSwipeUp(type);
+                onSwipeUp={() => {
+                  if (phase === 3) handleSwipeUp();
                   else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 }}
                 onLongPressStart={() => {
@@ -729,7 +778,7 @@ export default function FieldGuideScreen() {
                 }}
               />
             </View>
-          ) : phase === 6 ? (
+          ) : phase === 7 ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink
                 text="RETURN TO JOURNAL"
@@ -746,8 +795,8 @@ export default function FieldGuideScreen() {
           ) : null}
         </Animated.View>
 
-        {/* Full-size memory card for phases 4 & 5 */}
-        {phase >= 4 && phase <= 5 && (
+        {/* Full-size memory card for phases 4, 5 & 6 */}
+        {phase >= 4 && phase <= 6 && (
           <Animated.View
             entering={FadeIn.duration(500)}
             style={[
@@ -762,25 +811,73 @@ export default function FieldGuideScreen() {
               cardAnimatedStyle,
             ]}
           >
-            <Pressable
-              onPressIn={() => {
-                pressedScale.value = withTiming(0.96, { duration: 150 });
-              }}
-              onPressOut={() => {
-                pressedScale.value = withTiming(1, { duration: 150 });
-              }}
-              onPress={handleCardPress}
-              onLongPress={handleCardLongPress}
-              delayLongPress={500}
-              style={{ flex: 1, width: '100%', height: '100%' }}
-            >
-              <MemoryCard
-                item={guideTextMemory}
-                height={cardHeight}
-                onUpdatePositions={() => {}}
-                isExporting={false}
-              />
-            </Pressable>
+            {phase === 4 && (
+              <Pressable
+                onPressIn={() => {
+                  pressedScale.value = withTiming(0.96, { duration: 150 });
+                }}
+                onPressOut={() => {
+                  pressedScale.value = withTiming(1, { duration: 150 });
+                }}
+                onPress={handleCardPress}
+                onLongPress={handleCardLongPress}
+                delayLongPress={500}
+                style={{ flex: 1, width: '100%', height: '100%' }}
+              >
+                <MemoryCard
+                  item={guideTextMemory}
+                  height={cardHeight}
+                  onUpdatePositions={() => {}}
+                  isExporting={false}
+                />
+              </Pressable>
+            )}
+
+            {phase === 5 && (
+              <View style={{ flex: 1, width: '100%', height: '100%' }}>
+                <MemoryCard
+                  item={guideStickerMemory}
+                  height={cardHeight}
+                  onUpdatePositions={handleStickerUpdatePositions}
+                  isExporting={false}
+                />
+              </View>
+            )}
+
+            {phase === 6 && (
+              <View style={{ flex: 1, width: '100%', height: '100%' }}>
+                <MemoryCard
+                  item={guideStoryMemory}
+                  height={cardHeight}
+                  onUpdatePositions={() => {}}
+                  isExporting={false}
+                />
+                {/* Interactive Story Tag Button */}
+                <View style={styles.storyTagOverlay}>
+                  <Pressable
+                    onPress={handleToggleStoryTag}
+                    style={({ pressed }) => [
+                      styles.storyTagBtn,
+                      {
+                        backgroundColor: isStoryTagged ? theme.text : theme.backgroundElement,
+                        borderColor: isStoryTagged ? theme.text : theme.border,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Book size={14} color={isStoryTagged ? theme.background : theme.accentWarm} strokeWidth={2} />
+                    <ThemedText
+                      style={[
+                        styles.storyTagBtnText,
+                        { color: isStoryTagged ? theme.background : theme.text },
+                      ]}
+                    >
+                      {isStoryTagged ? 'CHAPTER 01 · ARCHIVED' : '+ TAG TO CHAPTER 01'}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </Animated.View>
         )}
 
@@ -837,10 +934,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  phaseSelector: {
+  phaseSelectorScroll: {
     flexDirection: 'row',
     gap: 6,
     alignItems: 'center',
+    paddingLeft: 8,
+    paddingRight: 4,
   },
   phaseChip: {
     flexDirection: 'row',
@@ -901,6 +1000,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
+  },
+  storyTagOverlay: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    zIndex: 100,
+  },
+  storyTagBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  storyTagBtnText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 11,
+    letterSpacing: 1.5,
+  },
+  recapList: {
+    gap: 8,
+    marginTop: 8,
+    alignSelf: 'stretch',
+    paddingHorizontal: 20,
+  },
+  recapItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 6,
+  },
+  recapText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 1,
   },
   bottomBar: {
     position: 'absolute',

@@ -66,7 +66,7 @@ export function useGuideProgress() {
     {
       id: 'capture',
       title: 'SWIPE TO CAPTURE',
-      subtitle: 'Swipe up for Stage I Photo, swipe higher for Stage II Video.',
+      subtitle: 'Swipe up orange trigger past the notch for instant photo capture.',
       actionHint: 'Swipe up from orange + button',
       isCompleted: rawProgress.capture,
     },
@@ -84,13 +84,27 @@ export function useGuideProgress() {
       actionHint: 'Long press memory card',
       isCompleted: rawProgress.share,
     },
+    {
+      id: 'stickers',
+      title: 'STICKER CANVAS',
+      subtitle: 'Hold to lift, drag to place, and pinch to resize stickers.',
+      actionHint: 'Hold & pinch sticker',
+      isCompleted: rawProgress.stickers,
+    },
+    {
+      id: 'stories',
+      title: 'STORY CHAPTERS',
+      subtitle: 'Tag memories with [📖] Book icon to curate permanent story archives.',
+      actionHint: 'Tag a story chapter',
+      isCompleted: rawProgress.stories,
+    },
   ], [rawProgress]);
 
   const completedCount = useMemo(() => {
     return Object.values(rawProgress).filter(Boolean).length;
   }, [rawProgress]);
 
-  const totalCount = 5;
+  const totalCount = 7;
   const isAllCompleted = completedCount === totalCount;
 
   return {
