@@ -37,6 +37,7 @@ import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
 import { RecordingOverlay } from '@/components/recording-overlay';
+import { FieldGuideTab } from '@/components/field-guide-tab';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -253,27 +254,30 @@ export default function HomeScreen() {
         await recorder.stop();
         const uri = recorder.uri;
         if (uri) {
-          // Copy to safe document directory
-          const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-          const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
-          const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-          
-          await FileSystem.copyAsync({ from: uri, to: dest });
+          const info = await FileSystem.getInfoAsync(uri);
+          if (info.exists && (info.size === undefined || info.size > 0)) {
+            // Copy to safe document directory
+            const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+            const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
+            const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+            
+            await FileSystem.copyAsync({ from: uri, to: dest });
 
-          const newMedia = {
-            id: Math.random().toString(36).substring(2, 9),
-            uri: dest,
-            type: 'audio' as const,
-            x_pos: 30 + Math.random() * (width - 150),
-            y_pos: 30 + Math.random() * (height - 200),
-          };
-          // Instant save as a memory
-          await addComposition({
-            textContent: '',
-            mediaElements: [newMedia],
-            fontFamily: 'JetBrainsMono-Regular',
-            fontSize: 16,
-          });
+            const newMedia = {
+              id: Math.random().toString(36).substring(2, 9),
+              uri: dest,
+              type: 'audio' as const,
+              x_pos: 30 + Math.random() * (width - 150),
+              y_pos: 30 + Math.random() * (height - 200),
+            };
+            // Instant save as a memory
+            await addComposition({
+              textContent: '',
+              mediaElements: [newMedia],
+              fontFamily: 'JetBrainsMono-Regular',
+              fontSize: 16,
+            });
+          }
         }
       }
     } catch (err) {
@@ -417,6 +421,8 @@ export default function HomeScreen() {
         <User size={16} color={theme.text} strokeWidth={2.5} />
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </Pressable>
+
+      <FieldGuideTab />
 
       {(timelineKey !== null || timelineError) && timelineData.items.length === 0 ? (
         <EmptyState />

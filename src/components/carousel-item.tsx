@@ -8,6 +8,7 @@ import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handl
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCard } from '@/components/memory-card';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import type { Composition } from '@/types/journal';
@@ -27,6 +28,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   const [scanKey, setScanKey] = useState(0);
   const { width } = useWindowDimensions();
   const theme = useTheme();
+  const completeGuideStep = useSettingsStore((s) => s.completeGuideStep);
   
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
@@ -50,6 +52,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   });
 
   const navigateToDetail = () => {
+    completeGuideStep('inspect');
     router.push(`/memory/${item.id}`);
   };
 
@@ -62,6 +65,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
 
   const captureAndShareCard = async () => {
     setIsSharing(true);
+    completeGuideStep('share');
     try {
       // Wait to let the flight animation completely finish before freezing JS thread (700ms delay + 1000ms duration)
       await new Promise(resolve => setTimeout(resolve, 1750));

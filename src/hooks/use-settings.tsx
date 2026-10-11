@@ -8,6 +8,22 @@ import type { ThemeMode } from "./use-theme";
 
 export type TimelineMode = 'yearly' | 'monthly' | 'infinite';
 
+export interface GuideProgress {
+  write: boolean;
+  voice: boolean;
+  capture: boolean;
+  inspect: boolean;
+  share: boolean;
+}
+
+export const defaultGuideProgress: GuideProgress = {
+  write: false,
+  voice: false,
+  capture: false,
+  inspect: false,
+  share: false,
+};
+
 export interface UserSettings {
   name: string;
   dob: string;
@@ -18,6 +34,8 @@ export interface UserSettings {
   autoLocationTagging: boolean;
   autoPlayMusic: boolean;
   timelineMode: TimelineMode;
+  guideProgress: GuideProgress;
+  guideDismissed: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -30,6 +48,8 @@ const defaultSettings: UserSettings = {
   autoLocationTagging: false,
   autoPlayMusic: false,
   timelineMode: 'yearly',
+  guideProgress: defaultGuideProgress,
+  guideDismissed: false,
 };
 
 interface SettingsState {
@@ -41,6 +61,7 @@ interface SettingsState {
     key: K,
     value: UserSettings[K],
   ) => Promise<void>;
+  completeGuideStep: (step: keyof GuideProgress) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -51,6 +72,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       set({ loading: true });
       const stored = await getAllSettings();
+      let parsedGuideProgress = defaultGuideProgress;
+      if (stored.guideProgress) {
+        try {
+          parsedGuideProgress = { ...defaultGuideProgress, ...JSON.parse(stored.guideProgress) };
+        } catch {
+          parsedGuideProgress = defaultGuideProgress;
+        }
+      }
+
       set({
         settings: {
           name: stored.name || "",
@@ -62,6 +92,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           autoLocationTagging: stored.autoLocationTagging === "true",
           autoPlayMusic: stored.autoPlayMusic === "true",
           timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
+          guideProgress: parsedGuideProgress,
+          guideDismissed: stored.guideDismissed === "true",
         },
         loading: false,
       });
@@ -84,8 +116,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }));
 
     // Persist to SQLite
-    const strValue = typeof value === "boolean" ? String(value) : String(value);
+    const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
     await dbSetSetting(key, strValue);
+  },
+
+  completeGuideStep: async (step: keyof GuideProgress) => {
+    const current = get().settings.guideProgress;
+    if (current[step]) return;
+    const updated = { ...current, [step]: true };
+    await get().updateSetting('guideProgress', updated);
   },
 }));
 

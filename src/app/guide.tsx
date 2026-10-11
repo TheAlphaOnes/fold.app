@@ -1,0 +1,913 @@
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  SlideInRight,
+  SlideOutLeft,
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withRepeat,
+  Easing,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { Camera, Video, X, Check } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as Device from 'expo-device';
+
+import { useTheme } from '@/hooks/use-theme';
+import { useSettingsStore } from '@/hooks/use-settings';
+import { useJournalStore } from '@/hooks/use-journal';
+import { GrainBackground } from '@/components/grain-background';
+import { ThemedText } from '@/components/themed-text';
+import { AddButton } from '@/components/add-button';
+import { RecordingOverlay } from '@/components/recording-overlay';
+import { MemoryCard } from '@/components/memory-card';
+import { LogoUploadFlight } from '@/components/logo-upload-flight';
+import { ActionLink } from '@/components/action-link';
+import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import type { Composition } from '@/types/journal';
+
+export default function FieldGuideScreen() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  // Exact same formula as home screen (src/app/index.tsx line 80)
+  const cardHeight = Math.min(screenWidth * 1.618, screenHeight * 0.78);
+  const cardWidth = screenWidth - 42;
+
+  const { settings, completeGuideStep } = useSettingsStore();
+  const { compositions, addComposition } = useJournalStore();
+  const rawProgress = settings.guideProgress;
+
+  // Determine initial phase based on first uncompleted step
+  const getInitialPhase = () => {
+    if (!rawProgress.write) return 1;
+    if (!rawProgress.voice) return 2;
+    if (!rawProgress.capture) return 3;
+    if (!rawProgress.inspect) return 4;
+    if (!rawProgress.share) return 5;
+    return 1;
+  };
+
+  const [phase, setPhase] = useState(getInitialPhase);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const initialCount = useRef(compositions.length);
+  const isCameraOpenRef = useRef(false);
+
+  const phaseRef = useRef(phase);
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  // Phase 5 Flight animation
+  const [scanKey, setScanKey] = useState<number>(0);
+  const [isSharing, setIsSharing] = useState(false);
+  const hiddenCardRef = useRef<View>(null);
+
+  const textScale = useSharedValue(1);
+  const pressedScale = useSharedValue(1);
+
+  // Audio Recording for Phase 2
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder);
+  const recordIntentRef = useRef(false);
+
+  // Sync guide progress step on success
+  const syncStepProgress = useCallback((phaseNum: number) => {
+    if (phaseNum === 1) completeGuideStep('write');
+    if (phaseNum === 2) completeGuideStep('voice');
+    if (phaseNum === 3) completeGuideStep('capture');
+    if (phaseNum === 4) completeGuideStep('inspect');
+    if (phaseNum === 5) completeGuideStep('share');
+  }, [completeGuideStep]);
+
+  const handleActionSuccess = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 60);
+
+    syncStepProgress(phaseRef.current);
+    setIsSuccess(true);
+
+    textScale.value = withSequence(
+      withTiming(0.92, { duration: 50 }),
+      withTiming(1, { duration: 150 })
+    );
+
+    setTimeout(() => {
+      setIsSuccess(false);
+      setPhase((prev) => (prev < 5 ? prev + 1 : 6));
+    }, 1000);
+  }, [textScale, syncStepProgress]);
+
+  // Monitor composition additions for Phase 1, 2, 3
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess) return;
+
+      if ((phase === 1 || phase === 2 || phase === 3) && compositions.length > initialCount.current) {
+        initialCount.current = compositions.length;
+        handleActionSuccess();
+      }
+
+      if (compositions.length < initialCount.current) {
+        initialCount.current = compositions.length;
+      }
+    }, [compositions.length, phase, isSuccess, handleActionSuccess])
+  );
+
+  // Dedicated text memory card for Phase 4 & 5 guide demonstration
+  // Guarantees Text medium so it renders rich text content rather than an audio/photo view
+  const guideTextMemory: Composition = useMemo(() => {
+    const textComp = compositions.find(
+      (c) => (!c.mediaElements || c.mediaElements.length === 0) && c.textContent && c.textContent.trim().length > 0
+    );
+    if (textComp) {
+      return {
+        ...textComp,
+        mediaElements: [], // Guarantee text medium
+      };
+    }
+    return {
+      id: 999999,
+      textContent: 'Today I started capturing my story with Fold.',
+      createdAt: Date.now(),
+      mediaElements: [],
+      fontFamily: 'JetBrainsMono-Regular',
+      fontSize: 18,
+      storyIds: [],
+    };
+  }, [compositions]);
+
+  // Phase 1 handler
+  const handleTap = () => {
+    if (phase !== 1) return;
+    router.push({ pathname: '/compose', params: { sharedText: 'Today I started using Fold.' } });
+  };
+
+  // Phase 2 handlers
+  const handleLongPressStart = async () => {
+    if (phase !== 2) return;
+    try {
+      recordIntentRef.current = true;
+      const { status } = await AudioModule.requestRecordingPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Microphone Required', 'Fold needs the mic to capture your voice.', [
+          { text: 'Skip', onPress: handleActionSuccess },
+        ]);
+        return;
+      }
+
+      await AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+
+      if (!recordIntentRef.current) return;
+      await recorder.record();
+    } catch (err) {
+      console.error('Failed to start quick record', err);
+    }
+  };
+
+  const handleLongPressEnd = async () => {
+    if (phase !== 2) return;
+    try {
+      recordIntentRef.current = false;
+      if (recorder.isRecording || recorder.uri) {
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (uri) {
+          const info = await FileSystem.getInfoAsync(uri);
+          if (info.exists) {
+            const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+            const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
+            const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+            await FileSystem.copyAsync({ from: uri, to: dest });
+
+            const newMedia = {
+              id: Math.random().toString(36).substring(2, 9),
+              uri: dest,
+              type: 'audio' as const,
+              x_pos: 30 + Math.random() * 100,
+              y_pos: 30 + Math.random() * 100,
+            };
+
+            await addComposition({
+              textContent: '',
+              mediaElements: [newMedia],
+              fontFamily: 'JetBrainsMono-Regular',
+              fontSize: 16,
+              storyIds: [],
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to stop quick record', err);
+    }
+  };
+
+  // Phase 3 handler
+  const handleSwipeUp = async (type: 'photo' | 'video') => {
+    if (phase !== 3) return;
+    if (isCameraOpenRef.current) return;
+    try {
+      isCameraOpenRef.current = true;
+      if (type === 'video' && !Device.isDevice && Platform.OS === 'ios') {
+        Alert.alert('Simulator Unsupported', 'Skipping camera.', [
+          { text: 'OK', onPress: handleActionSuccess },
+        ]);
+        isCameraOpenRef.current = false;
+        return;
+      }
+
+      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      if (camStatus !== 'granted') {
+        Alert.alert('Camera Required', 'Fold needs the camera to capture moments.', [
+          { text: 'Skip', onPress: handleActionSuccess },
+        ]);
+        isCameraOpenRef.current = false;
+        return;
+      }
+
+      if (type === 'video') {
+        const { status: micStatus } = await AudioModule.requestRecordingPermissionsAsync();
+        if (micStatus !== 'granted') {
+          isCameraOpenRef.current = false;
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: type === 'video' ? ['videos'] : ['images'],
+        allowsEditing: false,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+        const ext = extMatch ? extMatch[1].toLowerCase() : asset.type === 'video' ? 'mp4' : 'jpg';
+        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+        await FileSystem.copyAsync({ from: asset.uri, to: dest });
+
+        setPendingCameraMedia({
+          uri: dest,
+          type: asset.type === 'video' ? 'video' : 'image',
+          width: asset.width,
+          height: asset.height,
+        });
+
+        router.push('/compose');
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      isCameraOpenRef.current = false;
+    }
+  };
+
+  // Phase 4 handler (double-tap card)
+  const handleDoubleTap = useCallback(() => {
+    if (phaseRef.current === 4) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (compositions[0]) {
+        router.push(`/memory/${compositions[0].id}`);
+      }
+      handleActionSuccess();
+    }
+  }, [compositions, handleActionSuccess]);
+
+  // Phase 5 handler (long press share)
+  const triggerShare = useCallback(() => {
+    setIsSharing(true);
+    setScanKey((prev) => prev + 1);
+
+    setTimeout(() => {
+      const advance = () => {
+        setIsSharing(false);
+        handleActionSuccess();
+      };
+      if (hiddenCardRef.current) {
+        captureRef(hiddenCardRef, { format: 'png', quality: 1 })
+          .then((uri) => Sharing.shareAsync(uri))
+          .catch(() => {})
+          .finally(() => advance());
+      } else {
+        advance();
+      }
+    }, 1750);
+  }, [handleActionSuccess]);
+
+  const handleLongPressCard = useCallback(() => {
+    if (phaseRef.current === 5) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      triggerShare();
+    }
+  }, [triggerShare]);
+
+  // Subtle breathing arrow animation
+  const arrowOffset = useSharedValue(0);
+  useEffect(() => {
+    arrowOffset.value = withRepeat(
+      withSequence(
+        withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.quad) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+  const arrowStyle = useAnimatedStyle(() => ({ transform: [{ translateY: arrowOffset.value }] }));
+
+  // Native touch handler for card double-tap
+  const lastTapRef = useRef(0);
+  const handleCardPress = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current;
+
+    if (timeSinceLastTap < 300) {
+      if (phaseRef.current === 4) {
+        handleDoubleTap();
+      }
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  }, [handleDoubleTap]);
+
+  const handleCardLongPress = useCallback(() => {
+    if (phaseRef.current === 5) {
+      handleLongPressCard();
+    }
+  }, [handleLongPressCard]);
+
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressedScale.value }],
+  }));
+
+  const bg = theme.background;
+  const fg = theme.text;
+  const accent = theme.accentWarm;
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: textScale.value }],
+  }));
+
+  const renderInstruction = (text: string, compact = false) => {
+    if (isSuccess) {
+      return (
+        <Animated.View style={animatedTextStyle}>
+          <ThemedText
+            style={[
+              compact ? styles.instructionCompact : styles.instruction,
+              { color: accent, fontFamily: 'JetBrainsMono-Bold' },
+            ]}
+          >
+            [ CAPTURED ]
+          </ThemedText>
+        </Animated.View>
+      );
+    }
+    return (
+      <Animated.View style={animatedTextStyle}>
+        <ThemedText
+          style={[compact ? styles.instructionCompact : styles.instruction, { color: fg }]}
+        >
+          {text}
+        </ThemedText>
+      </Animated.View>
+    );
+  };
+
+  const phaseSteps = [
+    { num: 1, id: 'write' as const, label: '01' },
+    { num: 2, id: 'voice' as const, label: '02' },
+    { num: 3, id: 'capture' as const, label: '03' },
+    { num: 4, id: 'inspect' as const, label: '04' },
+    { num: 5, id: 'share' as const, label: '05' },
+  ];
+
+  return (
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <GrainBackground />
+
+      {/* Top Header Bar: Close Button + Phase Selector */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/');
+            }
+          }}
+          style={({ pressed }) => [
+            styles.closeBtn,
+            {
+              backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
+              borderColor: theme.border,
+              opacity: pressed ? 0.6 : 1,
+            },
+          ]}
+          hitSlop={12}
+        >
+          <X size={16} color={theme.text} strokeWidth={2} />
+        </Pressable>
+
+        <View style={styles.phaseSelector}>
+          {phaseSteps.map((s) => {
+            const isCurrent = phase === s.num;
+            const isDone = rawProgress[s.id];
+            return (
+              <Pressable
+                key={s.num}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setPhase(s.num);
+                }}
+                style={({ pressed }) => [
+                  styles.phaseChip,
+                  {
+                    borderColor: isCurrent ? theme.text : theme.border,
+                    backgroundColor: isCurrent
+                      ? theme.backgroundElement
+                      : pressed
+                      ? theme.backgroundSelected
+                      : 'transparent',
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.phaseChipText,
+                    {
+                      color: isCurrent ? theme.text : theme.textMuted,
+                      fontFamily: isCurrent ? 'JetBrainsMono-Bold' : 'JetBrainsMono-Regular',
+                    },
+                  ]}
+                >
+                  {s.label}
+                </ThemedText>
+                {isDone && (
+                  <View style={[styles.chipDot, { backgroundColor: theme.accentWarm }]} />
+                )}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={[styles.content, { paddingBottom: insets.bottom }]}>
+        <View style={styles.textContainer}>
+          {phase === 1 && (
+            <Animated.View
+              key="phase1"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100 }]}
+            >
+              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>
+                PHASE 1
+              </ThemedText>
+              {renderInstruction('tap to write.')}
+            </Animated.View>
+          )}
+
+          {phase === 2 && (
+            <Animated.View
+              key="phase2"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100 }]}
+            >
+              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>
+                PHASE 2
+              </ThemedText>
+              {renderInstruction('press and hold to capture your voice.')}
+            </Animated.View>
+          )}
+
+          {phase === 3 && (
+            <Animated.View
+              key="phase3"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -80 }]}
+            >
+              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>
+                PHASE 3
+              </ThemedText>
+              {renderInstruction('swipe to capture.')}
+
+              {/* Centered spec diagram */}
+              <View style={{ marginTop: 24, alignItems: 'center' }}>
+                {/* STAGE II — Video */}
+                <Animated.View
+                  entering={FadeIn.delay(1200).duration(400)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      backgroundColor: theme.backgroundElement,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Video size={15} color={theme.textMuted} strokeWidth={2} />
+                  </View>
+                  <View>
+                    <ThemedText
+                      style={{
+                        fontFamily: 'JetBrainsMono-Bold',
+                        fontSize: 11,
+                        color: theme.text,
+                        letterSpacing: 3,
+                      }}
+                    >
+                      STAGE II
+                    </ThemedText>
+                    <ThemedText
+                      style={{
+                        fontFamily: 'JetBrainsMono-Regular',
+                        fontSize: 10,
+                        color: theme.textMuted,
+                        letterSpacing: 1,
+                        marginTop: 2,
+                      }}
+                    >
+                      video capture
+                    </ThemedText>
+                  </View>
+                </Animated.View>
+
+                {/* Connector */}
+                <Animated.View
+                  entering={FadeIn.delay(750).duration(600)}
+                  style={{ alignItems: 'center', marginVertical: 12 }}
+                >
+                  <View
+                    style={{
+                      width: 1,
+                      height: 16,
+                      borderLeftWidth: 1.5,
+                      borderColor: theme.border,
+                      borderStyle: 'dashed',
+                      opacity: 0.5,
+                      marginBottom: 8,
+                    }}
+                  />
+                  <ThemedText
+                    style={{
+                      fontFamily: 'JetBrainsMono-Regular',
+                      fontSize: 11,
+                      color: theme.textMuted,
+                      letterSpacing: 3,
+                      opacity: 0.8,
+                    }}
+                  >
+                    ↑  SWIPE HIGHER
+                  </ThemedText>
+                  <View
+                    style={{
+                      width: 1,
+                      height: 16,
+                      borderLeftWidth: 1.5,
+                      borderColor: theme.border,
+                      borderStyle: 'dashed',
+                      opacity: 0.5,
+                      marginTop: 8,
+                    }}
+                  />
+                </Animated.View>
+
+                {/* STAGE I — Photo */}
+                <Animated.View
+                  entering={FadeIn.delay(350).duration(400)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      borderWidth: 1.5,
+                      borderColor: accent,
+                      backgroundColor: theme.backgroundElement,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Camera size={15} color={accent} strokeWidth={2} />
+                  </View>
+                  <View>
+                    <ThemedText
+                      style={{
+                        fontFamily: 'JetBrainsMono-Bold',
+                        fontSize: 11,
+                        color: theme.text,
+                        letterSpacing: 3,
+                      }}
+                    >
+                      STAGE I
+                    </ThemedText>
+                    <ThemedText
+                      style={{
+                        fontFamily: 'JetBrainsMono-Regular',
+                        fontSize: 10,
+                        color: theme.textMuted,
+                        letterSpacing: 1,
+                        marginTop: 2,
+                      }}
+                    >
+                      photo capture
+                    </ThemedText>
+                  </View>
+                </Animated.View>
+              </View>
+            </Animated.View>
+          )}
+
+          {phase === 4 && (
+            <Animated.View
+              key="phase4"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 4
+              </ThemedText>
+              {renderInstruction('double tap memory to open.', true)}
+            </Animated.View>
+          )}
+
+          {phase === 5 && (
+            <Animated.View
+              key="phase5"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 5
+              </ThemedText>
+              {renderInstruction('hold memory to share.', true)}
+            </Animated.View>
+          )}
+
+          {phase === 6 && (
+            <Animated.View
+              key="phase6"
+              entering={SlideInRight}
+              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -100, gap: 16 }]}
+            >
+              <ThemedText style={[styles.phaseTitle, { color: accent }]}>
+                YOU'RE READY
+              </ThemedText>
+              <ThemedText style={[styles.instruction, { color: fg, textAlign: 'center', lineHeight: 24 }]}>
+                {'every memory,\nevery voice,\nevery moment.\n'}
+              </ThemedText>
+              <ThemedText style={[styles.instruction, { color: accent, fontFamily: 'JetBrainsMono-Bold' }]}>
+                {'fold keeps it all.'}
+              </ThemedText>
+            </Animated.View>
+          )}
+        </View>
+
+        {/* Action Area — AddButton for phases 1-3, Return button for 6 */}
+        <Animated.View
+          entering={FadeIn.delay(400).duration(800)}
+          pointerEvents="box-none"
+          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}
+        >
+          {phase <= 3 ? (
+            <View style={{ alignItems: 'center', gap: 12 }}>
+              {!isSuccess && (
+                <Animated.View entering={FadeIn.delay(1000).duration(800)} style={arrowStyle}>
+                  <ThemedText
+                    style={{
+                      fontFamily: 'JetBrainsMono-Regular',
+                      fontSize: 22,
+                      color: theme.text,
+                      opacity: 0.4,
+                    }}
+                  >
+                    {phase === 3 ? '↑' : '↓'}
+                  </ThemedText>
+                </Animated.View>
+              )}
+              <AddButton
+                onPress={() => {
+                  if (phase === 1) handleTap();
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onSwipeUp={(type) => {
+                  if (phase === 3) handleSwipeUp(type);
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onLongPressStart={() => {
+                  if (phase === 2) handleLongPressStart();
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onLongPressEnd={() => {
+                  if (phase === 2) handleLongPressEnd();
+                }}
+              />
+            </View>
+          ) : phase === 6 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="RETURN TO JOURNAL"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/');
+                  }
+                }}
+              />
+            </Animated.View>
+          ) : null}
+        </Animated.View>
+
+        {/* Full-size memory card for phases 4 & 5 */}
+        {phase >= 4 && phase <= 5 && (
+          <Animated.View
+            entering={FadeIn.duration(500)}
+            style={[
+              {
+                position: 'absolute',
+                bottom: Math.max(insets.bottom, 12),
+                left: 21,
+                right: 21,
+                height: cardHeight,
+                zIndex: 50,
+              },
+              cardAnimatedStyle,
+            ]}
+          >
+            <Pressable
+              onPressIn={() => {
+                pressedScale.value = withTiming(0.96, { duration: 150 });
+              }}
+              onPressOut={() => {
+                pressedScale.value = withTiming(1, { duration: 150 });
+              }}
+              onPress={handleCardPress}
+              onLongPress={handleCardLongPress}
+              delayLongPress={500}
+              style={{ flex: 1, width: '100%', height: '100%' }}
+            >
+              <MemoryCard
+                item={guideTextMemory}
+                height={cardHeight}
+                onUpdatePositions={() => {}}
+                isExporting={false}
+              />
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Hidden Card For Sharing */}
+        {isSharing && (
+          <View
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              pointerEvents: 'none',
+              zIndex: -100,
+              width: cardWidth,
+              height: cardHeight,
+            }}
+          >
+            <View ref={hiddenCardRef} collapsable={false} style={{ width: cardWidth, height: cardHeight }}>
+              <MemoryCard
+                item={guideTextMemory}
+                height={cardHeight}
+                onUpdatePositions={() => {}}
+                isExporting={true}
+              />
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Flight Animation & Recording Overlay */}
+      {isSharing && <LogoUploadFlight color={fg} key={scanKey} />}
+      <RecordingOverlay
+        visible={recorderState.isRecording}
+        durationMillis={recorderState.durationMillis}
+        onStop={handleLongPressEnd}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+    zIndex: 200,
+  },
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  phaseSelector: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  phaseChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 30,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 5,
+  },
+  phaseChipText: {
+    fontSize: 10,
+    letterSpacing: 1,
+  },
+  chipDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  content: { flex: 1 },
+  textContainer: { flex: 1, width: '100%', zIndex: 100 },
+  phaseBlock: {
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  phaseBlockCompact: {
+    alignItems: 'center',
+    paddingTop: 6,
+    paddingHorizontal: 24,
+    zIndex: 600,
+  },
+  phaseTitle: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 16,
+    letterSpacing: 4,
+    marginBottom: 4,
+    opacity: 0.5,
+  },
+  phaseTitleCompact: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 16,
+    letterSpacing: 4,
+    marginBottom: 4,
+    opacity: 0.5,
+  },
+  instruction: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  instructionCompact: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    alignItems: 'center',
+  },
+});

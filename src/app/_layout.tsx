@@ -248,7 +248,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isAppReady) {
       const inOnboarding = segments[0] === "onboarding";
-      const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose" || segments[0] === "memory";
+      const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose" || segments[0] === "memory" || segments[0] === "guide";
       
       if (!settings.hasOnboarded && !isAllowedDuringOnboarding) {
         setTimeout(() => {
@@ -277,6 +277,13 @@ function RootLayoutNav() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="onboarding" />
+              <Stack.Screen
+                name="guide"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
               <Stack.Screen
                 name="compose"
                 options={{
