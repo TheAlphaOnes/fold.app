@@ -69,7 +69,6 @@ import {
 } from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
-import { TextInputWrapper } from "expo-paste-input";
 import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
 import { StoryPicker } from "@/components/story-picker";
@@ -953,86 +952,26 @@ export default function ComposeScreen() {
           <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
           {/* Body text input — the main writing area */}
-          <TextInputWrapper
-            onPaste={async (payload) => {
-              if (payload.type === "images") {
-                if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
-                  alertElementCap();
-                  return;
-                }
-
-                const { accepted: uris, capped } = sliceToElementCap(
-                  mediaElements.length,
-                  payload.uris,
-                );
-                if (capped) alertElementCap();
-
-                let oversizedImages = 0;
-                const newMedia = await Promise.all(
-                  uris.map(async (uri): Promise<MediaElement | null> => {
-                    const stickerSize = 120;
-                    const safeW = screenWidth - 60 - stickerSize;
-                    const safeH =
-                      Math.min(screenWidth * 1.618, screenHeight * 0.78) -
-                      stickerSize -
-                      60;
-
-                    const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-                    const ext = extMatch ? extMatch[1].toLowerCase() : "gif";
-                    const dest = `${FileSystem.documentDirectory}pasted_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-
-                    const copied = await copyWithinFileSize({
-                      from: uri,
-                      to: dest,
-                      kind: "image",
-                    });
-                    if (!copied) {
-                      oversizedImages += 1;
-                      return null;
-                    }
-
-                    return {
-                      id: Math.random().toString(36).substring(2, 9),
-                      uri: dest,
-                      type: "image",
-                      x_pos: 30 + Math.random() * safeW,
-                      y_pos: 30 + Math.random() * safeH,
-                    };
-                  }),
-                );
-                const attached = newMedia.filter((m) => m !== null);
-                if (attached.length > 0) {
-                  setMediaElements((prev) => [...prev, ...attached]);
-                }
-                if (oversizedImages > 0) {
-                  alertFileTooLarge("image", oversizedImages);
-                }
-              } else if (payload.type === "text") {
-                setBody((prev) => prev + payload.value);
-              }
-            }}
-          >
-            <TextInput
-              style={[
-                styles.bodyInput,
-                {
-                  color: theme.text,
-                  fontFamily,
-                  ...memoryTextMetrics(fontFamily, fontSize),
-                },
-              ]}
-              placeholder="Capture a thought, moment, or feeling..."
-              placeholderTextColor={theme.textMuted}
-              multiline
-              autoFocus
-              value={body}
-              onChangeText={setBody}
-              selectionColor={theme.border}
-              cursorColor={theme.text}
-              textAlignVertical="top"
-              scrollEnabled={false}
-            />
-          </TextInputWrapper>
+          <TextInput
+            style={[
+              styles.bodyInput,
+              {
+                color: theme.text,
+                fontFamily,
+                ...memoryTextMetrics(fontFamily, fontSize),
+              },
+            ]}
+            placeholder="Capture a thought, moment, or feeling..."
+            placeholderTextColor={theme.textMuted}
+            multiline
+            autoFocus
+            value={body}
+            onChangeText={setBody}
+            selectionColor={theme.border}
+            cursorColor={theme.text}
+            textAlignVertical="top"
+            scrollEnabled={false}
+          />
 
           {/* Previews of attached media */}
           {mediaElements.length > 0 && (
