@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useJournalStore } from '@/hooks/use-journal';
 import { getDatesWithMemories } from '@/db/journal-repository';
 import { ThemedText } from './themed-text';
 
@@ -30,11 +31,13 @@ export function TECalendar({ onSelect }: TECalendarProps) {
     Math.floor(currentDate.getFullYear() / 12) * 12
   );
 
+  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
+
   useEffect(() => {
     getDatesWithMemories().then(dates => {
       setActiveDates(new Set(dates));
-    });
-  }, []);
+    }).catch(console.error);
+  }, [hydrationVersion]);
 
   const changePage = (delta: number) => {
     if (viewMode === 'days') {

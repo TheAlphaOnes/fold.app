@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, Pressable, Image, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, X, ArrowLeft, ChevronRight, ArrowUpDown, Filter } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -64,7 +64,13 @@ export default function StoryBoardScreen() {
 
   useEffect(() => {
     refreshStories();
-  }, []);
+  }, [refreshStories]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshStories();
+    }, [refreshStories])
+  );
 
   const renderItem = ({ item }: { item: Story }) => {
     const formattedDate = new Intl.DateTimeFormat('en-US', {

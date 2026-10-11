@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import Animated, {
@@ -53,7 +53,7 @@ export default function TimeMachineScreen() {
   const bootDate = useRef(
     clampToToday(parseDayParam(Array.isArray(day) ? day[0] : day)),
   ).current;
-  const { days, selected, select, entries, litDates, loading } = useDayLog(bootDate);
+  const { days, selected, select, entries, litDates, loading, refresh } = useDayLog(bootDate);
   const updatePositions = useJournalStore((state) => state.updatePositions);
   const setActiveCompositionId = useJournalStore((state) => state.setActiveCompositionId);
   const listRef = useRef<Animated.FlatList<Composition>>(null);
@@ -117,6 +117,25 @@ export default function TimeMachineScreen() {
     }
   }, [entries, selectedKey, isToday, loading, reduceMotion]);
 
+  // Re-sync with database whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
+
+  // If items were deleted while viewing this date, adjust active index and clamp scroll
+  useEffect(() => {
+    if (displayData.entries.length === 0) {
+      setActiveCompositionId(null);
+    } else {
+      const maxOffset = Math.max(0, (displayData.entries.length - 1) * snapInterval);
+      if (scrollY.value > maxOffset) {
+        listRef.current?.scrollToOffset({ offset: maxOffset, animated: true });
+      }
+    }
+  }, [displayData.entries.length, snapInterval]);
+
   // Initial setup for the first render
   useEffect(() => {
     if (entries.length > 0) {
@@ -159,6 +178,7 @@ export default function TimeMachineScreen() {
           <Animated.FlatList
             ref={listRef}
             data={displayData.entries}
+            extraData={displayData.entries}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item, index }) => (
               <CarouselItem

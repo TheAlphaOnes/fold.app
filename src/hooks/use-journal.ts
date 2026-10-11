@@ -14,6 +14,7 @@ import {
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
+import { useStoriesStore } from '@/hooks/use-stories';
 
 /** Cards kept fully decoded around the focused memory. */
 const HYDRATE_BEHIND = 4;
@@ -28,6 +29,7 @@ interface JournalState {
   timelineSpine: TimelineSpineEntry[];
   hydratedById: Record<number, Composition>;
   hydrationVersion: number;
+  lastDeletedId: number | null;
   timelineKey: string | null;
   timelineMode: TimelineFeedMode;
   loading: boolean;
@@ -82,6 +84,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   timelineSpine: [],
   hydratedById: {},
   hydrationVersion: 0,
+  lastDeletedId: null,
   timelineKey: null,
   timelineMode: 'yearly',
   loading: true,
@@ -322,26 +325,47 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     const hydratedById = { ...get().hydratedById };
     delete hydratedById[id];
     set((state) => ({
+      lastDeletedId: id,
       compositions: state.compositions.filter((comp) => comp.id !== id),
       allCompositions: state.allCompositions.filter((comp) => comp.id !== id),
       timelineSpine: state.timelineSpine.filter((entry) => entry.id !== id),
       hydratedById,
       pinnedIds: state.pinnedIds.filter((pinned) => pinned !== id),
+      activeCompositionId: state.activeCompositionId === id ? null : state.activeCompositionId,
       hydrationVersion: state.hydrationVersion + 1,
     }));
-    await deleteComposition(id);
+
+    // Notify stories store immediately so any active story view drops the item
+    useStoriesStore.getState().onMemoryDeleted(id);
+
+    try {
+      await deleteComposition(id);
+    } catch (err) {
+      console.error('Failed to delete composition from database:', err);
+    }
+
+    // Bump hydrationVersion after DB delete completes to signal all database query hooks
+    set((state) => ({
+      hydrationVersion: state.hydrationVersion + 1,
+    }));
   },
 
   removeAllCompositions: async () => {
     set({
+      lastDeletedId: null,
       compositions: [],
       allCompositions: [],
       timelineSpine: [],
       hydratedById: {},
       pinnedIds: [],
+      activeCompositionId: null,
       timelineKey: null,
       hydrationVersion: get().hydrationVersion + 1,
     });
+    useStoriesStore.getState().onAllMemoriesDeleted();
     await deleteAllCompositions();
+    set((state) => ({
+      hydrationVersion: state.hydrationVersion + 1,
+    }));
   },
 }));

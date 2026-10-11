@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Settings as SettingsIcon, Book, ChevronRight } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
+import { useJournalStore } from '@/hooks/use-journal';
 import { getAllCompositions } from '@/db/journal-repository';
 import type { Composition } from '@/types/journal';
 
@@ -27,6 +28,35 @@ export default function ProfileScreen() {
   const { settings } = useSettings();
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const { stories, refreshStories } = useStoriesStore();
+  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
+  const lastDeletedId = useJournalStore((state) => state.lastDeletedId);
+
+  // Optimistic removal of deleted composition
+  useEffect(() => {
+    if (lastDeletedId) {
+      setCompositions((prev) => prev.filter((c) => c.id !== lastDeletedId));
+    }
+  }, [lastDeletedId]);
+
+  const reloadData = useCallback(async () => {
+    try {
+      refreshStories();
+      const all = await getAllCompositions();
+      setCompositions(all);
+    } catch (err) {
+      console.error('Failed to reload profile data', err);
+    }
+  }, [refreshStories]);
+
+  useEffect(() => {
+    reloadData();
+  }, [reloadData, hydrationVersion]);
+
+  useFocusEffect(
+    useCallback(() => {
+      reloadData();
+    }, [reloadData])
+  );
   const randomStoryMedia = React.useMemo(() => {
     // 1. Gather all possible media across all stories
     type StoryMedia = { storyId: number; title: string; uri: string | null };
@@ -68,14 +98,6 @@ export default function ProfileScreen() {
 
     return selected;
   }, [stories]);
-
-  useEffect(() => {
-    refreshStories();
-  }, []);
-
-  useEffect(() => {
-    getAllCompositions().then(setCompositions).catch(console.error);
-  }, []);
 
   const bg = theme.background;
   const fg = theme.text;

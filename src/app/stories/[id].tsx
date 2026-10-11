@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
 import { CarouselItem } from '@/components/carousel-item';
@@ -162,6 +162,14 @@ export default function StoryDetailScreen() {
     return () => clearActiveStory();
   }, [id]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        loadStory(Number(id));
+      }
+    }, [id, loadStory])
+  );
+
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = () => {
@@ -182,12 +190,17 @@ export default function StoryDetailScreen() {
     );
   };
 
-  const finalizeDelete = () => {
+  const finalizeDelete = async () => {
     if (activeStory) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      removeStory(activeStory.id);
+      const storyId = activeStory.id;
       posthog?.capture('Story Deleted');
-      router.back();
+      await removeStory(storyId);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/stories');
+      }
     }
   };
 

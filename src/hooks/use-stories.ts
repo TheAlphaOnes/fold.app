@@ -30,6 +30,8 @@ interface StoriesState {
   
   // Linking memories
   assignMemoryToStory: (memoryId: number, storyId: number) => Promise<void>;
+  onMemoryDeleted: (memoryId: number) => void;
+  onAllMemoriesDeleted: () => void;
 }
 
 export const useStoriesStore = create<StoriesState>((set, get) => ({
@@ -70,11 +72,28 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   removeStory: async (id: number) => {
+    set((state) => ({
+      stories: state.stories.filter((s) => s.id !== id),
+      activeStory: state.activeStory?.id === id ? null : state.activeStory,
+      activeStoryMemories: state.activeStory?.id === id ? [] : state.activeStoryMemories,
+    }));
     await deleteStory(id);
     await get().refreshStories();
-    if (get().activeStory?.id === id) {
-      get().clearActiveStory();
-    }
+  },
+
+  onMemoryDeleted: (memoryId: number) => {
+    const { activeStoryMemories } = get();
+    set({
+      activeStoryMemories: activeStoryMemories.filter((m) => m.id !== memoryId),
+    });
+    get().refreshStories().catch(console.error);
+  },
+
+  onAllMemoriesDeleted: () => {
+    set({
+      activeStoryMemories: [],
+    });
+    get().refreshStories().catch(console.error);
   },
 
   loadStory: async (id: number) => {

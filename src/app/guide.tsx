@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, ScrollView, Image as RNImage } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn,
@@ -36,6 +36,7 @@ import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export default function FieldGuideScreen() {
+  const params = useLocalSearchParams();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -47,8 +48,12 @@ export default function FieldGuideScreen() {
   const { compositions, addComposition } = useJournalStore();
   const rawProgress = settings.guideProgress;
 
-  // Determine initial phase based on first uncompleted step
+  // Determine initial phase based on param or first uncompleted step
   const getInitialPhase = () => {
+    if (params.phase) {
+      const parsed = parseInt(params.phase as string, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 7) return parsed;
+    }
     if (!rawProgress.write) return 1;
     if (!rawProgress.voice) return 2;
     if (!rawProgress.capture) return 3;
@@ -62,6 +67,15 @@ export default function FieldGuideScreen() {
   const [isSuccess, setIsSuccess] = useState(false);
   const initialCount = useRef(compositions.length);
   const isCameraOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (params.phase) {
+      const parsed = parseInt(params.phase as string, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 7) {
+        setPhase(parsed);
+      }
+    }
+  }, [params.phase]);
 
   const phaseRef = useRef(phase);
   useEffect(() => {

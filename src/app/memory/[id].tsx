@@ -375,7 +375,11 @@ export default function MemoryDetailScreen() {
 
   const finalizeDelete = async () => {
     await removeComposition(Number(id));
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   const handleSaveMedia = async (uri: string) => {
