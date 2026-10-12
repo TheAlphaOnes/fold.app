@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, Image as RNImage } from 'react-native';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, Modal, Image as RNImage } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn, FadeInUp, FadeInDown,
   SlideInRight,
   SlideOutLeft,
+  SlideInDown,
+  SlideOutDown,
   useSharedValue,
   useAnimatedStyle,
   withSequence,
@@ -15,7 +17,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { Camera } from 'lucide-react-native';
+import { Camera, X, Book, BookPlus, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -26,6 +28,8 @@ import * as Device from 'expo-device';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { useJournalStore } from '@/hooks/use-journal';
+import { useStoriesStore } from '@/hooks/use-stories';
+import { CreateStoryTray } from '@/components/create-story-tray';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AddButton } from '@/components/add-button';
@@ -35,6 +39,8 @@ import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { ActionLink } from '@/components/action-link';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { isValidDob } from '@/utils/dob';
+import { AsciiArt } from '@/components/ascii-art';
+import { SYS_READY_ART, COFFEE_ART } from '@/constants/ascii-art';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export default function OnboardingGuideScreen() {
@@ -79,34 +85,36 @@ export default function OnboardingGuideScreen() {
     storyIds: [],
   }), []);
 
-  // Phases 6 & 7 Sticker State
+  // Phases 6 & 7 Sticker State — 2 local sample images packed with the app
   const initialStickerElements = useMemo<MediaElement[]>(() => {
-    let craneUri = '';
-    let photoUri = '';
+    let sample1Uri = '';
+    let sample2Uri = '';
     try {
-      craneUri = RNImage.resolveAssetSource(require('../../assets/fold-logo.png'))?.uri || '';
-      photoUri = RNImage.resolveAssetSource(require('../../assets/images/sticker-demo-photo.jpg'))?.uri || '';
+      sample1Uri = RNImage.resolveAssetSource(require('../../../assets/images/guide-sample-1.jpg'))?.uri || '';
+      sample2Uri = RNImage.resolveAssetSource(require('../../../assets/images/guide-sample-2.jpg'))?.uri || '';
     } catch {
       // fallback
     }
     return [
       {
         id: 'onboard-sticker-1',
-        uri: craneUri,
+        uri: sample1Uri,
         type: 'image',
-        x_pos: 16,
-        y_pos: 30,
-        scale: 0.9,
+        x_pos: 20,
+        y_pos: 24,
+        scale: 0.95,
+        width: 100,
+        height: 120,
       },
       {
         id: 'onboard-sticker-2',
-        uri: photoUri,
+        uri: sample2Uri,
         type: 'image',
-        x_pos: Math.max(110, cardWidth - 130),
-        y_pos: 140,
-        scale: 1,
+        x_pos: Math.max(120, cardWidth - 140),
+        y_pos: 150,
+        scale: 0.95,
         width: 120,
-        height: 120,
+        height: 110,
       },
     ];
   }, [cardWidth]);
@@ -115,13 +123,19 @@ export default function OnboardingGuideScreen() {
 
   const guideStickerMemory: Composition = useMemo(() => ({
     id: 999998,
-    textContent: 'Every memory has layers.\nPin photos, artwork, and stamps anywhere on your card.',
+    textContent: 'Pacific Coast Highway.\nSalt air, quiet roads, and afternoon light.',
     createdAt: Date.now() - 3600000,
     mediaElements: guideStickers,
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 17,
     storyIds: [],
   }), [guideStickers]);
+
+  // Real Fold Stories State for Phases 8-11
+  const { stories = [], refreshStories } = useStoriesStore();
+  const initialStoryCount = useRef(stories?.length ?? 0);
+  const [showCreateStoryTray, setShowCreateStoryTray] = useState(false);
+  const hasVisitedStoriesRef = useRef(false);
 
   // Phase advancement
   const handleActionSuccess = useCallback(() => {
@@ -137,9 +151,48 @@ export default function OnboardingGuideScreen() {
 
     setTimeout(() => {
       setIsSuccess(false);
-      setPhase(prev => (prev < 8 ? prev + 1 : 8));
+      setPhase(prev => (prev < 12 ? prev + 1 : 12));
     }, 1000);
   }, [textScale]);
+
+  // Phase 9: detect story created
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 9) return;
+      refreshStories();
+    }, [isSuccess, refreshStories])
+  );
+
+  useEffect(() => {
+    if (phase !== 9 || isSuccess) return;
+    const count = stories?.length ?? 0;
+    if (count > initialStoryCount.current) {
+      initialStoryCount.current = count;
+      handleActionSuccess();
+    }
+  }, [phase, stories, isSuccess, handleActionSuccess]);
+
+  // Phase 10: detect memory tagged
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 10) return;
+      const latest = useJournalStore.getState().allCompositions;
+      if (latest.some(c => c.storyIds && c.storyIds.length > 0)) {
+        handleActionSuccess();
+      }
+    }, [isSuccess, handleActionSuccess])
+  );
+
+  // Phase 11: detect return from stories archive
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 11) return;
+      if (hasVisitedStoriesRef.current) {
+        hasVisitedStoriesRef.current = false;
+        handleActionSuccess();
+      }
+    }, [isSuccess, handleActionSuccess])
+  );
 
   // Handler for sticker gestures in phases 6 (drag) & 7 (pinch)
   const handleStickerUpdatePositions = useCallback((_id: number, updatedMedia: MediaElement[]) => {
@@ -193,10 +246,10 @@ export default function OnboardingGuideScreen() {
     router.replace('/');
   };
 
-  // Phase 8: show a CTA button after a brief dramatic pause
+  // Phase 9: show a CTA button after a brief dramatic pause
   const [showProceedBtn, setShowProceedBtn] = useState(false);
   useEffect(() => {
-    if (phase === 8) {
+    if (phase === 9) {
       setShowProceedBtn(false);
       const timer = setTimeout(() => setShowProceedBtn(true), 1200);
       return () => clearTimeout(timer);
@@ -495,7 +548,9 @@ export default function OnboardingGuideScreen() {
               style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 4</ThemedText>
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 4
+              </ThemedText>
               {renderInstruction('double tap to inspect memory.')}
             </Animated.View>
           )}
@@ -508,7 +563,9 @@ export default function OnboardingGuideScreen() {
               style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 5</ThemedText>
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 5
+              </ThemedText>
               {renderInstruction('hold to share your memory.')}
             </Animated.View>
           )}
@@ -521,7 +578,9 @@ export default function OnboardingGuideScreen() {
               style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 6</ThemedText>
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 6
+              </ThemedText>
               {renderInstruction('hold a sticker, drag to place.')}
             </Animated.View>
           )}
@@ -534,8 +593,10 @@ export default function OnboardingGuideScreen() {
               style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>PHASE 7</ThemedText>
-              {renderInstruction('pinch a sticker to zoom in or out.')}
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 7
+              </ThemedText>
+              {renderInstruction('pinch a sticker to scale it.')}
             </Animated.View>
           )}
 
@@ -543,118 +604,327 @@ export default function OnboardingGuideScreen() {
             <Animated.View
               key="phase8"
               entering={SlideInRight}
-              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -80, gap: 10 }]}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: accent }]}>YOU'RE READY</ThemedText>
-              <ThemedText style={[styles.instruction, { color: fg }]}>
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 8
+              </ThemedText>
+              {renderInstruction('stories are chapters of your memories.')}
+            </Animated.View>
+          )}
+
+          {phase === 9 && (
+            <Animated.View
+              key="phase9"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 9
+              </ThemedText>
+              {renderInstruction('create your first story chapter.')}
+            </Animated.View>
+          )}
+
+          {phase === 10 && (
+            <Animated.View
+              key="phase10"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 10
+              </ThemedText>
+              {renderInstruction('open in gallery and tag to a story.')}
+            </Animated.View>
+          )}
+
+          {phase === 11 && (
+            <Animated.View
+              key="phase11"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 11
+              </ThemedText>
+              {renderInstruction('visit your stories in the chapter feed.')}
+            </Animated.View>
+          )}
+
+          {phase === 12 && (
+            <Animated.View
+              key="phase12"
+              entering={FadeIn.duration(400)}
+              style={styles.completeContainer}
+              pointerEvents="box-none"
+            >
+              <View style={styles.completeArtWrap}>
+                <AsciiArt art={SYS_READY_ART} color={theme.textMuted} fontSize={10} />
+              </View>
+
+              <ThemedText style={[styles.completeTitle, { color: accent }]}>
+                YOU'RE READY
+              </ThemedText>
+
+              <ThemedText style={[styles.completeSubtitle, { color: theme.textSecondary }]}>
                 {'every memory, every voice, every moment.\nfold keeps it all.'}
               </ThemedText>
             </Animated.View>
           )}
         </View>
 
-        {/* Action Area — AddButton for phases 1-3, button for 8 */}
+        {/* Action Area — AddButton for phases 1-3, ActionLinks for 8-12 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           pointerEvents="box-none"
-          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 24) + (Platform.OS === 'android' ? 14 : 0) }]}
+          style={[
+            styles.bottomBar,
+            {
+              paddingBottom: Math.max(insets.bottom, 24) + (Platform.OS === 'android' ? 14 : 0),
+            },
+          ]}
         >
           {phase <= 3 ? (
             <View style={{ alignItems: 'center', gap: 12 }}>
               {!isSuccess && (
                 <Animated.View entering={FadeIn.delay(1000).duration(800)} style={arrowStyle}>
-                  <ThemedText style={{
-                    fontFamily: 'JetBrainsMono-Regular',
-                    fontSize: 22,
-                    color: theme.text,
-                    opacity: 0.4,
-                  }}>
+                  <ThemedText
+                    style={{
+                      fontFamily: 'JetBrainsMono-Regular',
+                      fontSize: 22,
+                      color: theme.text,
+                      opacity: 0.4,
+                    }}
+                  >
                     {phase === 3 ? '↑' : '↓'}
                   </ThemedText>
                 </Animated.View>
               )}
               <AddButton
-                onPress={() => { if (phase === 1) handleTap(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
-                onSwipeUp={() => { if (phase === 3) handleSwipeUp(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
-                onLongPressStart={() => { if (phase === 2) handleLongPressStart(); else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); }}
-                onLongPressEnd={() => { if (phase === 2) handleLongPressEnd(); }}
+                onPress={() => {
+                  if (phase === 1) handleTap();
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onSwipeUp={() => {
+                  if (phase === 3) handleSwipeUp();
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onLongPressStart={() => {
+                  if (phase === 2) handleLongPressStart();
+                  else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                }}
+                onLongPressEnd={() => {
+                  if (phase === 2) handleLongPressEnd();
+                }}
               />
             </View>
-          ) : phase === 8 && showProceedBtn ? (
+          ) : phase === 8 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="CONTINUE TO CREATE"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setPhase(9);
+                }}
+              />
+            </Animated.View>
+          ) : phase === 9 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="OPEN STORY TRAY"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowCreateStoryTray(true);
+                }}
+              />
+            </Animated.View>
+          ) : phase === 10 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="OPEN IN GALLERY"
+                onPress={() => {
+                  const targetId = compositions[0]?.id || firstMemory?.id || guideTextMemory.id;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push(`/memory/${targetId}`);
+                }}
+              />
+            </Animated.View>
+          ) : phase === 11 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="VISIT STORY ARCHIVE"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  hasVisitedStoriesRef.current = true;
+                  router.push('/stories');
+                }}
+              />
+            </Animated.View>
+          ) : phase === 12 && showProceedBtn ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink text="START JOURNALING" onPress={handleComplete} />
             </Animated.View>
           ) : null}
         </Animated.View>
 
-        {/* Full-size memory card for phases 4 & 5 (text memory card) */}
-        {phase >= 4 && phase <= 5 && (
+        {/* Full-size memory card for phases 4–11 */}
+        {phase >= 4 && phase <= 11 && (
           <Animated.View
             entering={FadeIn.duration(500)}
-            style={[{
-              position: 'absolute',
-              bottom: Math.max(insets.bottom, 12),
-              left: 21,
-              right: 21,
-              height: cardHeight,
-              zIndex: 500,
-            }, cardAnimatedStyle]}
+            style={[
+              {
+                position: 'absolute',
+                bottom: Math.max(insets.bottom, 12),
+                left: 21,
+                right: 21,
+                height: cardHeight,
+                zIndex: 500,
+              },
+              cardAnimatedStyle,
+            ]}
           >
-            <Pressable
-              onPressIn={() => { pressedScale.value = withTiming(0.96, { duration: 150 }); }}
-              onPressOut={() => { pressedScale.value = withTiming(1, { duration: 150 }); }}
-              onPress={handleCardPress}
-              onLongPress={handleCardLongPress}
-              delayLongPress={500}
-              style={{ flex: 1, width: '100%', height: '100%' }}
-            >
-              <View pointerEvents="none" style={{ flex: 1, width: '100%', height: '100%' }}>
+            {/* Phases 4 & 5: Text memory card */}
+            {(phase === 4 || phase === 5) && (
+              <Pressable
+                onPressIn={() => { pressedScale.value = withTiming(0.96, { duration: 150 }); }}
+                onPressOut={() => { pressedScale.value = withTiming(1, { duration: 150 }); }}
+                onPress={handleCardPress}
+                onLongPress={handleCardLongPress}
+                delayLongPress={500}
+                style={{ flex: 1, width: '100%', height: '100%' }}
+              >
                 <MemoryCard
                   item={firstMemory || guideTextMemory}
                   height={cardHeight}
                   onUpdatePositions={() => {}}
                   isExporting={false}
                 />
-              </View>
-            </Pressable>
-          </Animated.View>
-        )}
+              </Pressable>
+            )}
 
-        {/* Full-size memory card for phases 6 & 7 (sticker demo card) */}
-        {(phase === 6 || phase === 7) && (
-          <Animated.View
-            entering={FadeIn.duration(500)}
-            style={[{
-              position: 'absolute',
-              bottom: Math.max(insets.bottom, 12),
-              left: 21,
-              right: 21,
-              height: cardHeight,
-              zIndex: 500,
-            }, cardAnimatedStyle]}
-          >
-            <View style={{ flex: 1, width: '100%', height: '100%' }}>
-              <MemoryCard
-                item={guideStickerMemory}
-                height={cardHeight}
-                onUpdatePositions={handleStickerUpdatePositions}
-                isExporting={false}
-              />
-              <View style={styles.canvasHintOverlay} pointerEvents="none">
-                <View style={[styles.canvasHintPill, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                  <ThemedText style={[styles.canvasHintText, { color: theme.textMuted }]}>
-                    {phase === 6 ? 'HOLD TO LIFT · DRAG TO PLACE' : 'PINCH WITH TWO FINGERS TO SCALE'}
+            {/* Phases 6 & 7: Sticker canvas card */}
+            {(phase === 6 || phase === 7) && (
+              <View style={{ flex: 1, width: '100%', height: '100%' }}>
+                <MemoryCard
+                  item={guideStickerMemory}
+                  height={cardHeight}
+                  onUpdatePositions={handleStickerUpdatePositions}
+                  isExporting={false}
+                />
+              </View>
+            )}
+
+            {/* Phase 8: Story Concept Card */}
+            {phase === 8 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <Book size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>STORY CHAPTERS</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Stories are chapters of your memories grouped together into permanent collections.
+                </ThemedText>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary }]}>
+                  Curate road trips, seasons, creative projects, or cherished moments into living archives.
+                </ThemedText>
+                <View style={styles.storyPillRow}>
+                  <View style={[styles.samplePill, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                    <ThemedText style={[styles.samplePillText, { color: theme.textMuted }]}>ROAD TRIP 2026</ThemedText>
+                  </View>
+                  <View style={[styles.samplePill, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                    <ThemedText style={[styles.samplePillText, { color: theme.textMuted }]}>PACIFIC COAST</ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Phase 9: Story Creation Prompt Card */}
+            {phase === 9 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <BookPlus size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>CREATE A CHAPTER</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Name your new story using the real Fold story drawer.
+                </ThemedText>
+                <View style={{ alignItems: 'center', marginVertical: 20, opacity: 0.35 }}>
+                  <AsciiArt art={COFFEE_ART} color={theme.textMuted} fontSize={9} />
+                </View>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary, textAlign: 'center' }]}>
+                  tap OPEN STORY TRAY below to create.
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Phase 10: Interactive Memory Card to Tag */}
+            {phase === 10 && (
+              <Pressable
+                onPressIn={() => { pressedScale.value = withTiming(0.96, { duration: 150 }); }}
+                onPressOut={() => { pressedScale.value = withTiming(1, { duration: 150 }); }}
+                onPress={() => {
+                  const targetId = compositions[0]?.id || firstMemory?.id || guideTextMemory.id;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push(`/memory/${targetId}`);
+                }}
+                style={{ flex: 1, width: '100%', height: '100%' }}
+              >
+                <MemoryCard
+                  item={compositions[0] || firstMemory || guideTextMemory}
+                  height={cardHeight}
+                  onUpdatePositions={() => {}}
+                  isExporting={false}
+                />
+              </Pressable>
+            )}
+
+            {/* Phase 11: Story Board Archive Showcase Card */}
+            {phase === 11 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <Book size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>STORY ARCHIVE</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Revisit your stories in the dedicated story board.
+                </ThemedText>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary }]}>
+                  Browse memories in a smooth, continuous timeline feed.
+                </ThemedText>
+                <View style={{ alignItems: 'center', marginTop: 24, opacity: 0.4 }}>
+                  <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 13, letterSpacing: 2, color: accent }}>
+                    [ TAP VISIT STORY ARCHIVE ]
                   </ThemedText>
                 </View>
               </View>
-            </View>
+            )}
           </Animated.View>
         )}
 
         {/* Hidden Card For Sharing */}
         {isSharing && (
-          <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width: cardWidth, height: cardHeight }}>
+          <View
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              pointerEvents: 'none',
+              zIndex: -100,
+              width: cardWidth,
+              height: cardHeight,
+            }}
+          >
             <View ref={hiddenCardRef} collapsable={false} style={{ width: cardWidth, height: cardHeight }}>
               <MemoryCard
                 item={firstMemory || guideTextMemory}
@@ -665,12 +935,26 @@ export default function OnboardingGuideScreen() {
             </View>
           </View>
         )}
-
       </View>
+
+      {/* Real Fold Story Tray for Phase 9 */}
+      {showCreateStoryTray && (
+        <CreateStoryTray
+          onClose={() => setShowCreateStoryTray(false)}
+          navigateOnCreate={false}
+          onSuccess={() => {
+            handleActionSuccess();
+          }}
+        />
+      )}
 
       {/* Flight Animation & Recording Overlay */}
       {isSharing && <LogoUploadFlight color={fg} key={scanKey} />}
-      <RecordingOverlay visible={recorderState.isRecording} durationMillis={recorderState.durationMillis} onStop={handleLongPressEnd} />
+      <RecordingOverlay
+        visible={recorderState.isRecording}
+        durationMillis={recorderState.durationMillis}
+        onStop={handleLongPressEnd}
+      />
     </View>
   );
 }
@@ -689,24 +973,154 @@ const styles = StyleSheet.create({
   },
   phaseBlockCompact: {
     alignItems: 'center',
-    paddingTop: 6,
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    height: 64,
+    paddingHorizontal: 20,
     zIndex: 600,
   },
   phaseTitle: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
-    letterSpacing: 4,
-    marginBottom: 6,
+    fontSize: 15,
+    letterSpacing: 3,
+    marginBottom: 4,
+    opacity: 0.5,
+    textAlign: 'center',
+  },
+  phaseTitleCompact: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 15,
+    letterSpacing: 3,
+    marginBottom: 4,
     opacity: 0.5,
     textAlign: 'center',
   },
   instruction: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  instructionCompact: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  storyCardActionWrap: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 30,
+  },
+  storyAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  storyAddBtnText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 11,
+    letterSpacing: 1,
+  },
+  storyModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  storyModalSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  explainCard: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  explainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  explainTitle: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 16,
+    letterSpacing: 3,
+  },
+  explainDivider: {
+    height: 1,
+    width: '100%',
+    marginBottom: 20,
+    opacity: 0.5,
+  },
+  explainBody: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  explainSubBody: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  storyPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 24,
+  },
+  samplePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  samplePillText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 10,
+    letterSpacing: 1.2,
+  },
+  completeContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  completeArtWrap: {
+    marginBottom: 16,
+    opacity: 0.75,
+  },
+  completeTitle: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 18,
+    letterSpacing: 4,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  completeSubtitle: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: 0,
   },
   bottomBar: {
     position: 'absolute',
@@ -715,24 +1129,5 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 999,
     alignItems: 'center',
-  },
-  canvasHintOverlay: {
-    position: 'absolute',
-    bottom: 18,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  canvasHintPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  canvasHintText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    letterSpacing: 1.5,
   },
 });

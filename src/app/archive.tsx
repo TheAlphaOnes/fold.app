@@ -13,7 +13,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { MemoryCard } from '@/components/memory-card';
@@ -107,6 +107,21 @@ export default function ArchiveScreen() {
         <ArrowLeft size={20} color={theme.text} />
       </Pressable>
 
+      <Pressable 
+        style={({ pressed }) => [
+          styles.addButton, 
+          { 
+            top: insets.top > 0 ? insets.top + 8 : 21, 
+            opacity: pressed ? 0.5 : 1,
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border
+          }
+        ]}
+        onPress={() => router.push({ pathname: '/compose', params: { dateTimestamp: targetDate.getTime().toString() } })}
+      >
+        <Plus size={20} color={theme.text} />
+      </Pressable>
+
       {compositions.length === 0 && !loading ? (
         <EmptyState />
       ) : (
@@ -164,6 +179,22 @@ const styles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: 21,
+    zIndex: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  addButton: {
+    position: 'absolute',
+    right: 21,
     zIndex: 100,
     width: 44,
     height: 44,

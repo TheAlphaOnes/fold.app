@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput, Switch } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity } from 'lucide-react-native';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
-import { useSettingsStore } from '@/hooks/use-settings';
+import { useSettingsStore, defaultGuideProgress } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -294,6 +294,22 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <Smartphone size={16} color={theme.text} />
               <ThemedText style={[styles.settingText, { color: theme.text }]}>RESTART ONBOARDING</ThemedText>
+            </View>
+          </Pressable>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <Pressable 
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={async () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              await updateSetting('guideProgress', defaultGuideProgress);
+              router.push('/guide');
+            }}
+          >
+            <View style={styles.settingRowLeft}>
+              <Compass size={16} color={theme.text} />
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>RESTART FIELD GUIDE</ThemedText>
             </View>
           </Pressable>
 

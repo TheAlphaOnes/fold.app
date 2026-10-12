@@ -6,11 +6,13 @@ import {
   getCompositionsByIds,
   getCompositionById,
   createComposition, 
+  updateComposition as dbUpdateComposition,
   updateMediaPositions,
   toggleCompositionStoryId,
   deleteComposition,
   deleteAllCompositions,
-  type CreateCompositionInput
+  type CreateCompositionInput,
+  type UpdateCompositionInput
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
@@ -54,6 +56,7 @@ interface JournalState {
   pinComposition: (id: number) => void;
   unpinComposition: (id: number) => void;
   addComposition: (input: CreateCompositionInput) => Promise<void>;
+  updateComposition: (input: UpdateCompositionInput) => Promise<Composition | null>;
   updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
   toggleStoryId: (id: number, storyId: number) => Promise<void>;
   removeComposition: (id: number) => Promise<void>;
@@ -258,7 +261,29 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     set({ justAddedId: newComp.id });
     await get().refresh();
     const mode = get().timelineMode;
-    await get().loadTimeline(mode, new Date(), { force: true });
+    await get().loadTimeline(mode, new Date(newComp.createdAt), { force: true });
+  },
+
+  updateComposition: async (input: UpdateCompositionInput) => {
+    const updated = await dbUpdateComposition(input);
+    if (!updated) return null;
+
+    const hydratedById = { ...get().hydratedById };
+    if (hydratedById[input.id]) {
+      hydratedById[input.id] = updated;
+    }
+
+    set((state) => ({
+      hydratedById,
+      compositions: state.compositions.map((c) => (c.id === input.id ? updated : c)),
+      allCompositions: state.allCompositions.map((c) => (c.id === input.id ? updated : c)),
+      hydrationVersion: state.hydrationVersion + 1,
+    }));
+
+    await get().refresh();
+    const mode = get().timelineMode;
+    await get().loadTimeline(mode, new Date(updated.createdAt), { force: true });
+    return updated;
   },
 
   updatePositions: async (id: number, newMediaElements: MediaElement[]) => {

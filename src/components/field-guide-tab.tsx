@@ -28,6 +28,10 @@ export function FieldGuideTab() {
   const insets = useSafeAreaInsets();
   const { completedCount, totalCount, isAllCompleted } = useGuideProgress();
 
+  if (isAllCompleted) {
+    return null;
+  }
+
   const progressFraction = completedCount / totalCount;
   const dashOffset = CIRCUMFERENCE * (1 - progressFraction);
 
@@ -102,12 +106,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     zIndex: 100,
-    width: 56,
-    height: 44,
+    width: 58,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
     borderWidth: 1,
     borderRightWidth: 0,
     shadowColor: '#000',

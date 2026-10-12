@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { X, Plus } from 'lucide-react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -56,6 +56,7 @@ export default function TimeMachineScreen() {
   const { days, selected, select, entries, litDates, loading, refresh } = useDayLog(bootDate);
   const updatePositions = useJournalStore((state) => state.updatePositions);
   const setActiveCompositionId = useJournalStore((state) => state.setActiveCompositionId);
+  const lastDeletedId = useJournalStore((state) => state.lastDeletedId);
   const listRef = useRef<Animated.FlatList<Composition>>(null);
   const selectedKey = toDayKey(selected);
   const isToday = selectedKey === toDayKey(new Date());
@@ -117,6 +118,15 @@ export default function TimeMachineScreen() {
     }
   }, [entries, selectedKey, isToday, loading, reduceMotion]);
 
+  useEffect(() => {
+    if (lastDeletedId) {
+      setDisplayData((prev) => ({
+        ...prev,
+        entries: prev.entries.filter((item) => item.id !== lastDeletedId),
+      }));
+    }
+  }, [lastDeletedId]);
+
   // Re-sync with database whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
@@ -159,20 +169,25 @@ export default function TimeMachineScreen() {
             <ThemedText style={[s.emptyCopy, { color: theme.textMuted }]}>
               {displayData.isToday ? 'nothing filed today' : 'this day is blank'}
             </ThemedText>
-            {displayData.isToday ? (
-              <Pressable
-                onPress={() => router.push('/compose')}
-                accessibilityRole="button"
-                accessibilityLabel="Write today"
-                style={({ pressed }) => [
-                  s.write,
-                  { borderColor: theme.border },
-                  pressed && s.pressed,
-                ]}
-              >
-                <ThemedText style={[s.writeLabel, { color: theme.text }]}>WRITE</ThemedText>
-              </Pressable>
-            ) : null}
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/compose',
+                  params: { dateTimestamp: selected.getTime().toString() },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Add memory for this day"
+              style={({ pressed }) => [
+                s.write,
+                { borderColor: theme.border },
+                pressed && s.pressed,
+              ]}
+            >
+              <ThemedText style={[s.writeLabel, { color: theme.text }]}>
+                {displayData.isToday ? 'WRITE' : 'ADD MEMORY FOR THIS DAY'}
+              </ThemedText>
+            </Pressable>
           </View>
         ) : (
           <Animated.FlatList
@@ -223,6 +238,29 @@ export default function TimeMachineScreen() {
       </ThemedText>
 
       <Pressable
+        onPress={() =>
+          router.push({
+            pathname: '/compose',
+            params: { dateTimestamp: selected.getTime().toString() },
+          })
+        }
+        accessibilityRole="button"
+        accessibilityLabel="Add memory on this date"
+        style={({ pressed }) => [
+          s.addBtn,
+          {
+            top: Math.max(insets.top, 20),
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+            opacity: pressed ? 0.8 : 1,
+          },
+          pressed && s.pressed,
+        ]}
+      >
+        <Plus size={16} color={theme.text} />
+      </Pressable>
+
+      <Pressable
         onPress={() => router.back()}
         accessibilityRole="button"
         accessibilityLabel="Go back"
@@ -267,6 +305,17 @@ const s = StyleSheet.create({
     letterSpacing: 0.8,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
+  },
+  addBtn: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 100,
+    width: CLOSE_SIZE,
+    height: CLOSE_SIZE,
+    borderRadius: CLOSE_SIZE / 2,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   close: {
     position: 'absolute',

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, ScrollView, Image as RNImage } from 'react-native';
+import { StyleSheet, View, Alert, Platform, useWindowDimensions, Pressable, ScrollView, Modal, Image as RNImage } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -7,6 +7,8 @@ import Animated, {
   FadeInUp,
   SlideInRight,
   SlideOutLeft,
+  SlideInDown,
+  SlideOutDown,
   useSharedValue,
   useAnimatedStyle,
   withSequence,
@@ -15,7 +17,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { X } from 'lucide-react-native';
+import { X, Book, BookPlus, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
@@ -25,6 +27,7 @@ import * as Sharing from 'expo-sharing';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { useJournalStore } from '@/hooks/use-journal';
+import { useStoriesStore } from '@/hooks/use-stories';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AddButton } from '@/components/add-button';
@@ -34,7 +37,8 @@ import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { ActionLink } from '@/components/action-link';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { AsciiArt } from '@/components/ascii-art';
-import { SYS_READY_ART } from '@/constants/ascii-art';
+import { SYS_READY_ART, COFFEE_ART } from '@/constants/ascii-art';
+import { CreateStoryTray } from '@/components/create-story-tray';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export default function FieldGuideScreen() {
@@ -48,13 +52,16 @@ export default function FieldGuideScreen() {
 
   const { settings, completeGuideStep } = useSettingsStore();
   const { compositions, addComposition } = useJournalStore();
+  const { stories = [], refreshStories } = useStoriesStore();
+  const initialStoryCount = useRef(stories?.length ?? 0);
+  const [showCreateStoryTray, setShowCreateStoryTray] = useState(false);
   const rawProgress = settings.guideProgress;
 
   // Determine initial phase based on param or first uncompleted step
   const getInitialPhase = () => {
     if (params.phase) {
       const parsed = parseInt(params.phase as string, 10);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= 9) return parsed;
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) return parsed;
     }
     if (!rawProgress.write) return 1;
     if (!rawProgress.voice) return 2;
@@ -74,7 +81,7 @@ export default function FieldGuideScreen() {
   useEffect(() => {
     if (params.phase) {
       const parsed = parseInt(params.phase as string, 10);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= 9) {
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) {
         setPhase(parsed);
       }
     }
@@ -115,8 +122,8 @@ export default function FieldGuideScreen() {
     if (phaseNum === 4) completeGuideStep('inspect');
     if (phaseNum === 5) completeGuideStep('share');
     if (phaseNum === 6) completeGuideStep('stickers');
-    // phase 7 (pinch) is still the stickers lesson — no separate step
-    if (phaseNum === 8) completeGuideStep('stories');
+    // phases 8-11 are all part of the stories curriculum
+    if (phaseNum === 11) completeGuideStep('stories');
   }, [completeGuideStep]);
 
   const handleActionSuccess = useCallback(() => {
@@ -133,7 +140,7 @@ export default function FieldGuideScreen() {
 
     setTimeout(() => {
       setIsSuccess(false);
-      setPhase((prev) => (prev < 8 ? prev + 1 : 9));
+      setPhase((prev) => (prev < 11 ? prev + 1 : 12));
     }, 1000);
   }, [textScale, syncStepProgress]);
 
@@ -151,6 +158,48 @@ export default function FieldGuideScreen() {
         initialCount.current = compositions.length;
       }
     }, [compositions.length, phase, isSuccess, handleActionSuccess])
+  );
+
+  // Phase 9: Detect when user creates a story and returns to guide
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 9) return;
+      refreshStories();
+    }, [isSuccess, refreshStories])
+  );
+
+  useEffect(() => {
+    if (phase !== 9 || isSuccess) return;
+    const count = stories?.length ?? 0;
+    if (count > initialStoryCount.current) {
+      initialStoryCount.current = count;
+      handleActionSuccess();
+    }
+  }, [phase, stories, isSuccess, handleActionSuccess]);
+
+  // Phase 10: Detect when user has added first memory to a story
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 10) return;
+      // Re-read from store on focus to catch changes made in /memory/[id]
+      const latestCompositions = useJournalStore.getState().allCompositions;
+      const anyTagged = latestCompositions.some(c => c.storyIds && c.storyIds.length > 0);
+      if (anyTagged) {
+        handleActionSuccess();
+      }
+    }, [isSuccess, handleActionSuccess])
+  );
+
+  // Phase 11: Detect when user visits the stories archive and returns
+  const hasVisitedStoriesRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (isSuccess || phaseRef.current !== 11) return;
+      if (hasVisitedStoriesRef.current) {
+        hasVisitedStoriesRef.current = false;
+        handleActionSuccess();
+      }
+    }, [isSuccess, handleActionSuccess])
   );
 
   // Dedicated text memory card for Phase 4 & 5 guide demonstration
@@ -176,35 +225,36 @@ export default function FieldGuideScreen() {
     };
   }, [compositions]);
 
-  // Phase 5 Sticker Demo State — 2 local stickers for moving, layering & resizing
+  // Phase 6 & 7 Sticker Demo State — 2 local sample images packed with the app
   const initialStickerElements = useMemo<MediaElement[]>(() => {
-    let craneUri = '';
-    let photoUri = '';
+    let sample1Uri = '';
+    let sample2Uri = '';
     try {
-      // fold-logo.png = transparent-bg origami crane; sticker-demo-photo.jpg = cinematic mountain
-      craneUri = RNImage.resolveAssetSource(require('../../assets/fold-logo.png'))?.uri || '';
-      photoUri = RNImage.resolveAssetSource(require('../../assets/images/sticker-demo-photo.jpg'))?.uri || '';
+      sample1Uri = RNImage.resolveAssetSource(require('../../assets/images/guide-sample-1.jpg'))?.uri || '';
+      sample2Uri = RNImage.resolveAssetSource(require('../../assets/images/guide-sample-2.jpg'))?.uri || '';
     } catch {
-      // fallback — stickers simply won't render
+      // fallback
     }
     return [
       {
         id: 'guide-sticker-1',
-        uri: craneUri,
+        uri: sample1Uri,
         type: 'image',
-        x_pos: 16,
-        y_pos: 30,
-        scale: 0.9,
+        x_pos: 20,
+        y_pos: 24,
+        scale: 0.95,
+        width: 100,
+        height: 120,
       },
       {
         id: 'guide-sticker-2',
-        uri: photoUri,
+        uri: sample2Uri,
         type: 'image',
-        x_pos: Math.max(110, cardWidth - 130),
-        y_pos: 140,
-        scale: 1,
+        x_pos: Math.max(120, cardWidth - 140),
+        y_pos: 150,
+        scale: 0.95,
         width: 120,
-        height: 120,
+        height: 110,
       },
     ];
   }, [cardWidth]);
@@ -213,13 +263,19 @@ export default function FieldGuideScreen() {
 
   const guideStickerMemory: Composition = useMemo(() => ({
     id: 999998,
-    textContent: 'Every memory has layers.\nPin photos, artwork, and stamps anywhere on your card.',
+    textContent: 'Pacific Coast Highway.\nSalt air, quiet roads, and afternoon light.',
     createdAt: Date.now() - 3600000,
     mediaElements: guideStickers,
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 16,
+    fontSize: 17,
     storyIds: [],
   }), [guideStickers]);
+
+  // Phase 10: Add memory to story — track story assignment on first memory
+  const firstMemoryRef = useRef(compositions[0]);
+  useEffect(() => {
+    firstMemoryRef.current = compositions[0];
+  }, [compositions]);
 
   const handleStickerUpdatePositions = useCallback((_id: number, updatedMedia: MediaElement[]) => {
     const currentPhase = phaseRef.current;
@@ -471,7 +527,10 @@ export default function FieldGuideScreen() {
     { num: 6, id: 'stickers' as const, label: '06' },
     { num: 7, id: 'stickers' as const, label: '07' },
     { num: 8, id: 'stories' as const, label: '08' },
-    { num: 9, id: 'ready' as const, label: '09' },
+    { num: 9, id: 'stories' as const, label: '09' },
+    { num: 10, id: 'stories' as const, label: '10' },
+    { num: 11, id: 'stories' as const, label: '11' },
+    { num: 12, id: 'ready' as const, label: '12' },
   ];
 
   return (
@@ -662,19 +721,64 @@ export default function FieldGuideScreen() {
               key="phase8"
               entering={SlideInRight}
               exiting={SlideOutLeft}
-              style={[styles.phaseBlock, { justifyContent: 'center', marginTop: -80 }]}
+              style={styles.phaseBlockCompact}
               pointerEvents="box-none"
             >
-              <ThemedText style={[styles.phaseTitle, { color: isSuccess ? accent : fg }]}>
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
                 PHASE 8
               </ThemedText>
-              {renderInstruction('stories collect memories\ninto timeless chapters.')}
+              {renderInstruction('stories are chapters of your memories.')}
             </Animated.View>
           )}
 
           {phase === 9 && (
             <Animated.View
               key="phase9"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 9
+              </ThemedText>
+              {renderInstruction('create your first story chapter.')}
+            </Animated.View>
+          )}
+
+          {phase === 10 && (
+            <Animated.View
+              key="phase10"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 10
+              </ThemedText>
+              {renderInstruction('open in gallery and tag to a story.')}
+            </Animated.View>
+          )}
+
+          {phase === 11 && (
+            <Animated.View
+              key="phase11"
+              entering={SlideInRight}
+              exiting={SlideOutLeft}
+              style={styles.phaseBlockCompact}
+              pointerEvents="box-none"
+            >
+              <ThemedText style={[styles.phaseTitleCompact, { color: isSuccess ? accent : fg }]}>
+                PHASE 11
+              </ThemedText>
+              {renderInstruction('visit your stories in the chapter feed.')}
+            </Animated.View>
+          )}
+
+          {phase === 12 && (
+            <Animated.View
+              key="phase12"
               entering={FadeIn.duration(400)}
               style={styles.completeContainer}
               pointerEvents="box-none"
@@ -694,7 +798,7 @@ export default function FieldGuideScreen() {
           )}
         </View>
 
-        {/* Action Area — AddButton for phases 1-3, Return button for 7 */}
+        {/* Action Area — AddButton for phases 1-3, ActionLinks for 8-12 */}
         <Animated.View
           entering={FadeIn.delay(400).duration(800)}
           pointerEvents="box-none"
@@ -742,15 +846,46 @@ export default function FieldGuideScreen() {
           ) : phase === 8 ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink
-                text="EXPLORE STORIES"
+                text="CONTINUE TO CREATE"
                 onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  completeGuideStep('stories');
-                  router.push('/stories');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setPhase(9);
                 }}
               />
             </Animated.View>
           ) : phase === 9 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="OPEN STORY TRAY"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowCreateStoryTray(true);
+                }}
+              />
+            </Animated.View>
+          ) : phase === 10 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="OPEN IN GALLERY"
+                onPress={() => {
+                  const targetId = compositions[0]?.id || guideTextMemory.id;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push(`/memory/${targetId}`);
+                }}
+              />
+            </Animated.View>
+          ) : phase === 11 ? (
+            <Animated.View entering={FadeInUp.duration(500).springify()}>
+              <ActionLink
+                text="VISIT STORY ARCHIVE"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  hasVisitedStoriesRef.current = true;
+                  router.push('/stories');
+                }}
+              />
+            </Animated.View>
+          ) : phase === 12 ? (
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink
                 text="OPEN JOURNAL"
@@ -767,8 +902,8 @@ export default function FieldGuideScreen() {
           ) : null}
         </Animated.View>
 
-        {/* Full-size memory card for phases 4–7 */}
-        {phase >= 4 && phase <= 7 && (
+        {/* Full-size card area for phases 4–11 */}
+        {phase >= 4 && phase <= 11 && (
           <Animated.View
             entering={FadeIn.duration(500)}
             style={[
@@ -811,12 +946,93 @@ export default function FieldGuideScreen() {
                   onUpdatePositions={handleStickerUpdatePositions}
                   isExporting={false}
                 />
-                <View style={styles.canvasHintOverlay} pointerEvents="none">
-                  <View style={[styles.canvasHintPill, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-                    <ThemedText style={[styles.canvasHintText, { color: theme.textMuted }]}>
-                      {phase === 6 ? 'HOLD TO LIFT · DRAG TO PLACE' : 'PINCH TO SCALE'}
-                    </ThemedText>
+              </View>
+            )}
+
+            {/* Phase 8: Story Concept & Explain Card */}
+            {phase === 8 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <Book size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>STORY CHAPTERS</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Stories are chapters of your memories grouped together into permanent collections.
+                </ThemedText>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary }]}>
+                  Curate road trips, seasons, creative projects, or cherished moments into living archives.
+                </ThemedText>
+                <View style={styles.storyPillRow}>
+                  <View style={[styles.samplePill, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                    <ThemedText style={[styles.samplePillText, { color: theme.textMuted }]}>ROAD TRIP 2026</ThemedText>
                   </View>
+                  <View style={[styles.samplePill, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                    <ThemedText style={[styles.samplePillText, { color: theme.textMuted }]}>PACIFIC COAST</ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Phase 9: Story Creation Prompt Card */}
+            {phase === 9 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <BookPlus size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>CREATE A CHAPTER</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Name your new story using the real Fold story drawer.
+                </ThemedText>
+                <View style={{ alignItems: 'center', marginVertical: 20, opacity: 0.35 }}>
+                  <AsciiArt art={COFFEE_ART} color={theme.textMuted} fontSize={9} />
+                </View>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary, textAlign: 'center' }]}>
+                  tap OPEN STORY TRAY below to create.
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Phase 10: Interactive Memory Card to Tag */}
+            {phase === 10 && (
+              <Pressable
+                onPressIn={() => { pressedScale.value = withTiming(0.96, { duration: 150 }); }}
+                onPressOut={() => { pressedScale.value = withTiming(1, { duration: 150 }); }}
+                onPress={() => {
+                  const targetId = compositions[0]?.id || guideTextMemory.id;
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push(`/memory/${targetId}`);
+                }}
+                style={{ flex: 1, width: '100%', height: '100%' }}
+              >
+                <MemoryCard
+                  item={compositions[0] || guideTextMemory}
+                  height={cardHeight}
+                  onUpdatePositions={() => {}}
+                  isExporting={false}
+                />
+              </Pressable>
+            )}
+
+            {/* Phase 11: Story Board Archive Showcase Card */}
+            {phase === 11 && (
+              <View style={[styles.explainCard, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+                <View style={styles.explainHeader}>
+                  <Book size={18} color={accent} />
+                  <ThemedText style={[styles.explainTitle, { color: fg }]}>STORY ARCHIVE</ThemedText>
+                </View>
+                <View style={[styles.explainDivider, { backgroundColor: theme.border }]} />
+                <ThemedText style={[styles.explainBody, { color: fg }]}>
+                  Revisit your stories in the dedicated story board.
+                </ThemedText>
+                <ThemedText style={[styles.explainSubBody, { color: theme.textSecondary }]}>
+                  Browse memories in a smooth, continuous timeline feed.
+                </ThemedText>
+                <View style={{ alignItems: 'center', marginTop: 24, opacity: 0.4 }}>
+                  <ThemedText style={{ fontFamily: 'JetBrainsMono-Bold', fontSize: 13, letterSpacing: 2, color: accent }}>
+                    [ TAP VISIT STORY ARCHIVE ]
+                  </ThemedText>
                 </View>
               </View>
             )}
@@ -846,6 +1062,17 @@ export default function FieldGuideScreen() {
           </View>
         )}
       </View>
+
+      {/* Real Fold Story Tray for Phase 9 */}
+      {showCreateStoryTray && (
+        <CreateStoryTray
+          onClose={() => setShowCreateStoryTray(false)}
+          navigateOnCreate={false}
+          onSuccess={() => {
+            handleActionSuccess();
+          }}
+        />
+      )}
 
       {/* Flight Animation & Recording Overlay */}
       {isSharing && <LogoUploadFlight color={fg} key={scanKey} />}
@@ -913,104 +1140,98 @@ const styles = StyleSheet.create({
   },
   phaseBlockCompact: {
     alignItems: 'center',
-    paddingTop: 6,
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    height: 64,
+    paddingHorizontal: 20,
     zIndex: 600,
   },
   phaseTitle: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
-    letterSpacing: 4,
-    marginBottom: 6,
+    fontSize: 15,
+    letterSpacing: 3,
+    marginBottom: 4,
     opacity: 0.5,
   },
   phaseTitleCompact: {
     fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 16,
-    letterSpacing: 4,
-    marginBottom: 6,
+    fontSize: 15,
+    letterSpacing: 3,
+    marginBottom: 4,
     opacity: 0.5,
   },
   instruction: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   instructionCompact: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   instructionSubtle: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
     opacity: 0.8,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  canvasHintOverlay: {
-    position: 'absolute',
-    bottom: 18,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 100,
-  },
-  canvasHintPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
+  explainCard: {
+    flex: 1,
+    borderRadius: 20,
     borderWidth: 1,
+    padding: 24,
+    justifyContent: 'center',
   },
-  canvasHintText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    letterSpacing: 1.5,
-  },
-  storyTagOverlay: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    zIndex: 100,
-  },
-  storyTagBtn: {
+  explainHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  explainTitle: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 16,
+    letterSpacing: 3,
+  },
+  explainDivider: {
+    height: 1,
+    width: '100%',
+    marginBottom: 20,
+    opacity: 0.5,
+  },
+  explainBody: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  explainSubBody: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  storyPillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 24,
+  },
+  samplePill: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  storyTagBtnText: {
+  samplePillText: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 11,
-    letterSpacing: 1.5,
-  },
-  storyExplainer: {
-    position: 'absolute',
-    bottom: 18,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 100,
-    paddingHorizontal: 16,
-  },
-  storyExplainerText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    fontSize: 10,
+    letterSpacing: 1.2,
   },
   completeContainer: {
     position: 'absolute',

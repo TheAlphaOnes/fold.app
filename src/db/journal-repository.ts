@@ -37,6 +37,18 @@ export interface CreateCompositionInput {
   locationName?: string;
   locationCoords?: string;
   storyIds?: number[];
+  createdAt?: number;
+}
+
+export interface UpdateCompositionInput {
+  id: number;
+  textContent: string;
+  mediaElements: MediaElement[];
+  fontFamily: string;
+  fontSize: number;
+  locationName?: string;
+  locationCoords?: string;
+  storyIds?: number[];
 }
 
 export interface UpdateMediaPositionsInput {
@@ -203,14 +215,14 @@ export async function getCompositionById(id: number): Promise<Composition | null
 
 export async function createComposition(input: CreateCompositionInput): Promise<Composition> {
   const db = await getDatabase();
-  const now = Date.now();
+  const creationTime = input.createdAt ?? Date.now();
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
     'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, location_name, location_coords, story_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     input.textContent,
     mediaJson,
-    now,
+    creationTime,
     input.fontFamily,
     input.fontSize,
     input.locationName || null,
@@ -242,12 +254,36 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     id: compositionId,
     textContent: input.textContent,
     mediaElements: input.mediaElements,
-    createdAt: now,
+    createdAt: creationTime,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
     location,
     storyIds: input.storyIds || [],
   };
+}
+
+export async function updateComposition(input: UpdateCompositionInput): Promise<Composition | null> {
+  const db = await getDatabase();
+  const mediaJson = JSON.stringify(input.mediaElements);
+  await db.runAsync(
+    'UPDATE compositions SET text_content = ?, media_elements = ?, font_family = ?, font_size = ?, location_name = ?, location_coords = ? WHERE id = ?',
+    input.textContent,
+    mediaJson,
+    input.fontFamily,
+    input.fontSize,
+    input.locationName || null,
+    input.locationCoords || null,
+    input.id
+  );
+
+  if (input.storyIds !== undefined) {
+    await db.runAsync('DELETE FROM composition_stories WHERE composition_id = ?', input.id);
+    for (const sId of input.storyIds) {
+      await db.runAsync('INSERT INTO composition_stories (composition_id, story_id) VALUES (?, ?)', input.id, sId);
+    }
+  }
+
+  return getCompositionById(input.id);
 }
 
 export async function updateMediaPositions(input: UpdateMediaPositionsInput): Promise<void> {

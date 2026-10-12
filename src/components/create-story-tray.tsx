@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useRouter } from 'expo-router';
+import type { Story } from '@/types/journal';
 
 // Match the Maya design system spring values used in ShareTray and StoryPicker
 const SPRING_IN = { damping: 22, stiffness: 280, mass: 0.8 };
@@ -24,9 +25,11 @@ const TIMING_OUT = { duration: 180 };
 
 interface CreateStoryTrayProps {
   onClose: () => void;
+  onSuccess?: (story: Story) => void;
+  navigateOnCreate?: boolean;
 }
 
-export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
+export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }: CreateStoryTrayProps) {
   const theme = useTheme();
   const posthog = usePostHog();
   const insets = useSafeAreaInsets();
@@ -61,11 +64,14 @@ export function CreateStoryTray({ onClose }: CreateStoryTrayProps) {
     if (!title.trim()) return;
     try {
       const newStory = await addStory({ title: title.trim() });
+      onSuccess?.(newStory);
       handleClose();
-      // Wait for animation to finish before navigating
-      setTimeout(() => {
-        router.push(`/stories/${newStory.id}`);
-      }, 200);
+      if (navigateOnCreate) {
+        // Wait for animation to finish before navigating
+        setTimeout(() => {
+          router.push(`/stories/${newStory.id}`);
+        }, 200);
+      }
     } catch (err) {
       console.error('Failed to create story:', err);
     }

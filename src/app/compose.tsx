@@ -174,14 +174,45 @@ export default function ComposeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const { sharedText, storyId: paramStoryId } = useLocalSearchParams<{ sharedText?: string; storyId?: string }>();
+  const { sharedText, storyId: paramStoryId, editId, dateTimestamp } = useLocalSearchParams<{
+    sharedText?: string;
+    storyId?: string;
+    editId?: string;
+    dateTimestamp?: string;
+  }>();
+
+  const numericEditId = editId ? Number(editId) : null;
+  const existingComposition = useJournalStore((state) =>
+    numericEditId
+      ? state.hydratedById[numericEditId] ||
+        state.allCompositions.find((c) => c.id === numericEditId) ||
+        state.compositions.find((c) => c.id === numericEditId)
+      : null
+  );
 
   const [showGifPicker, setShowGifPicker] = useState(false);
 
-  const [body, setBody] = useState(sharedText ?? "");
-  const [storyIds, setStoryIds] = useState<number[]>(paramStoryId ? [Number(paramStoryId)] : []);
+  const [body, setBody] = useState(existingComposition?.textContent ?? sharedText ?? "");
+  const [storyIds, setStoryIds] = useState<number[]>(
+    existingComposition?.storyIds ?? (paramStoryId ? [Number(paramStoryId)] : [])
+  );
+
+  const [locationName, setLocationName] = useState<string | undefined>(
+    existingComposition?.location?.name
+  );
+  const [locationCoords, setLocationCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | undefined>(
+    existingComposition?.location?.latitude && existingComposition?.location?.longitude
+      ? { lat: existingComposition.location.latitude, lng: existingComposition.location.longitude }
+      : undefined
+  );
 
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
+    if (existingComposition?.mediaElements) {
+      return existingComposition.mediaElements;
+    }
     const pendingMedia = consumePendingCameraMedia();
     if (pendingMedia) {
       const stickerSize = 120;
@@ -203,21 +234,34 @@ export default function ComposeScreen() {
     }
     return [];
   });
-  const [fontFamily, setFontFamily] = useState("JetBrainsMono-Medium");
-  const [fontSize, setFontSize] = useState(21);
+  const [fontFamily, setFontFamily] = useState(existingComposition?.fontFamily ?? "JetBrainsMono-Medium");
+  const [fontSize, setFontSize] = useState(existingComposition?.fontSize ?? 21);
 
-  const { addComposition } = useJournalStore();
+  // Sync state if existingComposition resolves later
+  useEffect(() => {
+    if (existingComposition) {
+      setBody(existingComposition.textContent);
+      setMediaElements(existingComposition.mediaElements || []);
+      setFontFamily(existingComposition.fontFamily || "JetBrainsMono-Medium");
+      setFontSize(existingComposition.fontSize || 21);
+      if (existingComposition.location?.name) {
+        setLocationName(existingComposition.location.name);
+      }
+      if (existingComposition.location?.latitude && existingComposition.location?.longitude) {
+        setLocationCoords({ lat: existingComposition.location.latitude, lng: existingComposition.location.longitude });
+      }
+      if (existingComposition.storyIds) {
+        setStoryIds(existingComposition.storyIds);
+      }
+    }
+  }, [existingComposition]);
+
+  const { addComposition, updateComposition } = useJournalStore();
   const { settings } = useSettings();
   const posthog = usePostHog();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 100);
-
-  const [locationName, setLocationName] = useState<string>();
-  const [locationCoords, setLocationCoords] = useState<{
-    lat: number;
-    lng: number;
-  }>();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isMusicPickerVisible, setIsMusicPickerVisible] = useState(false);
   
@@ -310,7 +354,16 @@ export default function ComposeScreen() {
   const currentSizeName =
     FONT_SIZES.find((s) => s.id === fontSize)?.name || "M";
 
-  const now = useMemo(() => new Date(), []);
+  const targetTimestamp = useMemo(() => {
+    if (existingComposition?.createdAt) return existingComposition.createdAt;
+    if (dateTimestamp) {
+      const parsed = parseInt(dateTimestamp, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return null;
+  }, [existingComposition, dateTimestamp]);
+
+  const now = useMemo(() => (targetTimestamp ? new Date(targetTimestamp) : new Date()), [targetTimestamp]);
   const dateString = useMemo(() => formatComposeDate(now), [now]);
   const timeString = useMemo(() => formatComposeTime(now), [now]);
 
@@ -574,17 +627,33 @@ export default function ComposeScreen() {
 
     setIsSaving(true);
     try {
-      await addComposition({
-        textContent: body.trim(),
-        mediaElements,
-        fontFamily,
-        fontSize,
-        locationName,
-        locationCoords: locationCoords
-          ? JSON.stringify(locationCoords)
-          : undefined,
-        storyIds,
-      });
+      if (numericEditId) {
+        await updateComposition({
+          id: numericEditId,
+          textContent: body.trim(),
+          mediaElements,
+          fontFamily,
+          fontSize,
+          locationName,
+          locationCoords: locationCoords
+            ? JSON.stringify(locationCoords)
+            : undefined,
+          storyIds,
+        });
+      } else {
+        await addComposition({
+          textContent: body.trim(),
+          mediaElements,
+          fontFamily,
+          fontSize,
+          locationName,
+          locationCoords: locationCoords
+            ? JSON.stringify(locationCoords)
+            : undefined,
+          storyIds,
+          createdAt: targetTimestamp ?? undefined,
+        });
+      }
 
       {
         let ageCategory = "Unknown";
@@ -775,7 +844,7 @@ export default function ComposeScreen() {
                 { color: canSave ? theme.background : theme.textMuted },
               ]}
             >
-              {isSaving ? "Saving" : "Save"}
+              {isSaving ? (numericEditId ? "Updating" : "Saving") : (numericEditId ? "Update" : "Save")}
             </ThemedText>
           </Pressable>
         </View>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Linking } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus } from 'lucide-react-native';
+import { X, Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -337,6 +337,14 @@ export default function MemoryDetailScreen() {
     return () => unpinComposition(numericId);
   }, [numericId, ensureComposition, pinComposition, unpinComposition]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Number.isFinite(numericId)) {
+        ensureComposition(numericId);
+      }
+    }, [numericId, ensureComposition])
+  );
+
   const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -575,6 +583,19 @@ export default function MemoryDetailScreen() {
         </View>
 
         <View style={styles.rightActions}>
+          <Pressable 
+            style={({ pressed }) => [
+              styles.actionBtn, 
+              { 
+                borderColor: theme.border,
+                backgroundColor: theme.background,
+                opacity: pressed ? 0.5 : 1 
+              }
+            ]} 
+            onPress={() => router.push({ pathname: '/compose', params: { editId: id } })}
+          >
+            <Pencil size={15} color={theme.text} />
+          </Pressable>
           <Pressable 
             style={({ pressed }) => [
               styles.actionBtn, 
