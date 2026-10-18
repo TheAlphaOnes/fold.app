@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { View, StyleSheet, Pressable, useWindowDimensions, Text, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
+import { Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
 import { CarouselItem } from '@/components/carousel-item';
 import { MemoryCard } from '@/components/memory-card'; // fallback if needed
 import { FlatList } from 'react-native';
@@ -28,6 +28,7 @@ import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
+import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
@@ -477,56 +478,21 @@ export default function StoryDetailScreen() {
       )}
 
       {/* Header Overlay */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-        <View style={styles.headerLeft}>
-          <Pressable 
-            onPress={() => goBack()}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
-            ]}
-          >
-            <ArrowLeft size={16} color={theme.text} />
-          </Pressable>
-        </View>
-
-        <View style={styles.headerCenter} pointerEvents="none">
-          <View style={[styles.titleBadge, { backgroundColor: theme.backgroundElement, borderColor: theme.border, maxWidth: '60%' }]}>
-            <ThemedText style={[styles.titleText, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-              {activeStory.title}
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          <Pressable 
-            onPress={() => {
-              haptic.tap();
-              setViewMode(prev => prev === 'wheel' ? 'list' : 'wheel');
-            }}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
-            ]}
-          >
-            {viewMode === 'wheel' ? (
-              <List size={16} color={theme.text} />
-            ) : (
-              <CircleDashed size={16} color={theme.text} />
-            )}
-          </Pressable>
-
-          <Pressable 
-            onPress={handleDelete}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }
-            ]}
-          >
-            <Trash2 size={16} color="#FF3B30" />
-          </Pressable>
-        </View>
-      </View>
+      <ScreenHeader
+        title={activeStory.title}
+        subtitle={`${activeStoryMemories.length} ${activeStoryMemories.length === 1 ? 'memory' : 'memories'}`}
+        floating
+        actions={
+          <>
+            <HeaderIconButton
+              icon={viewMode === 'wheel' ? List : CircleDashed}
+              onPress={() => setViewMode((prev) => (prev === 'wheel' ? 'list' : 'wheel'))}
+              accessibilityLabel={viewMode === 'wheel' ? 'Show as list' : 'Show as wheel'}
+            />
+            <HeaderIconButton icon={Trash2} tone="danger" onPress={handleDelete} accessibilityLabel="Delete story" />
+          </>
+        }
+      />
 
       {/* Empty State */}
       {storyItems.length === 0 && (

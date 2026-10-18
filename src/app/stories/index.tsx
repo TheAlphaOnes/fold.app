@@ -10,12 +10,13 @@ import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'reac
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { ArrowLeft, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 
 import { ActionLink } from '@/components/action-link';
 import { AsciiArt } from '@/components/ascii-art';
 import { CreateStoryTray } from '@/components/create-story-tray';
 import { GrainBackground } from '@/components/grain-background';
+import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { StoryBoardControls } from '@/components/stories/story-board-controls';
 import { StoryGridCard } from '@/components/stories/story-cards';
@@ -27,7 +28,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { searchStories, sortStories, type StorySort } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
-import { goBack } from '@/utils/navigation';
 
 const GUTTER = 16;
 const GAP = 12;
@@ -58,10 +58,7 @@ export default function StoryBoardScreen() {
   );
 
   const openStory = useCallback((story: Story) => router.push(`/stories/${story.id}`), [router]);
-  const startCreating = () => {
-    haptic.press();
-    setIsCreating(true);
-  };
+  const startCreating = () => setIsCreating(true);
 
   const summary =
     stories.length === 0
@@ -104,40 +101,12 @@ export default function StoryBoardScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <View style={[styles.header, { paddingTop: insets.top + 12, borderColor: theme.border }]}>
-        <Pressable
-          onPress={() => {
-            haptic.tap();
-            goBack();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          style={({ pressed }) => [styles.iconBtn, { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }]}
-        >
-          <ArrowLeft size={16} color={theme.text} />
-        </Pressable>
-
-        <View style={styles.titleBlock}>
-          <ThemedText style={[styles.title, { color: theme.text }]} accessibilityRole="header">
-            STORY BOARD
-          </ThemedText>
-          <ThemedText style={[styles.summary, { color: theme.textMuted }]} numberOfLines={1}>
-            {summary}
-          </ThemedText>
-        </View>
-
-        <Pressable
-          onPress={startCreating}
-          accessibilityRole="button"
-          accessibilityLabel="New chapter"
-          style={({ pressed }) => [
-            styles.iconBtn,
-            { borderColor: theme.text, backgroundColor: theme.text, transform: [{ scale: pressed ? 0.94 : 1 }] },
-          ]}
-        >
-          <Plus size={16} color={theme.background} strokeWidth={3} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Story Board"
+        subtitle={summary}
+        divider
+        actions={<HeaderIconButton icon={Plus} tone="primary" onPress={startCreating} accessibilityLabel="New chapter" />}
+      />
 
       <FlatList
         data={visible}
@@ -163,37 +132,6 @@ export default function StoryBoardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: GUTTER,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  titleBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-    lineHeight: 22,
-    letterSpacing: 2,
-  },
-  summary: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 11,
-    lineHeight: 15,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   list: {
     paddingHorizontal: GUTTER,
