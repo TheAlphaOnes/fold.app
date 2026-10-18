@@ -148,9 +148,6 @@ function MemoryTile({ tile, width }: { tile: Tile; width: number }) {
           </ThemedText>
         </View>
       )}
-      <View style={styles.dateChip} pointerEvents="none">
-        <ThemedText style={styles.dateText}>{shortDate(memory.createdAt)}</ThemedText>
-      </View>
     </Pressable>
   );
 }
@@ -332,25 +329,8 @@ const styles = StyleSheet.create({
   wordsFace: {
     ...StyleSheet.absoluteFill,
     padding: 10,
-    paddingBottom: 26,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  dateChip: {
-    position: 'absolute',
-    left: 6,
-    bottom: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  dateText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 8,
-    lineHeight: 11,
-    letterSpacing: 0.6,
-    color: '#FFFFFF',
   },
   fade: {
     position: 'absolute',
