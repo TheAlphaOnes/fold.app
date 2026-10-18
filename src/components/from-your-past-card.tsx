@@ -242,13 +242,15 @@ function EdgeFade({ color, edge }: { color: string; edge: 'top' | 'bottom' }) {
 function ShuffleButton({ onPress }: { onPress: () => void }) {
   const theme = useTheme();
   const spin = useSharedValue(0);
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.get()}deg` }] }));
 
   return (
     <Pressable
       onPress={() => {
-        spin.value = withTiming(spin.value + 360, { duration: 420, easing: Easing.bezier(0.34, 1.56, 0.64, 1) });
-        onPress();
+        // The spin runs on the UI thread; the reshuffle waits a frame so the
+        // button's release paints first and the tap never feels stuck.
+        spin.set(withTiming(spin.get() + 360, { duration: 420, easing: Easing.bezier(0.34, 1.56, 0.64, 1) }));
+        requestAnimationFrame(onPress);
       }}
       accessibilityRole="button"
       accessibilityLabel="Shuffle memories"
@@ -272,7 +274,7 @@ export function FromYourPastCard() {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const reduceMotion = useReducedMotion() ?? false;
-  const { memories, loaded, draw, reshuffle } = useRandomPastMemories(18);
+  const { memories, loaded, sampleId, reshuffle } = useRandomPastMemories(18);
   const [paused, setPaused] = useState(false);
 
   const columnWidth = (screenWidth - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
@@ -285,7 +287,7 @@ export function FromYourPastCard() {
       {memories.length > 0 ? (
         <View style={styles.stage}>
           <Animated.View
-            key={draw}
+            key={sampleId}
             entering={fadeIn(400)}
             style={styles.viewport}
             onTouchStart={() => setPaused(true)}

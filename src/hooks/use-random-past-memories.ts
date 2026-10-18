@@ -6,13 +6,18 @@ import type { Composition } from '@/types/journal';
 interface State {
   memories: Composition[];
   loaded: boolean;
+  /** Increments each time a new sample lands; key the wall on it. */
+  sampleId: number;
 }
 
-/** A fresh random sample of past memories; redrawn when the journal changes. */
+/**
+ * A fresh random sample of past memories; redrawn when the journal changes
+ * or on reshuffle(). The previous sample stays on screen until the next one
+ * is ready, so a reshuffle never flashes or remounts twice.
+ */
 export function useRandomPastMemories(count?: number) {
   const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-  const [state, setState] = useState<State>({ memories: [], loaded: false });
-  // Bumping the draw re-runs the sample: a fresh random set on demand.
+  const [state, setState] = useState<State>({ memories: [], loaded: false, sampleId: 0 });
   const [draw, setDraw] = useState(0);
   const reshuffle = useCallback(() => setDraw((n) => n + 1), []);
 
@@ -20,7 +25,7 @@ export function useRandomPastMemories(count?: number) {
     let cancelled = false;
     findRandomPastMemories(count)
       .then((memories) => {
-        if (!cancelled) setState({ memories, loaded: true });
+        if (!cancelled) setState((previous) => ({ memories, loaded: true, sampleId: previous.sampleId + 1 }));
       })
       .catch((error) => {
         console.error('Failed to sample past memories', error);
@@ -31,5 +36,5 @@ export function useRandomPastMemories(count?: number) {
     };
   }, [hydrationVersion, count, draw]);
 
-  return { ...state, draw, reshuffle };
+  return { ...state, reshuffle };
 }
