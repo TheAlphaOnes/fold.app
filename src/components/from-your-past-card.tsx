@@ -30,7 +30,6 @@ import { Image } from 'expo-image';
 import { Shuffle } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Type } from '@/constants/theme';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { useRandomPastMemories } from '@/hooks/use-random-past-memories';
 import { useTheme } from '@/hooks/use-theme';
@@ -222,6 +221,32 @@ function EdgeFade({ color, edge }: { color: string; edge: 'top' | 'bottom' }) {
   );
 }
 
+/** Round icon button; the icon turns a full spin on each shuffle. */
+function ShuffleButton({ onPress }: { onPress: () => void }) {
+  const theme = useTheme();
+  const spin = useSharedValue(0);
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value}deg` }] }));
+
+  return (
+    <Pressable
+      onPress={() => {
+        spin.value = withTiming(spin.value + 360, { duration: 420, easing: Easing.bezier(0.34, 1.56, 0.64, 1) });
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel="Shuffle memories"
+      style={({ pressed }) => [
+        styles.shuffle,
+        { borderColor: theme.border, transform: [{ scale: pressed ? 0.94 : 1 }] },
+      ]}
+    >
+      <Animated.View style={iconStyle}>
+        <Shuffle size={14} color={theme.text} strokeWidth={2} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function FromYourPastCard() {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -237,21 +262,16 @@ export function FromYourPastCard() {
   return (
     <View style={styles.section}>
       <View style={styles.rail}>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FROM YOUR PAST</ThemedText>
+        <ThemedText style={[styles.title, { color: theme.text }]} accessibilityRole="header">
+          FROM YOUR PAST
+        </ThemedText>
         {memories.length > 1 && (
-          <Pressable
+          <ShuffleButton
             onPress={() => {
               haptic.select();
               reshuffle();
             }}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Shuffle memories"
-            style={({ pressed }) => [styles.shuffle, { opacity: pressed ? 0.5 : 1 }]}
-          >
-            <Shuffle size={12} color={theme.accentWarm} />
-            <ThemedText style={[Type.rail, { color: theme.accentWarm }]}>SHUFFLE</ThemedText>
-          </Pressable>
+          />
         )}
       </View>
 
@@ -304,12 +324,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: PROFILE_GUTTER,
-    paddingBottom: 4,
+    paddingBottom: 8,
+  },
+  title: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 3,
   },
   shuffle: {
-    flexDirection: 'row',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
   },
   viewport: {
     height: VIEWPORT_HEIGHT,
