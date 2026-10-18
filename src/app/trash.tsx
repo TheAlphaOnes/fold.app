@@ -45,8 +45,8 @@ function titleOf(memory: Composition): string {
 
 function deletedAgo(deletedAt: number, now: number): string {
   const days = Math.floor((now - deletedAt) / DAY_MS);
-  if (days <= 0) return 'deleted today';
-  return days === 1 ? 'deleted yesterday' : `deleted ${days} days ago`;
+  if (days <= 0) return 'today';
+  return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
 function Thumb({ memory }: { memory: Composition }) {
