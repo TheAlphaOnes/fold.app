@@ -8,6 +8,7 @@ export interface MediaElement {
   height?: number;
   scale?: number;
   zIndex?: number; // Paint order among stickers on the canvas; higher paints later
+  isGif?: boolean; // Picked from the GIF library; decorative, kept out of story reels
   metadata?: {
     title: string;
     artist: string;
@@ -28,6 +29,7 @@ export interface CompositionRow {
   created_at: number;
   font_family: string;
   font_size: number;
+  text_color?: string; // Hex ink; null/absent = theme text colour
   location_name?: string;
   location_coords?: string; // JSON string of LocationData
   story_ids?: string; // Comma-separated string from GROUP_CONCAT
@@ -41,6 +43,8 @@ export interface Composition {
   createdAt: number;
   fontFamily: string;
   fontSize: number;
+  /** Hex ink chosen in compose; undefined renders in the theme's text colour. */
+  textColor?: string;
   location?: LocationData;
   storyIds: number[];
 }

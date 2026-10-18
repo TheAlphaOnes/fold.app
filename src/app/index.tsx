@@ -1,7 +1,6 @@
 import * as Device from 'expo-device';
-import * as Haptics from 'expo-haptics';
 import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Pressable, Alert, Platform } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Alert, Platform } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue, FadeOut,
@@ -29,15 +28,15 @@ import { User, Book } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useSettingsStore } from '@/hooks/use-settings';
-import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { copyWithinFileSize, alertFileTooLarge } from '@/utils/media-attach';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { AudioModule, useAudioRecorder, useAudioRecorderState, RecordingPresets } from 'expo-audio';
 import { RecordingOverlay } from '@/components/recording-overlay';
+import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { FieldGuideTab } from '@/components/field-guide-tab';
+import { EdgeTab } from '@/components/edge-tab';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -60,7 +59,6 @@ export default function HomeScreen() {
     hydrateAround,
     updatePositions,
     setTargetDate,
-    addComposition,
     setActiveCompositionId,
   } = useJournalStore();
   const hydratedRef = useRef(hydratedById);
@@ -69,8 +67,7 @@ export default function HomeScreen() {
   
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 100);
+  const quickCapture = useQuickCapture();
   
   const { settings, updateSetting } = useSettingsStore();
   
@@ -163,112 +160,6 @@ export default function HomeScreen() {
   const handleAdd = () => {
     
     router.push('/compose');
-  };
-
-  const isCameraOpenRef = useRef(false);
-
-  const handleSwipeUp = async () => {
-    if (isCameraOpenRef.current) return;
-    try {
-      isCameraOpenRef.current = true;
-      const { status: camStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      if (camStatus !== 'granted') return;
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-      });
-
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        
-        // Copy to safe document directory
-        const extMatch = asset.uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-        const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
-        const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-        
-        await FileSystem.copyAsync({ from: asset.uri, to: dest });
-
-        setPendingCameraMedia({
-          uri: dest,
-          type: 'image',
-          width: asset.width,
-          height: asset.height
-        });
-        
-        router.push('/compose');
-      }
-    } catch (error) {
-      console.error('Failed to launch camera:', error);
-    } finally {
-      isCameraOpenRef.current = false;
-    }
-  };
-
-  const recordIntentRef = useRef(false);
-
-  const handleLongPressStart = async () => {
-    
-    try {
-      recordIntentRef.current = true;
-      const { status } = await AudioModule.requestRecordingPermissionsAsync();
-      if (status !== 'granted') return;
-      
-      await AudioModule.setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-
-      await recorder.prepareToRecordAsync();
-      
-      // Check if user released while we were preparing
-      if (!recordIntentRef.current) {
-        return;
-      }
-      
-      await recorder.record();
-    } catch (err) {
-      console.error('Failed to start quick record', err);
-    }
-  };
-
-  const handleLongPressEnd = async () => {
-    try {
-      recordIntentRef.current = false;
-      // Check live state or if URI exists from a race condition
-      if (recorder.isRecording || recorder.uri) {
-        await recorder.stop();
-        const uri = recorder.uri;
-        if (uri) {
-          const info = await FileSystem.getInfoAsync(uri);
-          if (info.exists && (info.size === undefined || info.size > 0)) {
-            // Copy to safe document directory
-            const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-            const ext = extMatch ? extMatch[1].toLowerCase() : 'm4a';
-            const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-            
-            await FileSystem.copyAsync({ from: uri, to: dest });
-
-            const newMedia = {
-              id: Math.random().toString(36).substring(2, 9),
-              uri: dest,
-              type: 'audio' as const,
-              x_pos: 30 + Math.random() * (width - 150),
-              y_pos: 30 + Math.random() * (height - 200),
-            };
-            // Instant save as a memory
-            await addComposition({
-              textContent: '',
-              mediaElements: [newMedia],
-              fontFamily: 'JetBrainsMono-Regular',
-              fontSize: 16,
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to save quick record', err);
-    }
   };
 
   const listRef = useRef<Animated.FlatList<TimelineRow>>(null);
@@ -390,23 +281,10 @@ export default function HomeScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <Pressable 
-        style={({pressed}) => [
-          styles.tabB, 
-          { 
-            top: Math.max(insets.top, 20),
-            backgroundColor: pressed ? '#E0E0E0' : theme.backgroundElement,
-            borderColor: theme.border 
-          }
-        ]}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/profile');
-        }}
-      >
+      <EdgeTab slot={0} onPress={() => router.push('/profile')} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
-      </Pressable>
+      </EdgeTab>
 
       <FieldGuideTab />
 
@@ -467,17 +345,17 @@ export default function HomeScreen() {
         </View>
         <AddButton 
           onPress={handleAdd} 
-          onSwipeUp={handleSwipeUp}
-          onLongPressStart={handleLongPressStart}
-          onLongPressEnd={handleLongPressEnd}
+          onSwipeUp={quickCapture.capturePhoto}
+          onLongPressStart={quickCapture.startRecording}
+          onLongPressEnd={quickCapture.stopRecording}
         />
       </View>
 
       {/* Quick Record Overlay — shared with the compose record chip */}
       <RecordingOverlay
-        visible={recorderState.isRecording}
-        durationMillis={recorderState.durationMillis}
-        onStop={handleLongPressEnd}
+        visible={quickCapture.isRecording}
+        durationMillis={quickCapture.durationMillis}
+        onStop={quickCapture.stopRecording}
       />
     </View>
   );
@@ -506,25 +384,6 @@ const styles = StyleSheet.create({
     color: '#878787',
     minWidth: 200,
     textAlign: 'center',
-  },
-  tabB: {
-    position: 'absolute',
-    right: 0,
-    zIndex: 100,
-    width: 56,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-    borderWidth: 1,
-    borderRightWidth: 0,
-    flexDirection: 'row',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   notchIndicator: {
     width: 4,

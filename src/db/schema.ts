@@ -69,6 +69,12 @@ export async function initSchema(db: SQLiteDatabase): Promise<void> {
     if (!e.message?.includes('duplicate column name')) throw e;
   }
   
+  try {
+    await db.execAsync("ALTER TABLE compositions ADD COLUMN text_color TEXT;");
+  } catch (e: any) {
+    if (!e.message?.includes('duplicate column name')) throw e;
+  }
+
   // Create index AFTER column is guaranteed to exist
   await db.execAsync("CREATE INDEX IF NOT EXISTS idx_compositions_story_id ON compositions (story_id);");
 
@@ -97,6 +103,7 @@ export function mapRow(row: unknown): CompositionRow {
     created_at: Number(r.created_at),
     font_family: r.font_family ? String(r.font_family) : 'JetBrainsMono-Regular',
     font_size: r.font_size ? Number(r.font_size) : 21,
+    text_color: r.text_color ? String(r.text_color) : undefined,
     location_name: r.location_name ? String(r.location_name) : undefined,
     location_coords: r.location_coords ? String(r.location_coords) : undefined,
     story_ids: r.story_ids ? String(r.story_ids) : undefined,

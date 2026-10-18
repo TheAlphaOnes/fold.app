@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCard } from '@/components/memory-card';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
-import type { Composition } from '@/types/journal';
+import type { Composition, MediaElement } from '@/types/journal';
 
 export interface CarouselItemProps {
   item: Composition;
@@ -19,10 +19,14 @@ export interface CarouselItemProps {
   cardHeight: number;
   itemOffset: number;
   scrollY: SharedValue<number>;
-  updatePositions: (id: number, media: any) => void;
+  updatePositions: (id: number, media: MediaElement[]) => void;
+  /** Fired when a double tap opens the memory. */
+  onOpen?: () => void;
+  /** Fired after the share sheet closes for a successfully captured card. */
+  onShared?: () => void;
 }
 
-export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, updatePositions }: CarouselItemProps) {
+export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, updatePositions, onOpen, onShared }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
   const hiddenCardRef = useRef<View>(null);
   const [scanKey, setScanKey] = useState(0);
@@ -53,6 +57,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
 
   const navigateToDetail = () => {
     completeGuideStep('inspect');
+    onOpen?.();
     router.push(`/memory/${item.id}`);
   };
 
@@ -79,6 +84,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
           dialogTitle: 'Share Memory Card',
           mimeType: 'image/png',
         });
+        onShared?.();
       }
     } catch (e) {
       console.error('Failed to capture memory card:', e);

@@ -32,6 +32,11 @@ interface MemoryCardProps {
   height: number;
   onUpdatePositions: (id: number, updatedMedia: MediaElement[]) => void;
   isExporting?: boolean;
+  /**
+   * Replaces the timestamp row. Used for demo content (the field guide's
+   * sample canvas) so it never poses as a real, dated memory.
+   */
+  label?: string;
 }
 
 import { useJournalStore } from "@/hooks/use-journal";
@@ -255,6 +260,7 @@ export function MemoryCard({
   height,
   onUpdatePositions,
   isExporting,
+  label,
 }: MemoryCardProps) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
@@ -500,9 +506,9 @@ export function MemoryCard({
               },
             ]}
           >
-            {formattedTime}
+            {label ?? formattedTime}
           </Text>
-          {(item.location?.name || story) && (
+          {!label && (item.location?.name || story) && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
               {story && (
                 <View style={styles.locationBadge}>

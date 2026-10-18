@@ -40,6 +40,8 @@ export interface UserSettings {
   timelineMode: TimelineMode;
   guideProgress: GuideProgress;
   guideDismissed: boolean;
+  /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
+  guideResetAt: number;
 }
 
 const defaultSettings: UserSettings = {
@@ -54,6 +56,7 @@ const defaultSettings: UserSettings = {
   timelineMode: 'yearly',
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
+  guideResetAt: 0,
 };
 
 interface SettingsState {
@@ -61,11 +64,14 @@ interface SettingsState {
   loading: boolean;
 
   loadSettings: () => Promise<void>;
+  /** Applies the value immediately; resolves false (and reverts) if it could not be stored. */
   updateSetting: <K extends keyof UserSettings>(
     key: K,
     value: UserSettings[K],
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   completeGuideStep: (step: keyof GuideProgress) => Promise<void>;
+  /** Clears all mission progress and re-shows the field guide tab. */
+  resetGuide: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -89,7 +95,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         settings: {
           name: stored.name || "",
           dob: stored.dob || "",
-          theme: (stored.theme as ThemeMode) || "light",
+          theme: (stored.theme as ThemeMode) || defaultSettings.theme,
           requireBiometrics: stored.requireBiometrics === "true",
           privacyScreen: stored.privacyScreen === "true",
           hasOnboarded: stored.hasOnboarded === "true",
@@ -98,6 +104,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",
+          guideResetAt: Number(stored.guideResetAt) || 0,
         },
         loading: false,
       });
@@ -111,6 +118,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     key: K,
     value: UserSettings[K],
   ) => {
+    const previous = get().settings[key];
+
     // Optimistic UI update
     set((state) => ({
       settings: {
@@ -119,9 +128,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       },
     }));
 
-    // Persist to SQLite
+    // Persist to SQLite. If the write fails, put the old value back so the
+    // screen never shows a setting that will be gone on the next launch.
     const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-    await dbSetSetting(key, strValue);
+    try {
+      await dbSetSetting(key, strValue);
+      return true;
+    } catch (error) {
+      console.error(`Failed to save setting "${String(key)}"`, error);
+      set((state) => ({
+        settings: {
+          ...state.settings,
+          [key]: previous,
+        },
+      }));
+      return false;
+    }
   },
 
   completeGuideStep: async (step: keyof GuideProgress) => {
@@ -129,6 +151,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (current[step]) return;
     const updated = { ...current, [step]: true };
     await get().updateSetting('guideProgress', updated);
+  },
+
+  resetGuide: async () => {
+    const { updateSetting } = get();
+    await updateSetting('guideProgress', defaultGuideProgress);
+    await updateSetting('guideDismissed', false);
+    await updateSetting('guideResetAt', Date.now());
   },
 }));
 

@@ -42,3 +42,29 @@ export const Type = {
     lineHeight: 16,
   },
 } as const;
+
+/**
+ * Text colours a memory can be written in. `null` is the theme's own ink
+ * (black in light, snow in dark). The rest are mid-tones chosen to stay
+ * legible on both the white and the near-black card at memory text sizes.
+ */
+export const MEMORY_INKS: readonly { id: string | null; label: string }[] = [
+  { id: null, label: 'Ink' },
+  { id: '#F2600C', label: 'Orange' },
+  { id: '#E5484D', label: 'Red' },
+  { id: '#E5487F', label: 'Pink' },
+  { id: '#8E5CF7', label: 'Violet' },
+  { id: '#3E7BFA', label: 'Blue' },
+  { id: '#1FA67A', label: 'Green' },
+  { id: '#C9A227', label: 'Gold' },
+];
+
+/**
+ * Line breaking for multi-line copy: wrap into lines of even length instead of
+ * filling the first line and stranding a single word on the next.
+ * Spread onto <Text>: `<ThemedText {...BALANCED_TEXT}>`.
+ */
+export const BALANCED_TEXT = {
+  lineBreakStrategyIOS: 'push-out',
+  textBreakStrategy: 'balanced',
+} as const;

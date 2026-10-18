@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput, Switch } from 'react-native';
+import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
@@ -9,9 +9,10 @@ import * as Haptics from 'expo-haptics';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
-import { useSettingsStore, defaultGuideProgress } from '@/hooks/use-settings';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { ToggleSwitch } from '@/components/toggle-switch';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
@@ -20,7 +21,7 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
-  const { settings, updateSetting } = useSettingsStore();
+  const { settings, updateSetting, resetGuide } = useSettingsStore();
   
   const [easterEggActive, setEasterEggActive] = useState(false);
 
@@ -58,7 +59,12 @@ export default function SettingsScreen() {
             text: 'DELETE ALL', 
             style: 'destructive',
             onPress: async () => {
-              await removeAllCompositions();
+              try {
+                await removeAllCompositions();
+              } catch {
+                Alert.alert("COULDN'T CLEAR", 'Your memories are still saved. Please try again.');
+                return;
+              }
               router.navigate('/');
             }
           }
@@ -213,12 +219,10 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO-PLAY AUDIO</ThemedText>
             </View>
-            <Switch
+            <ToggleSwitch
               value={settings.autoPlayMusic}
               onValueChange={(val) => updateSetting('autoPlayMusic', val)}
-              trackColor={{ false: theme.border, true: theme.text }}
-              thumbColor={settings.autoPlayMusic ? theme.background : theme.text}
-              ios_backgroundColor={theme.border}
+              accessibilityLabel="Auto-play audio"
             />
           </View>
 
@@ -228,8 +232,9 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO LOCATION TAGGING</ThemedText>
             </View>
-            <Switch
+            <ToggleSwitch
               value={settings.autoLocationTagging}
+              accessibilityLabel="Auto location tagging"
               onValueChange={async (val) => {
                 if (val) {
                   const { status } = await Location.requestForegroundPermissionsAsync();
@@ -240,8 +245,6 @@ export default function SettingsScreen() {
                 }
                 updateSetting('autoLocationTagging', val);
               }}
-              trackColor={{ false: theme.border, true: '#FF4B00' }}
-              thumbColor={theme.background}
             />
           </View>
         </View>
@@ -255,11 +258,10 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>REQUIRE BIOMETRICS</ThemedText>
             </View>
-            <Switch
+            <ToggleSwitch
               value={settings.requireBiometrics}
               onValueChange={(val) => handleToggleSecurity('requireBiometrics', val)}
-              trackColor={{ false: theme.border, true: theme.accentWarm }}
-              thumbColor={theme.background}
+              accessibilityLabel="Require biometrics"
             />
           </View>
 
@@ -269,11 +271,10 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY SCREEN</ThemedText>
             </View>
-            <Switch
+            <ToggleSwitch
               value={settings.privacyScreen}
               onValueChange={(val) => handleToggleSecurity('privacyScreen', val)}
-              trackColor={{ false: theme.border, true: theme.accentWarm }}
-              thumbColor={theme.background}
+              accessibilityLabel="Privacy screen"
             />
           </View>
         </View>
@@ -289,8 +290,7 @@ export default function SettingsScreen() {
             onPress={async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               await updateSetting('hasOnboarded', false);
-              await updateSetting('guideProgress', defaultGuideProgress);
-              await updateSetting('guideDismissed', false);
+              await resetGuide();
               router.replace('/onboarding');
             }}
           >
@@ -306,9 +306,8 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              await updateSetting('guideProgress', defaultGuideProgress);
-              await updateSetting('guideDismissed', false);
-              router.push('/guide');
+              await resetGuide();
+              router.push({ pathname: '/guide', params: { step: 'write' } });
             }}
           >
             <View style={styles.settingRowLeft}>

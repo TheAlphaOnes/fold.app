@@ -178,18 +178,14 @@ function ContinuumMark({
   const fill = mark.inStreak ? color : mark.written ? idleColor : 'transparent';
   const border = mark.written ? 'transparent' : idleColor;
 
+  // Animated values and data-driven colours live on separate views. When the
+  // journal loads and a mark's colour changes, React re-commits only the inner
+  // view; if both shared one view, that commit could overwrite the running
+  // entrance with its initial props (opacity 0, squashed) and the mark vanished.
   return (
-    <Animated.View
-      style={[
-        s.mark,
-        mark.isToday && s.markToday,
-        {
-          backgroundColor: fill,
-          borderColor: border,
-        },
-        animatedStyle,
-      ]}
-    />
+    <Animated.View style={[s.mark, mark.isToday && s.markToday, animatedStyle]}>
+      <View style={[s.markFill, { backgroundColor: fill, borderColor: border }]} />
+    </Animated.View>
   );
 }
 
@@ -242,13 +238,9 @@ function ContinuumTrack({
         ))}
       </View>
       <View style={[s.rule, { backgroundColor: idleColor }]}>
-        <Animated.View
-          style={[
-            s.ruleFill,
-            { backgroundColor: color },
-            fillStyle,
-          ]}
-        />
+        <Animated.View style={[s.ruleFill, fillStyle]}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: color }]} />
+        </Animated.View>
       </View>
     </View>
   );
@@ -365,9 +357,12 @@ const s = StyleSheet.create({
   mark: {
     width: 3,
     height: 18,
+    transformOrigin: 'bottom',
+  },
+  markFill: {
+    flex: 1,
     borderRadius: 1,
     borderWidth: StyleSheet.hairlineWidth,
-    transformOrigin: 'bottom',
   },
   markToday: {
     height: 28,

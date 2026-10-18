@@ -2,6 +2,7 @@ import { getDatabase } from './client';
 import { mapRow } from './schema';
 import type { Story, StoryRow, Composition } from '@/types/journal';
 import { resolveDocumentUri, rowToComposition } from './journal-repository';
+import { isGifMedia } from '@/utils/media-kind';
 
 export interface CreateStoryInput {
   title: string;
@@ -27,7 +28,7 @@ function mapStoryRow(row: unknown): Story {
           for (const media of arr) {
             // Only include visual media for thumbnails (audio/text will fail to render as images)
             const type = media.type || 'image';
-            if (media?.uri && (type === 'image' || type === 'video') && mediaList.length < 3) {
+            if (media?.uri && (type === 'image' || type === 'video') && !isGifMedia(media) && mediaList.length < 3) {
               mediaList.push({
                 uri: resolveDocumentUri(media.uri),
                 type: type

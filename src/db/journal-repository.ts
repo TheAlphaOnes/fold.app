@@ -34,6 +34,7 @@ export interface CreateCompositionInput {
   mediaElements: MediaElement[];
   fontFamily: string;
   fontSize: number;
+  textColor?: string | null;
   locationName?: string;
   locationCoords?: string;
   storyIds?: number[];
@@ -46,6 +47,7 @@ export interface UpdateCompositionInput {
   mediaElements: MediaElement[];
   fontFamily: string;
   fontSize: number;
+  textColor?: string | null;
   locationName?: string;
   locationCoords?: string;
   storyIds?: number[];
@@ -88,6 +90,7 @@ export function rowToComposition(row: CompositionRow): Composition {
     createdAt: row.created_at,
     fontFamily: row.font_family,
     fontSize: row.font_size,
+    textColor: row.text_color,
     location,
     storyIds: row.story_ids ? row.story_ids.split(',').map(Number) : (row.story_id ? [row.story_id] : []),
   };
@@ -213,18 +216,31 @@ export async function getCompositionById(id: number): Promise<Composition | null
   return rowToComposition(mapRow(row));
 }
 
+/**
+ * The most recently *added* memory (highest id), or null when the journal is
+ * empty. Ordered by id rather than created_at so a memory backdated through
+ * the time machine still counts as the newest addition.
+ */
+export async function getLatestComposition(): Promise<Composition | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync(`${COMPOSITION_SELECT} ORDER BY c.id DESC LIMIT 1`);
+  if (!row) return null;
+  return rowToComposition(mapRow(row));
+}
+
 export async function createComposition(input: CreateCompositionInput): Promise<Composition> {
   const db = await getDatabase();
   const creationTime = input.createdAt ?? Date.now();
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
-    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, location_name, location_coords, story_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, text_color, location_name, location_coords, story_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     input.textContent,
     mediaJson,
     creationTime,
     input.fontFamily,
     input.fontSize,
+    input.textColor ?? null,
     input.locationName || null,
     input.locationCoords || null,
     null // Legacy story_id
@@ -257,6 +273,7 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     createdAt: creationTime,
     fontFamily: input.fontFamily,
     fontSize: input.fontSize,
+    textColor: input.textColor ?? undefined,
     location,
     storyIds: input.storyIds || [],
   };
@@ -266,11 +283,12 @@ export async function updateComposition(input: UpdateCompositionInput): Promise<
   const db = await getDatabase();
   const mediaJson = JSON.stringify(input.mediaElements);
   await db.runAsync(
-    'UPDATE compositions SET text_content = ?, media_elements = ?, font_family = ?, font_size = ?, location_name = ?, location_coords = ? WHERE id = ?',
+    'UPDATE compositions SET text_content = ?, media_elements = ?, font_family = ?, font_size = ?, text_color = ?, location_name = ?, location_coords = ? WHERE id = ?',
     input.textContent,
     mediaJson,
     input.fontFamily,
     input.fontSize,
+    input.textColor ?? null,
     input.locationName || null,
     input.locationCoords || null,
     input.id
@@ -309,12 +327,56 @@ export async function toggleCompositionStoryId(id: number, storyId: number): Pro
   }
 }
 
+// Foreign keys are not enabled on this connection, so ON DELETE CASCADE never
+// fires; story links are removed explicitly in the same transaction.
 export async function deleteComposition(id: number): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM compositions WHERE id = ?', id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM composition_stories WHERE composition_id = ?', id);
+    await db.runAsync('DELETE FROM compositions WHERE id = ?', id);
+  });
 }
 
 export async function deleteAllCompositions(): Promise<void> {
   const db = await getDatabase();
-  await db.runAsync('DELETE FROM compositions');
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM composition_stories');
+    await db.runAsync('DELETE FROM compositions');
+  });
+}
+
+/** Every media element across the journal (used before a full wipe). */
+export async function getAllMediaElements(): Promise<MediaElement[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ id: number; media_elements: string }>(
+    `SELECT id, media_elements FROM compositions WHERE media_elements != '[]'`,
+  );
+  return rows.flatMap((row) => {
+    try {
+      const parsed: MediaElement[] = JSON.parse(row.media_elements);
+      return parsed.map((m) => ({ ...m, uri: resolveDocumentUri(m.uri) }));
+    } catch (error) {
+      console.error('Failed to parse media_elements for composition', row.id, error);
+      return [];
+    }
+  });
+}
+
+/**
+ * True when any memory or story cover still points at a file with this name.
+ * Matched by file name because stored absolute paths go stale across iOS
+ * reinstalls; media files get unique random names when they are copied in.
+ */
+export async function isMediaFileReferenced(fileName: string): Promise<boolean> {
+  const db = await getDatabase();
+  const needle = `/${fileName}`;
+  const row = await db.getFirstAsync(
+    `SELECT 1 FROM compositions WHERE instr(media_elements, ?) > 0
+     UNION ALL
+     SELECT 1 FROM stories WHERE instr(IFNULL(cover_image_uri, ''), ?) > 0
+     LIMIT 1`,
+    needle,
+    needle,
+  );
+  return row != null;
 }

@@ -19,6 +19,7 @@ import {
   ScrollView,
   useWindowDimensions,
   LayoutAnimation,
+  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -708,6 +709,8 @@ export default function ComposeScreen() {
     } catch (error) {
       console.error("Failed to save composition:", error);
       setIsSaving(false);
+      // Stay on the page so nothing written is lost; the user can retry.
+      Alert.alert("COULDN'T SAVE", "Your memory wasn't saved. Please try again.");
     }
   };
 
@@ -1126,6 +1129,7 @@ export default function ComposeScreen() {
                 y_pos: 30 + Math.random() * safeH,
                 width: 120, // default squareish size, can be overridden by format.dims in a real app
                 height: 120,
+                isGif: true,
                 rotation: -10 + Math.random() * 20,
                 scale: 1,
               },

@@ -382,7 +382,13 @@ export default function MemoryDetailScreen() {
   };
 
   const finalizeDelete = async () => {
-    await removeComposition(Number(id));
+    try {
+      await removeComposition(Number(id));
+    } catch {
+      setIsDeleting(false);
+      Alert.alert("COULDN'T DELETE", 'This memory is still saved. Please try again.');
+      return;
+    }
     if (router.canGoBack()) {
       router.back();
     } else {

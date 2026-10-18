@@ -37,6 +37,7 @@ import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { AsciiArt } from '@/components/ascii-art';
 import { CASSETTE_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
+import { isGifMedia } from '@/utils/media-kind';
 
 interface StoryItem {
   id: string;
@@ -204,13 +205,13 @@ export default function StoryDetailScreen() {
     }
   };
 
-  // Flatten media into a loop of items (only images and videos)
+  // Flatten media into a loop of items (only photos and videos — GIF stickers
+  // are decoration on a memory, not moments of the story)
   const storyItems = useMemo<StoryItem[]>(() => {
     const items: StoryItem[] = [];
     activeStoryMemories.forEach(mem => {
-      // Only extract images and videos
       mem.mediaElements.forEach((media, index) => {
-        if (media.type === 'audio') return; // Skip audio
+        if (media.type === 'audio' || isGifMedia(media)) return;
         
         items.push({
           id: `media-${mem.id}-${index}`,
@@ -242,6 +243,7 @@ export default function StoryDetailScreen() {
       }
       
       mem.mediaElements.forEach((media, index) => {
+        if (isGifMedia(media)) return;
         items.push({
           id: `media-${mem.id}-${index}`,
           memoryId: mem.id,
