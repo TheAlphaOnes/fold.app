@@ -1,13 +1,16 @@
 /**
- * FromYourPastCard — today's moments from the past.
+ * FromYourPastCard — "memory lane": today's moments from the past, hung from
+ * a time ruler.
  *
- * Same visual language as the profile's Story Board strip: a horizontal row
- * of 100x140 tiles, the user's photo filling each one under a soft scrim,
- * with one white label saying when it is from. Text memories show their
- * words in their own font and ink on the card surface. Tap opens the memory.
+ * A hairline ruler runs under a horizontal strip; each moment is a photo (or
+ * a paper square of its words) on a short stem, with a tick on the ruler and
+ * a compact time mark beneath ("15 DAYS", "3 WK", "1 YR"). Moments run from
+ * the most recent back, so scrolling right is scrolling back in time.
+ * Anniversaries — this exact day in an earlier year — get an orange tick.
  *
- * Tiles rise in 40ms apart while each image settles from a slight zoom on a
- * slower curve.
+ * The entrance is segmented: the ruler draws in from the left first, then
+ * each moment drops onto it 40ms apart, its tick popping slightly later and
+ * its label fading in last.
  */
 
 import React from 'react';
@@ -19,7 +22,7 @@ import { Mic } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
-import { EASE_OUT, riseIn } from '@/constants/motion';
+import { EASE_OUT, SPRING_BOUNCE, fadeIn, riseIn } from '@/constants/motion';
 import { usePastMoments } from '@/hooks/use-past-moments';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
@@ -30,17 +33,33 @@ import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
-const TILE_WIDTH = 100;
-const TILE_HEIGHT = 140;
+const FRAME = 88;
+const STEM = 14;
+const TICK = 7;
+const COLUMN_GAP = 18;
+const STAGGER = 40;
 const MAX_STAGGER = 6;
 
-const settleIn = new Keyframe({
-  0: { transform: [{ scale: 1.08 }] },
-  100: { transform: [{ scale: 1 }], easing: EASE_OUT },
-}).duration(700);
+const rulerDraw = new Keyframe({
+  0: { transform: [{ scaleX: 0 }] },
+  100: { transform: [{ scaleX: 1 }], easing: EASE_OUT },
+}).duration(520);
 
-/** The image a tile shows: photo, video thumbnail, or song artwork. */
-function useTileImage(memory: Composition): string | null {
+const tickPop = (delay: number) =>
+  new Keyframe({
+    0: { opacity: 0, transform: [{ scale: 0.3 }] },
+    100: { opacity: 1, transform: [{ scale: 1 }], easing: SPRING_BOUNCE },
+  })
+    .duration(240)
+    .delay(delay);
+
+function dateMark(timestamp: number): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: '2-digit' })
+    .format(new Date(timestamp))
+    .toUpperCase();
+}
+
+function useFrameImage(memory: Composition): string | null {
   const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
   if (visual) return visual.type === 'video' ? videoThumb : visual.uri;
@@ -48,64 +67,73 @@ function useTileImage(memory: Composition): string | null {
   return getHighResArtwork(audio?.metadata?.artwork) ?? null;
 }
 
-function Tile({ moment, index }: { moment: ResurfacedMemory; index: number }) {
+function Moment({ moment, index }: { moment: ResurfacedMemory; index: number }) {
   const theme = useTheme();
   const { memory } = moment;
-  const image = useTileImage(memory);
+  const image = useFrameImage(memory);
   const words = memory.textContent.trim();
+  const delay = 200 + Math.min(index, MAX_STAGGER) * STAGGER;
+  const tickColor = moment.isAnniversary ? theme.accentWarm : theme.textMuted;
 
   return (
-    <Animated.View entering={riseIn(300, Math.min(index, MAX_STAGGER) * 40, 12)}>
-      <Pressable
-        onPress={() => {
-          haptic.press();
-          router.push(`/memory/${memory.id}`);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={`Open memory, ${moment.label.toLowerCase()}`}
-        style={({ pressed }) => [
-          styles.tile,
-          {
-            backgroundColor: theme.backgroundSelected,
-            borderColor: theme.border,
-            opacity: pressed ? 0.85 : 1,
-            transform: [{ scale: pressed ? 0.97 : 1 }],
-          },
-        ]}
-      >
-        {image ? (
-          <>
-            <Animated.View entering={settleIn} style={StyleSheet.absoluteFill}>
-              <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
-            </Animated.View>
-            <View style={styles.scrim} pointerEvents="none" />
-          </>
-        ) : words ? (
-          <View style={styles.wordsFace} pointerEvents="none">
-            <ThemedText
-              numberOfLines={4}
-              style={{
-                ...memoryTextMetrics(memory.fontFamily, 11),
-                fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
-                color: memory.textColor ?? theme.text,
-              }}
+    <Pressable
+      onPress={() => {
+        haptic.press();
+        router.push(`/memory/${memory.id}`);
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`Open memory from ${moment.label}`}
+      style={({ pressed }) => [styles.column, { opacity: pressed ? 0.8 : 1 }]}
+    >
+      {({ pressed }) => (
+        <>
+          <Animated.View entering={riseIn(320, delay, 14)}>
+            <View
+              style={[
+                styles.frame,
+                {
+                  borderColor: moment.isAnniversary ? theme.accentWarm : theme.border,
+                  backgroundColor: theme.backgroundSelected,
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                },
+              ]}
             >
-              {words}
-            </ThemedText>
-          </View>
-        ) : (
-          <View style={styles.wordsFace} pointerEvents="none">
-            <Mic size={18} color={theme.accentWarm} />
-          </View>
-        )}
+              {image ? (
+                <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+              ) : words ? (
+                <View style={styles.wordsFace}>
+                  <ThemedText
+                    numberOfLines={4}
+                    style={{
+                      ...memoryTextMetrics(memory.fontFamily, 10),
+                      fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
+                      color: memory.textColor ?? theme.text,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {words}
+                  </ThemedText>
+                </View>
+              ) : (
+                <View style={styles.wordsFace}>
+                  <Mic size={18} color={theme.accentWarm} />
+                </View>
+              )}
+            </View>
+          </Animated.View>
 
-        <View style={styles.label} pointerEvents="none">
-          <ThemedText style={[styles.labelText, { color: image ? '#FFFFFF' : theme.text }]} numberOfLines={2}>
-            {moment.label}
-          </ThemedText>
-        </View>
-      </Pressable>
-    </Animated.View>
+          <View style={[styles.stem, { backgroundColor: theme.border }]} />
+          <Animated.View entering={tickPop(delay + 120)} style={[styles.tick, { backgroundColor: tickColor }]} />
+
+          <Animated.View entering={fadeIn(260, delay + 180)} style={styles.marks}>
+            <ThemedText style={[styles.tickLabel, { color: moment.isAnniversary ? theme.accentWarm : theme.text }]}>
+              {moment.tick}
+            </ThemedText>
+            <ThemedText style={[styles.dateLabel, { color: theme.textMuted }]}>{dateMark(memory.createdAt)}</ThemedText>
+          </Animated.View>
+        </>
+      )}
+    </Pressable>
   );
 }
 
@@ -119,12 +147,21 @@ export function FromYourPastCard() {
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.rail}>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FROM YOUR PAST</ThemedText>
+        {moments.length > 0 && (
+          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{'NOW  ->  THEN'}</ThemedText>
+        )}
       </View>
 
       {moments.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lane}>
+          {/* The ruler spans every moment; ticks sit on it. */}
+          <Animated.View
+            entering={rulerDraw}
+            style={[styles.ruler, { backgroundColor: theme.border }]}
+            pointerEvents="none"
+          />
           {moments.map((moment, index) => (
-            <Tile key={moment.memory.id} moment={moment} index={index} />
+            <Moment key={moment.memory.id} moment={moment} index={index} />
           ))}
         </ScrollView>
       ) : (
@@ -146,44 +183,69 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   rail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
   },
-  strip: {
+  lane: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 12,
+    paddingBottom: 18,
+    gap: COLUMN_GAP,
   },
-  tile: {
-    width: TILE_WIDTH,
-    height: TILE_HEIGHT,
-    borderRadius: 8,
+  ruler: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: FRAME + STEM + TICK / 2,
+    height: StyleSheet.hairlineWidth,
+    transformOrigin: 'left',
+  },
+  column: {
+    width: FRAME,
+    alignItems: 'center',
+  },
+  frame: {
+    width: FRAME,
+    height: FRAME,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  scrim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
   wordsFace: {
     ...StyleSheet.absoluteFill,
-    padding: 10,
-    paddingBottom: 30,
-    justifyContent: 'center',
+    padding: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  label: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    bottom: 8,
+  stem: {
+    width: StyleSheet.hairlineWidth,
+    height: STEM,
   },
-  labelText: {
+  tick: {
+    width: TICK,
+    height: TICK,
+    borderRadius: TICK / 2,
+  },
+  marks: {
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 8,
+  },
+  tickLabel: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 10,
-    lineHeight: 13,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
+  },
+  dateLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
+    lineHeight: 12,
+    letterSpacing: 0.8,
   },
   empty: {
     paddingHorizontal: 16,

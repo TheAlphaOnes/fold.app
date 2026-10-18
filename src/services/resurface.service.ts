@@ -19,6 +19,7 @@ import {
 import type { Composition } from '@/types/journal';
 import { isGifMedia } from '@/utils/media-kind';
 import { toDayKey } from '@/utils/format-date';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FALLBACK_POOL = 120;
@@ -26,7 +27,12 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 export interface ResurfacedMemory {
   memory: Composition;
+  /** Compact ruler mark: "15 DAYS", "3 WK", "2 MO", "1 YR". */
+  tick: string;
+  /** Spoken form for accessibility: "15 days ago", "1 year ago today". */
   label: string;
+  /** Exactly this calendar day in an earlier year. */
+  isAnniversary: boolean;
 }
 
 export function hasVisualMedia(memory: Composition): boolean {
@@ -44,11 +50,6 @@ function olderLabel(memory: Composition, today: Date): string {
   if (days <= 60) return `${days} DAYS AGO`;
   const date = new Date(memory.createdAt);
   return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-/** The photo a memory leads with, so the same image never shows twice. */
-function leadVisualUri(memory: Composition): string | null {
-  return memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m))?.uri ?? null;
 }
 
 function shiftMonths(date: Date, months: number): Date {
@@ -108,39 +109,98 @@ function seededShuffle<T>(items: T[], today: Date): T[] {
  * ago, a week ago, then older). Photo/video memories fill the strip first;
  * text-only memories are added only to reach the minimum.
  */
+/** Short ruler tick ("15 DAYS", "3 WK", "2 MO", "1 YR") and a spoken label. */
+function timeMarks(memory: Composition, today: Date): Pick<ResurfacedMemory, 'tick' | 'label' | 'isAnniversary'> {
+  const then = new Date(memory.createdAt);
+  const years = today.getFullYear() - then.getFullYear();
+  const sameDay = then.getMonth() === today.getMonth() && then.getDate() === today.getDate();
+  if (sameDay && years > 0) {
+    return {
+      tick: `${years} YR`,
+      label: years === 1 ? '1 year ago today' : `${years} years ago today`,
+      isAnniversary: true,
+    };
+  }
+  const days = Math.max(1, Math.round((today.getTime() - memory.createdAt) / DAY_MS));
+  if (days < 14) return { tick: days === 1 ? '1 DAY' : `${days} DAYS`, label: `${days} days ago`, isAnniversary: false };
+  if (days < 60) {
+    const weeks = Math.round(days / 7);
+    return { tick: `${weeks} WK`, label: `${weeks} weeks ago`, isAnniversary: false };
+  }
+  if (days < 365) {
+    const months = Math.round(days / 30.4);
+    return { tick: `${months} MO`, label: `${months} months ago`, isAnniversary: false };
+  }
+  const y = Math.max(1, Math.round(days / 365.25));
+  return { tick: `${y} YR`, label: y === 1 ? '1 year ago' : `${y} years ago`, isAnniversary: false };
+}
+
+/**
+ * Content identity for a memory's lead media. Captures are copied in under
+ * fresh names, so the same video recorded twice has two URIs; type plus file
+ * size catches those repeats where comparing paths cannot.
+ */
+async function mediaIdentity(memory: Composition): Promise<string | null> {
+  const lead = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+  if (!lead) return null;
+  try {
+    const info = await FileSystem.getInfoAsync(lead.uri);
+    if (info.exists && typeof info.size === 'number') return `${lead.type}:${info.size}`;
+  } catch {
+    // Unreadable file: fall back to its path.
+  }
+  return `${lead.type}:${lead.uri}`;
+}
+
+/**
+ * Today's strip of past moments. Candidates are taken in tier priority
+ * (years ago today, a month ago, a week ago, then a day-seeded mix of older
+ * memories), photos/videos first, with at most one moment per day and no
+ * repeated media. The final strip runs from the most recent moment back.
+ */
 export async function findPastMoments(
   today: Date = new Date(),
   { max = 8, min = 3 }: { max?: number; min?: number } = {},
 ): Promise<ResurfacedMemory[]> {
   const tiers = await loadTiers(today);
-  const seen = new Set<number>();
-  const seenImages = new Set<string>();
-  const seenWords = new Set<string>();
+  const days = new Set<string>();
+  const media = new Set<string>();
+  const texts = new Set<string>();
   const visual: ResurfacedMemory[] = [];
   const words: ResurfacedMemory[] = [];
 
-  tiers.forEach((tier, index) => {
+  for (let index = 0; index < tiers.length && visual.length < max; index++) {
+    const tier = tiers[index];
     // The open-ended "older" tier is shuffled per day; dated tiers keep order.
     const pool = index === tiers.length - 1 ? seededShuffle(tier.memories, today) : tier.memories;
     for (const memory of pool) {
-      if (seen.has(memory.id)) continue;
-      seen.add(memory.id);
-      // One media file is often attached to several memories; show it once.
-      const lead = leadVisualUri(memory);
-      if (lead) {
-        if (seenImages.has(lead)) continue;
-        seenImages.add(lead);
-      } else {
-        const words = memory.textContent.trim().toLowerCase();
-        if (words && seenWords.has(words)) continue;
-        seenWords.add(words);
-      }
-      const moment = { memory, label: tier.label(memory) };
-      (hasVisualMedia(memory) ? visual : words).push(moment);
-    }
-  });
+      if (visual.length >= max) break;
+      const day = toDayKey(new Date(memory.createdAt));
+      if (days.has(day)) continue;
 
-  const strip = visual.slice(0, max);
-  if (strip.length < min) strip.push(...words.slice(0, min - strip.length));
-  return strip;
+      const moment: ResurfacedMemory = { memory, ...timeMarks(memory, today) };
+      if (hasVisualMedia(memory)) {
+        const identity = await mediaIdentity(memory);
+        if (identity && media.has(identity)) continue;
+        if (identity) media.add(identity);
+        days.add(day);
+        visual.push(moment);
+      } else {
+        const text = memory.textContent.trim().toLowerCase();
+        if (!text || texts.has(text)) continue;
+        texts.add(text);
+        words.push(moment);
+      }
+    }
+  }
+
+  const strip = [...visual];
+  for (const moment of words) {
+    if (strip.length >= min) break;
+    const day = toDayKey(new Date(moment.memory.createdAt));
+    if (days.has(day)) continue;
+    days.add(day);
+    strip.push(moment);
+  }
+  return strip.sort((a, b) => b.memory.createdAt - a.memory.createdAt);
 }
