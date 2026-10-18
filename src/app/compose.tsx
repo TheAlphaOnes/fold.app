@@ -74,6 +74,7 @@ import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
 import { StoryPicker } from "@/components/story-picker";
 import { ComposeBottomBar } from "@/components/compose/compose-bottom-bar";
+import { InkButton, InkPalette } from "@/components/compose/ink-palette";
 import { GifPicker } from "@/components/gif-picker";
 import type { MusicTrack } from "@/hooks/use-music-store";
 import { useStoriesStore } from "@/hooks/use-stories";
@@ -239,6 +240,7 @@ export default function ComposeScreen() {
   const [fontFamily, setFontFamily] = useState(existingComposition?.fontFamily ?? "JetBrainsMono-Medium");
   const [fontSize, setFontSize] = useState(existingComposition?.fontSize ?? 21);
   const [textColor, setTextColor] = useState<string | null>(existingComposition?.textColor ?? null);
+  const [isInkOpen, setIsInkOpen] = useState(false);
 
   // Sync state if existingComposition resolves later
   useEffect(() => {
@@ -804,6 +806,14 @@ export default function ComposeScreen() {
 
           <View style={styles.toolbarSpacer} />
 
+          {/* Ink (text colour) chooser */}
+          <InkButton
+            color={textColor}
+            open={isInkOpen}
+            onPress={() => setIsInkOpen((open) => !open)}
+            style={styles.fontButton}
+          />
+
           {/* Size chooser */}
           <Pressable
             onPress={cycleSize}
@@ -864,6 +874,8 @@ export default function ComposeScreen() {
             </ThemedText>
           </Pressable>
         </View>
+
+        {isInkOpen && <InkPalette color={textColor} onChange={setTextColor} />}
 
         {/* ─── Content ─── */}
         <ScrollView
@@ -1072,8 +1084,6 @@ export default function ComposeScreen() {
           }
           hasStory={storyIds.length > 0}
           onOpenStories={() => setIsStoryPickerVisible(true)}
-          textColor={textColor}
-          onChangeTextColor={setTextColor}
           bottomInset={insets.bottom}
         />
       </KeyboardAvoidingView>
