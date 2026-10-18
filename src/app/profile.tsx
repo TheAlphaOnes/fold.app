@@ -18,6 +18,7 @@ import { SYS_READY_ART } from '@/constants/ascii-art';
 import { ActivityGrid } from '@/components/activity-grid';
 import { ProfileStats } from '@/components/profile-stats';
 import { StreakCard } from '@/components/streak-card';
+import { ProfileAvatar } from '@/components/profile-avatar';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
@@ -112,7 +113,7 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16, borderColor: borderColor }]}>
         <View style={styles.identityBadge}>
-          <View style={styles.avatar} />
+          <ProfileAvatar />
           <View>
             <ThemedText style={[styles.identityName, { color: settings.name ? fg : mutedText }]}>
               {settings.name || 'NOT SET'}
@@ -268,12 +269,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FF4B00',
   },
   identityName: {
     fontFamily: 'JetBrainsMono-Bold',

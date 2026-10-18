@@ -31,6 +31,8 @@ export const defaultGuideProgress: GuideProgress = {
 export interface UserSettings {
   name: string;
   dob: string;
+  /** Profile photo in app storage; empty string shows the default orange disc. */
+  avatarUri: string;
   theme: ThemeMode;
   requireBiometrics: boolean;
   privacyScreen: boolean;
@@ -49,6 +51,7 @@ export interface UserSettings {
 const defaultSettings: UserSettings = {
   name: "",
   dob: "",
+  avatarUri: "",
   theme: "system",
   requireBiometrics: false,
   privacyScreen: false,
@@ -98,6 +101,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         settings: {
           name: stored.name || "",
           dob: stored.dob || "",
+          avatarUri: stored.avatarUri || "",
           theme: (stored.theme as ThemeMode) || defaultSettings.theme,
           requireBiometrics: stored.requireBiometrics === "true",
           privacyScreen: stored.privacyScreen === "true",
