@@ -121,7 +121,9 @@ export default function FieldGuideScreen() {
     if (phaseNum === 3) completeGuideStep('capture');
     if (phaseNum === 4) completeGuideStep('inspect');
     if (phaseNum === 5) completeGuideStep('share');
-    if (phaseNum === 7) completeGuideStep('stickers');
+    // Phase 6 (drag) and Phase 7 (pinch) are both part of stickers —
+    // mark done as soon as the user drags in Phase 6 so the dot lights up immediately.
+    if (phaseNum === 6 || phaseNum === 7) completeGuideStep('stickers');
     // phases 8-11 are all part of the stories curriculum
     if (phaseNum === 11 || phaseNum === 12) completeGuideStep('stories');
   }, [completeGuideStep]);
