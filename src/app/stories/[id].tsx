@@ -80,13 +80,22 @@ const CarouselNode = React.memo(({
                  total === 3 ? maxRadius * 0.8 : 
                  maxRadius;
 
-  // Strict circle layout
-  const baseAngle = (index / total) * Math.PI * 2;
-  
+  // Strict circle layout. When a memory is added or deleted the ring's
+  // spacing changes; glide every node to its new angle and radius instead of
+  // jumping there in one frame.
+  const targetAngle = (index / total) * Math.PI * 2;
+  const baseAngle = useSharedValue(targetAngle);
+  const radius = useSharedValue(RADIUS);
+  useEffect(() => {
+    const glide = { duration: 420, easing: Easing.out(Easing.cubic) };
+    baseAngle.set(withTiming(targetAngle, glide));
+    radius.set(withTiming(RADIUS, glide));
+  }, [targetAngle, RADIUS, baseAngle, radius]);
+
   const animatedStyle = useAnimatedStyle(() => {
-    const currentAngle = baseAngle + rotation.value;
-    const translateX = Math.sin(currentAngle) * RADIUS;
-    const translateY = -Math.cos(currentAngle) * RADIUS;
+    const currentAngle = baseAngle.get() + rotation.value;
+    const translateX = Math.sin(currentAngle) * radius.get();
+    const translateY = -Math.cos(currentAngle) * radius.get();
 
     return {
       transform: [{ translateX }, { translateY }],
@@ -316,10 +325,9 @@ export default function StoryDetailScreen() {
   const isInteracting = useSharedValue(false);
   const velocity = useSharedValue(0);
 
-  // Initialize slots
+  // Initialize slots. Always resync — including to empty — so a memory
+  // deleted from this story never lingers on the wheel.
   useEffect(() => {
-    if (!storyItems.length) return;
-    
     if (storyItems.length <= MAX_SLOTS) {
       setActiveSlots(storyItems);
       queueRef.current = [];
