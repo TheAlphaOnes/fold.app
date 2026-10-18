@@ -18,7 +18,6 @@ interface StreakCardProps {
   compositions: Composition[];
 }
 
-const MILESTONES = [3, 7, 14, 30, 60, 100, 365];
 const WINDOW_DAYS = 21;
 const WEEK_SIZE = 7;
 const WEEK_COUNT = WINDOW_DAYS / WEEK_SIZE;
@@ -31,24 +30,6 @@ function pad2(n: number): string {
 
 function dayKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function getMilestone(streak: number): { next: number; progress: number; remaining: number } {
-  const prev = MILESTONES.filter((m) => m <= streak).pop() ?? 0;
-  const next = MILESTONES.find((m) => m > streak) ?? MILESTONES[MILESTONES.length - 1];
-  if (streak >= next) return { next, progress: 1, remaining: 0 };
-  const range = next - prev;
-  return {
-    next,
-    progress: range > 0 ? (streak - prev) / range : 0,
-    remaining: next - streak,
-  };
-}
-
-/** Plain-language progress toward the next milestone ("2 more to reach 7"). */
-function milestoneCopy(remaining: number, next: number, progress: number): string {
-  if (progress >= 1) return 'keep it going';
-  return `${remaining} more to reach ${next}`;
 }
 
 function computeStreak(compositions: Composition[]): {
@@ -179,32 +160,13 @@ function ContinuumTrack({
   days,
   color,
   idleColor,
-  progress,
   reduceMotion,
 }: {
   days: DayMark[];
   color: string;
   idleColor: string;
-  progress: number;
   reduceMotion: boolean;
 }) {
-  const fill = useSharedValue(reduceMotion ? progress : 0);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      fill.value = progress;
-      return;
-    }
-    fill.value = withDelay(
-      280,
-      withTiming(progress, { duration: 420, easing: Easing.linear }),
-    );
-  }, [fill, progress, reduceMotion]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleX: fill.value }],
-  }));
-
   return (
     <View style={s.trackBlock}>
       <View style={s.track}>
@@ -223,11 +185,7 @@ function ContinuumTrack({
           </View>
         ))}
       </View>
-      <View style={[s.rule, { backgroundColor: idleColor }]}>
-        <Animated.View style={[s.ruleFill, fillStyle]}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: color }]} />
-        </Animated.View>
-      </View>
+      <View style={[s.rule, { backgroundColor: idleColor }]} />
     </View>
   );
 }
@@ -246,11 +204,12 @@ export function StreakCard({ compositions }: StreakCardProps) {
     [activeDays, currentStreak],
   );
 
-  const milestone = getMilestone(currentStreak);
   const live = currentStreak > 0;
   const ink = live ? theme.accentWarm : theme.textMuted;
-  const unit = currentStreak === 1 ? 'day in a row' : 'days in a row';
-  const hint = live ? milestoneCopy(milestone.remaining, milestone.next, milestone.progress) : 'write today to begin';
+  const wroteToday = days.some((d) => d.isToday && d.written);
+  const unit = currentStreak === 1 ? 'day' : 'days';
+  // Only say things the user can act on: done today, or what to do next.
+  const hint = !live ? 'write today to start' : wroteToday ? 'you wrote today' : 'write today to keep it';
 
   const litInView = days.filter((d) => d.written).length;
   const yearPrefix = `${new Date().getFullYear()}-`;
@@ -262,15 +221,15 @@ export function StreakCard({ compositions }: StreakCardProps) {
       style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`${currentStreak} ${unit}. Longest ${longestStreak}. ${hint}. Wrote on ${metrics}.`}
+      accessibilityLabel={`Writing streak, ${currentStreak} ${unit}. Best ${longestStreak} days. ${hint}. Wrote on ${metrics}.`}
     >
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
         style={s.rail}
       >
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>DAYS IN A ROW</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>WRITING STREAK</ThemedText>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
-          LONGEST {longestStreak}
+          {`BEST ${longestStreak} ${longestStreak === 1 ? 'DAY' : 'DAYS'}`}
         </ThemedText>
       </Animated.View>
 
@@ -278,7 +237,6 @@ export function StreakCard({ compositions }: StreakCardProps) {
         days={days}
         color={ink}
         idleColor={theme.border}
-        progress={milestone.progress}
         reduceMotion={reduceMotion}
       />
 
@@ -290,9 +248,9 @@ export function StreakCard({ compositions }: StreakCardProps) {
           <ThemedText style={[s.count, { color: live ? theme.text : theme.textMuted }]}>
             {pad2(currentStreak)}
           </ThemedText>
-          <ThemedText style={[s.rank, { color: ink }]}>{live ? unit : 'no streak yet'}</ThemedText>
+          <ThemedText style={[s.rank, { color: ink }]}>{unit}</ThemedText>
         </View>
-        <ThemedText style={[s.hint, { color: theme.textMuted }]} numberOfLines={1}>
+        <ThemedText style={[s.hint, { color: wroteToday ? theme.accentWarm : theme.textMuted }]} numberOfLines={1}>
           {hint}
         </ThemedText>
       </Animated.View>
@@ -357,11 +315,6 @@ const s = StyleSheet.create({
   rule: {
     height: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-  },
-  ruleFill: {
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
-    transformOrigin: 'left',
   },
   readout: {
     flexDirection: 'row',
