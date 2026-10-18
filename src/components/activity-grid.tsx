@@ -46,7 +46,7 @@ interface DayCell {
 }
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const CELL_GAP = 1;
+const CELL_GAP = 2;
 const GRID_PADDING = 16;
 const LABEL_SIZE = 9;
 const LABEL_TRACKING = 0.4;
@@ -65,6 +65,49 @@ function pad3(n: number): string {
 
 function formatDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+interface Panel {
+  weeks: DayCell[][];
+  monthStarts: { label: string; month: number; week: number }[];
+}
+
+/** Week columns for months [firstMonth, lastMonth] of a year, Sunday-aligned. */
+function buildPanel(
+  year: number,
+  firstMonth: number,
+  lastMonth: number,
+  countMap: Record<string, number>,
+  todayKey: string,
+): Panel {
+  const first = new Date(year, firstMonth, 1);
+  const last = new Date(year, lastMonth + 1, 0);
+  const start = new Date(year, firstMonth, 1 - first.getDay());
+  const end = new Date(year, lastMonth, last.getDate() + (6 - last.getDay()));
+
+  const weeks: DayCell[][] = [];
+  let cursor = new Date(start);
+  let week = 0;
+  while (cursor <= end) {
+    const key = formatDate(cursor);
+    const inPanel = cursor >= first && cursor <= last;
+    (weeks[week] ??= []).push({
+      date: key,
+      count: countMap[key] ?? 0,
+      inYear: inPanel,
+      isToday: key === todayKey,
+      isFuture: key > todayKey,
+    });
+    if (cursor.getDay() === 6) week += 1;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
+  }
+
+  const monthStarts = [];
+  for (let m = firstMonth; m <= lastMonth; m++) {
+    const offset = Math.round((new Date(year, m, 1).getTime() - start.getTime()) / 86400000);
+    monthStarts.push({ label: MONTHS[m], month: m, week: Math.floor(offset / 7) });
+  }
+  return { weeks, monthStarts };
 }
 
 function levelFor(count: number): number {
@@ -102,72 +145,28 @@ function TodayOutline({ size }: { size: number }) {
   );
 }
 
-export function ActivityGrid() {
-  const { width } = useWindowDimensions();
+function HalfYear({
+  panel,
+  cellSize,
+  columnPitch,
+  activeMonths,
+  delayBase,
+  reduceMotion,
+}: {
+  panel: Panel;
+  cellSize: number;
+  columnPitch: number;
+  activeMonths: Set<number>;
+  delayBase: number;
+  reduceMotion: boolean;
+}) {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion() ?? false;
-  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-  const [now] = useState(() => new Date());
-  const currentYear = now.getFullYear();
-  const todayKey = formatDate(now);
-
-  const [countMap, setCountMap] = useState<Record<string, number>>({});
-  useEffect(() => {
-    let cancelled = false;
-    getDayCountsForYear(currentYear)
-      .then((counts) => {
-        if (!cancelled) setCountMap(counts);
-      })
-      .catch((error) => console.error('Failed to load activity', error));
-    return () => {
-      cancelled = true;
-    };
-  }, [currentYear, hydrationVersion]);
-
-  const { weeks, monthStarts, litDays, activeMonths } = useMemo(() => {
-    const startOfYear = new Date(currentYear, 0, 1);
-    const startDate = new Date(startOfYear);
-    startDate.setDate(startDate.getDate() - startOfYear.getDay());
-    const endOfYear = new Date(currentYear, 11, 31);
-    const endDate = new Date(endOfYear);
-    endDate.setDate(endDate.getDate() + (6 - endOfYear.getDay()));
-
-    const byWeek: DayCell[][] = [];
-    const months = new Set<number>();
-    let cursor = new Date(startDate);
-    let week = 0;
-    let lit = 0;
-    while (cursor <= endDate) {
-      const key = formatDate(cursor);
-      const count = countMap[key] ?? 0;
-      const inYear = cursor.getFullYear() === currentYear;
-      if (inYear && count > 0) {
-        lit += 1;
-        months.add(cursor.getMonth());
-      }
-      (byWeek[week] ??= []).push({ date: key, count, inYear, isToday: key === todayKey, isFuture: key > todayKey });
-      if (cursor.getDay() === 6) week += 1;
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
-    }
-
-    const starts = MONTHS.map((label, m) => {
-      const first = new Date(currentYear, m, 1);
-      const days = Math.round((first.getTime() - startDate.getTime()) / 86400000);
-      return { label, month: m, week: Math.floor(days / 7) };
-    });
-
-    return { weeks: byWeek, monthStarts: starts, litDays: lit, activeMonths: months };
-  }, [countMap, currentYear, todayKey]);
-
-  const innerWidth = width - 64;
-  const weekCount = weeks.length;
-  const cellSize = (innerWidth - (weekCount - 1) * CELL_GAP) / weekCount;
-  const columnPitch = cellSize + CELL_GAP;
   const ink = theme.accentWarm;
+  const { weeks, monthStarts } = panel;
 
+  // One touch target per panel: the tap position picks the day.
   const openDayAt = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
-    // locationX includes the grid's horizontal padding.
     const column = weeks[Math.floor((locationX - GRID_PADDING) / columnPitch)];
     const day = column?.[Math.floor(locationY / columnPitch)];
     if (!day || !day.inYear || day.isFuture) return;
@@ -175,32 +174,16 @@ export function ActivityGrid() {
     router.push(`/time-machine?day=${day.date}`);
   };
 
-  const monthLabels = monthStarts.map((ms, i) => {
-    const start = ms.week * columnPitch;
-    const end = (monthStarts[i + 1]?.week ?? weekCount) * columnPitch;
-    const band = Math.max(0, end - start);
+  const labels = monthStarts.map((ms, i) => {
+    const startX = ms.week * columnPitch;
+    const endX = (monthStarts[i + 1]?.week ?? weeks.length) * columnPitch;
+    const band = Math.max(0, endX - startX);
     const text = band >= textWidth(ms.label) + 4 ? ms.label : ms.label[0];
-    return {
-      key: `${ms.label}-${i}`,
-      text,
-      left: start + Math.max(0, (band - textWidth(text)) / 2),
-      active: activeMonths.has(ms.month),
-    };
+    return { key: ms.label, text, left: startX + Math.max(0, (band - textWidth(text)) / 2), active: activeMonths.has(ms.month) };
   });
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={`Activity ${currentYear}. ${litDays} days written.`}
-    >
-      <Animated.View entering={reduceMotion ? undefined : fadeIn(220)} style={styles.rail}>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>ACTIVITY</ThemedText>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{pad3(litDays)} DAYS</ThemedText>
-      </Animated.View>
-
-      {/* One touch target for the grid: the tap position picks the day. */}
+    <View>
       <Pressable
         onPress={openDayAt}
         accessibilityRole="button"
@@ -210,7 +193,7 @@ export function ActivityGrid() {
         {weeks.map((days, index) => (
           <Animated.View
             key={`week-${index}`}
-            entering={reduceMotion ? undefined : fadeIn(180, 60 + index * WEEK_STAGGER)}
+            entering={reduceMotion ? undefined : fadeIn(180, delayBase + index * WEEK_STAGGER)}
             style={styles.column}
           >
             {days.map((day) => {
@@ -236,8 +219,8 @@ export function ActivityGrid() {
         ))}
       </Pressable>
 
-      <Animated.View entering={reduceMotion ? undefined : fadeIn(240, 220)} style={styles.xLabels}>
-        {monthLabels.map((label) => (
+      <Animated.View entering={reduceMotion ? undefined : fadeIn(240, delayBase + 160)} style={styles.xLabels}>
+        {labels.map((label) => (
           <ThemedText
             key={label.key}
             style={[styles.xLabel, { color: label.active ? theme.text : theme.textMuted, left: label.left }]}
@@ -246,6 +229,81 @@ export function ActivityGrid() {
           </ThemedText>
         ))}
       </Animated.View>
+    </View>
+  );
+}
+
+export function ActivityGrid() {
+  const { width } = useWindowDimensions();
+  const theme = useTheme();
+  const reduceMotion = useReducedMotion() ?? false;
+  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
+  const [now] = useState(() => new Date());
+  const currentYear = now.getFullYear();
+  const todayKey = formatDate(now);
+
+  const [countMap, setCountMap] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let cancelled = false;
+    getDayCountsForYear(currentYear)
+      .then((counts) => {
+        if (!cancelled) setCountMap(counts);
+      })
+      .catch((error) => console.error('Failed to load activity', error));
+    return () => {
+      cancelled = true;
+    };
+  }, [currentYear, hydrationVersion]);
+
+  const { halves, litDays, activeMonths } = useMemo(() => {
+    const months = new Set<number>();
+    let lit = 0;
+    for (const [key, count] of Object.entries(countMap)) {
+      if (count > 0 && key.startsWith(`${currentYear}-`)) {
+        lit += 1;
+        months.add(Number(key.slice(5, 7)) - 1);
+      }
+    }
+    // The year as two stacked panels (Jan–Jun, Jul–Dec): half as many
+    // columns each, so the squares can be nearly twice the size.
+    const panels: Panel[] = [
+      buildPanel(currentYear, 0, 5, countMap, todayKey),
+      buildPanel(currentYear, 6, 11, countMap, todayKey),
+    ];
+    return { halves: panels, litDays: lit, activeMonths: months };
+  }, [countMap, currentYear, todayKey]);
+
+  const innerWidth = width - 64;
+  const columns = Math.max(...halves.map((half) => half.weeks.length));
+  const cellSize = Math.floor(((innerWidth - (columns - 1) * CELL_GAP) / columns) * 10) / 10;
+  const columnPitch = cellSize + CELL_GAP;
+  const ink = theme.accentWarm;
+
+  return (
+    <View
+      style={[styles.container, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Activity ${currentYear}. ${litDays} days written.`}
+    >
+      <Animated.View entering={reduceMotion ? undefined : fadeIn(220)} style={styles.rail}>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>ACTIVITY</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{pad3(litDays)} DAYS</ThemedText>
+      </Animated.View>
+
+      <View style={styles.halves}>
+        {halves.map((half, index) => (
+          <HalfYear
+            key={index}
+            panel={half}
+            cellSize={cellSize}
+            columnPitch={columnPitch}
+            activeMonths={activeMonths}
+            delayBase={60 + index * 120}
+            reduceMotion={reduceMotion}
+          />
+        ))}
+      </View>
 
       <Animated.View
         entering={reduceMotion ? undefined : fadeIn(240, 300)}
@@ -288,13 +346,16 @@ const styles = StyleSheet.create({
     gap: CELL_GAP,
   },
   cell: {
-    borderRadius: 1.5,
+    borderRadius: 2.5,
+  },
+  halves: {
+    gap: 14,
   },
   todayOutline: {
     position: 'absolute',
     top: -1,
     left: -1,
-    borderRadius: 2,
+    borderRadius: 3.5,
     borderWidth: 1,
   },
   xLabels: {
@@ -322,9 +383,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   legendCell: {
-    width: 7,
-    height: 7,
-    borderRadius: 1.5,
+    width: 9,
+    height: 9,
+    borderRadius: 2.5,
   },
   legendText: {
     fontFamily: 'JetBrainsMono-Medium',
