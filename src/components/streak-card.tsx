@@ -33,19 +33,6 @@ function dayKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function getStreakRank(streak: number): string {
-  if (streak === 0) return 'Dormant';
-  if (streak === 1) return 'Ignited';
-  if (streak === 2) return 'Kindling';
-  if (streak < 7) return 'Burning';
-  if (streak < 14) return 'Blazing';
-  if (streak < 30) return 'Inferno';
-  if (streak < 60) return 'Eternal';
-  if (streak < 100) return 'Mythic';
-  if (streak < 365) return 'Legendary';
-  return 'Immortal';
-}
-
 function getMilestone(streak: number): { next: number; progress: number; remaining: number } {
   const prev = MILESTONES.filter((m) => m <= streak).pop() ?? 0;
   const next = MILESTONES.find((m) => m > streak) ?? MILESTONES[MILESTONES.length - 1];
@@ -58,11 +45,10 @@ function getMilestone(streak: number): { next: number; progress: number; remaini
   };
 }
 
-function untilCopy(remaining: number, next: number, progress: number): string {
-  if (progress >= 1) return 'held';
-  const rank = getStreakRank(next).toLowerCase();
-  if (remaining === 1) return `one until ${rank}`;
-  return `${remaining} until ${rank}`;
+/** Plain-language progress toward the next milestone ("2 more to reach 7"). */
+function milestoneCopy(remaining: number, next: number, progress: number): string {
+  if (progress >= 1) return 'keep it going';
+  return `${remaining} more to reach ${next}`;
 }
 
 function computeStreak(compositions: Composition[]): {
@@ -260,31 +246,31 @@ export function StreakCard({ compositions }: StreakCardProps) {
     [activeDays, currentStreak],
   );
 
-  const rank = getStreakRank(currentStreak);
   const milestone = getMilestone(currentStreak);
   const live = currentStreak > 0;
   const ink = live ? theme.accentWarm : theme.textMuted;
-  const until = untilCopy(milestone.remaining, milestone.next, milestone.progress);
+  const unit = currentStreak === 1 ? 'day in a row' : 'days in a row';
+  const hint = live ? milestoneCopy(milestone.remaining, milestone.next, milestone.progress) : 'write today to begin';
 
   const litInView = days.filter((d) => d.written).length;
   const yearPrefix = `${new Date().getFullYear()}-`;
   const daysThisYear = Array.from(activeDays).filter((key) => key.startsWith(yearPrefix)).length;
-  const metrics = `${pad2(litInView)} / ${WINDOW_DAYS} lit  ·  ${pad2(daysThisYear)} this year`;
+  const metrics = `${litInView} of the last ${WINDOW_DAYS} days  ·  ${daysThisYear} ${daysThisYear === 1 ? 'day' : 'days'} this year`;
 
   return (
     <View
       style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`Continuum. Streak ${currentStreak} days, ${rank}. Best ${longestStreak} days. ${metrics}.`}
+      accessibilityLabel={`${currentStreak} ${unit}. Longest ${longestStreak}. ${hint}. Wrote on ${metrics}.`}
     >
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
         style={s.rail}
       >
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>CONTINUUM</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>DAYS IN A ROW</ThemedText>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
-          BEST {pad2(longestStreak)}
+          LONGEST {longestStreak}
         </ThemedText>
       </Animated.View>
 
@@ -304,10 +290,10 @@ export function StreakCard({ compositions }: StreakCardProps) {
           <ThemedText style={[s.count, { color: live ? theme.text : theme.textMuted }]}>
             {pad2(currentStreak)}
           </ThemedText>
-          <ThemedText style={[s.rank, { color: ink }]}>{rank.toLowerCase()}</ThemedText>
+          <ThemedText style={[s.rank, { color: ink }]}>{live ? unit : 'no streak yet'}</ThemedText>
         </View>
         <ThemedText style={[s.hint, { color: theme.textMuted }]} numberOfLines={1}>
-          {live ? until : 'write today'}
+          {hint}
         </ThemedText>
       </Animated.View>
 
