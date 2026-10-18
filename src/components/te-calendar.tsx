@@ -162,17 +162,13 @@ export function TECalendar({ onSelect }: TECalendarProps) {
               return (
                 <>
                   <CalendarDayPhoto key={`${monthKey}-${dayNum}`} cover={cover} dayNumber={dayNum} pressed={pressed} />
-                  {isTodayCell ? (
-                    <View style={[styles.todayRing, { borderColor: '#FFFFFF' }]}>
-                      <ThemedText style={[styles.dayText, styles.dayTextOnPhoto]}>
-                        {dayNum < 10 ? `0${dayNum}` : dayNum}
-                      </ThemedText>
-                    </View>
-                  ) : (
+                  {/* The number rides on its own dark chip so it reads over
+                      any photo, bright sky or white wall included. */}
+                  <View style={[styles.photoChip, isTodayCell && styles.photoChipToday]}>
                     <ThemedText style={[styles.dayText, styles.dayTextOnPhoto]}>
                       {dayNum < 10 ? `0${dayNum}` : dayNum}
                     </ThemedText>
-                  )}
+                  </View>
                 </>
               );
             }
@@ -460,9 +456,19 @@ const styles = StyleSheet.create({
   dayTextOnPhoto: {
     color: '#FFFFFF',
     fontFamily: 'JetBrainsMono-Bold',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    lineHeight: 14,
+  },
+  photoChip: {
+    minWidth: 24,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoChipToday: {
+    backgroundColor: '#FF4B00',
   },
 
   // Today: a thin ring wrapping the number, centered

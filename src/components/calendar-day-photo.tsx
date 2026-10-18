@@ -24,7 +24,7 @@ export function CalendarDayPhoto({ cover, dayNumber, pressed }: { cover: DayCove
   return (
     <Animated.View entering={fadeIn(260, dayNumber * STAGGER_MS)} style={styles.fill} pointerEvents="none">
       <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: pressed ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.32)' }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: pressed ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)' }]} />
     </Animated.View>
   );
 }
