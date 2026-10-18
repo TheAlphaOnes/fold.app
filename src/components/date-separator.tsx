@@ -5,11 +5,24 @@
  * hairlines draw outward from the label (left 380ms, right 460ms), the label
  * ticks in character by character like a split-flap readout, and in monthly
  * or daily mode the accent dot pops in last. Respects reduced motion.
+ *
+ * The date itself rewinds: its digits start at today's and roll back to the
+ * divider's own, like an odometer winding back through the years — a small,
+ * nostalgic cue for how far into the past you have scrolled. Each digit
+ * settles at its own pace; unchanged digits stay still.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  Keyframe,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { EASE_OUT, SPRING_BOUNCE } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
@@ -18,6 +31,8 @@ import type { TimelineMode } from '@/hooks/use-settings';
 export const DATE_SEPARATOR_HEIGHT = 72;
 
 const CHAR_STAGGER = 35;
+const LINE = 18;
+const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 interface DateSeparatorProps {
   date: Date;
@@ -69,6 +84,72 @@ const dotIn = (delay: number) =>
     .duration(260)
     .delay(delay);
 
+/** A single odometer wheel rolling from one digit to another. */
+function DigitWheel({ from, to, delay, color }: { from: number; to: number; delay: number; color: string }) {
+  const reduceMotion = useReducedMotion();
+  const position = useSharedValue(reduceMotion ? to : from);
+
+  useEffect(() => {
+    if (reduceMotion || from === to) {
+      position.set(to);
+      return;
+    }
+    const distance = Math.abs(to - from);
+    position.set(withDelay(delay, withTiming(to, { duration: 420 + distance * 90, easing: Easing.out(Easing.cubic) })));
+  }, [from, to, delay, reduceMotion, position]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -position.get() * LINE }] }));
+
+  return (
+    <View style={styles.wheel}>
+      <Animated.View style={style}>
+        {DIGITS.map((digit) => (
+          <Animated.Text key={digit} style={[styles.primaryLabel, styles.wheelDigit, { color }]} allowFontScaling={false}>
+            {digit}
+          </Animated.Text>
+        ))}
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
+ * The date, rewinding from today's equivalent label to this one. Digits roll
+ * on wheels; separators (dots) simply tick in.
+ */
+function RewindLabel({ text, presentText, color, startDelay }: { text: string; presentText: string; color: string; startDelay: number }) {
+  const chars = Array.from(text);
+  const present = Array.from(presentText);
+  return (
+    <View style={styles.ticker} accessible accessibilityLabel={text}>
+      {chars.map((char, index) => {
+        const isDigit = /\d/.test(char);
+        const delay = startDelay + index * CHAR_STAGGER;
+        if (!isDigit) {
+          return (
+            <Animated.Text
+              key={`${index}-${char}`}
+              entering={tickIn(delay)}
+              style={[styles.primaryLabel, { color }]}
+              allowFontScaling={false}
+              importantForAccessibility="no"
+            >
+              {char}
+            </Animated.Text>
+          );
+        }
+        const fromChar = present[index];
+        const from = fromChar && /\d/.test(fromChar) ? Number(fromChar) : Number(char);
+        return (
+          <Animated.View key={`${index}-${char}`} entering={tickIn(delay)} importantForAccessibility="no-hide-descendants">
+            <DigitWheel from={from} to={Number(char)} delay={delay + 80} color={color} />
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
 /** One label rendered as individually ticking characters. */
 function TickerLabel({ text, color, startDelay }: { text: string; color: string; startDelay: number }) {
   return (
@@ -110,7 +191,12 @@ export const DateSeparator = React.memo(function DateSeparator({ date, timelineM
             />
           </>
         )}
-        <TickerLabel text={suffix} color={theme.text} startDelay={suffixDelay} />
+        <RewindLabel
+          text={suffix}
+          presentText={formatSeparatorLabel(new Date(), timelineMode).suffix}
+          color={theme.text}
+          startDelay={suffixDelay}
+        />
       </View>
 
       <Animated.View
@@ -156,7 +242,15 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
+    lineHeight: LINE,
     letterSpacing: 3,
     textTransform: 'uppercase',
+  },
+  wheel: {
+    height: LINE,
+    overflow: 'hidden',
+  },
+  wheelDigit: {
+    height: LINE,
   },
 });
