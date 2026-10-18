@@ -254,7 +254,11 @@ function ShuffleButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel="Shuffle memories"
       style={({ pressed }) => [
         styles.shuffle,
-        { borderColor: theme.border, transform: [{ scale: pressed ? 0.94 : 1 }] },
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.background + 'D9',
+          transform: [{ scale: pressed ? 0.94 : 1 }],
+        },
       ]}
     >
       <Animated.View style={iconStyle}>
@@ -278,46 +282,45 @@ export function FromYourPastCard() {
 
   return (
     <View style={styles.section}>
-      <View style={styles.rail}>
-        <ThemedText style={[styles.title, { color: theme.text }]} accessibilityRole="header">
-          FROM YOUR PAST
-        </ThemedText>
-        {memories.length > 1 && (
-          <ShuffleButton
-            onPress={() => {
-              haptic.select();
-              reshuffle();
-            }}
-          />
-        )}
-      </View>
-
       {memories.length > 0 ? (
-        <Animated.View
-          key={draw}
-          entering={fadeIn(400)}
-          style={styles.viewport}
-          onTouchStart={() => setPaused(true)}
-          onTouchEnd={() => setPaused(false)}
-          onTouchCancel={() => setPaused(false)}
-        >
-          <View style={styles.columns}>
-            {columns.map((column, index) => (
-              <Animated.View key={index} entering={riseIn(420, index * 80, 24)}>
-                <FallingColumn
-                  tiles={column.tiles}
-                  cycle={column.cycle}
-                  speed={SPEEDS[index % SPEEDS.length]}
-                  width={columnWidth}
-                  paused={paused}
-                  still={reduceMotion}
-                />
-              </Animated.View>
-            ))}
-          </View>
-          <EdgeFade color={theme.background} edge="top" />
-          <EdgeFade color={theme.background} edge="bottom" />
-        </Animated.View>
+        <View style={styles.stage}>
+          <Animated.View
+            key={draw}
+            entering={fadeIn(400)}
+            style={styles.viewport}
+            onTouchStart={() => setPaused(true)}
+            onTouchEnd={() => setPaused(false)}
+            onTouchCancel={() => setPaused(false)}
+          >
+            <View style={styles.columns}>
+              {columns.map((column, index) => (
+                <Animated.View key={index} entering={riseIn(420, index * 80, 24)}>
+                  <FallingColumn
+                    tiles={column.tiles}
+                    cycle={column.cycle}
+                    speed={SPEEDS[index % SPEEDS.length]}
+                    width={columnWidth}
+                    paused={paused}
+                    still={reduceMotion}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+            <EdgeFade color={theme.background} edge="top" />
+            <EdgeFade color={theme.background} edge="bottom" />
+          </Animated.View>
+          {/* Floats over the wall's top-right corner. */}
+          {memories.length > 1 && (
+            <View style={styles.shuffleSlot} pointerEvents="box-none">
+              <ShuffleButton
+                onPress={() => {
+                  haptic.select();
+                  reshuffle();
+                }}
+              />
+            </View>
+          )}
+        </View>
       ) : (
         <View style={styles.empty}>
           <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
@@ -325,6 +328,10 @@ export function FromYourPastCard() {
           </ThemedText>
         </View>
       )}
+
+      <ThemedText style={[styles.title, { color: theme.textMuted }]} accessibilityRole="header">
+        FROM YOUR PAST
+      </ThemedText>
     </View>
   );
 }
@@ -336,23 +343,27 @@ const styles = StyleSheet.create({
     marginHorizontal: -PROFILE_GUTTER,
     marginBottom: 24,
   },
-  rail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: PROFILE_GUTTER,
-    paddingBottom: 8,
+  stage: {
+    position: 'relative',
+  },
+  shuffleSlot: {
+    position: 'absolute',
+    top: 10,
+    right: PROFILE_GUTTER,
   },
   title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 12,
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
     lineHeight: 16,
     letterSpacing: 3,
+    textAlign: 'center',
+    marginTop: 4,
   },
+  // Sits over photos, so it carries its own backing to stay legible.
   shuffle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
