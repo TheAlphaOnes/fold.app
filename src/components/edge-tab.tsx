@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { useTheme } from '@/hooks/use-theme';
 
 /** Shared geometry for every right-docked shelf tab on the home screen. */
@@ -29,7 +29,7 @@ export function EdgeTab({ slot, onPress, accessibilityLabel, children }: EdgeTab
   const top = Math.max(insets.top, 20) + slot * (EDGE_TAB_HEIGHT + EDGE_TAB_GAP);
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.tap();
     onPress();
   };
 

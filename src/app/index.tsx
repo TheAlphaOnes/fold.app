@@ -44,6 +44,7 @@ import { CarouselItem } from '@/components/carousel-item';
 import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separator';
 import { TimelinePlaceholder } from '@/components/timeline-placeholder';
 import { buildTimelineRows, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
+import { haptic } from '@/services/haptics';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -191,6 +192,8 @@ export default function HomeScreen() {
 
   const dateDisplayString = getDateString();
 
+  const lastActiveIdRef = useRef<number | null>(null);
+
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
   }).current;
@@ -212,6 +215,10 @@ export default function HomeScreen() {
         if (spineIndex >= 0) {
           hydrateAroundRef.current(spineIndex);
         }
+        if (lastActiveIdRef.current !== null && lastActiveIdRef.current !== compositionId) {
+          haptic.select();
+        }
+        lastActiveIdRef.current = compositionId;
         setActiveCompositionId(compositionId);
         
         if (isAtBottom) {

@@ -7,7 +7,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { useTheme } from '@/hooks/use-theme';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 interface ActionLinkProps {
   onPress: () => void;
@@ -24,7 +24,7 @@ export function ActionLink({ onPress, text, disabled = false }: ActionLinkProps)
 
   const handlePressIn = () => {
     if (disabled) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.tap();
     arrowOffset.value = withTiming(8, { duration: 150 });
     opacity.value = withTiming(0.6, { duration: 150 });
   };
@@ -36,7 +36,7 @@ export function ActionLink({ onPress, text, disabled = false }: ActionLinkProps)
 
   const handlePress = () => {
     if (disabled) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic.press();
     onPress();
   };
 

@@ -21,6 +21,7 @@ import { StreakCard } from '@/components/streak-card';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
+import { haptic } from '@/services/haptics';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -123,7 +124,10 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.headerActions}>
           <Pressable 
-            onPress={() => router.push('/settings')}
+            onPress={() => {
+              haptic.tap();
+              router.push('/settings');
+            }}
             style={({ pressed }) => [
               styles.iconBtn, 
               { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
@@ -132,7 +136,10 @@ export default function ProfileScreen() {
             <SettingsIcon size={16} color={fg} />
           </Pressable>
           <Pressable 
-            onPress={() => router.back()}
+            onPress={() => {
+              haptic.tap();
+              router.back();
+            }}
             style={({ pressed }) => [
               styles.iconBtn, 
               { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
@@ -160,7 +167,10 @@ export default function ProfileScreen() {
                 backgroundColor: pressed ? 'rgba(255,255,255,0.05)' : 'transparent', 
               }
             ]}
-            onPress={() => router.push('/stories')}
+            onPress={() => {
+              haptic.tap();
+              router.push('/stories');
+            }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <Book size={14} color={theme.textMuted} />
@@ -178,7 +188,10 @@ export default function ProfileScreen() {
               {randomStoryMedia.map((item, idx) => (
                 <Pressable
                   key={`${item.storyId}-${idx}`}
-                  onPress={() => router.push(`/stories/${item.storyId}` as any)}
+                  onPress={() => {
+                    haptic.tap();
+                    router.push(`/stories/${item.storyId}` as any);
+                  }}
                   style={({ pressed }) => [
                     {
                       width: 100,

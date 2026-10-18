@@ -21,7 +21,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { Image } from 'expo-image';
 
 import { usePostHog } from 'posthog-react-native';
@@ -93,7 +93,7 @@ const CarouselNode = React.memo(({
   });
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.tap();
     onPress();
   };
 
@@ -194,7 +194,7 @@ export default function StoryDetailScreen() {
 
   const finalizeDelete = async () => {
     if (activeStory) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptic.success();
       const storyId = activeStory.id;
       posthog?.capture('Story Deleted');
       await removeStory(storyId);
@@ -504,7 +504,7 @@ export default function StoryDetailScreen() {
         <View style={styles.headerRight}>
           <Pressable 
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              haptic.tap();
               setViewMode(prev => prev === 'wheel' ? 'list' : 'wheel');
             }}
             style={({ pressed }) => [

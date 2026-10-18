@@ -10,7 +10,7 @@ import Animated, {
   runOnJS,
   type SharedValue
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 export function DigitalAshOverlay({ color, onComplete }: { color: string, onComplete: () => void }) {
   const { height, width } = useWindowDimensions();
@@ -19,7 +19,7 @@ export function DigitalAshOverlay({ color, onComplete }: { color: string, onComp
 
   useEffect(() => {
     // 1. Initial haptic thud
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    haptic.thud();
     
     // 2. Scanline sweeps up, taking 800ms
     scanlineY.value = withTiming(-100, { duration: 800, easing: Easing.inOut(Easing.cubic) }, (finished) => {
@@ -38,7 +38,7 @@ export function DigitalAshOverlay({ color, onComplete }: { color: string, onComp
       if (hapticCount > 5) {
         clearInterval(interval);
       } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        haptic.tap();
       }
     }, 100);
 

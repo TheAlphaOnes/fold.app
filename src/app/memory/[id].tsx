@@ -19,7 +19,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { usePostHog } from 'posthog-react-native';
 import * as Sharing from 'expo-sharing';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -583,7 +583,10 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={() => router.back()}
+            onPress={() => {
+              haptic.tap();
+              router.back();
+            }}
           >
             <X size={16} color={theme.text} />
           </Pressable>
@@ -599,7 +602,10 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={() => router.push({ pathname: '/compose', params: { editId: id } })}
+            onPress={() => {
+              haptic.tap();
+              router.push({ pathname: '/compose', params: { editId: id } });
+            }}
           >
             <Pencil size={15} color={theme.text} />
           </Pressable>
@@ -612,7 +618,10 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={() => setIsStoryPickerVisible(true)}
+            onPress={() => {
+              haptic.tap();
+              setIsStoryPickerVisible(true);
+            }}
           >
             {(composition?.storyIds?.length ?? 0) > 0 ? (
               <Book size={16} color={theme.text} />
@@ -629,7 +638,10 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={() => setIsShareMenuVisible(true)}
+            onPress={() => {
+              haptic.tap();
+              setIsShareMenuVisible(true);
+            }}
           >
             <ShareIcon size={16} color={theme.text} />
           </Pressable>
@@ -659,7 +671,10 @@ export default function MemoryDetailScreen() {
                 opacity: pressed ? 0.5 : 1 
               }
             ]} 
-            onPress={handleDelete}
+            onPress={() => {
+              haptic.warning();
+              handleDelete();
+            }}
           >
             <Trash2 size={16} color="#FF3B30" />
           </Pressable>

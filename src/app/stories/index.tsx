@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, Pressable, Image, TextInput, KeyboardAvoidi
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, X, ArrowLeft, ChevronRight, ArrowUpDown, Filter } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 
 function StoryThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
@@ -91,7 +91,7 @@ export default function StoryBoardScreen() {
           }
         ]}
         onPress={() => {
-          Haptics.selectionAsync();
+          haptic.select();
           router.push(`/stories/${item.id}`);
         }}
       >
@@ -187,7 +187,7 @@ export default function StoryBoardScreen() {
 
             <Pressable 
               onPress={() => {
-                Haptics.selectionAsync();
+                haptic.select();
                 setFilterBy(prev => prev === 'all' ? 'month' : prev === 'month' ? 'year' : 'all');
               }}
               style={({ pressed }) => [
@@ -199,7 +199,7 @@ export default function StoryBoardScreen() {
 
             <Pressable 
               onPress={() => {
-                Haptics.selectionAsync();
+                haptic.select();
                 setSortBy(prev => {
                   if (prev === 'updated_desc') return 'updated_asc';
                   if (prev === 'updated_asc') return 'alpha_asc';

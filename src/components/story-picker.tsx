@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, FlatList, TextInput, Platform, Keyboard, K
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
 import { X, Plus, Book, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { Image } from 'expo-image';
 
 import { usePostHog } from 'posthog-react-native';
@@ -96,7 +96,7 @@ export function StoryPicker(props: StoryPickerProps) {
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic.press();
     const story = await addStory({ title: newTitle.trim() });
 
     if (props.mode === 'single') {
@@ -110,7 +110,7 @@ export function StoryPicker(props: StoryPickerProps) {
   };
 
   const handleStoryPress = (story: Story) => {
-    Haptics.selectionAsync();
+    haptic.select();
     if (props.mode === 'single') {
       const isSelected = story.id === (props as SingleSelectProps).selectedStoryId;
       props.onSelect(isSelected ? null : story.id);

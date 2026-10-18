@@ -1,7 +1,7 @@
 import React, { memo, useRef, useState } from 'react';
 import { View, useWindowDimensions, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
@@ -64,7 +64,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   const [isSharing, setIsSharing] = useState(false);
 
   const triggerShareFeedback = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    haptic.thud();
     setScanKey(prev => prev + 1);
   };
 
@@ -97,11 +97,11 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     .numberOfTaps(2)
     .onStart(() => {
       pressedScale.value = withTiming(0.96, { duration: 150 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+      runOnJS(haptic.tap)();
     })
     .onEnd(() => {
       pressedScale.value = withTiming(1, { duration: 150 });
-      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
+      runOnJS(haptic.press)();
       runOnJS(navigateToDetail)();
     })
     .onFinalize(() => {

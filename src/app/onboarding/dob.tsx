@@ -12,7 +12,7 @@ import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
 import { formatDobInput, isValidDob } from '@/utils/dob';
 import { AsciiArt } from '@/components/ascii-art';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
@@ -38,7 +38,7 @@ export default function OnboardingDobScreen() {
     Keyboard.dismiss();
     if (!isValid || !providedName) return;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptic.success();
     await updateSetting('name', providedName);
     await updateSetting('dob', dob);
     await updateSetting('hasOnboarded', true);

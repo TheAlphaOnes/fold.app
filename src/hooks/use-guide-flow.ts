@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 import {
   COMPLETED_GUIDE_PROGRESS,
@@ -66,7 +66,7 @@ export function useGuideFlow(initialStep?: GuideStepId) {
 
   const succeed = useCallback(() => {
     if (!step || status === 'success') return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptic.success();
     recordDone(step);
     setStatus('success');
 
@@ -80,7 +80,7 @@ export function useGuideFlow(initialStep?: GuideStepId) {
 
   const skip = useCallback(() => {
     if (!step) return;
-    Haptics.selectionAsync();
+    haptic.select();
     clearAdvanceTimer();
     recordDone(step);
     setStatus('active');
@@ -88,7 +88,7 @@ export function useGuideFlow(initialStep?: GuideStepId) {
   }, [step, stepIndex, recordDone, nextIndexAfter]);
 
   const goToStep = useCallback((id: GuideStepId) => {
-    Haptics.selectionAsync();
+    haptic.select();
     clearAdvanceTimer();
     setStatus('active');
     setStepIndex(stepIndexOf(id));

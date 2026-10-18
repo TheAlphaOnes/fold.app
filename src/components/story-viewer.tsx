@@ -19,7 +19,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { Play, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { VinylRecord } from '@/components/vinyl-record';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { memoryTextMetrics } from '@/utils/memory-text';
@@ -206,7 +206,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
   }, [contentX, headerX, overlayOpacity]);
 
   const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.tap();
     const exit = Easing.bezier(0.55, 0.05, 0.68, 0.19);
     overlayOpacity.value = withTiming(0, { duration: 150, easing: exit });
     headerX.value = withTiming(24, { duration: 150, easing: exit });

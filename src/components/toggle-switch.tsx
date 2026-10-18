@@ -24,7 +24,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import { DURATION, EASE_OUT, SPRING_GESTURE } from '@/constants/motion';
@@ -90,7 +90,7 @@ export function ToggleSwitch({ value, onValueChange, accessibilityLabel, disable
 
   const handlePress = () => {
     if (disabled) return;
-    Haptics.selectionAsync();
+    haptic.toggle(!value);
     onValueChange(!value);
   };
 

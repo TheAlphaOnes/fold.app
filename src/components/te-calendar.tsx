@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
 import { getDatesWithMemories } from '@/db/journal-repository';
 import { ThemedText } from './themed-text';
+import { haptic } from '@/services/haptics';
 
 interface TECalendarProps {
   onSelect: (date: Date) => void;
@@ -124,6 +125,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           disabled={future}
           onPress={() => {
             if (future) return;
+            haptic.press();
             onSelect(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum));
           }}
           style={({ pressed }) => [
@@ -203,6 +205,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
         <Pressable
           key={`m-${i}`}
           onPress={() => {
+            haptic.select();
             setCurrentDate(new Date(currentDate.getFullYear(), i, 1));
             setViewMode('days');
           }}
@@ -247,6 +250,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
         <Pressable
           key={`y-${year}`}
           onPress={() => {
+            haptic.select();
             setCurrentDate(new Date(year, currentDate.getMonth(), 1));
             setViewMode('months');
           }}
@@ -288,7 +292,10 @@ export function TECalendar({ onSelect }: TECalendarProps) {
     return (
       <View style={styles.headerCenter}>
         <Pressable
-          onPress={() => setViewMode('months')}
+          onPress={() => {
+            haptic.tap();
+            setViewMode('months');
+          }}
           hitSlop={8}
         >
           <ThemedText
@@ -321,7 +328,10 @@ export function TECalendar({ onSelect }: TECalendarProps) {
       {/* Navigation header */}
       <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
         <Pressable
-          onPress={() => changePage(-1)}
+          onPress={() => {
+            haptic.select();
+            changePage(-1);
+          }}
           hitSlop={8}
           style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.4 }]}
         >
@@ -331,7 +341,10 @@ export function TECalendar({ onSelect }: TECalendarProps) {
         {renderHeaderLabel()}
 
         <Pressable
-          onPress={() => changePage(1)}
+          onPress={() => {
+            haptic.select();
+            changePage(1);
+          }}
           hitSlop={8}
           style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.4 }]}
         >

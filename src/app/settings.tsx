@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
@@ -74,7 +74,7 @@ export default function SettingsScreen() {
   };
 
   const cycleTheme = async () => {
-    Haptics.selectionAsync();
+    haptic.select();
     const modes: ('light' | 'dark' | 'system')[] = ['light', 'dark', 'system'];
     const currentIndex = modes.indexOf(settings.theme);
     const nextMode = modes[(currentIndex + 1) % modes.length];
@@ -82,7 +82,7 @@ export default function SettingsScreen() {
   };
 
   const cycleTimelineMode = async () => {
-    Haptics.selectionAsync();
+    haptic.select();
     const modes = ['yearly', 'monthly', 'infinite'] as const;
     const currentIndex = modes.indexOf(settings.timelineMode);
     const nextMode = modes[(currentIndex + 1) % modes.length];
@@ -230,6 +230,23 @@ export default function SettingsScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingRowLeft}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>HAPTICS</ThemedText>
+            </View>
+            <ToggleSwitch
+              value={settings.hapticsEnabled}
+              accessibilityLabel="Haptics"
+              onValueChange={async (val) => {
+                await updateSetting('hapticsEnabled', val);
+                // Turning haptics on: confirm with the first tick it now allows.
+                if (val) haptic.toggle(true);
+              }}
+            />
+          </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingRowLeft}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>AUTO LOCATION TAGGING</ThemedText>
             </View>
             <ToggleSwitch
@@ -288,7 +305,7 @@ export default function SettingsScreen() {
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={async () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              haptic.press();
               await updateSetting('hasOnboarded', false);
               await resetGuide();
               router.replace('/onboarding');
@@ -305,7 +322,7 @@ export default function SettingsScreen() {
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={async () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              haptic.press();
               await resetGuide();
               router.push({ pathname: '/guide', params: { step: 'write' } });
             }}

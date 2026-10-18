@@ -37,6 +37,8 @@ export interface UserSettings {
   hasOnboarded: boolean;
   autoLocationTagging: boolean;
   autoPlayMusic: boolean;
+  /** Touch feedback across the app. On by default. */
+  hapticsEnabled: boolean;
   timelineMode: TimelineMode;
   guideProgress: GuideProgress;
   guideDismissed: boolean;
@@ -53,6 +55,7 @@ const defaultSettings: UserSettings = {
   hasOnboarded: false,
   autoLocationTagging: false,
   autoPlayMusic: false,
+  hapticsEnabled: true,
   timelineMode: 'yearly',
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
@@ -101,6 +104,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           hasOnboarded: stored.hasOnboarded === "true",
           autoLocationTagging: stored.autoLocationTagging === "true",
           autoPlayMusic: stored.autoPlayMusic === "true",
+          hapticsEnabled: stored.hapticsEnabled !== "false",
           timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",

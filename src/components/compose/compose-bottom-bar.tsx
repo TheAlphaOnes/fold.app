@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Book } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 import { ThemedText } from '@/components/themed-text';
 import { MEMORY_INKS } from '@/constants/theme';
@@ -62,7 +62,7 @@ export function ComposeBottomBar({
   const inkLabel = MEMORY_INKS.find((option) => option.id === textColor)?.label ?? 'Ink';
 
   const pick = (color: string | null) => {
-    Haptics.selectionAsync();
+    haptic.select();
     onChangeTextColor(color);
   };
 
@@ -113,7 +113,7 @@ export function ComposeBottomBar({
       <View style={styles.row}>
         <Pressable
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptic.tap();
             onOpenStories();
           }}
           accessibilityRole="button"
@@ -137,7 +137,7 @@ export function ComposeBottomBar({
 
         <Pressable
           onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            haptic.tap();
             setPaletteOpen((open) => !open);
           }}
           accessibilityRole="button"

@@ -11,7 +11,7 @@ import Animated, {
   useAnimatedReaction,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 import { useTheme } from '@/hooks/use-theme';
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import { Camera, Plus } from 'lucide-react-native';
@@ -33,20 +33,20 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
   const isActive = useSharedValue(false);
 
   const fireHapticLight = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.tap();
   }, []);
 
   const fireHapticHeavy = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    haptic.thud();
   }, []);
 
   const firePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic.press();
     onPress();
   }, [onPress]);
 
   const fireSwipeUp = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    haptic.thud();
     if (onSwipeUp) onSwipeUp('photo');
   }, [onSwipeUp]);
 

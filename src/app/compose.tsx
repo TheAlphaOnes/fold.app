@@ -52,7 +52,7 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Location from "expo-location";
-import * as Haptics from "expo-haptics";
+import { haptic } from '@/services/haptics';
 import { RecordingOverlay } from "@/components/recording-overlay";
 import type { MediaElement } from "@/types/journal";
 import { dobYear } from "@/utils/dob";
@@ -340,6 +340,7 @@ export default function ComposeScreen() {
   ];
 
   const cycleFont = () => {
+    haptic.select();
     const currentIndex = AVAILABLE_FONTS.findIndex((f) => f.id === fontFamily);
     const nextFont =
       AVAILABLE_FONTS[(currentIndex + 1) % AVAILABLE_FONTS.length];
@@ -347,6 +348,7 @@ export default function ComposeScreen() {
   };
 
   const cycleSize = () => {
+    haptic.select();
     const currentIndex = FONT_SIZES.findIndex((s) => s.id === fontSize);
     const nextSize = FONT_SIZES[(currentIndex + 1) % FONT_SIZES.length];
     setFontSize(nextSize.id);
@@ -375,6 +377,7 @@ export default function ComposeScreen() {
     (body.trim().length > 0 || mediaElements.length > 0) && !isSaving;
 
   const handleAttachMedia = async () => {
+    haptic.tap();
     try {
       if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
         alertElementCap();
@@ -457,6 +460,7 @@ export default function ComposeScreen() {
   };
 
   const handleCapturePhoto = async () => {
+    haptic.tap();
     try {
       if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
         alertElementCap();
@@ -511,6 +515,7 @@ export default function ComposeScreen() {
   };
 
   const handleCaptureVideo = async () => {
+    haptic.tap();
     try {
       if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
         alertElementCap();
@@ -709,16 +714,19 @@ export default function ComposeScreen() {
         });
       }
 
+      haptic.success();
       router.back();
     } catch (error) {
       console.error("Failed to save composition:", error);
       setIsSaving(false);
       // Stay on the page so nothing written is lost; the user can retry.
+      haptic.error();
       Alert.alert("COULDN'T SAVE", "Your memory wasn't saved. Please try again.");
     }
   };
 
   const handleClose = () => {
+    haptic.tap();
     router.back();
   };
 
@@ -761,7 +769,7 @@ export default function ComposeScreen() {
         });
 
         await recorder.prepareToRecordAsync();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        haptic.tap();
         await recorder.record();
       }
     } catch (err) {
@@ -919,6 +927,7 @@ export default function ComposeScreen() {
                     alertMusicLimit();
                     return;
                   }
+                  haptic.tap();
                   setIsMusicPickerVisible(true);
                 }}
                 style={({ pressed }) => [
@@ -934,7 +943,10 @@ export default function ComposeScreen() {
 
               {/* 4. GIF */}
               <Pressable
-                onPress={() => setShowGifPicker(true)}
+                onPress={() => {
+                  haptic.tap();
+                  setShowGifPicker(true);
+                }}
                 style={({ pressed }) => [
                   styles.attachButton,
                   { opacity: pressed ? 0.5 : 1 },
@@ -977,7 +989,10 @@ export default function ComposeScreen() {
               {/* 7. Location */}
               {!settings.autoLocationTagging && !locationName && (
                 <Pressable
-                  onPress={fetchLocation}
+                  onPress={() => {
+                    haptic.tap();
+                    fetchLocation();
+                  }}
                   disabled={isFetchingLocation}
                   style={({ pressed }) => [
                     styles.attachButton,
@@ -1036,11 +1051,10 @@ export default function ComposeScreen() {
                   key={m.id}
                   m={m}
                   theme={theme}
-                  onRemove={() =>
-                    setMediaElements((prev) =>
-                      prev.filter((x) => x.id !== m.id),
-                    )
-                  }
+                  onRemove={() => {
+                    haptic.tap();
+                    setMediaElements((prev) => prev.filter((x) => x.id !== m.id));
+                  }}
                 />
               ))}
             </View>

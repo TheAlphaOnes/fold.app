@@ -1,62 +1,38 @@
 /**
  * Fold — useHaptics hook
  *
- * Wraps expo-haptics with a clean, typed API.
- * Every sound has a visual equivalent — haptics enhance, never communicate alone.
+ * Thin hook over the haptics service for components that prefer a hook.
+ * New code can import `haptic` from '@/services/haptics' directly.
  */
 
-import * as Haptics from 'expo-haptics';
-import { useCallback } from 'react';
-import { Platform } from 'react-native';
+import { haptic } from '@/services/haptics';
 
-type HapticStyle = 'light' | 'medium' | 'heavy' | 'soft' | 'rigid';
-
-const STYLE_MAP: Record<HapticStyle, Haptics.ImpactFeedbackStyle> = {
-  light: Haptics.ImpactFeedbackStyle.Light,
-  medium: Haptics.ImpactFeedbackStyle.Medium,
-  heavy: Haptics.ImpactFeedbackStyle.Heavy,
-  soft: Haptics.ImpactFeedbackStyle.Soft,
-  rigid: Haptics.ImpactFeedbackStyle.Rigid,
-};
+export type HapticStyle = 'light' | 'medium' | 'heavy';
 
 export type UseHapticsReturn = {
-  /** Subtle tap — selection changes, page swipes */
+  /** Subtle tick — selection changes, page swipes */
   selection: () => void;
-  /** Impact feedback — button presses, toggles */
+  /** Impact feedback — button presses, drops */
   impact: (style?: HapticStyle) => void;
-  /** Success notification — entry saved */
   success: () => void;
-  /** Warning notification — validation issues */
   warning: () => void;
-  /** Error notification — failures */
   error: () => void;
 };
 
+const impact = (style: HapticStyle = 'light') => {
+  if (style === 'heavy') haptic.thud();
+  else if (style === 'medium') haptic.press();
+  else haptic.tap();
+};
+
+const API: UseHapticsReturn = {
+  selection: haptic.select,
+  impact,
+  success: haptic.success,
+  warning: haptic.warning,
+  error: haptic.error,
+};
+
 export function useHaptics(): UseHapticsReturn {
-  const selection = useCallback(() => {
-    if (Platform.OS === 'web') return;
-    Haptics.selectionAsync().catch(() => {});
-  }, []);
-
-  const impact = useCallback((style: HapticStyle = 'light') => {
-    if (Platform.OS === 'web') return;
-    Haptics.impactAsync(STYLE_MAP[style]).catch(() => {});
-  }, []);
-
-  const success = useCallback(() => {
-    if (Platform.OS === 'web') return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  }, []);
-
-  const warning = useCallback(() => {
-    if (Platform.OS === 'web') return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-  }, []);
-
-  const error = useCallback(() => {
-    if (Platform.OS === 'web') return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-  }, []);
-
-  return { selection, impact, success, warning, error };
+  return API;
 }

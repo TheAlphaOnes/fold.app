@@ -12,7 +12,7 @@ import { Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Keyframe } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/services/haptics';
 
 import { AddButton } from '@/components/add-button';
 import { ThemedText } from '@/components/themed-text';
@@ -109,7 +109,7 @@ export function TriggerStage({
     if (!expected || actual === expected) return;
     const message = NUDGES[expected][actual];
     if (!message) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptic.warning();
     onNudge(message);
   }, [expected, onNudge]);
 
