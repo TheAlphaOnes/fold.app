@@ -9,16 +9,15 @@ import {
   updateComposition as dbUpdateComposition,
   updateMediaPositions,
   toggleCompositionStoryId,
-  deleteComposition,
-  deleteAllCompositions,
-  getAllMediaElements,
+  trashComposition,
+  trashAllCompositions,
+  restoreComposition as restoreFromTrash,
   type CreateCompositionInput,
   type UpdateCompositionInput
 } from '@/db/journal-repository';
 import type { Composition, MediaElement } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { deleteOrphanedMediaFiles, ownedMediaFiles } from '@/services/media-storage.service';
 
 /** Cards kept fully decoded around the focused memory. */
 const HYDRATE_BEHIND = 4;
@@ -63,6 +62,8 @@ interface JournalState {
   toggleStoryId: (id: number, storyId: number) => Promise<void>;
   removeComposition: (id: number) => Promise<void>;
   removeAllCompositions: () => Promise<void>;
+  /** Bring a memory back from Recently Deleted. */
+  restoreComposition: (id: number) => Promise<void>;
   /** Re-reads feeds from SQLite, used to undo an optimistic update after a failed write. */
   resyncFromDatabase: () => Promise<void>;
 }
@@ -350,13 +351,9 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     await toggleCompositionStoryId(id, storyId);
   },
 
+  // Deleting moves a memory to Recently Deleted (see services/trash.service):
+  // it leaves every feed now and is purged, files included, after 30 days.
   removeComposition: async (id: number) => {
-    // Capture the memory first: its media files are cleaned up after the row is gone.
-    const snapshot =
-      get().hydratedById[id] ??
-      get().compositions.find((comp) => comp.id === id) ??
-      (await getCompositionById(id).catch(() => null));
-
     const hydratedById = { ...get().hydratedById };
     delete hydratedById[id];
     set((state) => ({
@@ -374,31 +371,21 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     useStoriesStore.getState().onMemoryDeleted(id);
 
     try {
-      await deleteComposition(id);
+      await trashComposition(id);
     } catch (err) {
-      // The memory is still stored: bring the UI back in line with the database
+      // The memory is still live: bring the UI back in line with the database
       // rather than letting it silently reappear on the next refresh.
-      console.error('Failed to delete composition from database:', err);
+      console.error('Failed to move memory to Recently Deleted:', err);
       await get().resyncFromDatabase();
       throw new Error('Unable to delete this memory.');
     }
 
-    // Bump hydrationVersion after DB delete completes to signal all database query hooks
     set((state) => ({
       hydrationVersion: state.hydrationVersion + 1,
     }));
-
-    if (snapshot) {
-      await deleteOrphanedMediaFiles(ownedMediaFiles(snapshot.mediaElements));
-    }
   },
 
   removeAllCompositions: async () => {
-    // Read every media reference before the rows are gone.
-    const media = await getAllMediaElements().catch((err) => {
-      console.error('Failed to read media before clearing memories', err);
-      return [];
-    });
     set({
       lastDeletedId: null,
       compositions: [],
@@ -412,17 +399,22 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     });
     useStoriesStore.getState().onAllMemoriesDeleted();
     try {
-      await deleteAllCompositions();
+      await trashAllCompositions();
     } catch (err) {
-      console.error('Failed to delete all compositions from database:', err);
+      console.error('Failed to move all memories to Recently Deleted:', err);
       await get().resyncFromDatabase();
       throw new Error('Unable to clear memories.');
     }
     set((state) => ({
       hydrationVersion: state.hydrationVersion + 1,
     }));
+  },
 
-    await deleteOrphanedMediaFiles(ownedMediaFiles(media));
+  restoreComposition: async (id: number) => {
+    await restoreFromTrash(id);
+    // It can belong anywhere (any day, any story): re-read every feed.
+    await get().resyncFromDatabase();
+    set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));
   },
 
   resyncFromDatabase: async () => {

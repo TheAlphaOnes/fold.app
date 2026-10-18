@@ -30,6 +30,7 @@ export interface CompositionRow {
   font_family: string;
   font_size: number;
   text_color?: string; // Hex ink; null/absent = theme text colour
+  deleted_at?: number; // Set while the memory sits in Recently Deleted
   location_name?: string;
   location_coords?: string; // JSON string of LocationData
   story_ids?: string; // Comma-separated string from GROUP_CONCAT
@@ -45,6 +46,8 @@ export interface Composition {
   fontSize: number;
   /** Hex ink chosen in compose; undefined renders in the theme's text colour. */
   textColor?: string;
+  /** When the memory was moved to Recently Deleted; absent for live memories. */
+  deletedAt?: number;
   location?: LocationData;
   storyIds: number[];
 }

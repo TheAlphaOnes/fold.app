@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -10,6 +10,7 @@ import { haptic } from '@/services/haptics';
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
+import { countTrashed } from '@/db/journal-repository';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ToggleSwitch } from '@/components/toggle-switch';
@@ -25,6 +26,14 @@ export default function SettingsScreen() {
   const { settings, updateSetting, resetGuide } = useSettingsStore();
   
   const [easterEggActive, setEasterEggActive] = useState(false);
+
+  // How many memories are waiting in Recently Deleted.
+  const [trashCount, setTrashCount] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      countTrashed().then(setTrashCount).catch((err) => console.error('Failed to count deleted memories', err));
+    }, []),
+  );
 
   // Shared helper — calls the action only after successful biometric auth.
   // Falls back gracefully when hardware is absent (e.g. simulators).
@@ -53,7 +62,7 @@ export default function SettingsScreen() {
     requireAuth('Authenticate to clear all memories', () => {
       Alert.alert(
         'CLEAR ALL MEMORIES',
-        'Are you sure you want to permanently delete all journal entries? This action cannot be undone.',
+        'Everything moves to Recently Deleted. You can restore it for 30 days, then it is deleted for good.',
         [
           { text: 'CANCEL', style: 'cancel' },
           { 
@@ -301,6 +310,26 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>STORAGE & DATA</ThemedText>
           <View style={[styles.divider, { backgroundColor: theme.text }]} />
+
+          <Pressable
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => {
+              haptic.tap();
+              router.push('/trash');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Recently deleted, ${trashCount} memories`}
+          >
+            <View style={styles.settingRowLeft}>
+              <Trash2 size={16} color={theme.text} />
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>RECENTLY DELETED</ThemedText>
+            </View>
+            {trashCount > 0 && (
+              <ThemedText style={[styles.settingText, { color: theme.textMuted }]}>{trashCount}</ThemedText>
+            )}
+          </Pressable>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
           
 
           <Pressable 

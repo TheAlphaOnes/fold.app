@@ -368,7 +368,7 @@ export default function MemoryDetailScreen() {
   const handleDelete = () => {
     Alert.alert(
       'Delete Memory',
-      'Are you sure you want to delete this memory? This cannot be undone.',
+      'It moves to Recently Deleted, where you can restore it for 30 days.',
       [
         { text: 'Cancel', style: 'cancel' },
         { 

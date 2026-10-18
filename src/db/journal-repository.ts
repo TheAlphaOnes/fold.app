@@ -92,6 +92,7 @@ export function rowToComposition(row: CompositionRow): Composition {
     fontFamily: row.font_family,
     fontSize: row.font_size,
     textColor: row.text_color,
+    deletedAt: row.deleted_at,
     location,
     storyIds: row.story_ids ? row.story_ids.split(',').map(Number) : (row.story_id ? [row.story_id] : []),
   };
@@ -102,6 +103,7 @@ export async function getAllCompositions(limit: number = 100, offset: number = 0
   const rows = await db.getAllAsync(
     `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
      FROM compositions c 
+     WHERE c.deleted_at IS NULL
      ORDER BY c.created_at DESC
      LIMIT ? OFFSET ?`,
     [limit, offset]
@@ -132,13 +134,13 @@ export async function getTimelineSpine(
   const db = await getDatabase();
   const { monthDay, day } = anchorParts(anchor);
 
-  let where = '';
+  let where = 'WHERE c.deleted_at IS NULL';
   const params: string[] = [];
   if (mode === 'yearly') {
-    where = `WHERE strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    where += ` AND strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
     params.push(monthDay);
   } else if (mode === 'monthly') {
-    where = `WHERE strftime('%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    where += ` AND strftime('%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?`;
     params.push(day);
   }
 
@@ -158,7 +160,7 @@ export async function getCompositionsByIds(ids: number[]): Promise<Composition[]
   const db = await getDatabase();
   const placeholders = ids.map(() => '?').join(', ');
   const rows = await db.getAllAsync(
-    `${COMPOSITION_SELECT} WHERE c.id IN (${placeholders})`,
+    `${COMPOSITION_SELECT} WHERE c.id IN (${placeholders}) AND c.deleted_at IS NULL`,
     ids,
   );
   const byId = new Map<number, Composition>();
@@ -179,6 +181,7 @@ export async function getOnThisDayCompositions(month: number, date: number): Pro
     `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
      FROM compositions c 
      WHERE strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ? 
+       AND c.deleted_at IS NULL
      ORDER BY c.created_at ASC`,
     targetStr
   );
@@ -191,6 +194,7 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
     `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids
      FROM compositions c
      WHERE strftime('%Y-%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?
+       AND c.deleted_at IS NULL
      ORDER BY c.created_at ASC`,
     dayKey,
   );
@@ -201,7 +205,7 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
 export async function getRandomCompositionsBefore(timestamp: number, limit: number): Promise<Composition[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync(
-    `${COMPOSITION_SELECT} WHERE c.created_at < ? ORDER BY RANDOM() LIMIT ?`,
+    `${COMPOSITION_SELECT} WHERE c.created_at < ? AND c.deleted_at IS NULL ORDER BY RANDOM() LIMIT ?`,
     timestamp,
     limit,
   );
@@ -224,6 +228,7 @@ export async function getDayCoversForMonth(yearMonth: string): Promise<Record<st
      FROM compositions
      WHERE strftime('%Y-%m', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
        AND media_elements != '[]'
+       AND deleted_at IS NULL
      ORDER BY created_at DESC`,
     yearMonth,
   );
@@ -245,7 +250,7 @@ export async function getDatesWithMemories(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ date_str: string }>(
     `SELECT DISTINCT strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) as date_str 
-     FROM compositions`
+     FROM compositions WHERE deleted_at IS NULL`
   );
   return rows.map(r => r.date_str).filter(Boolean);
 }
@@ -254,7 +259,7 @@ export async function getCompositionById(id: number): Promise<Composition | null
   const db = await getDatabase();
   const row = await db.getFirstAsync<any>(
     `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids 
-     FROM compositions c WHERE c.id = ?`,
+     FROM compositions c WHERE c.id = ? AND c.deleted_at IS NULL`,
     id
   );
   if (!row) return null;
@@ -268,7 +273,7 @@ export async function getCompositionById(id: number): Promise<Composition | null
  */
 export async function getLatestComposition(): Promise<Composition | null> {
   const db = await getDatabase();
-  const row = await db.getFirstAsync(`${COMPOSITION_SELECT} ORDER BY c.id DESC LIMIT 1`);
+  const row = await db.getFirstAsync(`${COMPOSITION_SELECT} WHERE c.deleted_at IS NULL ORDER BY c.id DESC LIMIT 1`);
   if (!row) return null;
   return rowToComposition(mapRow(row));
 }
@@ -382,29 +387,49 @@ export async function deleteComposition(id: number): Promise<void> {
   });
 }
 
-export async function deleteAllCompositions(): Promise<void> {
+// --- Recently Deleted -------------------------------------------------------
+
+/** Move a memory to the bin. It disappears everywhere but keeps its files. */
+export async function trashComposition(id: number, at: number = Date.now()): Promise<void> {
   const db = await getDatabase();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM composition_stories');
-    await db.runAsync('DELETE FROM compositions');
-  });
+  await db.runAsync('UPDATE compositions SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL', at, id);
 }
 
-/** Every media element across the journal (used before a full wipe). */
-export async function getAllMediaElements(): Promise<MediaElement[]> {
+/** Move every live memory to the bin ("clear all" stays recoverable). */
+export async function trashAllCompositions(at: number = Date.now()): Promise<void> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{ id: number; media_elements: string }>(
-    `SELECT id, media_elements FROM compositions WHERE media_elements != '[]'`,
+  await db.runAsync('UPDATE compositions SET deleted_at = ? WHERE deleted_at IS NULL', at);
+}
+
+/** Bring a memory back from the bin, story links intact. */
+export async function restoreComposition(id: number): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE compositions SET deleted_at = NULL WHERE id = ?', id);
+}
+
+/** Everything in the bin, most recently deleted first. */
+export async function getTrashedCompositions(): Promise<Composition[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `${COMPOSITION_SELECT} WHERE c.deleted_at IS NOT NULL ORDER BY c.deleted_at DESC`,
   );
-  return rows.flatMap((row) => {
-    try {
-      const parsed: MediaElement[] = JSON.parse(row.media_elements);
-      return parsed.map((m) => ({ ...m, uri: resolveDocumentUri(m.uri) }));
-    } catch (error) {
-      console.error('Failed to parse media_elements for composition', row.id, error);
-      return [];
-    }
-  });
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
+/** Binned memories deleted before `cutoff` (ms) — due for permanent removal. */
+export async function getTrashedBefore(cutoff: number): Promise<Composition[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `${COMPOSITION_SELECT} WHERE c.deleted_at IS NOT NULL AND c.deleted_at < ?`,
+    cutoff,
+  );
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
+export async function countTrashed(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM compositions WHERE deleted_at IS NOT NULL');
+  return Number(row?.n ?? 0);
 }
 
 /**

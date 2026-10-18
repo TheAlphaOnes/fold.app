@@ -72,6 +72,7 @@ import { PressStart2P_400Regular } from "@expo-google-fonts/press-start-2p";
 import { PermanentMarker_400Regular } from "@expo-google-fonts/permanent-marker";
 
 import { getDatabase } from "@/db";
+import { purgeExpiredTrash } from "@/services/trash.service";
 import { AppThemeProvider, useThemeContext } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/hooks/use-settings";
 import { AnimatedSplashScreen } from "@/components/splash-screen";
@@ -238,6 +239,9 @@ function RootLayoutNav() {
       .then(async () => {
         await useSettingsStore.getState().loadSettings();
         setDbReady(true);
+        // Recently Deleted keeps memories for 30 days; clear out the expired
+        // ones in the background so startup never waits on file cleanup.
+        purgeExpiredTrash().catch((err) => console.error('Failed to purge expired memories', err));
       })
       .catch((err) => {
         console.error("Initialization failed:", err);
@@ -307,6 +311,12 @@ function RootLayoutNav() {
               />
               <Stack.Screen
                 name="memory/[id]"
+                options={{
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="trash"
                 options={{
                   animation: "slide_from_right",
                 }}

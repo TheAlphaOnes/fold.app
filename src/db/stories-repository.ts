@@ -108,12 +108,12 @@ export async function getAllStories(): Promise<Story[]> {
       (SELECT group_concat(media_elements) FROM (
          SELECT c.media_elements FROM composition_stories cs
          JOIN compositions c ON c.id = cs.composition_id
-         WHERE cs.story_id = s.id AND c.media_elements != '[]' 
+         WHERE cs.story_id = s.id AND c.media_elements != '[]' AND c.deleted_at IS NULL
          ORDER BY c.created_at DESC LIMIT 8
       )) as sample_media,
-      (SELECT COUNT(*) FROM composition_stories cs WHERE cs.story_id = s.id) as memory_count,
-      (SELECT MIN(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id) as first_memory_at,
-      (SELECT MAX(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id) as last_memory_at
+      (SELECT COUNT(*) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id AND c.deleted_at IS NULL) as memory_count,
+      (SELECT MIN(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id AND c.deleted_at IS NULL) as first_memory_at,
+      (SELECT MAX(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id AND c.deleted_at IS NULL) as last_memory_at
      FROM stories s 
      ORDER BY updated_at DESC`
   );
@@ -136,7 +136,7 @@ export async function getCompositionsByStoryId(storyId: number): Promise<Composi
     `SELECT c.*, (SELECT GROUP_CONCAT(story_id) FROM composition_stories WHERE composition_id = c.id) as story_ids
      FROM compositions c
      JOIN composition_stories cs ON cs.composition_id = c.id
-     WHERE cs.story_id = ? 
+     WHERE cs.story_id = ? AND c.deleted_at IS NULL
      ORDER BY c.created_at ASC`,
     storyId
   );
