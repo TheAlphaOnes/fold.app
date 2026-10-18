@@ -3,7 +3,6 @@ import { View, Text, TextInput, FlatList, Pressable, StyleSheet, Modal, Activity
 import { useTheme } from '@/hooks/use-theme';
 import { Search, X, Music, Heart } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system/legacy';
 
 import { useAudioPlayer } from 'expo-audio';
 import * as Localization from 'expo-localization';
@@ -30,7 +29,8 @@ function TrackPreviewPlayer({ url }: { url: string }) {
 interface MusicPickerProps {
   visible: boolean;
   onClose: () => void;
-  onSelect: (localUri: string, track: MusicTrack) => Promise<void>;
+  /** Called as soon as a track is chosen; the caller downloads it in the background. */
+  onSelect: (track: MusicTrack) => void;
 }
 
 export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
@@ -44,7 +44,6 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [downloading, setDownloading] = useState<number | null>(null);
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
   const [defaultSearch, setDefaultSearch] = useState('viral hits');
 
@@ -156,27 +155,17 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
     }
   };
 
-  const handleSelect = async (track: MusicTrack) => {
-    if (downloading !== null) return;
-    setDownloading(track.trackId);
-    try {
-      if (query.trim().length > 2) {
-        addRecentSearch(query.trim());
-      } else if (defaultSearch) {
-        addRecentSearch(defaultSearch);
-      }
-
-      const ext = track.previewUrl.split('?')[0].split('.').pop() || 'm4a';
-      const dest = `${FileSystem.documentDirectory}music_${track.trackId}_${Date.now()}.${ext}`;
-      
-      const { uri } = await FileSystem.downloadAsync(track.previewUrl, dest);
-      await onSelect(uri, track);
-      onClose(); // Automatically close after selection
-    } catch (e) {
-      console.error('Failed to download preview', e);
-    } finally {
-      setDownloading(null);
+  // Choosing hands the track straight back and closes: the download happens
+  // in the compose screen, in the background, so the choice feels instant.
+  const handleSelect = (track: MusicTrack) => {
+    if (query.trim().length > 2) {
+      addRecentSearch(query.trim());
+    } else if (defaultSearch) {
+      addRecentSearch(defaultSearch);
     }
+    setPreviewingTrack(null);
+    onSelect(track);
+    onClose();
   };
 
   const handleRowPress = (track: MusicTrack) => {
@@ -233,7 +222,6 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isPreviewing = previewingTrack?.trackId === item.trackId;
-              const isDownloading = downloading === item.trackId;
 
               return (
                 <Pressable 
@@ -242,7 +230,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
                 >
                   <View style={styles.artworkContainer}>
                     <Image source={{ uri: getHighResArtwork(item.artworkUrl100) }} style={styles.artwork} />
-                    {isPreviewing && !isDownloading && (
+                    {isPreviewing && (
                       <View style={styles.playingOverlay}>
                         <Music size={20} color="#FFFFFF" />
                       </View>
@@ -258,7 +246,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
                   </View>
                   
                   <View style={styles.actionContainer}>
-                    {!isDownloading && !isPreviewing && (
+                    {!isPreviewing && (
                       <Pressable 
                         style={styles.saveBtn}
                         onPress={() => savedTracks.some(t => t.trackId === item.trackId) ? removeTrack(item.trackId) : saveTrack(item)}
@@ -271,9 +259,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
                         />
                       </Pressable>
                     )}
-                    {isDownloading ? (
-                      <ActivityIndicator size="small" color={theme.textMuted} style={styles.actionSlot} />
-                    ) : isPreviewing ? (
+                    {isPreviewing ? (
                       <Pressable 
                         style={[styles.chooseButton, { backgroundColor: theme.text }]}
                         onPress={() => handleSelect(item)}

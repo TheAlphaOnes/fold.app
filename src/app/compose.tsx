@@ -8,7 +8,7 @@
  *   monospace metadata, flat industrial UI, golden ratio spacing.
  */
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   View,
   TextInput,
@@ -20,6 +20,7 @@ import {
   useWindowDimensions,
   LayoutAnimation,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
@@ -66,7 +67,6 @@ import {
   getHighResArtwork,
   hasMusicElement,
   sliceToElementCap,
-  verifyFileSize,
 } from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
@@ -84,10 +84,13 @@ function ComposeMediaPreview({
   m,
   theme,
   onRemove,
+  pending = false,
 }: {
   m: MediaElement;
   theme: any;
   onRemove: () => void;
+  /** Still downloading in the background. */
+  pending?: boolean;
 }) {
   const isVideo = m.type === "video";
   const videoThumbnailUri = useVideoThumbnail(isVideo ? m.uri : undefined);
@@ -146,6 +149,12 @@ function ComposeMediaPreview({
           ) : (
             <Music size={24} color="rgba(255,255,255,0.9)" />
           )}
+        </View>
+      )}
+
+      {pending && (
+        <View style={[StyleSheet.absoluteFill, styles.pendingOverlay]} pointerEvents="none">
+          <ActivityIndicator size="small" color="#FFFFFF" />
         </View>
       )}
 
@@ -573,64 +582,97 @@ export default function ComposeScreen() {
 
 
 
-  const handleAttachMusic = async (localUri: string, track: MusicTrack) => {
-    // One track per memory. The picker has already downloaded the preview
-    // by the time we're called — delete it so nothing is orphaned in app
-    // space when we reject.
+  // Songs being downloaded in the background, by element id. Save waits for
+  // these so a memory never stores a remote preview URL.
+  const pendingMusic = useRef(new Map<string, Promise<void>>());
+  // Outcomes of finished downloads, applied at save time (state from the
+  // save's closure would still hold the remote URLs).
+  const resolvedMusic = useRef(new Map<string, { uri: string; artwork: string | null }>());
+  const failedMusic = useRef(new Set<string>());
+  const [pendingMusicIds, setPendingMusicIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  /**
+   * Attach a chosen song instantly, then download it. The element appears at
+   * once with its remote preview and artwork (both playable/displayable), and
+   * is swapped to the local copies when they land. If the preview cannot be
+   * fetched, the song is removed and the user is told why.
+   */
+  const handleAttachMusic = (track: MusicTrack) => {
     if (hasMusicElement(mediaElements)) {
       alertMusicLimit();
-      await FileSystem.deleteAsync(localUri, { idempotent: true });
       return;
     }
-
     if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
       alertElementCap();
-      await FileSystem.deleteAsync(localUri, { idempotent: true });
       return;
     }
 
-    // Verify the downloaded preview against the audio cap before attaching.
-    if (!(await verifyFileSize("audio", localUri))) {
-      alertFileTooLarge("audio");
-      return;
-    }
-
+    const id = Math.random().toString(36).substring(2, 9);
     const stickerSize = 120;
     const safeW = screenWidth - 60 - stickerSize;
-    const safeH =
-      Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+    const safeH = Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
+    // Always the 1000x1000 master so zooming stays crisp.
+    const artworkUrl = getHighResArtwork(track.artworkUrl100) || track.artworkUrl100;
 
-    // Keep every piece of media in app space — the artwork too. Always upgrade
-    // to full 1000x1000 retina master resolution so zooming remains crisp.
-    const highResArtworkUrl = getHighResArtwork(track.artworkUrl100) || track.artworkUrl100;
-    let artworkUri = highResArtworkUrl;
-    try {
-      const artworkDest = `${FileSystem.documentDirectory}music_artwork_${track.trackId}_${Date.now()}.jpg`;
-      const downloaded = await downloadWithinFileSize({
-        url: highResArtworkUrl,
-        to: artworkDest,
-        kind: "image",
-      });
-      if (downloaded) artworkUri = artworkDest;
-    } catch (err) {
-      console.warn("Failed to download artwork, using remote URL", err);
-    }
-
+    haptic.success();
     setMediaElements((prev) => [
       ...prev,
       {
-        id: Math.random().toString(36).substring(2, 9),
-        uri: localUri,
+        id,
+        uri: track.previewUrl,
         type: "audio",
         x_pos: 30 + Math.random() * safeW,
         y_pos: 30 + Math.random() * safeH,
-        metadata: {
-          title: track.trackName,
-          artist: track.artistName,
-          artwork: artworkUri,
-        },
+        metadata: { title: track.trackName, artist: track.artistName, artwork: artworkUrl },
       },
     ]);
+    setPendingMusicIds((prev) => new Set(prev).add(id));
+
+    const job = (async () => {
+      const stamp = Date.now();
+      const ext = track.previewUrl.split("?")[0].split(".").pop() || "m4a";
+      const [audio, artwork] = await Promise.all([
+        downloadWithinFileSize({
+          url: track.previewUrl,
+          to: `${FileSystem.documentDirectory}music_${track.trackId}_${stamp}.${ext}`,
+          kind: "audio",
+        }),
+        downloadWithinFileSize({
+          url: artworkUrl,
+          to: `${FileSystem.documentDirectory}music_artwork_${track.trackId}_${stamp}.jpg`,
+          kind: "image",
+        }).catch((err) => {
+          // Artwork is decorative: keep the remote image if it cannot be saved.
+          console.warn("Failed to save artwork, keeping remote URL", err);
+          return null;
+        }),
+      ]);
+      if (!audio) throw new Error("Preview exceeds the audio size cap");
+      resolvedMusic.current.set(id, { uri: audio, artwork });
+      setMediaElements((prev) =>
+        prev.map((m) =>
+          m.id === id && m.metadata
+            ? { ...m, uri: audio, metadata: { ...m.metadata, artwork: artwork ?? m.metadata.artwork } }
+            : m,
+        ),
+      );
+    })()
+      .catch((err) => {
+        console.error("Failed to download song", err);
+        failedMusic.current.add(id);
+        setMediaElements((prev) => prev.filter((m) => m.id !== id));
+        haptic.error();
+        Alert.alert("COULDN'T ADD SONG", "Check your connection and try choosing it again.");
+      })
+      .finally(() => {
+        pendingMusic.current.delete(id);
+        setPendingMusicIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      });
+    pendingMusic.current.set(id, job);
   };
 
   const handleSave = async () => {
@@ -638,11 +680,24 @@ export default function ComposeScreen() {
 
     setIsSaving(true);
     try {
+      // A song still downloading finishes first, so only local files are saved.
+      await Promise.all(pendingMusic.current.values());
+      const elements = mediaElements
+        .filter((m) => !failedMusic.current.has(m.id))
+        .map((m) => {
+          const local = resolvedMusic.current.get(m.id);
+          if (!local || !m.metadata) return m;
+          return { ...m, uri: local.uri, metadata: { ...m.metadata, artwork: local.artwork ?? m.metadata.artwork } };
+        });
+      if (elements.length === 0 && body.trim().length === 0) {
+        setIsSaving(false);
+        return;
+      }
       if (numericEditId) {
         await updateComposition({
           id: numericEditId,
           textContent: body.trim(),
-          mediaElements,
+          mediaElements: elements,
           fontFamily,
           fontSize,
           textColor,
@@ -655,7 +710,7 @@ export default function ComposeScreen() {
       } else {
         await addComposition({
           textContent: body.trim(),
-          mediaElements,
+          mediaElements: elements,
           fontFamily,
           fontSize,
           textColor,
@@ -870,7 +925,11 @@ export default function ComposeScreen() {
                 { color: canSave ? theme.background : theme.textMuted },
               ]}
             >
-              {isSaving ? (numericEditId ? "Updating" : "Saving") : (numericEditId ? "Update" : "Save")}
+              {isSaving
+                ? pendingMusicIds.size > 0
+                  ? "Adding music"
+                  : numericEditId ? "Updating" : "Saving"
+                : numericEditId ? "Update" : "Save"}
             </ThemedText>
           </Pressable>
         </View>
@@ -1064,6 +1123,7 @@ export default function ComposeScreen() {
                   key={m.id}
                   m={m}
                   theme={theme}
+                  pending={pendingMusicIds.has(m.id)}
                   onRemove={() => {
                     haptic.tap();
                     setMediaElements((prev) => prev.filter((x) => x.id !== m.id));
@@ -1162,6 +1222,12 @@ export default function ComposeScreen() {
 }
 
 const styles = StyleSheet.create({
+  pendingOverlay: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 12,
+  },
   root: {
     flex: 1,
   },
