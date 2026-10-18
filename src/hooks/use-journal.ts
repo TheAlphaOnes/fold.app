@@ -12,6 +12,7 @@ import {
   trashComposition,
   trashAllCompositions,
   restoreComposition as restoreFromTrash,
+  restoreAllCompositions as restoreAllFromTrash,
   type CreateCompositionInput,
   type UpdateCompositionInput
 } from '@/db/journal-repository';
@@ -64,6 +65,8 @@ interface JournalState {
   removeAllCompositions: () => Promise<void>;
   /** Bring a memory back from Recently Deleted. */
   restoreComposition: (id: number) => Promise<void>;
+  /** Bring everything back from Recently Deleted. */
+  restoreAllCompositions: () => Promise<void>;
   /** Re-reads feeds from SQLite, used to undo an optimistic update after a failed write. */
   resyncFromDatabase: () => Promise<void>;
 }
@@ -408,6 +411,12 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     set((state) => ({
       hydrationVersion: state.hydrationVersion + 1,
     }));
+  },
+
+  restoreAllCompositions: async () => {
+    await restoreAllFromTrash();
+    await get().resyncFromDatabase();
+    set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));
   },
 
   restoreComposition: async (id: number) => {

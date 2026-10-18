@@ -1,20 +1,24 @@
 /**
  * Recently Deleted — deleted memories wait here for 30 days before they are
- * removed for good. Each can be restored exactly (story links included) or
- * deleted now; the whole bin can be emptied. Anything permanent asks first.
+ * removed for good.
+ *
+ * Layout: a count summary, then a two-column grid of the deleted memories in
+ * the Story Board card style (cover, countdown badge, caption below), and a
+ * fixed action bar with RESTORE ALL and EMPTY BIN. Tapping a card offers
+ * Restore or Delete forever. Anything permanent asks first.
  */
 
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Mic, Trash2 } from 'lucide-react-native';
+import { Mic } from 'lucide-react-native';
 
 import { AsciiArt } from '@/components/ascii-art';
 import { GrainBackground } from '@/components/grain-background';
-import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
+import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { BIN_ART } from '@/constants/ascii-art';
 import { fadeIn, fadeOut, riseIn } from '@/constants/motion';
@@ -30,8 +34,10 @@ import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
-const THUMB = 56;
+const GUTTER = 16;
+const GAP = 12;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_STAGGER = 8;
 
 function titleOf(memory: Composition): string {
   const firstLine = memory.textContent.trim().split('\n')[0];
@@ -45,11 +51,11 @@ function titleOf(memory: Composition): string {
 
 function deletedAgo(deletedAt: number, now: number): string {
   const days = Math.floor((now - deletedAt) / DAY_MS);
-  if (days <= 0) return 'today';
-  return days === 1 ? 'yesterday' : `${days} days ago`;
+  if (days <= 0) return 'deleted today';
+  return days === 1 ? 'deleted yesterday' : `deleted ${days} days ago`;
 }
 
-function Thumb({ memory }: { memory: Composition }) {
+function Cover({ memory }: { memory: Composition }) {
   const theme = useTheme();
   const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
@@ -57,42 +63,40 @@ function Thumb({ memory }: { memory: Composition }) {
   const uri = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : getHighResArtwork(music?.metadata?.artwork);
   const words = memory.textContent.trim();
 
+  if (uri) {
+    return <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />;
+  }
   return (
-    <View style={[styles.thumb, { backgroundColor: theme.backgroundSelected, borderColor: theme.border }]}>
-      {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
-      ) : words ? (
+    <View style={[StyleSheet.absoluteFill, styles.coverFace, { backgroundColor: theme.backgroundElement }]}>
+      {words ? (
         <ThemedText
-          numberOfLines={3}
+          {...BALANCED_TEXT}
+          numberOfLines={6}
           style={{
-            ...memoryTextMetrics(memory.fontFamily, 8),
+            ...memoryTextMetrics(memory.fontFamily, 13),
             fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
             color: memory.textColor ?? theme.text,
             textAlign: 'center',
-            paddingHorizontal: 4,
           }}
         >
           {words}
         </ThemedText>
       ) : (
-        <Mic size={18} color={theme.accentWarm} />
+        <Mic size={22} color={theme.accentWarm} />
       )}
     </View>
   );
 }
 
-function TrashRow({
-  memory,
-  now,
-  onRestore,
-  onDelete,
-}: {
+interface CardProps {
   memory: Composition;
-  /** One timestamp per load, so every row counts days from the same moment. */
+  index: number;
+  width: number;
   now: number;
-  onRestore: (memory: Composition) => void;
-  onDelete: (memory: Composition) => void;
-}) {
+  onPress: (memory: Composition) => void;
+}
+
+function DeletedCard({ memory, index, width, now, onPress }: CardProps) {
   const theme = useTheme();
   const deletedAt = memory.deletedAt ?? now;
   const left = daysLeftInTrash(deletedAt, now);
@@ -100,39 +104,34 @@ function TrashRow({
 
   return (
     <Animated.View
-      entering={fadeIn(220)}
+      entering={riseIn(300, Math.min(index, MAX_STAGGER) * 40, 12)}
       exiting={fadeOut()}
-      layout={LinearTransition.duration(220)}
-      style={[styles.row, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+      layout={LinearTransition.duration(240)}
+      style={{ width }}
     >
-      <Thumb memory={memory} />
-      <View style={styles.rowBody}>
-        <ThemedText style={[styles.rowTitle, { color: theme.text }]} numberOfLines={1}>
-          {titleOf(memory)}
-        </ThemedText>
-        <ThemedText style={[styles.rowMeta, { color: urgent ? theme.accentWarm : theme.textMuted }]} numberOfLines={1}>
-          {`${deletedAgo(deletedAt, now)} · ${left === 1 ? '1 day left' : `${left} days left`}`}
-        </ThemedText>
-      </View>
       <Pressable
-        onPress={() => onRestore(memory)}
+        onPress={() => onPress(memory)}
         accessibilityRole="button"
-        accessibilityLabel={`Restore ${titleOf(memory)}`}
-        style={({ pressed }) => [
-          styles.restore,
-          { borderColor: theme.text, transform: [{ scale: pressed ? 0.95 : 1 }], opacity: pressed ? 0.8 : 1 },
-        ]}
+        accessibilityLabel={`${titleOf(memory)}, ${left} days left. Restore or delete.`}
+        style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.85 : 1 }]}
       >
-        <ThemedText style={[styles.restoreText, { color: theme.text }]}>RESTORE</ThemedText>
-      </Pressable>
-      <Pressable
-        onPress={() => onDelete(memory)}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={`Delete ${titleOf(memory)} now`}
-        style={({ pressed }) => [styles.deleteNow, { opacity: pressed ? 0.5 : 1 }]}
-      >
-        <Trash2 size={16} color={theme.destructive} />
+        <View style={[styles.cover, { borderColor: theme.border, backgroundColor: theme.backgroundSelected }]}>
+          <Cover memory={memory} />
+          <View
+            style={[styles.badge, { backgroundColor: urgent ? theme.accentWarm : 'rgba(0,0,0,0.55)' }]}
+            pointerEvents="none"
+          >
+            <ThemedText style={styles.badgeText}>{left === 1 ? '1 DAY' : `${left} DAYS`}</ThemedText>
+          </View>
+        </View>
+        <View style={styles.caption}>
+          <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+            {titleOf(memory)}
+          </ThemedText>
+          <ThemedText style={[styles.meta, { color: theme.textMuted }]} numberOfLines={1}>
+            {deletedAgo(deletedAt, now)}
+          </ThemedText>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -141,7 +140,10 @@ function TrashRow({
 export default function TrashScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const columnWidth = (screenWidth - GUTTER * 2 - GAP) / 2;
   const restoreComposition = useJournalStore((state) => state.restoreComposition);
+  const restoreAll = useJournalStore((state) => state.restoreAllCompositions);
   const [items, setItems] = useState<Composition[] | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -162,8 +164,10 @@ export default function TrashScreen() {
     }, [reload]),
   );
 
+  const without = (id: number) => setItems((current) => current?.filter((m) => m.id !== id) ?? null);
+
   const restore = async (memory: Composition) => {
-    setItems((current) => current?.filter((m) => m.id !== memory.id) ?? null);
+    without(memory.id);
     try {
       await restoreComposition(memory.id);
       haptic.success();
@@ -175,15 +179,15 @@ export default function TrashScreen() {
     }
   };
 
-  const deleteNow = (memory: Composition) => {
+  const deleteForever = (memory: Composition) => {
     haptic.warning();
     Alert.alert('DELETE FOREVER?', "This memory and its photos and audio will be gone. This can't be undone.", [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'Delete forever',
         style: 'destructive',
         onPress: async () => {
-          setItems((current) => current?.filter((m) => m.id !== memory.id) ?? null);
+          without(memory.id);
           try {
             await purgeMemories([memory]);
           } catch (error) {
@@ -196,62 +200,126 @@ export default function TrashScreen() {
     ]);
   };
 
-  const confirmEmpty = () => {
-    haptic.warning();
-    Alert.alert('EMPTY RECENTLY DELETED?', `All ${items?.length ?? 0} memories here will be gone for good. This can't be undone.`, [
+  const openActions = (memory: Composition) => {
+    haptic.tap();
+    Alert.alert(titleOf(memory).toUpperCase(), `${daysLeftInTrash(memory.deletedAt ?? now, now)} days until it's deleted for good.`, [
+      { text: 'Restore', onPress: () => restore(memory) },
+      { text: 'Delete forever', style: 'destructive', onPress: () => deleteForever(memory) },
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Empty',
-        style: 'destructive',
-        onPress: async () => {
-          setItems([]);
-          try {
-            await emptyTrash();
-          } catch (error) {
-            console.error('Failed to empty Recently Deleted', error);
-            Alert.alert("COULDN'T EMPTY", 'Please try again.');
-            reload();
-          }
-        },
-      },
     ]);
   };
 
-  const hasItems = (items?.length ?? 0) > 0;
+  const confirmRestoreAll = async () => {
+    haptic.press();
+    setItems([]);
+    try {
+      await restoreAll();
+      haptic.success();
+    } catch (error) {
+      console.error('Failed to restore all memories', error);
+      Alert.alert("COULDN'T RESTORE", 'Please try again.');
+      reload();
+    }
+  };
+
+  const confirmEmpty = () => {
+    haptic.warning();
+    const count = items?.length ?? 0;
+    Alert.alert(
+      'EMPTY RECENTLY DELETED?',
+      `${count === 1 ? 'This memory' : `All ${count} memories`} and their photos and audio will be gone for good. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Empty',
+          style: 'destructive',
+          onPress: async () => {
+            setItems([]);
+            try {
+              await emptyTrash();
+            } catch (error) {
+              console.error('Failed to empty Recently Deleted', error);
+              Alert.alert("COULDN'T EMPTY", 'Please try again.');
+              reload();
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const count = items?.length ?? 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
-      <ScreenHeader
-        title="Recently Deleted"
-        actions={
-          hasItems
-            ? [<HeaderIconButton key="empty" icon={Trash2} tone="danger" onPress={confirmEmpty} accessibilityLabel="Empty Recently Deleted" />]
-            : []
-        }
-      />
+      <ScreenHeader title="Recently Deleted" />
 
-      {items === null ? null : hasItems ? (
-        <Animated.FlatList
-          data={items}
-          keyExtractor={(memory) => String(memory.id)}
-          renderItem={({ item }) => <TrashRow memory={item} now={now} onRestore={restore} onDelete={deleteNow} />}
-          itemLayoutAnimation={LinearTransition.duration(220)}
-          ListHeaderComponent={
-            <ThemedText {...BALANCED_TEXT} style={[styles.note, { color: theme.textMuted }]}>
-              {`memories wait here for ${TRASH_DAYS} days, then they're deleted for good.`}
-            </ThemedText>
-          }
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
-          showsVerticalScrollIndicator={false}
-        />
+      {items === null ? null : count > 0 ? (
+        <>
+          <Animated.FlatList
+            data={items}
+            keyExtractor={(memory) => String(memory.id)}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            renderItem={({ item, index }) => (
+              <DeletedCard memory={item} index={index} width={columnWidth} now={now} onPress={openActions} />
+            )}
+            itemLayoutAnimation={LinearTransition.duration(240)}
+            ListHeaderComponent={
+              <Animated.View entering={fadeIn(260)} style={[styles.summary, { borderColor: theme.border }]}>
+                <View style={styles.summaryCount}>
+                  <ThemedText style={[styles.countNumber, { color: theme.text }]}>
+                    {String(count).padStart(2, '0')}
+                  </ThemedText>
+                  <ThemedText style={[styles.countLabel, { color: theme.textMuted }]}>
+                    {count === 1 ? 'memory waiting' : 'memories waiting'}
+                  </ThemedText>
+                </View>
+                <ThemedText style={[styles.summaryNote, { color: theme.textMuted }]} numberOfLines={1}>
+                  {`auto-deletes in ${TRASH_DAYS} days`}
+                </ThemedText>
+              </Animated.View>
+            }
+            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 }]}
+            showsVerticalScrollIndicator={false}
+          />
+
+          <Animated.View
+            entering={riseIn(300, 160, 16)}
+            style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: theme.background, borderTopColor: theme.border }]}
+          >
+            <Pressable
+              onPress={confirmRestoreAll}
+              accessibilityRole="button"
+              accessibilityLabel="Restore all memories"
+              style={({ pressed }) => [
+                styles.barButton,
+                { backgroundColor: theme.text, borderColor: theme.text, transform: [{ scale: pressed ? 0.97 : 1 }] },
+              ]}
+            >
+              <ThemedText style={[styles.barText, { color: theme.background }]}>RESTORE ALL</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={confirmEmpty}
+              accessibilityRole="button"
+              accessibilityLabel="Empty Recently Deleted"
+              style={({ pressed }) => [
+                styles.barButton,
+                { borderColor: theme.destructive, transform: [{ scale: pressed ? 0.97 : 1 }] },
+              ]}
+            >
+              <ThemedText style={[styles.barText, { color: theme.destructive }]}>EMPTY BIN</ThemedText>
+            </Pressable>
+          </Animated.View>
+        </>
       ) : (
         <View style={styles.empty}>
           <Animated.View entering={fadeIn(400)} style={styles.emptyArt}>
             <AsciiArt art={BIN_ART} color={theme.textMuted} fontSize={12} />
           </Animated.View>
           <Animated.View entering={riseIn(300, 80)}>
-            <ThemedText {...BALANCED_TEXT} style={[styles.note, { color: theme.textSecondary }]}>
+            <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textSecondary }]}>
               {`nothing here.\nwhat you delete waits ${TRASH_DAYS} days.`}
             </ThemedText>
           </Animated.View>
@@ -266,67 +334,114 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: {
-    paddingHorizontal: 16,
+    paddingHorizontal: GUTTER,
     paddingTop: 8,
-    gap: 10,
-  },
-  note: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    marginBottom: 6,
   },
   row: {
+    gap: GAP,
+    marginBottom: 20,
+  },
+  summary: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 10,
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingBottom: 18,
+    marginBottom: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  summaryCount: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+  },
+  countNumber: {
+    fontFamily: 'BitcountGridDouble-Light',
+    fontSize: 32,
+    lineHeight: 36,
+    fontVariant: ['tabular-nums'],
+  },
+  countLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  summaryNote: {
+    flexShrink: 1,
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 10,
+    lineHeight: 14,
+    textAlign: 'right',
+  },
+  card: {
+    gap: 10,
+  },
+  cover: {
+    aspectRatio: 0.8,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  thumb: {
-    width: THUMB,
-    height: THUMB,
-    borderRadius: 10,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
+  },
+  coverFace: {
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 14,
   },
-  rowBody: {
-    flex: 1,
+  badge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 9,
+    lineHeight: 12,
+    letterSpacing: 1,
+    color: '#FFFFFF',
+  },
+  caption: {
     gap: 3,
+    paddingHorizontal: 2,
   },
-  rowTitle: {
+  title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 13,
     lineHeight: 18,
   },
-  rowMeta: {
-    fontFamily: 'JetBrainsMono-Regular',
+  meta: {
+    fontFamily: 'JetBrainsMono-Medium',
     fontSize: 10,
     lineHeight: 14,
+    letterSpacing: 0.4,
   },
-  restore: {
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: GUTTER,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  barButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  restoreText: {
+  barText: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 10,
+    fontSize: 11,
     lineHeight: 14,
-    letterSpacing: 1.2,
-  },
-  deleteNow: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    letterSpacing: 1.6,
   },
   empty: {
     flex: 1,
@@ -338,5 +453,11 @@ const styles = StyleSheet.create({
   },
   emptyArt: {
     opacity: 0.6,
+  },
+  emptyText: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

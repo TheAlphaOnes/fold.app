@@ -432,6 +432,12 @@ export async function restoreComposition(id: number): Promise<void> {
   await db.runAsync('UPDATE compositions SET deleted_at = NULL WHERE id = ?', id);
 }
 
+/** Bring every memory back from the bin. */
+export async function restoreAllCompositions(): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE compositions SET deleted_at = NULL WHERE deleted_at IS NOT NULL');
+}
+
 /** Everything in the bin, most recently deleted first. */
 export async function getTrashedCompositions(): Promise<Composition[]> {
   const db = await getDatabase();
