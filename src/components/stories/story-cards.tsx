@@ -31,15 +31,17 @@ const coverSettle = new Keyframe({
 interface StoryGridCardProps {
   story: Story;
   index: number;
+  /** Fixed column width, so a lone card in the last row keeps its size. */
+  width: number;
   onPress: (story: Story) => void;
 }
 
-export function StoryGridCard({ story, index, onPress }: StoryGridCardProps) {
+export function StoryGridCard({ story, index, width, onPress }: StoryGridCardProps) {
   const theme = useTheme();
   const span = storySpanLabel(story);
 
   return (
-    <Animated.View entering={riseIn(300, Math.min(index, MAX_STAGGER_INDEX) * 40, 12)} style={styles.wrap}>
+    <Animated.View entering={riseIn(300, Math.min(index, MAX_STAGGER_INDEX) * 40, 12)} style={{ width }}>
       <Pressable
         onPress={() => {
           haptic.tap();
@@ -69,9 +71,6 @@ export function StoryGridCard({ story, index, onPress }: StoryGridCardProps) {
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-  },
   card: {
     gap: 10,
   },

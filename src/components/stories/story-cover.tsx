@@ -54,7 +54,7 @@ export function StoryCover({ story }: { story: Story }) {
 
   if (visuals.length === 0) {
     return (
-      <View style={[StyleSheet.absoluteFill, styles.empty, { backgroundColor: theme.backgroundSelected }]}>
+      <View style={[StyleSheet.absoluteFill, styles.empty, { backgroundColor: theme.backgroundElement }]}>
         <Book size={22} color={theme.textMuted} strokeWidth={1.5} />
       </View>
     );

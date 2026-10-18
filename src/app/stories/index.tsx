@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
@@ -35,6 +35,8 @@ export default function StoryBoardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const columnWidth = (screenWidth - GUTTER * 2 - GAP) / 2;
   const { stories, refreshStories } = useStoriesStore();
 
   const [isCreating, setIsCreating] = useState(false);
@@ -141,7 +143,9 @@ export default function StoryBoardScreen() {
         keyExtractor={(story) => String(story.id)}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        renderItem={({ item, index }) => <StoryGridCard story={item} index={index} onPress={openStory} />}
+        renderItem={({ item, index }) => (
+          <StoryGridCard story={item} index={index} width={columnWidth} onPress={openStory} />
+        )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
