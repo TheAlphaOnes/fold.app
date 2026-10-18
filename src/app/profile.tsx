@@ -271,14 +271,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  // Explicit line heights: the default text style's 24px line box was what
+  // pushed the name and date of birth apart.
   identityName: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 14,
-    marginBottom: 2,
+    lineHeight: 18,
   },
   identityMeta: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10, textTransform: 'uppercase',
+    fontSize: 10,
+    lineHeight: 13,
+    textTransform: 'uppercase',
     color: '#878787',
   },
   headerActions: {

@@ -44,7 +44,7 @@ export function ComposeBottomBar({ storyLabel, hasStory, onOpenStories, bottomIn
     <View
       style={[
         styles.container,
-        { borderTopColor: theme.border, paddingBottom: keyboardShown ? 10 : Math.max(bottomInset, 12) },
+        { paddingBottom: keyboardShown ? 10 : Math.max(bottomInset, 12) },
       ]}
     >
       <Pressable
@@ -74,7 +74,6 @@ export function ComposeBottomBar({ storyLabel, hasStory, onOpenStories, bottomIn
 
 const styles = StyleSheet.create({
   container: {
-    borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 10,
     paddingHorizontal: 24,
     flexDirection: 'row',
