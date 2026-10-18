@@ -20,6 +20,7 @@ import {
 
 import { useJournalStore } from '@/hooks/use-journal';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import { endRecordingSession } from '@/utils/audio-session';
 import type { MediaElement } from '@/types/journal';
 
 export type CaptureStartResult = 'started' | 'denied' | 'released' | 'failed';
@@ -56,11 +57,15 @@ export function useQuickCapture() {
       await AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
 
-      if (!recordIntentRef.current) return 'released';
+      if (!recordIntentRef.current) {
+        await endRecordingSession();
+        return 'released';
+      }
       await recorder.record();
       return 'started';
     } catch (error) {
       console.error('Failed to start quick record', error);
+      await endRecordingSession();
       return 'failed';
     }
   }, [recorder]);
@@ -74,6 +79,8 @@ export function useQuickCapture() {
     isStoppingRef.current = true;
     try {
       await recorder.stop();
+      // Leave record mode right away: iOS mutes haptics while it is active.
+      await endRecordingSession();
       const uri = recorder.uri;
       if (!uri) return false;
 

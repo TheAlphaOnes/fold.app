@@ -4,14 +4,13 @@
  * Call sites name the *moment* (tap, select, press, thud, toggle, success,
  * warning, error); this module decides how each platform should feel it.
  *
- * Why not expo-haptics' impact/selection on Android: they drive the motor
- * at amplitude 30–70 of 255, which most Android motors barely render, so the
- * app felt flat there. Instead:
- *   - everyday taps use Android's own tuned click effects
- *     (View.performHapticFeedback), the same ones the system UI uses, with
- *     fallbacks for constants older OS versions lack;
- *   - the big moments use short full-strength vibration pulses, so they are
- *     felt even on modest hardware.
+ * Android uses direct vibration pulses at the motor's full default strength.
+ * expo-haptics' impact/selection drive it at amplitude 30–70 of 255 (barely
+ * perceptible), and the system click effects (performHapticFeedback) are
+ * skipped silently when the phone's touch-feedback setting is off or by
+ * some OEMs — so nothing was felt. Pulses are kept at 10ms or longer, since
+ * many motors do not fire shorter ones. They still respect the phone's
+ * vibration settings and the in-app Haptics switch.
  * iOS keeps the Taptic Engine through expo-haptics.
  *
  * Respects the in-app Haptics setting. Never throws.
@@ -19,7 +18,6 @@
 
 import { Platform, Vibration } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { AndroidHaptics } from 'expo-haptics';
 
 import { useSettingsStore } from '@/hooks/use-settings';
 
@@ -29,19 +27,6 @@ const isIOS = Platform.OS === 'ios';
 function enabled(): boolean {
   if (!isAndroid && !isIOS) return false;
   return useSettingsStore.getState().settings.hapticsEnabled;
-}
-
-/** Tries each Android system effect in order; ends in a short pulse if none exist. */
-function androidEffect(effects: AndroidHaptics[], fallbackPulseMs: number): void {
-  const attempt = (index: number) => {
-    const effect = effects[index];
-    if (!effect) {
-      Vibration.vibrate(fallbackPulseMs);
-      return;
-    }
-    Haptics.performAndroidHapticsAsync(effect).catch(() => attempt(index + 1));
-  };
-  attempt(0);
 }
 
 /** Pattern: [wait, buzz, wait, buzz, ...] in ms, at the motor's default (full) strength. */
@@ -57,28 +42,28 @@ export const haptic = {
   /** A light UI tap: chips, icon buttons, navigation. */
   tap(): void {
     if (!enabled()) return;
-    if (isAndroid) androidEffect([AndroidHaptics.Virtual_Key, AndroidHaptics.Keyboard_Tap], 10);
+    if (isAndroid) androidPulse([0, 12]);
     else swallow(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
   },
 
   /** A selection moving: list ticks, segment changes, scrubbing past items. */
   select(): void {
     if (!enabled()) return;
-    if (isAndroid) androidEffect([AndroidHaptics.Segment_Tick, AndroidHaptics.Clock_Tick], 6);
+    if (isAndroid) androidPulse([0, 10]);
     else swallow(Haptics.selectionAsync());
   },
 
   /** A deliberate primary press: save, open, confirm a choice. */
   press(): void {
     if (!enabled()) return;
-    if (isAndroid) androidEffect([AndroidHaptics.Context_Click, AndroidHaptics.Virtual_Key], 16);
+    if (isAndroid) androidPulse([0, 20]);
     else swallow(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
   },
 
   /** A heavy, physical moment: lifting an item, starting a hold, sharing. */
   thud(): void {
     if (!enabled()) return;
-    if (isAndroid) androidPulse([0, 28]);
+    if (isAndroid) androidPulse([0, 35]);
     else swallow(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy));
   },
 
@@ -86,10 +71,8 @@ export const haptic = {
   toggle(on: boolean): void {
     if (!enabled()) return;
     if (isAndroid) {
-      androidEffect(
-        on ? [AndroidHaptics.Toggle_On, AndroidHaptics.Context_Click] : [AndroidHaptics.Toggle_Off, AndroidHaptics.Virtual_Key],
-        12,
-      );
+      // On: a firm click; off: a lighter one.
+      androidPulse(on ? [0, 18] : [0, 12]);
     } else {
       swallow(Haptics.impactAsync(on ? Haptics.ImpactFeedbackStyle.Rigid : Haptics.ImpactFeedbackStyle.Soft));
     }

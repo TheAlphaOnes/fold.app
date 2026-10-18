@@ -70,6 +70,7 @@ import {
 } from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { arrangeStickers } from "@/utils/sticker-layout";
+import { endRecordingSession } from "@/utils/audio-session";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
@@ -806,6 +807,8 @@ export default function ComposeScreen() {
       if (recorderState.isRecording) {
         // Stop recording
         await recorder.stop();
+        // Leave record mode right away: iOS mutes haptics while it is active.
+        await endRecordingSession();
         const uri = recorder.uri;
         if (uri) {
           // Copy to safe document directory
