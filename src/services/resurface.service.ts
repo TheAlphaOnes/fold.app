@@ -1,15 +1,14 @@
 /**
- * Resurface — picks one memory from the user's past to show today.
+ * Resurface — gathers moments from the user's past to show today.
  *
- * Priority, first match wins:
+ * Moments come from four tiers, shown in this order:
  *   1. this calendar day in an earlier year   ("2 YEARS AGO TODAY")
  *   2. exactly one month ago                  ("ONE MONTH AGO")
  *   3. exactly one week ago                   ("ONE WEEK AGO")
  *   4. any memory older than a week           ("FROM MARCH 2026")
- * Photo/video memories win across all tiers (a photo from a week ago beats
- * words from a year ago); text-only memories are used only when the past
- * holds no media at all. The choice is seeded by today's date, so it stays put
- * for the whole day and changes tomorrow.
+ * Photo/video memories fill the strip first; text-only memories only top it
+ * up to a minimum. The older tier is shuffled with today's date as the seed,
+ * so the strip holds still all day and changes tomorrow.
  */
 
 import {
@@ -32,15 +31,6 @@ export interface ResurfacedMemory {
 
 export function hasVisualMedia(memory: Composition): boolean {
   return memory.mediaElements.some((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
-}
-
-/** Stable per-day index into a list, so the pick does not change on every render. */
-function seededPick<T>(items: T[], today: Date): T | null {
-  if (items.length === 0) return null;
-  const key = toDayKey(today);
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  return items[hash % items.length];
 }
 
 function yearsAgoLabel(memory: Composition, today: Date): string {
@@ -86,21 +76,49 @@ async function loadTiers(today: Date): Promise<Tier[]> {
   return tiers;
 }
 
-export async function findResurfacedMemory(today: Date = new Date()): Promise<ResurfacedMemory | null> {
+/** Deterministic per-day shuffle so the strip holds still all day. */
+function seededShuffle<T>(items: T[], today: Date): T[] {
+  const key = toDayKey(today);
+  let seed = 0;
+  for (let i = 0; i < key.length; i++) seed = (seed * 31 + key.charCodeAt(i)) >>> 0;
+  const next = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
+ * Today's strip of past moments, in tier order (years ago today, a month
+ * ago, a week ago, then older). Photo/video memories fill the strip first;
+ * text-only memories are added only to reach the minimum.
+ */
+export async function findPastMoments(
+  today: Date = new Date(),
+  { max = 8, min = 3 }: { max?: number; min?: number } = {},
+): Promise<ResurfacedMemory[]> {
   const tiers = await loadTiers(today);
+  const seen = new Set<number>();
+  const visual: ResurfacedMemory[] = [];
+  const words: ResurfacedMemory[] = [];
 
-  // Pass 1: a photo or video from any tier beats words from a closer one —
-  // this card exists to bring colour back.
-  for (const tier of tiers) {
-    const pick = seededPick(tier.memories.filter(hasVisualMedia), today);
-    if (pick) return { memory: pick, label: tier.label(pick) };
-  }
+  tiers.forEach((tier, index) => {
+    // The open-ended "older" tier is shuffled per day; dated tiers keep order.
+    const pool = index === tiers.length - 1 ? seededShuffle(tier.memories, today) : tier.memories;
+    for (const memory of pool) {
+      if (seen.has(memory.id)) continue;
+      seen.add(memory.id);
+      const moment = { memory, label: tier.label(memory) };
+      (hasVisualMedia(memory) ? visual : words).push(moment);
+    }
+  });
 
-  // Pass 2: no media anywhere in the past; fall back to any memory.
-  for (const tier of tiers) {
-    const pick = seededPick(tier.memories, today);
-    if (pick) return { memory: pick, label: tier.label(pick) };
-  }
-
-  return null;
+  const strip = visual.slice(0, max);
+  if (strip.length < min) strip.push(...words.slice(0, min - strip.length));
+  return strip;
 }
