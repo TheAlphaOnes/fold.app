@@ -173,7 +173,7 @@ export const ShareTray = memo(function ShareTray({
   const bottomPad = Math.max(insets.bottom, 20);
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, { zIndex: 10000, elevation: 1000 }]} pointerEvents="box-none">
       {/* Backdrop */}
       <Animated.View style={[s.overlay, overlayStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />

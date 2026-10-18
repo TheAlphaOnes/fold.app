@@ -224,7 +224,7 @@ export function StoryPicker(props: StoryPickerProps) {
   if (!mounted) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 10000, elevation: 1000 }]}>
       {/* Backdrop — absolutely positioned tap target */}
       <Animated.View style={[StyleSheet.absoluteFill, overlayStyle, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={props.onClose} />

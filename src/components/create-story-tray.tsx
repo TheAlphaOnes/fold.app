@@ -90,7 +90,7 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
   if (!mounted) return null;
 
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 10000, elevation: 1000 }]}>
       {/* Backdrop — absolutely positioned tap target */}
       <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
@@ -98,7 +98,7 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
 
       {/* Content — flex-based so KeyboardAvoidingView works */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
         pointerEvents="box-none"
         keyboardVerticalOffset={0}
