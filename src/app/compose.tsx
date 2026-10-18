@@ -40,7 +40,6 @@ import {
   Camera,
   Video,
   Smile,
-  Book,
   ChevronDown
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -74,6 +73,7 @@ import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
 import { StoryPicker } from "@/components/story-picker";
+import { ComposeBottomBar } from "@/components/compose/compose-bottom-bar";
 import { GifPicker } from "@/components/gif-picker";
 import type { MusicTrack } from "@/hooks/use-music-store";
 import { useStoriesStore } from "@/hooks/use-stories";
@@ -237,6 +237,7 @@ export default function ComposeScreen() {
   });
   const [fontFamily, setFontFamily] = useState(existingComposition?.fontFamily ?? "JetBrainsMono-Medium");
   const [fontSize, setFontSize] = useState(existingComposition?.fontSize ?? 21);
+  const [textColor, setTextColor] = useState<string | null>(existingComposition?.textColor ?? null);
 
   // Sync state if existingComposition resolves later
   useEffect(() => {
@@ -245,6 +246,7 @@ export default function ComposeScreen() {
       setMediaElements(existingComposition.mediaElements || []);
       setFontFamily(existingComposition.fontFamily || "JetBrainsMono-Medium");
       setFontSize(existingComposition.fontSize || 21);
+      setTextColor(existingComposition.textColor ?? null);
       if (existingComposition.location?.name) {
         setLocationName(existingComposition.location.name);
       }
@@ -635,6 +637,7 @@ export default function ComposeScreen() {
           mediaElements,
           fontFamily,
           fontSize,
+          textColor,
           locationName,
           locationCoords: locationCoords
             ? JSON.stringify(locationCoords)
@@ -647,6 +650,7 @@ export default function ComposeScreen() {
           mediaElements,
           fontFamily,
           fontSize,
+          textColor,
           locationName,
           locationCoords: locationCoords
             ? JSON.stringify(locationCoords)
@@ -870,29 +874,6 @@ export default function ComposeScreen() {
                 {timeString}
               </ThemedText>
               
-              <View style={{ flex: 1 }} />
-              
-              <Pressable
-                onPress={() => setIsStoryPickerVisible(true)}
-                style={({ pressed }) => [
-                  styles.storyTagButton,
-                  { opacity: pressed ? 0.7 : 1 },
-                  storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }
-                ]}
-              >
-                <Book size={12} color={storyIds.length > 0 ? theme.background : theme.text} />
-                <ThemedText 
-                  style={[styles.storyTagText, { color: storyIds.length > 0 ? theme.background : theme.text }]}
-                  numberOfLines={1} 
-                  ellipsizeMode="tail"
-                >
-                  {storyIds.length === 1 
-                    ? (stories.find(s => s.id === storyIds[0])?.title.toUpperCase() || 'STORY')
-                    : storyIds.length > 1
-                    ? `${storyIds.length} SELECTED`
-                    : 'STORY'}
-                </ThemedText>
-              </Pressable>
             </View>
 
                                                 <ScrollView
@@ -1030,7 +1011,7 @@ export default function ComposeScreen() {
             style={[
               styles.bodyInput,
               {
-                color: theme.text,
+                color: textColor ?? theme.text,
                 fontFamily,
                 ...memoryTextMetrics(fontFamily, fontSize),
               },
@@ -1066,8 +1047,20 @@ export default function ComposeScreen() {
           )}
         </ScrollView>
 
-        {/* Bottom safe area pad */}
-        <View style={{ height: insets.bottom || 12 }} />
+        <ComposeBottomBar
+          storyLabel={
+            storyIds.length === 1
+              ? stories.find((s) => s.id === storyIds[0])?.title.toUpperCase() || 'STORY'
+              : storyIds.length > 1
+                ? `${storyIds.length} STORIES`
+                : 'STORY'
+          }
+          hasStory={storyIds.length > 0}
+          onOpenStories={() => setIsStoryPickerVisible(true)}
+          textColor={textColor}
+          onChangeTextColor={setTextColor}
+          bottomInset={insets.bottom}
+        />
       </KeyboardAvoidingView>
 
       {/* Full-screen recording overlay — shared with the home quick-record */}
@@ -1228,22 +1221,6 @@ const styles = StyleSheet.create({
   attachText: {
     fontFamily: "JetBrainsMono-Medium",
     fontSize: 12,
-  },
-  storyTagButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    flexShrink: 1,
-  },
-  storyTagText: {
-    fontFamily: "JetBrainsMono-Medium",
-    fontSize: 11,
-    letterSpacing: 0.5,
-    flexShrink: 1,
   },
   metaDate: {
     fontFamily: "JetBrainsMono-Medium",

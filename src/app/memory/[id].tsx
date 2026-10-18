@@ -47,12 +47,12 @@ function StoryPickerThumbnail({ media, style }: { media: { uri: string; type: st
 
 // --- Types ---
 type SlideData =
-  | { type: 'text'; text: string; id: string; fontFamily?: string; fontSize?: number }
+  | { type: 'text'; text: string; id: string; fontFamily?: string; fontSize?: number; textColor?: string }
   | { type: 'media'; media: MediaElement; id: string };
 
 // --- Components ---
 
-function TextSlide({ text, width, fontFamily, fontSize }: { text: string; width: number; fontFamily?: string; fontSize?: number }) {
+function TextSlide({ text, width, fontFamily, fontSize, textColor }: { text: string; width: number; fontFamily?: string; fontSize?: number; textColor?: string }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   return (
@@ -70,7 +70,7 @@ function TextSlide({ text, width, fontFamily, fontSize }: { text: string; width:
       <Text style={[
         styles.textSlideContent, 
         { 
-          color: theme.text,
+          color: textColor ?? theme.text,
           fontFamily: fontFamily || 'JetBrainsMono-Regular',
           ...memoryTextMetrics(fontFamily, fontSize || 24),
           textAlign: 'center'
@@ -509,7 +509,8 @@ export default function MemoryDetailScreen() {
       text: composition.textContent, 
       id: 'text-slide',
       fontFamily: composition.fontFamily,
-      fontSize: composition.fontSize 
+      fontSize: composition.fontSize,
+      textColor: composition.textColor,
     });
   }
 
@@ -522,7 +523,7 @@ export default function MemoryDetailScreen() {
   const renderItem = ({ item, index }: { item: SlideData, index: number }) => {
     const isActive = index === currentIndex;
     if (item.type === 'text') {
-      return <TextSlide text={item.text} width={width} fontFamily={item.fontFamily} fontSize={item.fontSize} />;
+      return <TextSlide text={item.text} width={width} fontFamily={item.fontFamily} fontSize={item.fontSize} textColor={item.textColor} />;
     }
     return <MediaSlide media={item.media} width={width} height={height} isActive={isActive} />;
   };

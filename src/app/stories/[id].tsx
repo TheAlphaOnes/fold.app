@@ -47,6 +47,7 @@ interface StoryItem {
   content?: string;
   fontFamily?: string;
   fontSize?: number;
+  textColor?: string;
   metadata?: any;
 }
 
@@ -239,6 +240,7 @@ export default function StoryDetailScreen() {
           content: mem.textContent,
           fontFamily: mem.fontFamily,
           fontSize: mem.fontSize,
+          textColor: mem.textColor,
         });
       }
       

@@ -22,6 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 import * as Haptics from 'expo-haptics';
 import { VinylRecord } from '@/components/vinyl-record';
 import { getHighResArtwork } from '@/utils/media-attach';
+import { memoryTextMetrics } from '@/utils/memory-text';
 
 interface StoryItem {
   id: string;
@@ -31,6 +32,7 @@ interface StoryItem {
   content?: string;
   fontFamily?: string;
   fontSize?: number;
+  textColor?: string;
   metadata?: any;
 }
 
@@ -147,10 +149,9 @@ const ViewerCard = React.memo(({
             <Text 
               style={{
                 fontFamily: item.fontFamily || 'JetBrainsMono-Regular',
-                fontSize: Math.min((item.fontSize || 24) * 0.8, 32),
-                color: theme.text,
+                ...memoryTextMetrics(item.fontFamily, Math.min((item.fontSize || 24) * 0.8, 32)),
+                color: item.textColor ?? theme.text,
                 textAlign: 'center',
-                lineHeight: 32
               }}
               numberOfLines={10}
             >

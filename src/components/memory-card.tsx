@@ -393,7 +393,7 @@ export function MemoryCard({
               style={[
                 styles.textContent,
                 {
-                  color: theme.text,
+                  color: item.textColor ?? theme.text,
                   fontFamily: item.fontFamily || "JetBrainsMono-Regular",
                   ...memoryTextMetrics(item.fontFamily, item.fontSize || 21),
                 },
@@ -441,7 +441,7 @@ export function MemoryCard({
                   style={[
                     styles.singleMediaText,
                     {
-                      color: theme.text,
+                      color: item.textColor ?? theme.text,
                       fontFamily: item.fontFamily || "JetBrainsMono-Regular",
                       ...memoryTextMetrics(item.fontFamily, item.fontSize || 18),
                     },
@@ -463,7 +463,7 @@ export function MemoryCard({
                 style={[
                   styles.textContent,
                   {
-                    color: theme.text,
+                    color: item.textColor ?? theme.text,
                     fontFamily: item.fontFamily || "JetBrainsMono-Regular",
                     ...memoryTextMetrics(item.fontFamily, item.fontSize || 21),
                   },
