@@ -6,11 +6,11 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { FlatList, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { Plus } from 'lucide-react-native';
+import { Plus, Search, X } from 'lucide-react-native';
 
 import { ActionLink } from '@/components/action-link';
 import { AsciiArt } from '@/components/ascii-art';
@@ -25,7 +25,6 @@ import { fadeIn, riseIn } from '@/constants/motion';
 import { BALANCED_TEXT } from '@/constants/theme';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useTheme } from '@/hooks/use-theme';
-import { haptic } from '@/services/haptics';
 import { searchStories, sortStories, type StorySort } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
 
@@ -42,6 +41,12 @@ export default function StoryBoardScreen() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const toggleSearch = () => {
+    // Closing the search also clears it, so the full board comes back.
+    if (searchOpen) setQuery('');
+    setSearchOpen((open) => !open);
+  };
   const [sort, setSort] = useState<StorySort>('recent');
 
   useFocusEffect(
@@ -52,23 +57,21 @@ export default function StoryBoardScreen() {
 
   const visible = useMemo(() => sortStories(searchStories(stories, query), sort), [stories, query, sort]);
 
-  const totalMemories = useMemo(
-    () => stories.reduce((sum, story) => sum + (story.memoryCount ?? 0), 0),
-    [stories],
-  );
 
   const openStory = useCallback((story: Story) => router.push(`/stories/${story.id}`), [router]);
   const startCreating = () => setIsCreating(true);
 
-  const summary =
-    stories.length === 0
-      ? 'no chapters yet'
-      : `${stories.length} ${stories.length === 1 ? 'chapter' : 'chapters'}  ·  ${totalMemories} ${totalMemories === 1 ? 'memory' : 'memories'}`;
 
   const header = (
     <View style={styles.listHeader}>
       {stories.length > 0 && (
-        <StoryBoardControls query={query} onQueryChange={setQuery} sort={sort} onSortChange={setSort} />
+        <StoryBoardControls
+          searchOpen={searchOpen}
+          query={query}
+          onQueryChange={setQuery}
+          sort={sort}
+          onSortChange={setSort}
+        />
       )}
     </View>
   );
@@ -103,9 +106,19 @@ export default function StoryBoardScreen() {
 
       <ScreenHeader
         title="Story Board"
-        subtitle={summary}
-        divider
-        actions={<HeaderIconButton icon={Plus} tone="primary" onPress={startCreating} accessibilityLabel="New chapter" />}
+        actions={[
+          ...(stories.length > 0
+            ? [
+                <HeaderIconButton
+                  key="search"
+                  icon={searchOpen ? X : Search}
+                  onPress={toggleSearch}
+                  accessibilityLabel={searchOpen ? 'Close search' : 'Search chapters'}
+                />,
+              ]
+            : []),
+          <HeaderIconButton key="new" icon={Plus} onPress={startCreating} accessibilityLabel="New chapter" />,
+        ]}
       />
 
       <FlatList

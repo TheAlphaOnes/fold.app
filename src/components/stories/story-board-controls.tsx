@@ -9,24 +9,34 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 
+import Animated from 'react-native-reanimated';
+
 import { ThemedText } from '@/components/themed-text';
+import { fadeOut, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { STORY_SORTS, type StorySort } from '@/utils/story-meta';
 
 interface StoryBoardControlsProps {
+  /** The search field is shown only after the header's search button is tapped. */
+  searchOpen: boolean;
   query: string;
   onQueryChange: (query: string) => void;
   sort: StorySort;
   onSortChange: (sort: StorySort) => void;
 }
 
-export function StoryBoardControls({ query, onQueryChange, sort, onSortChange }: StoryBoardControlsProps) {
+export function StoryBoardControls({ searchOpen, query, onQueryChange, sort, onSortChange }: StoryBoardControlsProps) {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
-      <View style={[styles.search, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+      {searchOpen && (
+      <Animated.View
+        entering={riseIn(220, 0, -8)}
+        exiting={fadeOut(120)}
+        style={[styles.search, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}
+      >
         <Search size={14} color={theme.textMuted} />
         <TextInput
           value={query}
@@ -35,6 +45,7 @@ export function StoryBoardControls({ query, onQueryChange, sort, onSortChange }:
           placeholderTextColor={theme.textMuted}
           style={[styles.input, { color: theme.text }]}
           returnKeyType="search"
+          autoFocus
           autoCorrect={false}
           autoCapitalize="none"
           cursorColor={theme.accentWarm}
@@ -54,7 +65,8 @@ export function StoryBoardControls({ query, onQueryChange, sort, onSortChange }:
             <X size={14} color={theme.textMuted} />
           </Pressable>
         )}
-      </View>
+      </Animated.View>
+      )}
 
       <ScrollView
         horizontal

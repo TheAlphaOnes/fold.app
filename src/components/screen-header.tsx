@@ -1,13 +1,14 @@
 /**
- * ScreenHeader — the one header for pushed screens (story board, story,
- * settings, ...), so every screen opens with the same geometry:
+ * ScreenHeader — the floating-pill header used by the story screens:
  *
- *   [ back ]  TITLE                       [ action ] [ action ]
- *             subtitle
+ *   ( ← )          [  TITLE  ]          ( a ) ( b )
  *
- * The title takes all the space between the buttons and only truncates at
- * the true edge. HeaderIconButton is the shared 40pt round control used for
- * both the leading button and the actions.
+ * A round back button, the title in a centred pill, and round actions. The
+ * pill is centred on the screen and inset by the wider of the two button
+ * groups, so it stays optically centred while using all the room it has —
+ * a long title only truncates at the true edge.
+ *
+ * HeaderIconButton is the shared 40pt round control for both sides.
  */
 
 import React from 'react';
@@ -21,8 +22,11 @@ import { haptic } from '@/services/haptics';
 import { goBack } from '@/utils/navigation';
 
 const BUTTON = 40;
+const ACTION_GAP = 12;
+const SIDE_PADDING = 16;
+const PILL_CLEARANCE = 12;
 
-type ButtonTone = 'default' | 'primary' | 'danger';
+type ButtonTone = 'default' | 'danger';
 
 interface HeaderIconButtonProps {
   icon: LucideIcon;
@@ -33,9 +37,6 @@ interface HeaderIconButtonProps {
 
 export function HeaderIconButton({ icon: Icon, onPress, accessibilityLabel, tone = 'default' }: HeaderIconButtonProps) {
   const theme = useTheme();
-  const primary = tone === 'primary';
-  const iconColor = primary ? theme.background : tone === 'danger' ? theme.destructive : theme.text;
-
   return (
     <Pressable
       onPress={() => {
@@ -47,58 +48,58 @@ export function HeaderIconButton({ icon: Icon, onPress, accessibilityLabel, tone
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: primary ? theme.text : theme.backgroundElement,
-          borderColor: primary ? theme.text : theme.border,
-          transform: [{ scale: pressed ? 0.94 : 1 }],
-          opacity: pressed ? 0.85 : 1,
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
+          opacity: pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
         },
       ]}
     >
-      <Icon size={16} color={iconColor} strokeWidth={primary ? 2.6 : 2} />
+      <Icon size={16} color={tone === 'danger' ? theme.destructive : theme.text} />
     </Pressable>
   );
 }
 
 interface ScreenHeaderProps {
   title: string;
-  subtitle?: string;
-  /** Right-hand controls, typically HeaderIconButtons. */
-  actions?: React.ReactNode;
+  /** Right-hand round actions, in order. */
+  actions?: React.ReactNode[];
   /** Defaults to going back (or home when there is no history). */
   onBack?: () => void;
   /** Lay the header over content (e.g. the story wheel) instead of above it. */
   floating?: boolean;
-  /** Hairline under the header, for screens whose content scrolls beneath it. */
-  divider?: boolean;
 }
 
-export function ScreenHeader({ title, subtitle, actions, onBack, floating = false, divider = false }: ScreenHeaderProps) {
+function groupWidth(count: number): number {
+  return count * BUTTON + Math.max(0, count - 1) * ACTION_GAP;
+}
+
+export function ScreenHeader({ title, actions = [], onBack, floating = false }: ScreenHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const top = Math.max(insets.top, 20);
+  const pillInset = SIDE_PADDING + Math.max(groupWidth(1), groupWidth(actions.length)) + PILL_CLEARANCE;
 
   return (
-    <View
-      style={[
-        styles.header,
-        { paddingTop: insets.top + 12 },
-        floating && styles.floating,
-        divider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
-      ]}
-    >
+    <View style={[styles.header, { paddingTop: top }, floating && styles.floating]}>
       <HeaderIconButton icon={ArrowLeft} onPress={onBack ?? (() => goBack())} accessibilityLabel="Back" />
 
-      <View style={styles.titleBlock}>
-        <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1} accessibilityRole="header">
-          {title.toUpperCase()}
-        </ThemedText>
-        {subtitle ? (
-          <ThemedText style={[styles.subtitle, { color: theme.textMuted }]} numberOfLines={1}>
-            {subtitle}
-          </ThemedText>
-        ) : null}
+      <View style={styles.actions}>
+        {actions.map((action, index) => (
+          <React.Fragment key={index}>{action}</React.Fragment>
+        ))}
       </View>
 
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
+      <View
+        style={[styles.pillSlot, { top, left: pillInset, right: pillInset }]}
+        pointerEvents="none"
+      >
+        <View style={[styles.pill, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1} accessibilityRole="header">
+            {title}
+          </ThemedText>
+        </View>
+      </View>
     </View>
   );
 }
@@ -106,45 +107,58 @@ export function ScreenHeader({ title, subtitle, actions, onBack, floating = fals
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingBottom: 14,
+    paddingHorizontal: SIDE_PADDING,
+    paddingBottom: 12,
+    zIndex: 100,
   },
   floating: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 100,
-  },
-  titleBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 15,
-    lineHeight: 20,
-    letterSpacing: 2,
-  },
-  subtitle: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 11,
-    lineHeight: 15,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: ACTION_GAP,
+  },
+  pillSlot: {
+    position: 'absolute',
+    height: BUTTON,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pill: {
+    maxWidth: '100%',
+    height: BUTTON,
+    paddingHorizontal: 16,
+    borderRadius: BUTTON / 2,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  title: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 14,
+    lineHeight: 18,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    // Balances the trailing letter-spacing on the last character.
+    marginLeft: 2,
   },
   button: {
     width: BUTTON,
     height: BUTTON,
     borderRadius: BUTTON / 2,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
+    borderWidth: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

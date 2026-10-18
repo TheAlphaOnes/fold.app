@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -10,15 +11,16 @@ import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { GrainBackground } from '@/components/grain-background';
-import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
 import { ToggleSwitch } from '@/components/toggle-switch';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
+import { goBack } from '@/utils/navigation';
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting, resetGuide } = useSettingsStore();
   
@@ -119,7 +121,19 @@ export default function SettingsScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
       
-      <ScreenHeader title="Settings" />
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <ThemedText style={[styles.title, { color: theme.text }]}>SETTINGS</ThemedText>
+        <Pressable 
+          onPress={() => goBack()}
+          style={({ pressed }) => [
+            styles.closeBtn, 
+            { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
+          ]}
+        >
+          <X size={16} color={theme.text} />
+        </Pressable>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Data Section */}
@@ -385,6 +399,27 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 21,
+    paddingBottom: 21,
+  },
+  title: {
+    fontFamily: 'JetBrainsMono-Bold',
+    fontSize: 16,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  closeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     paddingHorizontal: 21,

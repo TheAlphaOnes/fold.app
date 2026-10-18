@@ -480,18 +480,16 @@ export default function StoryDetailScreen() {
       {/* Header Overlay */}
       <ScreenHeader
         title={activeStory.title}
-        subtitle={`${activeStoryMemories.length} ${activeStoryMemories.length === 1 ? 'memory' : 'memories'}`}
         floating
-        actions={
-          <>
-            <HeaderIconButton
-              icon={viewMode === 'wheel' ? List : CircleDashed}
-              onPress={() => setViewMode((prev) => (prev === 'wheel' ? 'list' : 'wheel'))}
-              accessibilityLabel={viewMode === 'wheel' ? 'Show as list' : 'Show as wheel'}
-            />
-            <HeaderIconButton icon={Trash2} tone="danger" onPress={handleDelete} accessibilityLabel="Delete story" />
-          </>
-        }
+        actions={[
+          <HeaderIconButton
+            key="view"
+            icon={viewMode === 'wheel' ? List : CircleDashed}
+            onPress={() => setViewMode((prev) => (prev === 'wheel' ? 'list' : 'wheel'))}
+            accessibilityLabel={viewMode === 'wheel' ? 'Show as list' : 'Show as wheel'}
+          />,
+          <HeaderIconButton key="delete" icon={Trash2} tone="danger" onPress={handleDelete} accessibilityLabel="Delete story" />,
+        ]}
       />
 
       {/* Empty State */}
