@@ -41,12 +41,12 @@ import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
-const VIEWPORT_HEIGHT = 300;
+const VIEWPORT_HEIGHT = 380;
 const COLUMNS = 3;
-const GAP = 8;
-const SIDE_PADDING = 12;
-const PROFILE_GUTTER = 16; // profile screen's horizontal padding
-const FADE = 40;
+const GAP = 6;
+const SIDE_PADDING = 6;
+const PROFILE_GUTTER = 16; // profile screen's horizontal padding; the wall bleeds past it
+const FADE = 56;
 /** Pixels per second for each column — different rates make it feel like water. */
 const SPEEDS = [13, 9, 11];
 const ASPECTS = [0.75, 1, 1.3, 0.85, 1.15];
@@ -229,13 +229,13 @@ export function FromYourPastCard() {
   const { memories, loaded, draw, reshuffle } = useRandomPastMemories(18);
   const [paused, setPaused] = useState(false);
 
-  const columnWidth = (screenWidth - PROFILE_GUTTER * 2 - 2 - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  const columnWidth = (screenWidth - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
   const columns = useMemo(() => buildColumns(memories, columnWidth), [memories, columnWidth]);
 
   if (!loaded) return null;
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+    <View style={styles.section}>
       <View style={styles.rail}>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FROM YOUR PAST</ThemedText>
         {memories.length > 1 && (
@@ -278,8 +278,8 @@ export function FromYourPastCard() {
               </Animated.View>
             ))}
           </View>
-          <EdgeFade color={theme.backgroundElement} edge="top" />
-          <EdgeFade color={theme.backgroundElement} edge="bottom" />
+          <EdgeFade color={theme.background} edge="top" />
+          <EdgeFade color={theme.background} edge="bottom" />
         </Animated.View>
       ) : (
         <View style={styles.empty}>
@@ -293,19 +293,18 @@ export function FromYourPastCard() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
+  // Full-bleed section: no card chrome; the wall runs edge to edge and fades
+  // into the screen itself.
+  section: {
+    marginHorizontal: -PROFILE_GUTTER,
     marginBottom: 24,
   },
   rail: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: PROFILE_GUTTER,
+    paddingBottom: 4,
   },
   shuffle: {
     flexDirection: 'row',
@@ -322,7 +321,7 @@ const styles = StyleSheet.create({
     gap: GAP,
   },
   tile: {
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
@@ -339,8 +338,8 @@ const styles = StyleSheet.create({
     height: FADE,
   },
   empty: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: PROFILE_GUTTER,
+    paddingTop: 8,
   },
   emptyText: {
     fontFamily: 'JetBrainsMono-Regular',
