@@ -153,9 +153,6 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* Today's memory from the past — photo-first, opens the memory */}
-        <FromYourPastCard />
-
         {/* Combined Dashboard Card */}
         <StreakCard compositions={compositions} />
 
@@ -240,6 +237,9 @@ export default function ProfileScreen() {
             onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)}
           />
         </View>
+
+        {/* Today's memory from the past — photo-first, opens the memory */}
+        <FromYourPastCard />
 
         {/* ASCII Easter Egg Mascot */}
         <View style={styles.mascotContainer}>

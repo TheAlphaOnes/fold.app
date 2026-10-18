@@ -6,8 +6,9 @@
  *   2. exactly one month ago                  ("ONE MONTH AGO")
  *   3. exactly one week ago                   ("ONE WEEK AGO")
  *   4. any memory older than a week           ("FROM MARCH 2026")
- * Within a tier, memories with a photo or video win — the card is meant to
- * bring colour back. The choice is seeded by today's date, so it stays put
+ * Photo/video memories win across all tiers (a photo from a week ago beats
+ * words from a year ago); text-only memories are used only when the past
+ * holds no media at all. The choice is seeded by today's date, so it stays put
  * for the whole day and changes tomorrow.
  */
 
@@ -42,12 +43,6 @@ function seededPick<T>(items: T[], today: Date): T | null {
   return items[hash % items.length];
 }
 
-/** Photos first; fall back to anything in the tier. */
-function pickFrom(tier: Composition[], today: Date): Composition | null {
-  const visual = tier.filter(hasVisualMedia);
-  return seededPick(visual.length > 0 ? visual : tier, today);
-}
-
 function yearsAgoLabel(memory: Composition, today: Date): string {
   const years = today.getFullYear() - new Date(memory.createdAt).getFullYear();
   return years === 1 ? '1 YEAR AGO TODAY' : `${years} YEARS AGO TODAY`;
@@ -59,26 +54,52 @@ function shiftMonths(date: Date, months: number): Date {
   return shifted.getDate() === date.getDate() ? shifted : new Date(NaN);
 }
 
-export async function findResurfacedMemory(today: Date = new Date()): Promise<ResurfacedMemory | null> {
-  const monthDay = toDayKey(today).slice(5);
+interface Tier {
+  memories: Composition[];
+  label: (memory: Composition) => string;
+}
 
-  const sameDay = pickFrom(await getCompositionsOnMonthDayBefore(monthDay, today.getFullYear()), today);
-  if (sameDay) return { memory: sameDay, label: yearsAgoLabel(sameDay, today) };
+async function loadTiers(today: Date): Promise<Tier[]> {
+  const monthDay = toDayKey(today).slice(5);
+  const tiers: Tier[] = [
+    {
+      memories: await getCompositionsOnMonthDayBefore(monthDay, today.getFullYear()),
+      label: (memory) => yearsAgoLabel(memory, today),
+    },
+  ];
 
   const monthAgo = shiftMonths(today, -1);
   if (!Number.isNaN(monthAgo.getTime())) {
-    const pick = pickFrom(await getCompositionsOnDate(toDayKey(monthAgo)), today);
-    if (pick) return { memory: pick, label: 'ONE MONTH AGO' };
+    tiers.push({ memories: await getCompositionsOnDate(toDayKey(monthAgo)), label: () => 'ONE MONTH AGO' });
   }
 
   const weekAgo = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
-  const weekPick = pickFrom(await getCompositionsOnDate(toDayKey(weekAgo)), today);
-  if (weekPick) return { memory: weekPick, label: 'ONE WEEK AGO' };
+  tiers.push({ memories: await getCompositionsOnDate(toDayKey(weekAgo)), label: () => 'ONE WEEK AGO' });
 
-  const older = pickFrom(await getCompositionsBefore(today.getTime() - 7 * DAY_MS, FALLBACK_POOL), today);
-  if (older) {
-    const date = new Date(older.createdAt);
-    return { memory: older, label: `FROM ${MONTHS[date.getMonth()]} ${date.getFullYear()}` };
+  tiers.push({
+    memories: await getCompositionsBefore(today.getTime() - 7 * DAY_MS, FALLBACK_POOL),
+    label: (memory) => {
+      const date = new Date(memory.createdAt);
+      return `FROM ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+    },
+  });
+  return tiers;
+}
+
+export async function findResurfacedMemory(today: Date = new Date()): Promise<ResurfacedMemory | null> {
+  const tiers = await loadTiers(today);
+
+  // Pass 1: a photo or video from any tier beats words from a closer one —
+  // this card exists to bring colour back.
+  for (const tier of tiers) {
+    const pick = seededPick(tier.memories.filter(hasVisualMedia), today);
+    if (pick) return { memory: pick, label: tier.label(pick) };
+  }
+
+  // Pass 2: no media anywhere in the past; fall back to any memory.
+  for (const tier of tiers) {
+    const pick = seededPick(tier.memories, today);
+    if (pick) return { memory: pick, label: tier.label(pick) };
   }
 
   return null;
