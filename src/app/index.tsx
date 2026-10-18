@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
+import { AmbientBackdrop } from '@/components/ambient-backdrop';
 import { AddButton } from '@/components/add-button';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
@@ -286,6 +287,7 @@ export default function HomeScreen() {
   return (
     // Clean background
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <AmbientBackdrop />
       <GrainBackground />
 
       <EdgeTab slot={0} onPress={() => router.push('/profile')} accessibilityLabel="Profile">
