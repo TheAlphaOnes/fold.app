@@ -1,14 +1,13 @@
 /**
- * FromYourPastCard — today's moments from the past, laid out as prints.
+ * FromYourPastCard — today's moments from the past.
  *
- * A horizontal strip of polaroid-style prints, each slightly tilted, each
- * labelled on its white margin with when it is from ("2 YEARS AGO TODAY",
- * "ONE WEEK AGO"). Photos and video thumbnails lead; a text memory becomes a
- * paper print in its own font and ink; songs show their artwork and voice
- * notes a quiet mark. Tapping a print opens that memory.
+ * Same visual language as the profile's Story Board strip: a horizontal row
+ * of 100x140 tiles, the user's photo filling each one under a soft scrim,
+ * with one white label saying when it is from. Text memories show their
+ * words in their own font and ink on the card surface. Tap opens the memory.
  *
- * Prints land one after another (45ms apart) while each image settles from
- * a slight zoom on a slower curve, like photos being dealt onto a table.
+ * Tiles rise in 40ms apart while each image settles from a slight zoom on a
+ * slower curve.
  */
 
 import React from 'react';
@@ -19,7 +18,7 @@ import { Image } from 'expo-image';
 import { Mic } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { BALANCED_TEXT, Type } from '@/constants/theme';
+import { Type } from '@/constants/theme';
 import { EASE_OUT, riseIn } from '@/constants/motion';
 import { usePastMoments } from '@/hooks/use-past-moments';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,90 +30,78 @@ import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
-const PRINT_WIDTH = 132;
-const PHOTO_HEIGHT = 150;
-const PRINT_PAPER = '#FAFAF7';
-const PRINT_INK = '#1A1A1A';
-const TILTS = [-2.4, 1.8, -1.2, 2.6, -2, 1.2];
+const TILE_WIDTH = 100;
+const TILE_HEIGHT = 140;
 const MAX_STAGGER = 6;
 
 const settleIn = new Keyframe({
   0: { transform: [{ scale: 1.08 }] },
   100: { transform: [{ scale: 1 }], easing: EASE_OUT },
-}).duration(800);
+}).duration(700);
 
-function shortDate(timestamp: number): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    .format(new Date(timestamp))
-    .toUpperCase();
-}
-
-function PhotoFace({ memory }: { memory: Composition }) {
+/** The image a tile shows: photo, video thumbnail, or song artwork. */
+function useTileImage(memory: Composition): string | null {
   const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
+  if (visual) return visual.type === 'video' ? videoThumb : visual.uri;
   const audio = memory.mediaElements.find((m) => m.type === 'audio');
-  const artwork = getHighResArtwork(audio?.metadata?.artwork);
-  const uri = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : artwork;
-
-  if (uri) {
-    return (
-      <Animated.View entering={settleIn} style={StyleSheet.absoluteFill}>
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
-      </Animated.View>
-    );
-  }
-
-  if (memory.textContent.trim()) {
-    return (
-      <View style={styles.paperFace}>
-        <ThemedText
-          {...BALANCED_TEXT}
-          numberOfLines={5}
-          style={{
-            ...memoryTextMetrics(memory.fontFamily, 13),
-            fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
-            color: memory.textColor ?? PRINT_INK,
-            textAlign: 'center',
-          }}
-        >
-          {memory.textContent.trim()}
-        </ThemedText>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.paperFace}>
-      <Mic size={22} color="#FF4B00" />
-    </View>
-  );
+  return getHighResArtwork(audio?.metadata?.artwork) ?? null;
 }
 
-function Print({ moment, index }: { moment: ResurfacedMemory; index: number }) {
-  const tilt = TILTS[index % TILTS.length];
+function Tile({ moment, index }: { moment: ResurfacedMemory; index: number }) {
+  const theme = useTheme();
+  const { memory } = moment;
+  const image = useTileImage(memory);
+  const words = memory.textContent.trim();
+
   return (
-    <Animated.View entering={riseIn(320, Math.min(index, MAX_STAGGER) * 45, 16)}>
+    <Animated.View entering={riseIn(300, Math.min(index, MAX_STAGGER) * 40, 12)}>
       <Pressable
         onPress={() => {
           haptic.press();
-          router.push(`/memory/${moment.memory.id}`);
+          router.push(`/memory/${memory.id}`);
         }}
         accessibilityRole="button"
-        accessibilityLabel={`Open memory from ${moment.label.toLowerCase()}`}
+        accessibilityLabel={`Open memory, ${moment.label.toLowerCase()}`}
         style={({ pressed }) => [
-          styles.print,
-          { transform: [{ rotate: `${pressed ? 0 : tilt}deg` }, { scale: pressed ? 0.96 : 1 }] },
+          styles.tile,
+          {
+            backgroundColor: theme.backgroundSelected,
+            borderColor: theme.border,
+            opacity: pressed ? 0.85 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          },
         ]}
       >
-        <View style={styles.photo}>
-          <PhotoFace memory={moment.memory} />
-        </View>
-        <View style={styles.caption}>
-          <ThemedText style={styles.captionLabel} numberOfLines={1}>
+        {image ? (
+          <>
+            <Animated.View entering={settleIn} style={StyleSheet.absoluteFill}>
+              <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+            </Animated.View>
+            <View style={styles.scrim} pointerEvents="none" />
+          </>
+        ) : words ? (
+          <View style={styles.wordsFace} pointerEvents="none">
+            <ThemedText
+              numberOfLines={4}
+              style={{
+                ...memoryTextMetrics(memory.fontFamily, 11),
+                fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
+                color: memory.textColor ?? theme.text,
+              }}
+            >
+              {words}
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={styles.wordsFace} pointerEvents="none">
+            <Mic size={18} color={theme.accentWarm} />
+          </View>
+        )}
+
+        <View style={styles.label} pointerEvents="none">
+          <ThemedText style={[styles.labelText, { color: image ? '#FFFFFF' : theme.text }]} numberOfLines={2}>
             {moment.label}
-          </ThemedText>
-          <ThemedText style={styles.captionDate} numberOfLines={1}>
-            {shortDate(moment.memory.createdAt)}
           </ThemedText>
         </View>
       </Pressable>
@@ -132,29 +119,17 @@ export function FromYourPastCard() {
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.rail}>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FROM YOUR PAST</ThemedText>
-        {moments.length > 0 && (
-          <ThemedText style={[Type.rail, { color: theme.accentWarm }]}>
-            {moments.length === 1 ? '1 MOMENT' : `${moments.length} MOMENTS`}
-          </ThemedText>
-        )}
       </View>
 
       {moments.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.strip}
-          decelerationRate="fast"
-          snapToInterval={PRINT_WIDTH + 16}
-          snapToAlignment="start"
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
           {moments.map((moment, index) => (
-            <Print key={moment.memory.id} moment={moment} index={index} />
+            <Tile key={moment.memory.id} moment={moment} index={index} />
           ))}
         </ScrollView>
       ) : (
         <View style={styles.empty}>
-          <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textMuted }]}>
+          <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
             your past starts today. moments return here after a week.
           </ThemedText>
         </View>
@@ -171,66 +146,47 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   rail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 4,
-    gap: 12,
+    paddingBottom: 16,
   },
   strip: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 20,
-    gap: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
   },
-  print: {
-    width: PRINT_WIDTH,
-    padding: 6,
-    paddingBottom: 0,
-    borderRadius: 4,
-    backgroundColor: PRINT_PAPER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  photo: {
-    height: PHOTO_HEIGHT,
-    borderRadius: 2,
+  tile: {
+    width: TILE_WIDTH,
+    height: TILE_HEIGHT,
+    borderRadius: 8,
+    borderWidth: 1,
     overflow: 'hidden',
-    backgroundColor: '#E9E6DE',
   },
-  paperFace: {
+  scrim: {
     ...StyleSheet.absoluteFill,
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  wordsFace: {
+    ...StyleSheet.absoluteFill,
+    padding: 10,
+    paddingBottom: 30,
     justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#F2F0EA',
+    alignItems: 'center',
   },
-  caption: {
-    paddingVertical: 8,
-    gap: 2,
+  label: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: 8,
   },
-  captionLabel: {
+  labelText: {
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 1.2,
-    color: '#E5480C',
-  },
-  captionDate: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 1,
-    color: '#6B6B6B',
+    fontSize: 10,
+    lineHeight: 13,
+    textTransform: 'uppercase',
   },
   empty: {
     paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 20,
   },
   emptyText: {

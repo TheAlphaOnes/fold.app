@@ -5,7 +5,7 @@
  *   1. this calendar day in an earlier year   ("2 YEARS AGO TODAY")
  *   2. exactly one month ago                  ("ONE MONTH AGO")
  *   3. exactly one week ago                   ("ONE WEEK AGO")
- *   4. any memory older than a week           ("FROM MARCH 2026")
+ *   4. any memory older than a week           ("15 DAYS AGO", "MAR 2026")
  * Photo/video memories fill the strip first; text-only memories only top it
  * up to a minimum. The older tier is shuffled with today's date as the seed,
  * so the strip holds still all day and changes tomorrow.
@@ -22,7 +22,7 @@ import { toDayKey } from '@/utils/format-date';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FALLBACK_POOL = 120;
-const MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 export interface ResurfacedMemory {
   memory: Composition;
@@ -36,6 +36,19 @@ export function hasVisualMedia(memory: Composition): boolean {
 function yearsAgoLabel(memory: Composition, today: Date): string {
   const years = today.getFullYear() - new Date(memory.createdAt).getFullYear();
   return years === 1 ? '1 YEAR AGO TODAY' : `${years} YEARS AGO TODAY`;
+}
+
+/** Recent-ish memories read as a count of days; older ones as a month. */
+function olderLabel(memory: Composition, today: Date): string {
+  const days = Math.round((today.getTime() - memory.createdAt) / DAY_MS);
+  if (days <= 60) return `${days} DAYS AGO`;
+  const date = new Date(memory.createdAt);
+  return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/** The photo a memory leads with, so the same image never shows twice. */
+function leadVisualUri(memory: Composition): string | null {
+  return memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m))?.uri ?? null;
 }
 
 function shiftMonths(date: Date, months: number): Date {
@@ -68,10 +81,7 @@ async function loadTiers(today: Date): Promise<Tier[]> {
 
   tiers.push({
     memories: await getCompositionsBefore(today.getTime() - 7 * DAY_MS, FALLBACK_POOL),
-    label: (memory) => {
-      const date = new Date(memory.createdAt);
-      return `FROM ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-    },
+    label: (memory) => olderLabel(memory, today),
   });
   return tiers;
 }
@@ -104,6 +114,8 @@ export async function findPastMoments(
 ): Promise<ResurfacedMemory[]> {
   const tiers = await loadTiers(today);
   const seen = new Set<number>();
+  const seenImages = new Set<string>();
+  const seenWords = new Set<string>();
   const visual: ResurfacedMemory[] = [];
   const words: ResurfacedMemory[] = [];
 
@@ -113,6 +125,16 @@ export async function findPastMoments(
     for (const memory of pool) {
       if (seen.has(memory.id)) continue;
       seen.add(memory.id);
+      // One media file is often attached to several memories; show it once.
+      const lead = leadVisualUri(memory);
+      if (lead) {
+        if (seenImages.has(lead)) continue;
+        seenImages.add(lead);
+      } else {
+        const words = memory.textContent.trim().toLowerCase();
+        if (words && seenWords.has(words)) continue;
+        seenWords.add(words);
+      }
       const moment = { memory, label: tier.label(memory) };
       (hasVisualMedia(memory) ? visual : words).push(moment);
     }
