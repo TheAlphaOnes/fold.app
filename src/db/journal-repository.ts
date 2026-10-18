@@ -3,6 +3,7 @@ import { mapRow } from './schema';
 import type { Composition, CompositionRow, MediaElement, LocationData } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import * as FileSystem from 'expo-file-system/legacy';
+import { isGifMedia } from '@/utils/media-kind';
 
 /**
  * Re-anchors a stored absolute file URI to the current app container path.
@@ -219,6 +220,39 @@ export async function getCompositionsBefore(timestamp: number, limit: number): P
     limit,
   );
   return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
+export interface DayCover {
+  uri: string;
+  type: 'image' | 'video';
+}
+
+/**
+ * One cover image per day for a calendar month ("YYYY-MM"): the newest
+ * photo or video of that day, keyed by "YYYY-MM-DD". GIF stickers are skipped.
+ */
+export async function getDayCoversForMonth(yearMonth: string): Promise<Record<string, DayCover>> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ day: string; media_elements: string }>(
+    `SELECT strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) AS day, media_elements
+     FROM compositions
+     WHERE strftime('%Y-%m', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
+       AND media_elements != '[]'
+     ORDER BY created_at DESC`,
+    yearMonth,
+  );
+  const covers: Record<string, DayCover> = {};
+  for (const row of rows) {
+    if (covers[row.day]) continue;
+    try {
+      const media: MediaElement[] = JSON.parse(row.media_elements);
+      const visual = media.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+      if (visual) covers[row.day] = { uri: resolveDocumentUri(visual.uri), type: visual.type as DayCover['type'] };
+    } catch (error) {
+      console.error('Failed to parse media for day cover', row.day, error);
+    }
+  }
+  return covers;
 }
 
 export async function getDatesWithMemories(): Promise<string[]> {

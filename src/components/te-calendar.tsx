@@ -3,7 +3,8 @@ import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
-import { getDatesWithMemories } from '@/db/journal-repository';
+import { getDatesWithMemories, getDayCoversForMonth, type DayCover } from '@/db/journal-repository';
+import { CalendarDayPhoto } from './calendar-day-photo';
 import { ThemedText } from './themed-text';
 import { haptic } from '@/services/haptics';
 
@@ -39,6 +40,24 @@ export function TECalendar({ onSelect }: TECalendarProps) {
       setActiveDates(new Set(dates));
     }).catch(console.error);
   }, [hydrationVersion]);
+
+  // Photo for each day of the visible month, so the calendar shows the
+  // user's own colour instead of grey numbers.
+  const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  const [dayCovers, setDayCovers] = useState<{ month: string; covers: Record<string, DayCover> }>({ month: '', covers: {} });
+  useEffect(() => {
+    let cancelled = false;
+    getDayCoversForMonth(monthKey)
+      .then((covers) => {
+        if (!cancelled) setDayCovers({ month: monthKey, covers });
+      })
+      .catch((error) => console.error('Failed to load calendar photos', error));
+    return () => {
+      cancelled = true;
+    };
+  }, [monthKey, hydrationVersion]);
+  const coverFor = (dayNum: number): DayCover | undefined =>
+    dayCovers.month === monthKey ? dayCovers.covers[`${monthKey}-${String(dayNum).padStart(2, '0')}`] : undefined;
 
   const changePage = (delta: number) => {
     if (viewMode === 'days') {
@@ -138,6 +157,25 @@ export function TECalendar({ onSelect }: TECalendarProps) {
           ]}
         >
           {({ pressed }) => {
+            const cover = coverFor(dayNum);
+            if (cover) {
+              return (
+                <>
+                  <CalendarDayPhoto key={`${monthKey}-${dayNum}`} cover={cover} dayNumber={dayNum} pressed={pressed} />
+                  {isTodayCell ? (
+                    <View style={[styles.todayRing, { borderColor: '#FFFFFF' }]}>
+                      <ThemedText style={[styles.dayText, styles.dayTextOnPhoto]}>
+                        {dayNum < 10 ? `0${dayNum}` : dayNum}
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <ThemedText style={[styles.dayText, styles.dayTextOnPhoto]}>
+                      {dayNum < 10 ? `0${dayNum}` : dayNum}
+                    </ThemedText>
+                  )}
+                </>
+              );
+            }
             const textColor = pressed ? theme.background : isTodayCell ? theme.text : theme.textMuted;
             const textEl = (
               <ThemedText style={[styles.dayText, { color: textColor }]}>
@@ -417,6 +455,14 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     zIndex: 1, // above the todayCircle
+  },
+
+  dayTextOnPhoto: {
+    color: '#FFFFFF',
+    fontFamily: 'JetBrainsMono-Bold',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Today: a thin ring wrapping the number, centered
