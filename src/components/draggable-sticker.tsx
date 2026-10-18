@@ -21,6 +21,7 @@ import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useTheme } from "@/hooks/use-theme";
 import { useHaptics } from "@/hooks/use-haptics";
 import { getHighResArtwork } from "@/utils/media-attach";
+import { stickerFrame } from "@/utils/sticker-layout";
 
 interface DraggableStickerProps {
   media: MediaElement;
@@ -275,9 +276,8 @@ export function DraggableSticker({
   // 90x120 (portrait) or 120x90 (landscape). Clamping must use the real
   // footprint or the sticker can be dragged visually out of bounds.
   const isMusicSticker = media.type === "audio" && Boolean(media.metadata);
-  const isHorizontal = media.width && media.height ? media.width > media.height : false;
-  const STICKER_WIDTH = isMusicSticker ? 140 : isHorizontal ? 120 : 90;
-  const STICKER_HEIGHT = isMusicSticker ? 180 : isHorizontal ? 90 : 120;
+  // Frame sizes are shared with the auto-layout so arranged positions match.
+  const { width: STICKER_WIDTH, height: STICKER_HEIGHT } = stickerFrame(media);
   // Clamp initial positions just in case they spawned out of bounds
   const start = clampStickerBox(
     media.x_pos,

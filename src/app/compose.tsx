@@ -69,6 +69,7 @@ import {
   sliceToElementCap,
 } from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
+import { arrangeStickers } from "@/utils/sticker-layout";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { usePostHog } from "posthog-react-native";
 import { MusicPicker } from "@/components/music-picker";
@@ -693,11 +694,23 @@ export default function ComposeScreen() {
         setIsSaving(false);
         return;
       }
+
+      // Lay the media out as a tidy collage around the text. On edit, keep
+      // anything the user already placed and only arrange what is new.
+      const card = {
+        width: screenWidth - 42,
+        height: Math.min(screenWidth * 1.618, screenHeight * 0.78),
+      };
+      const arranged = arrangeStickers(elements, card, { content: body, fontFamily, fontSize });
+      const existingIds = new Set(existingComposition?.mediaElements.map((m) => m.id) ?? []);
+      const laidOut = elements.map((element, index) =>
+        existingIds.has(element.id) ? element : arranged[index],
+      );
       if (numericEditId) {
         await updateComposition({
           id: numericEditId,
           textContent: body.trim(),
-          mediaElements: elements,
+          mediaElements: laidOut,
           fontFamily,
           fontSize,
           textColor,
@@ -710,7 +723,7 @@ export default function ComposeScreen() {
       } else {
         await addComposition({
           textContent: body.trim(),
-          mediaElements: elements,
+          mediaElements: laidOut,
           fontFamily,
           fontSize,
           textColor,
