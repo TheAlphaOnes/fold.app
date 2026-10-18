@@ -14,7 +14,7 @@ import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Mic } from 'lucide-react-native';
+import { Mic, RotateCcw, Trash2 } from 'lucide-react-native';
 
 import { AsciiArt } from '@/components/ascii-art';
 import { GrainBackground } from '@/components/grain-background';
@@ -287,18 +287,21 @@ export default function TrashScreen() {
 
           <Animated.View
             entering={riseIn(300, 160, 16)}
-            style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: theme.background, borderTopColor: theme.border }]}
+            style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: theme.background }]}
           >
+            {/* Same chip language as the rest of the app (compose story chip,
+                header buttons): card surface, hairline border, mono caps. */}
             <Pressable
               onPress={confirmRestoreAll}
               accessibilityRole="button"
               accessibilityLabel="Restore all memories"
               style={({ pressed }) => [
                 styles.barButton,
-                { backgroundColor: theme.text, borderColor: theme.text, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border, transform: [{ scale: pressed ? 0.96 : 1 }] },
               ]}
             >
-              <ThemedText style={[styles.barText, { color: theme.background }]}>RESTORE ALL</ThemedText>
+              <RotateCcw size={14} color={theme.text} />
+              <ThemedText style={[styles.barText, { color: theme.text }]}>RESTORE ALL</ThemedText>
             </Pressable>
             <Pressable
               onPress={confirmEmpty}
@@ -306,9 +309,10 @@ export default function TrashScreen() {
               accessibilityLabel="Empty Recently Deleted"
               style={({ pressed }) => [
                 styles.barButton,
-                { borderColor: theme.destructive, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                { backgroundColor: theme.backgroundElement, borderColor: theme.border, transform: [{ scale: pressed ? 0.96 : 1 }] },
               ]}
             >
+              <Trash2 size={14} color={theme.destructive} />
               <ThemedText style={[styles.barText, { color: theme.destructive }]}>EMPTY BIN</ThemedText>
             </Pressable>
           </Animated.View>
@@ -427,12 +431,13 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: GUTTER,
     paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   barButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    flexDirection: 'row',
+    gap: 8,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
