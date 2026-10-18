@@ -221,13 +221,13 @@ export function StreakCard({ compositions }: StreakCardProps) {
       style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`Writing streak, ${currentStreak} ${unit}. Best ${longestStreak} days. ${hint}. Wrote on ${metrics}.`}
+      accessibilityLabel={`Continuum, ${currentStreak} ${unit}. Best ${longestStreak} days. ${hint}. Wrote on ${metrics}.`}
     >
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
         style={s.rail}
       >
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>WRITING STREAK</ThemedText>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>CONTINUUM</ThemedText>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
           {`BEST ${longestStreak} ${longestStreak === 1 ? 'DAY' : 'DAYS'}`}
         </ThemedText>

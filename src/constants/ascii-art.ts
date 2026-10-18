@@ -130,13 +130,13 @@ export const COFFEE_ART = [
   "`----'",
 ].join("\n");
 
-/** Recently Deleted empty state: an empty bin with its lid lifted. */
+/** Recently Deleted empty state: an empty bin, symmetric on a 16-column grid. */
 export const BIN_ART = [
-  "     ______     ",
-  "  __|______|__  ",
-  " |____________| ",
-  "  |  |  |  |  | ",
-  "  |  |  |  |  | ",
-  "  |  |  |  |  | ",
-  "  |__|__|__|__| ",
+  "      ____      ",
+  " ____|____|____ ",
+  "|______________|",
+  " |   |    |   | ",
+  " |   |    |   | ",
+  "  |  |    |  |  ",
+  "  |__|____|__|  ",
 ].join("\n");
