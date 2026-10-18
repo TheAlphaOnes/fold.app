@@ -23,6 +23,7 @@ import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
 import { haptic } from '@/services/haptics';
+import { goBack } from '@/utils/navigation';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -139,7 +140,7 @@ export default function ProfileScreen() {
           <Pressable 
             onPress={() => {
               haptic.tap();
-              router.back();
+              goBack();
             }}
             style={({ pressed }) => [
               styles.iconBtn, 

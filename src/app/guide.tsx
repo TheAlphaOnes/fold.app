@@ -31,6 +31,7 @@ import { useLatestMemory } from '@/hooks/use-latest-memory';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useTheme } from '@/hooks/use-theme';
 import type { Story } from '@/types/journal';
+import { goBack } from '@/utils/navigation';
 
 const NUDGE_MS = 2800;
 
@@ -72,8 +73,7 @@ export default function FieldGuideScreen() {
   };
 
   const leave = useCallback(() => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
+    goBack();
   }, []);
 
   const handleFinish = useCallback(async () => {

@@ -77,6 +77,7 @@ import { ComposeBottomBar } from "@/components/compose/compose-bottom-bar";
 import { GifPicker } from "@/components/gif-picker";
 import type { MusicTrack } from "@/hooks/use-music-store";
 import { useStoriesStore } from "@/hooks/use-stories";
+import { goBack } from '@/utils/navigation';
 
 function ComposeMediaPreview({
   m,
@@ -715,7 +716,7 @@ export default function ComposeScreen() {
       }
 
       haptic.success();
-      router.back();
+      goBack();
     } catch (error) {
       console.error("Failed to save composition:", error);
       setIsSaving(false);
@@ -727,7 +728,7 @@ export default function ComposeScreen() {
 
   const handleClose = () => {
     haptic.tap();
-    router.back();
+    goBack();
   };
 
   const handleRecordToggle = async () => {

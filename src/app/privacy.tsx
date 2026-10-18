@@ -7,6 +7,7 @@ import { X } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { goBack } from '@/utils/navigation';
 
 export default function PrivacyScreen() {
   const theme = useTheme();
@@ -19,7 +20,7 @@ export default function PrivacyScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <ThemedText style={[styles.title, { color: theme.text }]}>PRIVACY POLICY</ThemedText>
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           style={[styles.closeBtn, { borderColor: theme.border }]}
         >
           <X size={16} color={theme.text} />

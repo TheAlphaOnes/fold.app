@@ -38,6 +38,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { CASSETTE_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
 import { isGifMedia } from '@/utils/media-kind';
+import { goBack } from '@/utils/navigation';
 
 interface StoryItem {
   id: string;
@@ -198,11 +199,7 @@ export default function StoryDetailScreen() {
       const storyId = activeStory.id;
       posthog?.capture('Story Deleted');
       await removeStory(storyId);
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/stories');
-      }
+      goBack('/stories');
     }
   };
 
@@ -483,7 +480,7 @@ export default function StoryDetailScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <View style={styles.headerLeft}>
           <Pressable 
-            onPress={() => router.back()}
+            onPress={() => goBack()}
             style={({ pressed }) => [
               styles.iconBtn, 
               { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }

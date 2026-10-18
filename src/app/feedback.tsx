@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from "@/components/action-link";
+import { goBack } from '@/utils/navigation';
 
 
 export default function FeedbackScreen() {
@@ -31,7 +32,7 @@ export default function FeedbackScreen() {
       
       // Auto close after success
       setTimeout(() => {
-        router.back();
+        goBack();
       }, 2000);
     }, 800);
   };
@@ -46,7 +47,7 @@ export default function FeedbackScreen() {
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <ThemedText style={[styles.title, { color: theme.text }]}>FEEDBACK</ThemedText>
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           style={[styles.closeBtn, { borderColor: theme.border }]}
         >
           <X size={16} color={theme.text} />

@@ -16,6 +16,7 @@ import { ToggleSwitch } from '@/components/toggle-switch';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
+import { goBack } from '@/utils/navigation';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -124,7 +125,7 @@ export default function SettingsScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <ThemedText style={[styles.title, { color: theme.text }]}>SETTINGS</ThemedText>
         <Pressable 
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           style={({ pressed }) => [
             styles.closeBtn, 
             { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }

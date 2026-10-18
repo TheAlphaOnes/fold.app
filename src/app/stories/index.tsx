@@ -27,6 +27,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { searchStories, sortStories, type StorySort } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
+import { goBack } from '@/utils/navigation';
 
 const GUTTER = 16;
 const GAP = 12;
@@ -107,7 +108,7 @@ export default function StoryBoardScreen() {
         <Pressable
           onPress={() => {
             haptic.tap();
-            router.back();
+            goBack();
           }}
           accessibilityRole="button"
           accessibilityLabel="Back"

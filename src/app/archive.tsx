@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
 
 import { CarouselItem } from '@/components/carousel-item';
+import { goBack } from '@/utils/navigation';
 
 const CARD_GAP = 21;
 
@@ -102,7 +103,7 @@ export default function ArchiveScreen() {
             borderColor: theme.border
           }
         ]}
-        onPress={() => router.back()}
+        onPress={() => goBack()}
       >
         <ArrowLeft size={20} color={theme.text} />
       </Pressable>

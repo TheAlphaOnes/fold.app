@@ -30,6 +30,7 @@ import { MemoryCard } from '@/components/memory-card';
 import { ShareTray } from '@/components/share-tray';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { goBack } from '@/utils/navigation';
 
 function StoryPickerThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
   const isVideo = media.type === 'video';
@@ -389,11 +390,7 @@ export default function MemoryDetailScreen() {
       Alert.alert("COULDN'T DELETE", 'This memory is still saved. Please try again.');
       return;
     }
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    goBack();
   };
 
   const handleSaveMedia = async (uri: string) => {
@@ -585,7 +582,7 @@ export default function MemoryDetailScreen() {
             ]} 
             onPress={() => {
               haptic.tap();
-              router.back();
+              goBack();
             }}
           >
             <X size={16} color={theme.text} />
