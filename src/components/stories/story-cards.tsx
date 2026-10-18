@@ -1,57 +1,45 @@
 /**
- * Story board cards.
+ * StoryGridCard — one chapter on the Story Board.
  *
- * StoryHeroCard — the chapter you touched last, full width, inviting you back.
- * StoryGridCard — every other chapter, photo-led, in a two-column grid.
+ * Cover on top (an album mosaic of the user's photos), caption below it —
+ * title, then memory count and date span. Keeping text off the photo means
+ * it is always readable, whatever the image holds.
  *
- * Both lead with the user's own photos, with the title and memory count on a
- * scrim. Entrances are split: the card rises on its own stagger while the
- * image settles from a slight zoom more slowly, so the board feels like
- * prints being laid out rather than a list appearing.
+ * The card rises on a stagger while its cover settles from a slight zoom on
+ * a slower curve.
  */
 
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { Keyframe } from 'react-native-reanimated';
-import { Image } from 'expo-image';
 
 import { ThemedText } from '@/components/themed-text';
-import { StoryCover, storyVisuals } from '@/components/stories/story-cover';
+import { StoryCover } from '@/components/stories/story-cover';
 import { EASE_OUT, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
-import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
 import { memoryCountLabel, storySpanLabel } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
 
 const MAX_STAGGER_INDEX = 8;
 
-const imageSettle = new Keyframe({
-  0: { transform: [{ scale: 1.08 }] },
+const coverSettle = new Keyframe({
+  0: { transform: [{ scale: 1.06 }] },
   100: { transform: [{ scale: 1 }], easing: EASE_OUT },
-}).duration(800);
+}).duration(700);
 
-interface CardProps {
+interface StoryGridCardProps {
   story: Story;
   index: number;
   onPress: (story: Story) => void;
 }
 
-function MiniPrint({ visual, rotate }: { visual: { uri: string; type: 'image' | 'video' }; rotate: number }) {
-  const thumb = useVideoThumbnail(visual.type === 'video' ? visual.uri : undefined);
-  const uri = visual.type === 'video' ? thumb : visual.uri;
-  if (!uri) return null;
-  return (
-    <View style={[styles.miniPrint, { transform: [{ rotate: `${rotate}deg` }] }]}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
-    </View>
-  );
-}
-
-function CardShell({ story, index, onPress, style, children }: CardProps & { style: object; children: React.ReactNode }) {
+export function StoryGridCard({ story, index, onPress }: StoryGridCardProps) {
   const theme = useTheme();
+  const span = storySpanLabel(story);
+
   return (
-    <Animated.View entering={riseIn(320, Math.min(index, MAX_STAGGER_INDEX) * 40, 14)} style={style}>
+    <Animated.View entering={riseIn(300, Math.min(index, MAX_STAGGER_INDEX) * 40, 12)} style={styles.wrap}>
       <Pressable
         onPress={() => {
           haptic.tap();
@@ -59,146 +47,54 @@ function CardShell({ story, index, onPress, style, children }: CardProps & { sty
         }}
         accessibilityRole="button"
         accessibilityLabel={`${story.title}, ${memoryCountLabel(story).toLowerCase()}`}
-        style={({ pressed }) => [
-          styles.shell,
-          { borderColor: theme.border, backgroundColor: theme.backgroundElement },
-          { transform: [{ scale: pressed ? 0.97 : 1 }] },
-        ]}
+        style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.85 : 1 }]}
       >
-        <Animated.View entering={imageSettle} style={StyleSheet.absoluteFill}>
-          <StoryCover story={story} />
-        </Animated.View>
-        {children}
+        <View style={[styles.cover, { borderColor: theme.border }]}>
+          <Animated.View entering={coverSettle} style={StyleSheet.absoluteFill}>
+            <StoryCover story={story} />
+          </Animated.View>
+        </View>
+
+        <View style={styles.caption}>
+          <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+            {story.title.toUpperCase()}
+          </ThemedText>
+          <ThemedText style={[styles.meta, { color: theme.textMuted }]} numberOfLines={1}>
+            {span ? `${memoryCountLabel(story)} · ${span}` : memoryCountLabel(story)}
+          </ThemedText>
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
-export function StoryHeroCard(props: CardProps) {
-  const { story } = props;
-  const extras = storyVisuals(story).slice(1, 3);
-  const span = storySpanLabel(story);
-
-  return (
-    <CardShell {...props} style={styles.heroWrap}>
-      <View style={styles.scrim} pointerEvents="none" />
-      <View style={styles.heroCaption} pointerEvents="none">
-        <ThemedText style={styles.eyebrow}>CONTINUE YOUR STORY</ThemedText>
-        <ThemedText style={styles.heroTitle} numberOfLines={2}>
-          {story.title.toUpperCase()}
-        </ThemedText>
-        <ThemedText style={styles.meta} numberOfLines={1}>
-          {span ? `${memoryCountLabel(story)}  ·  ${span}` : memoryCountLabel(story)}
-        </ThemedText>
-      </View>
-      {extras.length > 0 && (
-        <View style={styles.heroPrints} pointerEvents="none">
-          {extras.map((visual, i) => (
-            <MiniPrint key={visual.uri} visual={visual} rotate={i === 0 ? -6 : 7} />
-          ))}
-        </View>
-      )}
-    </CardShell>
-  );
-}
-
-export function StoryGridCard(props: CardProps) {
-  const { story } = props;
-  return (
-    <CardShell {...props} style={styles.gridWrap}>
-      <View style={styles.scrim} pointerEvents="none" />
-      <View style={styles.gridCaption} pointerEvents="none">
-        <ThemedText style={styles.gridTitle} numberOfLines={2}>
-          {story.title.toUpperCase()}
-        </ThemedText>
-        <ThemedText style={styles.meta} numberOfLines={1}>
-          {memoryCountLabel(story)}
-        </ThemedText>
-      </View>
-    </CardShell>
-  );
-}
-
 const styles = StyleSheet.create({
-  heroWrap: {
-    width: '100%',
-  },
-  gridWrap: {
+  wrap: {
     flex: 1,
   },
-  shell: {
-    borderRadius: 18,
-    borderWidth: 1,
-    overflow: 'hidden',
+  card: {
+    gap: 10,
   },
-  scrim: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '55%',
-    backgroundColor: 'rgba(0,0,0,0.42)',
-  },
-  heroCaption: {
-    aspectRatio: 1.25,
-    justifyContent: 'flex-end',
-    padding: 18,
-    paddingRight: 120,
-    gap: 6,
-  },
-  heroPrints: {
-    position: 'absolute',
-    right: 18,
-    bottom: 18,
-    flexDirection: 'row',
-  },
-  miniPrint: {
-    width: 56,
-    height: 72,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    overflow: 'hidden',
-    backgroundColor: '#222',
-    marginLeft: -16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  gridCaption: {
+  cover: {
     aspectRatio: 0.8,
-    justifyContent: 'flex-end',
-    padding: 12,
-    gap: 4,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  eyebrow: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 2,
-    color: '#FF8A4C',
+  caption: {
+    gap: 3,
+    paddingHorizontal: 2,
   },
-  heroTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: 1,
-    color: '#FFFFFF',
-  },
-  gridTitle: {
+  title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 13,
     lineHeight: 18,
     letterSpacing: 0.8,
-    color: '#FFFFFF',
   },
   meta: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 10,
     lineHeight: 14,
-    letterSpacing: 1.2,
-    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 0.8,
   },
 });

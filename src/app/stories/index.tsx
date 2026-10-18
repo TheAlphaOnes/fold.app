@@ -1,10 +1,8 @@
 /**
  * Story Board — every chapter, led by the user's own photos.
  *
- * The chapter touched most recently opens the board as a wide "continue"
- * hero; the rest follow in a two-column grid of photo cards. Search and a
- * visible sort sit under the header. The hero only appears for the default
- * view (recent, no search) so the order on screen always matches the sort.
+ * A two-column grid of chapter cards — photo mosaic cover, caption below.
+ * Search and a visible, labelled sort sit under the header.
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -20,7 +18,7 @@ import { CreateStoryTray } from '@/components/create-story-tray';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { StoryBoardControls } from '@/components/stories/story-board-controls';
-import { StoryGridCard, StoryHeroCard } from '@/components/stories/story-cards';
+import { StoryGridCard } from '@/components/stories/story-cards';
 import { BOOK_ART } from '@/constants/ascii-art';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { BALANCED_TEXT } from '@/constants/theme';
@@ -50,9 +48,6 @@ export default function StoryBoardScreen() {
   );
 
   const visible = useMemo(() => sortStories(searchStories(stories, query), sort), [stories, query, sort]);
-  const showHero = sort === 'recent' && query.trim() === '' && visible.length > 0;
-  const hero = showHero ? visible[0] : null;
-  const grid = showHero ? visible.slice(1) : visible;
 
   const totalMemories = useMemo(
     () => stories.reduce((sum, story) => sum + (story.memoryCount ?? 0), 0),
@@ -75,7 +70,6 @@ export default function StoryBoardScreen() {
       {stories.length > 0 && (
         <StoryBoardControls query={query} onQueryChange={setQuery} sort={sort} onSortChange={setSort} />
       )}
-      {hero && <StoryHeroCard story={hero} index={0} onPress={openStory} />}
     </View>
   );
 
@@ -94,14 +88,14 @@ export default function StoryBoardScreen() {
           <ActionLink text="START A CHAPTER" onPress={() => setIsCreating(true)} />
         </Animated.View>
       </View>
-    ) : !hero ? (
+    ) : (
       <View style={styles.empty}>
         <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textSecondary }]}>
           {`no chapters match "${query.trim()}".`}
         </ThemedText>
         <ActionLink text="CLEAR SEARCH" onPress={() => setQuery('')} />
       </View>
-    ) : null;
+    );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -143,11 +137,11 @@ export default function StoryBoardScreen() {
       </View>
 
       <FlatList
-        data={grid}
+        data={visible}
         keyExtractor={(story) => String(story.id)}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        renderItem={({ item, index }) => <StoryGridCard story={item} index={index + (hero ? 1 : 0)} onPress={openStory} />}
+        renderItem={({ item, index }) => <StoryGridCard story={item} index={index} onPress={openStory} />}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
@@ -199,14 +193,13 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: GUTTER,
     paddingTop: GUTTER,
-    gap: GAP,
   },
   listHeader: {
-    gap: GAP + 4,
-    marginBottom: GAP,
+    marginBottom: GAP + 8,
   },
   row: {
     gap: GAP,
+    marginBottom: 20,
   },
   empty: {
     alignItems: 'center',
