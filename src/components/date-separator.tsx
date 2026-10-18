@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated as RNAnimated, Easing } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import type { TimelineMode } from '@/hooks/use-settings';
+import type { PeriodGranularity } from '@/db/journal-repository';
+import { PeriodPhotoStack } from '@/components/period-photo-stack';
 
 export const DATE_SEPARATOR_HEIGHT = 72;
 
@@ -31,12 +33,22 @@ function formatSeparatorLabel(date: Date, mode: string): { prefix: string; suffi
   return { prefix: dow, suffix: `${dd}.${mm}.${yyyy}` };
 }
 
+/** The block a separator introduces, for its photo stack. */
+function periodOf(date: Date, mode: string): { granularity: PeriodGranularity; value: string } {
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  if (mode === 'yearly') return { granularity: 'year', value: yyyy };
+  if (mode === 'monthly') return { granularity: 'month', value: `${yyyy}-${mm}` };
+  return { granularity: 'day', value: `${yyyy}-${mm}-${String(date.getDate()).padStart(2, '0')}` };
+}
+
 export const DateSeparator = React.memo(function DateSeparator({
   date,
   timelineMode,
 }: DateSeparatorProps) {
   const theme = useTheme();
   const { prefix, suffix } = formatSeparatorLabel(date, timelineMode);
+  const period = periodOf(date, timelineMode);
 
   // Three staggered animation segments so the separator feels alive, not monotonous
   const lineOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -124,6 +136,8 @@ export const DateSeparator = React.memo(function DateSeparator({
           {suffix}
         </Text>
       </RNAnimated.View>
+
+      <PeriodPhotoStack granularity={period.granularity} period={period.value} />
 
       {/* Right hairline */}
       <RNAnimated.View

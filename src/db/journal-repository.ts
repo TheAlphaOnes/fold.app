@@ -255,6 +255,46 @@ export async function getDayCoversForMonth(yearMonth: string): Promise<Record<st
   return covers;
 }
 
+export type PeriodGranularity = 'year' | 'month' | 'day';
+
+const PERIOD_FORMAT: Record<PeriodGranularity, string> = {
+  year: '%Y',
+  month: '%Y-%m',
+  day: '%Y-%m-%d',
+};
+
+/**
+ * Up to `limit` photo/video covers from one period ("2025", "2025-03",
+ * "2025-03-14"), newest first, one per memory. GIF stickers are skipped.
+ */
+export async function getPeriodCovers(
+  granularity: PeriodGranularity,
+  period: string,
+  limit: number,
+): Promise<DayCover[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ media_elements: string }>(
+    `SELECT media_elements FROM compositions
+     WHERE strftime('${PERIOD_FORMAT[granularity]}', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
+       AND media_elements != '[]'
+     ORDER BY created_at DESC
+     LIMIT 40`,
+    period,
+  );
+  const covers: DayCover[] = [];
+  for (const row of rows) {
+    if (covers.length >= limit) break;
+    try {
+      const media: MediaElement[] = JSON.parse(row.media_elements);
+      const visual = media.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+      if (visual) covers.push({ uri: resolveDocumentUri(visual.uri), type: visual.type as DayCover['type'] });
+    } catch (error) {
+      console.error('Failed to parse media for period cover', period, error);
+    }
+  }
+  return covers;
+}
+
 export async function getDatesWithMemories(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ date_str: string }>(
