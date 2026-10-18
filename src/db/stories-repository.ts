@@ -28,7 +28,7 @@ function mapStoryRow(row: unknown): Story {
           for (const media of arr) {
             // Only include visual media for thumbnails (audio/text will fail to render as images)
             const type = media.type || 'image';
-            if (media?.uri && (type === 'image' || type === 'video') && !isGifMedia(media) && mediaList.length < 3) {
+            if (media?.uri && (type === 'image' || type === 'video') && !isGifMedia(media) && mediaList.length < 4) {
               mediaList.push({
                 uri: resolveDocumentUri(media.uri),
                 type: type
@@ -50,6 +50,9 @@ function mapStoryRow(row: unknown): Story {
     title: String(r.title),
     coverImageUri: r.cover_image_uri ? resolveDocumentUri(String(r.cover_image_uri)) : undefined,
     sampleMedia,
+    memoryCount: r.memory_count != null ? Number(r.memory_count) : undefined,
+    firstMemoryAt: r.first_memory_at != null ? Number(r.first_memory_at) : undefined,
+    lastMemoryAt: r.last_memory_at != null ? Number(r.last_memory_at) : undefined,
     createdAt: Number(r.created_at),
     updatedAt: Number(r.updated_at),
   };
@@ -106,8 +109,11 @@ export async function getAllStories(): Promise<Story[]> {
          SELECT c.media_elements FROM composition_stories cs
          JOIN compositions c ON c.id = cs.composition_id
          WHERE cs.story_id = s.id AND c.media_elements != '[]' 
-         ORDER BY c.created_at DESC LIMIT 5
-      )) as sample_media
+         ORDER BY c.created_at DESC LIMIT 8
+      )) as sample_media,
+      (SELECT COUNT(*) FROM composition_stories cs WHERE cs.story_id = s.id) as memory_count,
+      (SELECT MIN(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id) as first_memory_at,
+      (SELECT MAX(c.created_at) FROM composition_stories cs JOIN compositions c ON c.id = cs.composition_id WHERE cs.story_id = s.id) as last_memory_at
      FROM stories s 
      ORDER BY updated_at DESC`
   );

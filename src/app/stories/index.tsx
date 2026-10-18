@@ -1,253 +1,162 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, Pressable, Image, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+/**
+ * Story Board — every chapter, led by the user's own photos.
+ *
+ * The chapter touched most recently opens the board as a wide "continue"
+ * hero; the rest follow in a two-column grid of photo cards. Search and a
+ * visible sort sit under the header. The hero only appears for the default
+ * view (recent, no search) so the order on screen always matches the sort.
+ */
+
+import React, { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, X, ArrowLeft, ChevronRight, ArrowUpDown, Filter } from 'lucide-react-native';
-import { haptic } from '@/services/haptics';
-import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import Animated from 'react-native-reanimated';
+import { ArrowLeft, Plus } from 'lucide-react-native';
 
-function StoryThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
-  const isVideo = media.type === 'video';
-  const videoThumb = useVideoThumbnail(isVideo ? media.uri : undefined);
-  const sourceUri = isVideo && videoThumb ? videoThumb : media.uri;
-
-  return (
-    <Image 
-      source={{ uri: sourceUri }} 
-      style={style} 
-      resizeMode="cover"
-    />
-  );
-}
-
-import { useTheme } from '@/hooks/use-theme';
-import { ThemedText } from '@/components/themed-text';
-import { GrainBackground } from '@/components/grain-background';
+import { ActionLink } from '@/components/action-link';
+import { AsciiArt } from '@/components/ascii-art';
 import { CreateStoryTray } from '@/components/create-story-tray';
+import { GrainBackground } from '@/components/grain-background';
+import { ThemedText } from '@/components/themed-text';
+import { StoryBoardControls } from '@/components/stories/story-board-controls';
+import { StoryGridCard, StoryHeroCard } from '@/components/stories/story-cards';
+import { BOOK_ART } from '@/constants/ascii-art';
+import { fadeIn, riseIn } from '@/constants/motion';
+import { BALANCED_TEXT } from '@/constants/theme';
 import { useStoriesStore } from '@/hooks/use-stories';
+import { useTheme } from '@/hooks/use-theme';
+import { haptic } from '@/services/haptics';
+import { searchStories, sortStories, type StorySort } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
+
+const GUTTER = 16;
+const GAP = 12;
 
 export default function StoryBoardScreen() {
   const router = useRouter();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  
-  const { stories, refreshStories, addStory } = useStoriesStore();
+  const { stories, refreshStories } = useStoriesStore();
+
   const [isCreating, setIsCreating] = useState(false);
-  
-  type SortOption = 'updated_desc' | 'updated_asc' | 'alpha_asc' | 'alpha_desc';
-  type FilterOption = 'all' | 'month' | 'year';
-  const [sortBy, setSortBy] = useState<SortOption>('updated_desc');
-  const [filterBy, setFilterBy] = useState<FilterOption>('all');
-
-  const filteredStories = React.useMemo(() => {
-    let filtered = [...stories];
-    
-    if (filterBy === 'month') {
-       const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-       filtered = filtered.filter(s => s.updatedAt > monthAgo);
-    } else if (filterBy === 'year') {
-       const yearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
-       filtered = filtered.filter(s => s.updatedAt > yearAgo);
-    }
-
-    filtered.sort((a, b) => {
-      if (sortBy === 'updated_desc') return b.updatedAt - a.updatedAt;
-      if (sortBy === 'updated_asc') return a.updatedAt - b.updatedAt;
-      if (sortBy === 'alpha_asc') return a.title.localeCompare(b.title);
-      if (sortBy === 'alpha_desc') return b.title.localeCompare(a.title);
-      return 0;
-    });
-
-    return filtered;
-  }, [stories, sortBy, filterBy]);
-
-  useEffect(() => {
-    refreshStories();
-  }, [refreshStories]);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<StorySort>('recent');
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       refreshStories();
-    }, [refreshStories])
+    }, [refreshStories]),
   );
 
-  const renderItem = ({ item }: { item: Story }) => {
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(new Date(item.updatedAt));
+  const visible = useMemo(() => sortStories(searchStories(stories, query), sort), [stories, query, sort]);
+  const showHero = sort === 'recent' && query.trim() === '' && visible.length > 0;
+  const hero = showHero ? visible[0] : null;
+  const grid = showHero ? visible.slice(1) : visible;
 
-    return (
-      <Pressable 
-        style={({pressed}) => [
-          styles.storyCard,
-          { 
-            backgroundColor: pressed ? theme.backgroundElement : theme.backgroundElement, // Keep subtle bg
-            borderColor: theme.border,
-            opacity: pressed ? 0.8 : 1,
-            transform: [{ scale: pressed ? 0.98 : 1 }]
-          }
-        ]}
-        onPress={() => {
-          haptic.select();
-          router.push(`/stories/${item.id}`);
-        }}
-      >
-        <View style={styles.coverPlaceholder}>
-          {item.coverImageUri ? (
-            <Image source={{ uri: item.coverImageUri }} style={styles.coverImage} />
-          ) : item.sampleMedia && item.sampleMedia.length > 0 ? (
-            item.sampleMedia.slice(0, 3).reverse().map((media, i, arr) => {
-              const origIdx = arr.length - 1 - i;
-              
-              const rotations = ['-2deg', '-12deg', '10deg'];
-              const scales = [1, 0.95, 0.9];
-              const topOffsets = [0, -4, 4];
-              const leftOffsets = [0, -8, 8];
-              
-              return (
-                <StoryThumbnail 
-                  key={media.uri + i} 
-                  media={media} 
-                  style={[
-                    styles.sampleSticker, 
-                    { 
-                      transform: [
-                        { translateX: leftOffsets[origIdx] },
-                        { translateY: topOffsets[origIdx] },
-                        { rotate: rotations[origIdx] },
-                        { scale: scales[origIdx] }
-                      ], 
-                      borderColor: theme.border,
-                      borderWidth: 1.5,
-                      zIndex: i
-                    }
-                  ]} 
-                />
-              );
-            })
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.border, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }]}>
-              <ThemedText style={{ color: theme.textMuted, fontFamily: 'JetBrainsMono-Bold' }}>///</ThemedText>
-            </View>
-          )}
-        </View>
+  const totalMemories = useMemo(
+    () => stories.reduce((sum, story) => sum + (story.memoryCount ?? 0), 0),
+    [stories],
+  );
 
-        <View style={styles.cardContent}>
-          <ThemedText style={[styles.storyTitle, { color: theme.text }]} numberOfLines={1}>
-            {item.title}
-          </ThemedText>
-          <View style={styles.cardMeta}>
-            <ThemedText style={[styles.storyDate, { color: theme.textMuted }]}>
-              {formattedDate}
-            </ThemedText>
-          </View>
-        </View>
-        
-        <ChevronRight size={20} color={theme.textMuted} style={styles.chevron} />
-      </Pressable>
-    );
+  const openStory = useCallback((story: Story) => router.push(`/stories/${story.id}`), [router]);
+  const startCreating = () => {
+    haptic.press();
+    setIsCreating(true);
   };
+
+  const summary =
+    stories.length === 0
+      ? 'no chapters yet'
+      : `${stories.length} ${stories.length === 1 ? 'chapter' : 'chapters'}  ·  ${totalMemories} ${totalMemories === 1 ? 'memory' : 'memories'}`;
+
+  const header = (
+    <View style={styles.listHeader}>
+      {stories.length > 0 && (
+        <StoryBoardControls query={query} onQueryChange={setQuery} sort={sort} onSortChange={setSort} />
+      )}
+      {hero && <StoryHeroCard story={hero} index={0} onPress={openStory} />}
+    </View>
+  );
+
+  const empty =
+    stories.length === 0 ? (
+      <View style={styles.empty}>
+        <Animated.View entering={fadeIn(400)} style={styles.emptyArt}>
+          <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={9} />
+        </Animated.View>
+        <Animated.View entering={riseIn(300, 80)}>
+          <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textSecondary }]}>
+            chapters gather your memories. a trip, a season, a person.
+          </ThemedText>
+        </Animated.View>
+        <Animated.View entering={riseIn(280, 140)}>
+          <ActionLink text="START A CHAPTER" onPress={() => setIsCreating(true)} />
+        </Animated.View>
+      </View>
+    ) : !hero ? (
+      <View style={styles.empty}>
+        <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textSecondary }]}>
+          {`no chapters match "${query.trim()}".`}
+        </ThemedText>
+        <ActionLink text="CLEAR SEARCH" onPress={() => setQuery('')} />
+      </View>
+    ) : null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
-      
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 16, borderColor: theme.border }]}>
-        <View style={styles.headerLeft}>
-          <Pressable 
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
-            ]}
-          >
-            <ArrowLeft size={16} color={theme.text} />
-          </Pressable>
-          <ThemedText style={[styles.headerTitle, { color: theme.text }]}>
+
+      <View style={[styles.header, { paddingTop: insets.top + 12, borderColor: theme.border }]}>
+        <Pressable
+          onPress={() => {
+            haptic.tap();
+            router.back();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={({ pressed }) => [styles.iconBtn, { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }]}
+        >
+          <ArrowLeft size={16} color={theme.text} />
+        </Pressable>
+
+        <View style={styles.titleBlock}>
+          <ThemedText style={[styles.title, { color: theme.text }]} accessibilityRole="header">
             STORY BOARD
           </ThemedText>
+          <ThemedText style={[styles.summary, { color: theme.textMuted }]} numberOfLines={1}>
+            {summary}
+          </ThemedText>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            {(filterBy !== 'all' || sortBy !== 'updated_desc') && (
-              <ThemedText style={{ fontSize: 10, color: theme.accentWarm, fontFamily: 'JetBrainsMono-Bold', marginRight: 4 }}>
-                {filterBy !== 'all' ? (filterBy === 'month' ? '30D' : '1Y') : ''}
-                {filterBy !== 'all' && sortBy !== 'updated_desc' ? ' • ' : ''}
-                {sortBy !== 'updated_desc' ? (
-                  sortBy === 'updated_asc' ? 'OLD' :
-                  sortBy === 'alpha_asc' ? 'A-Z' :
-                  'Z-A'
-                ) : ''}
-              </ThemedText>
-            )}
-
-            <Pressable 
-              onPress={() => {
-                haptic.select();
-                setFilterBy(prev => prev === 'all' ? 'month' : prev === 'month' ? 'year' : 'all');
-              }}
-              style={({ pressed }) => [
-                { opacity: pressed ? 0.5 : 1 }
-              ]}
-            >
-              <Filter size={20} color={filterBy !== 'all' ? theme.accentWarm : theme.text} strokeWidth={2.5} />
-            </Pressable>
-
-            <Pressable 
-              onPress={() => {
-                haptic.select();
-                setSortBy(prev => {
-                  if (prev === 'updated_desc') return 'updated_asc';
-                  if (prev === 'updated_asc') return 'alpha_asc';
-                  if (prev === 'alpha_asc') return 'alpha_desc';
-                  return 'updated_desc';
-                });
-              }}
-              style={({ pressed }) => [
-                { opacity: pressed ? 0.5 : 1 }
-              ]}
-            >
-              <ArrowUpDown size={20} color={sortBy !== 'updated_desc' ? theme.accentWarm : theme.text} strokeWidth={2.5} />
-            </Pressable>
-
-            <Pressable 
-              onPress={() => setIsCreating(true)}
-              style={({ pressed }) => [
-                styles.iconBtn, 
-                { borderColor: theme.border, opacity: pressed ? 0.5 : 1, backgroundColor: theme.text }
-              ]}
-            >
-              <Plus size={16} color={theme.background} strokeWidth={3} />
-            </Pressable>
-          </View>
+        <Pressable
+          onPress={startCreating}
+          accessibilityRole="button"
+          accessibilityLabel="New chapter"
+          style={({ pressed }) => [
+            styles.iconBtn,
+            { borderColor: theme.text, backgroundColor: theme.text, transform: [{ scale: pressed ? 0.94 : 1 }] },
+          ]}
+        >
+          <Plus size={16} color={theme.background} strokeWidth={3} />
+        </Pressable>
       </View>
 
-      {/* Empty State */}
-      {stories.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-            NO STORIES FOUND.
-          </ThemedText>
-          <ThemedText style={[styles.emptySub, { color: theme.textMuted, opacity: 0.5 }]}>
-            Create a story to group memories.
-          </ThemedText>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredStories}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-      {isCreating && (
-        <CreateStoryTray onClose={() => setIsCreating(false)} />
-      )}
+      <FlatList
+        data={grid}
+        keyExtractor={(story) => String(story.id)}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        renderItem={({ item, index }) => <StoryGridCard story={item} index={index + (hero ? 1 : 0)} onPress={openStory} />}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      />
+
+      {isCreating && <CreateStoryTray onClose={() => setIsCreating(false)} />}
     </View>
   );
 }
@@ -258,114 +167,60 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
+    gap: 14,
+    paddingHorizontal: GUTTER,
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+  titleBlock: {
+    flex: 1,
+    gap: 2,
   },
-  headerTitle: {
+  title: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 16,
+    lineHeight: 22,
     letterSpacing: 2,
   },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-  },
-  input: {
-    flex: 1,
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-    textTransform: 'uppercase',
-  },
-  cancelBtn: {
-    padding: 8,
-  },
-  listContent: {
-    padding: 16,
-    gap: 12,
-  },
-  storyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    padding: 16,
-  },
-  coverImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-  },
-  coverPlaceholder: {
-    width: 64,
-    height: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sampleSticker: {
-    position: 'absolute',
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    borderWidth: 2,
-    backgroundColor: '#333',
-  },
-  cardContent: {
-    flex: 1,
-    paddingLeft: 16,
-    justifyContent: 'center',
-  },
-  storyTitle: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 16,
-    marginBottom: 4,
-    letterSpacing: -0.5,
-    textTransform: 'uppercase',
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  storyDate: {
+  summary: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 15,
   },
-  chevron: {
-    marginLeft: 16,
-    opacity: 0.5,
-  },
-  emptyContainer: {
-    flex: 1,
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+  },
+  list: {
+    paddingHorizontal: GUTTER,
+    paddingTop: GUTTER,
+    gap: GAP,
+  },
+  listHeader: {
+    gap: GAP + 4,
+    marginBottom: GAP,
+  },
+  row: {
+    gap: GAP,
+  },
+  empty: {
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 72,
+    paddingHorizontal: 24,
+  },
+  emptyArt: {
+    opacity: 0.6,
   },
   emptyText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  emptySub: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-  }
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
 });

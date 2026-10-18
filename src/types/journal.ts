@@ -62,6 +62,11 @@ export interface Story {
   title: string;
   coverImageUri?: string;
   sampleMedia?: { uri: string; type: 'image' | 'video' | 'audio' }[];
+  /** Memories filed in this story (from the list query). */
+  memoryCount?: number;
+  /** Oldest and newest memory timestamps in the story (from the list query). */
+  firstMemoryAt?: number;
+  lastMemoryAt?: number;
   createdAt: number;
   updatedAt: number;
   memories?: Composition[]; // Hydrated array of memories belonging to this story
