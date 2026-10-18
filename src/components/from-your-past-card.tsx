@@ -1,79 +1,116 @@
 /**
- * FromYourPastCard — "memory lane": today's moments from the past, hung from
- * a time ruler.
+ * FromYourPastCard — a waterfall of random memories from the user's past.
  *
- * A hairline ruler runs under a horizontal strip; each moment is a photo (or
- * a paper square of its words) on a short stem, with a tick on the ruler and
- * a compact time mark beneath ("15 DAYS", "3 WK", "1 YR"). Moments run from
- * the most recent back, so scrolling right is scrolling back in time.
- * Anniversaries — this exact day in an earlier year — get an orange tick.
+ * Three columns of memory tiles drift downward without end, each at its own
+ * speed, so the wall reads like falling water rather than a carousel. Photos
+ * keep their natural shape; text memories appear in their own font and ink.
+ * The edges fade into the card. Touching the wall pauses the flow so a tile
+ * can be tapped to open; SHUFFLE draws a fresh random set.
  *
- * The entrance is segmented: the ruler draws in from the left first, then
- * each moment drops onto it 40ms apart, its tick popping slightly later and
- * its label fading in last.
+ * Motion: the flow is linear on purpose — it represents continuous movement,
+ * like a progress bar, so easing would read as stutter at each loop. The
+ * entrance is segmented: columns rise in 80ms apart and the wall fades up.
+ * With reduced motion the wall is shown still.
  */
 
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
-import Animated, { Keyframe } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Image } from 'expo-image';
-import { Mic } from 'lucide-react-native';
+import { Shuffle } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
-import { EASE_OUT, SPRING_BOUNCE, fadeIn, riseIn } from '@/constants/motion';
-import { usePastMoments } from '@/hooks/use-past-moments';
+import { fadeIn, riseIn } from '@/constants/motion';
+import { useRandomPastMemories } from '@/hooks/use-random-past-memories';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
-import type { ResurfacedMemory } from '@/services/resurface.service';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
-const FRAME = 88;
-const STEM = 14;
-const TICK = 7;
-const COLUMN_GAP = 18;
-const STAGGER = 40;
-const MAX_STAGGER = 6;
+const VIEWPORT_HEIGHT = 300;
+const COLUMNS = 3;
+const GAP = 8;
+const SIDE_PADDING = 12;
+const PROFILE_GUTTER = 16; // profile screen's horizontal padding
+const FADE = 40;
+/** Pixels per second for each column — different rates make it feel like water. */
+const SPEEDS = [13, 9, 11];
+const ASPECTS = [0.75, 1, 1.3, 0.85, 1.15];
 
-const rulerDraw = new Keyframe({
-  0: { transform: [{ scaleX: 0 }] },
-  100: { transform: [{ scaleX: 1 }], easing: EASE_OUT },
-}).duration(520);
-
-const tickPop = (delay: number) =>
-  new Keyframe({
-    0: { opacity: 0, transform: [{ scale: 0.3 }] },
-    100: { opacity: 1, transform: [{ scale: 1 }], easing: SPRING_BOUNCE },
-  })
-    .duration(240)
-    .delay(delay);
-
-function dateMark(timestamp: number): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: '2-digit' })
-    .format(new Date(timestamp))
-    .toUpperCase();
+interface Tile {
+  key: string;
+  memory: Composition;
+  height: number;
 }
 
-function useFrameImage(memory: Composition): string | null {
-  const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
-  const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
-  if (visual) return visual.type === 'video' ? videoThumb : visual.uri;
-  const audio = memory.mediaElements.find((m) => m.type === 'audio');
-  return getHighResArtwork(audio?.metadata?.artwork) ?? null;
+function visualOf(memory: Composition) {
+  return memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
 }
 
-function Moment({ moment, index }: { moment: ResurfacedMemory; index: number }) {
+/** Natural aspect when known, otherwise a stable pseudo-random one per memory. */
+function tileHeight(memory: Composition, width: number): number {
+  const visual = visualOf(memory);
+  if (visual?.width && visual?.height) {
+    const aspect = Math.min(1.6, Math.max(0.65, visual.width / visual.height));
+    return Math.round(width / aspect);
+  }
+  if (!visual && memory.textContent.trim()) return Math.round(width * 0.95);
+  return Math.round(width / ASPECTS[memory.id % ASPECTS.length]);
+}
+
+/**
+ * Deal memories round-robin into columns, then repeat each column's list
+ * until one cycle is taller than the viewport — the loop needs that much
+ * content to never show a gap.
+ */
+function buildColumns(memories: Composition[], width: number): { tiles: Tile[]; cycle: number }[] {
+  const dealt: Composition[][] = Array.from({ length: COLUMNS }, () => []);
+  memories.forEach((memory, index) => dealt[index % COLUMNS].push(memory));
+
+  return dealt.map((column, c) => {
+    const source = column.length > 0 ? column : memories;
+    const tiles: Tile[] = [];
+    let cycle = 0;
+    let round = 0;
+    while (source.length > 0 && cycle < VIEWPORT_HEIGHT + 120) {
+      for (const memory of source) {
+        const height = tileHeight(memory, width);
+        tiles.push({ key: `${c}-${round}-${memory.id}`, memory, height });
+        cycle += height + GAP;
+      }
+      round += 1;
+    }
+    return { tiles, cycle };
+  });
+}
+
+function shortDate(timestamp: number): string {
+  const d = new Date(timestamp);
+  const month = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][d.getMonth()];
+  return `${month} ${d.getDate()} '${String(d.getFullYear()).slice(2)}`;
+}
+
+function MemoryTile({ tile, width }: { tile: Tile; width: number }) {
   const theme = useTheme();
-  const { memory } = moment;
-  const image = useFrameImage(memory);
-  const words = memory.textContent.trim();
-  const delay = 200 + Math.min(index, MAX_STAGGER) * STAGGER;
-  const tickColor = moment.isAnniversary ? theme.accentWarm : theme.textMuted;
+  const { memory } = tile;
+  const visual = visualOf(memory);
+  const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
+  const audio = memory.mediaElements.find((m) => m.type === 'audio');
+  const image = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : getHighResArtwork(audio?.metadata?.artwork);
 
   return (
     <Pressable
@@ -82,64 +119,121 @@ function Moment({ moment, index }: { moment: ResurfacedMemory; index: number }) 
         router.push(`/memory/${memory.id}`);
       }}
       accessibilityRole="button"
-      accessibilityLabel={`Open memory from ${moment.label}`}
-      style={({ pressed }) => [styles.column, { opacity: pressed ? 0.8 : 1 }]}
+      accessibilityLabel={`Open memory from ${shortDate(memory.createdAt)}`}
+      style={({ pressed }) => [
+        styles.tile,
+        {
+          width,
+          height: tile.height,
+          backgroundColor: theme.backgroundSelected,
+          borderColor: theme.border,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
+        },
+      ]}
     >
-      {({ pressed }) => (
-        <>
-          <Animated.View entering={riseIn(320, delay, 14)}>
-            <View
-              style={[
-                styles.frame,
-                {
-                  borderColor: moment.isAnniversary ? theme.accentWarm : theme.border,
-                  backgroundColor: theme.backgroundSelected,
-                  transform: [{ scale: pressed ? 0.95 : 1 }],
-                },
-              ]}
-            >
-              {image ? (
-                <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
-              ) : words ? (
-                <View style={styles.wordsFace}>
-                  <ThemedText
-                    numberOfLines={4}
-                    style={{
-                      ...memoryTextMetrics(memory.fontFamily, 10),
-                      fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
-                      color: memory.textColor ?? theme.text,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {words}
-                  </ThemedText>
-                </View>
-              ) : (
-                <View style={styles.wordsFace}>
-                  <Mic size={18} color={theme.accentWarm} />
-                </View>
-              )}
-            </View>
-          </Animated.View>
-
-          <View style={[styles.stem, { backgroundColor: theme.border }]} />
-          <Animated.View entering={tickPop(delay + 120)} style={[styles.tick, { backgroundColor: tickColor }]} />
-
-          <Animated.View entering={fadeIn(260, delay + 180)} style={styles.marks}>
-            <ThemedText style={[styles.tickLabel, { color: moment.isAnniversary ? theme.accentWarm : theme.text }]}>
-              {moment.tick}
-            </ThemedText>
-            <ThemedText style={[styles.dateLabel, { color: theme.textMuted }]}>{dateMark(memory.createdAt)}</ThemedText>
-          </Animated.View>
-        </>
+      {image ? (
+        <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+      ) : (
+        <View style={styles.wordsFace}>
+          <ThemedText
+            numberOfLines={5}
+            style={{
+              ...memoryTextMetrics(memory.fontFamily, 10),
+              fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
+              color: memory.textColor ?? theme.text,
+              textAlign: 'center',
+            }}
+          >
+            {memory.textContent.trim()}
+          </ThemedText>
+        </View>
       )}
+      <View style={styles.dateChip} pointerEvents="none">
+        <ThemedText style={styles.dateText}>{shortDate(memory.createdAt)}</ThemedText>
+      </View>
     </Pressable>
+  );
+}
+
+function FallingColumn({
+  tiles,
+  cycle,
+  speed,
+  width,
+  paused,
+  still,
+}: {
+  tiles: Tile[];
+  cycle: number;
+  speed: number;
+  width: number;
+  paused: boolean;
+  still: boolean;
+}) {
+  const offset = useSharedValue(-cycle);
+  const fullDuration = (cycle / speed) * 1000;
+
+  useEffect(() => {
+    if (still) {
+      cancelAnimation(offset);
+      offset.value = -cycle / 2;
+      return;
+    }
+    if (paused) {
+      cancelAnimation(offset);
+      return;
+    }
+    // Resume from wherever the column is, finish this cycle, then loop forever.
+    const remaining = Math.max(0, (-offset.value / cycle) * fullDuration);
+    offset.value = withTiming(0, { duration: remaining, easing: Easing.linear }, (finished) => {
+      if (!finished) return;
+      offset.value = -cycle;
+      offset.value = withRepeat(withTiming(0, { duration: fullDuration, easing: Easing.linear }), -1, false);
+    });
+    return () => cancelAnimation(offset);
+  }, [paused, still, cycle, fullDuration, offset]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: offset.value }] }));
+
+  // Two copies of the cycle stacked: while one scrolls out the bottom, the
+  // other is already in place above it, so the loop has no seam.
+  return (
+    <Animated.View style={[{ width, gap: GAP }, style]}>
+      {[0, 1].map((copy) => (
+        <View key={copy} style={{ gap: GAP }}>
+          {tiles.map((tile) => (
+            <MemoryTile key={`${copy}-${tile.key}`} tile={tile} width={width} />
+          ))}
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
+
+function EdgeFade({ color, edge }: { color: string; edge: 'top' | 'bottom' }) {
+  const id = `fade-${edge}`;
+  return (
+    <Svg style={[styles.fade, edge === 'top' ? { top: 0 } : { bottom: 0 }]} pointerEvents="none">
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={color} stopOpacity={edge === 'top' ? 1 : 0} />
+          <Stop offset="1" stopColor={color} stopOpacity={edge === 'top' ? 0 : 1} />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
   );
 }
 
 export function FromYourPastCard() {
   const theme = useTheme();
-  const { moments, loaded } = usePastMoments();
+  const { width: screenWidth } = useWindowDimensions();
+  const reduceMotion = useReducedMotion() ?? false;
+  const { memories, loaded, draw, reshuffle } = useRandomPastMemories(18);
+  const [paused, setPaused] = useState(false);
+
+  const columnWidth = (screenWidth - PROFILE_GUTTER * 2 - 2 - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;
+  const columns = useMemo(() => buildColumns(memories, columnWidth), [memories, columnWidth]);
 
   if (!loaded) return null;
 
@@ -147,27 +241,53 @@ export function FromYourPastCard() {
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
       <View style={styles.rail}>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FROM YOUR PAST</ThemedText>
-        {moments.length > 0 && (
-          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{'NOW  ->  THEN'}</ThemedText>
+        {memories.length > 1 && (
+          <Pressable
+            onPress={() => {
+              haptic.select();
+              reshuffle();
+            }}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Shuffle memories"
+            style={({ pressed }) => [styles.shuffle, { opacity: pressed ? 0.5 : 1 }]}
+          >
+            <Shuffle size={12} color={theme.accentWarm} />
+            <ThemedText style={[Type.rail, { color: theme.accentWarm }]}>SHUFFLE</ThemedText>
+          </Pressable>
         )}
       </View>
 
-      {moments.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lane}>
-          {/* The ruler spans every moment; ticks sit on it. */}
-          <Animated.View
-            entering={rulerDraw}
-            style={[styles.ruler, { backgroundColor: theme.border }]}
-            pointerEvents="none"
-          />
-          {moments.map((moment, index) => (
-            <Moment key={moment.memory.id} moment={moment} index={index} />
-          ))}
-        </ScrollView>
+      {memories.length > 0 ? (
+        <Animated.View
+          key={draw}
+          entering={fadeIn(400)}
+          style={styles.viewport}
+          onTouchStart={() => setPaused(true)}
+          onTouchEnd={() => setPaused(false)}
+          onTouchCancel={() => setPaused(false)}
+        >
+          <View style={styles.columns}>
+            {columns.map((column, index) => (
+              <Animated.View key={index} entering={riseIn(420, index * 80, 24)}>
+                <FallingColumn
+                  tiles={column.tiles}
+                  cycle={column.cycle}
+                  speed={SPEEDS[index % SPEEDS.length]}
+                  width={columnWidth}
+                  paused={paused}
+                  still={reduceMotion}
+                />
+              </Animated.View>
+            ))}
+          </View>
+          <EdgeFade color={theme.backgroundElement} edge="top" />
+          <EdgeFade color={theme.backgroundElement} edge="bottom" />
+        </Animated.View>
       ) : (
         <View style={styles.empty}>
           <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-            your past starts today. moments return here after a week.
+            your past starts tomorrow. memories flow in here once you have a few.
           </ThemedText>
         </View>
       )}
@@ -188,64 +308,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
-  lane: {
-    paddingHorizontal: 16,
-    paddingBottom: 18,
-    gap: COLUMN_GAP,
-  },
-  ruler: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: FRAME + STEM + TICK / 2,
-    height: StyleSheet.hairlineWidth,
-    transformOrigin: 'left',
-  },
-  column: {
-    width: FRAME,
+  shuffle: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  frame: {
-    width: FRAME,
-    height: FRAME,
-    borderRadius: 12,
-    borderWidth: 1,
+  viewport: {
+    height: VIEWPORT_HEIGHT,
+    overflow: 'hidden',
+    paddingHorizontal: SIDE_PADDING,
+  },
+  columns: {
+    flexDirection: 'row',
+    gap: GAP,
+  },
+  tile: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   wordsFace: {
     ...StyleSheet.absoluteFill,
-    padding: 8,
+    padding: 10,
+    paddingBottom: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stem: {
-    width: StyleSheet.hairlineWidth,
-    height: STEM,
+  dateChip: {
+    position: 'absolute',
+    left: 6,
+    bottom: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  tick: {
-    width: TICK,
-    height: TICK,
-    borderRadius: TICK / 2,
-  },
-  marks: {
-    alignItems: 'center',
-    gap: 2,
-    marginTop: 8,
-  },
-  tickLabel: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 1,
-    fontVariant: ['tabular-nums'],
-  },
-  dateLabel: {
+  dateText: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 0.8,
+    fontSize: 8,
+    lineHeight: 11,
+    letterSpacing: 0.6,
+    color: '#FFFFFF',
+  },
+  fade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: FADE,
   },
   empty: {
     paddingHorizontal: 16,
