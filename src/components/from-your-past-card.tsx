@@ -45,7 +45,8 @@ const COLUMNS = 3;
 const GAP = 6;
 const SIDE_PADDING = 6;
 const PROFILE_GUTTER = 16; // profile screen's horizontal padding; the wall bleeds past it
-const FADE = 56;
+const FADE_TOP = 64;
+const FADE_BOTTOM = 110;
 /** Pixels per second for each column — different rates make it feel like water. */
 const SPEEDS = [13, 9, 11];
 const ASPECTS = [0.75, 1, 1.3, 0.85, 1.15];
@@ -206,14 +207,30 @@ function FallingColumn({
   );
 }
 
+/**
+ * Eased, uneven fade: opacity falls off along an ease-out curve rather than
+ * a straight line, so tiles dissolve gradually instead of hitting a hard
+ * band. The bottom fade is deeper than the top so memories sink away.
+ */
+const FADE_STOPS: readonly [number, number][] = [
+  [0, 1],
+  [0.18, 0.92],
+  [0.4, 0.68],
+  [0.62, 0.38],
+  [0.82, 0.14],
+  [1, 0],
+];
+
 function EdgeFade({ color, edge }: { color: string; edge: 'top' | 'bottom' }) {
   const id = `fade-${edge}`;
+  const height = edge === 'top' ? FADE_TOP : FADE_BOTTOM;
   return (
-    <Svg style={[styles.fade, edge === 'top' ? { top: 0 } : { bottom: 0 }]} pointerEvents="none">
+    <Svg style={[styles.fade, { height }, edge === 'top' ? { top: 0 } : { bottom: 0 }]} pointerEvents="none">
       <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity={edge === 'top' ? 1 : 0} />
-          <Stop offset="1" stopColor={color} stopOpacity={edge === 'top' ? 0 : 1} />
+        <LinearGradient id={id} x1="0" y1={edge === 'top' ? '0' : '1'} x2="0" y2={edge === 'top' ? '1' : '0'}>
+          {FADE_STOPS.map(([offset, opacity]) => (
+            <Stop key={offset} offset={String(offset)} stopColor={color} stopOpacity={opacity} />
+          ))}
         </LinearGradient>
       </Defs>
       <Rect width="100%" height="100%" fill={`url(#${id})`} />
@@ -364,7 +381,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: FADE,
   },
   empty: {
     paddingHorizontal: PROFILE_GUTTER,

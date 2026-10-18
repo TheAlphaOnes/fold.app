@@ -216,12 +216,6 @@ export default function HomeScreen() {
         if (spineIndex >= 0) {
           hydrateAroundRef.current(spineIndex);
         }
-        if (lastActiveIdRef.current !== null && lastActiveIdRef.current !== compositionId) {
-          haptic.select();
-        }
-        lastActiveIdRef.current = compositionId;
-        setActiveCompositionId(compositionId);
-        
         if (isAtBottom) {
           setActiveDate(new Date());
         } else if (createdAt) {
@@ -254,13 +248,46 @@ export default function HomeScreen() {
     hydrateAround(index);
   }, [hydrateAround]);
 
+  /**
+   * The centred card is derived from the scroll offset — the same offsets the
+   * feed snaps to — and written to the store as the active memory (which the
+   * ambient backdrop and audio auto-play follow). Viewability callbacks only
+   * fire when the visible set changes, so they left a stale active memory
+   * after other screens (time machine, stories) had set their own.
+   */
+  const settleActive = useCallback((offsetY: number) => {
+    const spine = spineRef.current;
+    if (spine.length === 0) return;
+    const id = spine[memoryIndexNearOffset(offsetsRef.current, offsetY)]?.id;
+    if (id === undefined) return;
+    if (lastActiveIdRef.current !== null && lastActiveIdRef.current !== id) {
+      haptic.select();
+    }
+    lastActiveIdRef.current = id;
+    setActiveCompositionId(id);
+  }, [setActiveCompositionId]);
+
+  // Re-assert the centred card whenever home is shown again or the feed changes.
+  useFocusEffect(
+    useCallback(() => {
+      settleActive(scrollY.get());
+    }, [settleActive, scrollY]),
+  );
+  useEffect(() => {
+    settleActive(scrollY.get());
+  }, [timelineData.offsets, settleActive, scrollY]);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
+      scrollY.set(event.contentOffset.y);
       if (Math.abs(event.contentOffset.y - lastSyncOffset.value) > snapInterval * 0.85) {
         lastSyncOffset.value = event.contentOffset.y;
         runOnJS(syncWindow)(event.contentOffset.y);
       }
+    },
+    // Snapping always ends in momentum, so this is where a card has settled.
+    onMomentumEnd: (event) => {
+      runOnJS(settleActive)(event.contentOffset.y);
     },
   });
 
