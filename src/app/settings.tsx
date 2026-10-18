@@ -287,7 +287,10 @@ export default function SettingsScreen() {
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={async () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               await updateSetting('hasOnboarded', false);
+              await updateSetting('guideProgress', defaultGuideProgress);
+              await updateSetting('guideDismissed', false);
               router.replace('/onboarding');
             }}
           >
@@ -304,6 +307,7 @@ export default function SettingsScreen() {
             onPress={async () => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               await updateSetting('guideProgress', defaultGuideProgress);
+              await updateSetting('guideDismissed', false);
               router.push('/guide');
             }}
           >
