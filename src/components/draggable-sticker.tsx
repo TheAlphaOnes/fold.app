@@ -309,6 +309,35 @@ export function DraggableSticker({
   const contextX = useSharedValue(0);
   const contextY = useSharedValue(0);
 
+  // The stored position is the source of truth. A card stays mounted on the
+  // home feed while the same memory is edited elsewhere (time machine, story
+  // view), so when the stored x/y/scale change, glide there — unless this
+  // sticker is mid-gesture, in which case the gesture owns it.
+  useEffect(() => {
+    if (isDragging.get() || pinchActive.get()) return;
+    const scale = media.scale ?? 1;
+    const next = clampStickerBox(media.x_pos, media.y_pos, scale, cardWidth, cardHeight, STICKER_WIDTH, STICKER_HEIGHT);
+    const glide = { duration: 240, easing: Easing.out(Easing.cubic) };
+    translateX.set(withTiming(next.x, glide));
+    translateY.set(withTiming(next.y, glide));
+    baseScale.set(withTiming(scale, glide));
+    savedBaseScale.set(scale);
+  }, [
+    media.x_pos,
+    media.y_pos,
+    media.scale,
+    cardWidth,
+    cardHeight,
+    STICKER_WIDTH,
+    STICKER_HEIGHT,
+    isDragging,
+    pinchActive,
+    translateX,
+    translateY,
+    baseScale,
+    savedBaseScale,
+  ]);
+
   const panGesture = Gesture.Pan()
     .hitSlop(10)
     // Lift-to-drag: activating after a short hold instead of after 15px
@@ -317,33 +346,33 @@ export function DraggableSticker({
     // gesture and the list scrolls normally.
     .activateAfterLongPress(LIFT_HOLD_MS)
     .onStart(() => {
-      isDragging.value = true;
-      dragScale.value = withTiming(1.05, {
+      isDragging.set(true);
+      dragScale.set(withTiming(1.05, {
         duration: 180,
         easing: Easing.out(Easing.quad),
-      });
-      liftLevel.value = withTiming(1, {
+      }));
+      liftLevel.set(withTiming(1, {
         duration: 260,
         easing: Easing.out(Easing.cubic),
-      });
-      contextX.value = translateX.value;
-      contextY.value = translateY.value;
+      }));
+      contextX.set(translateX.get());
+      contextY.set(translateY.get());
       runOnJS(selection)();
     })
     .onUpdate((event) => {
       // Clamp against the scaled footprint so dragging a zoomed sticker
       // keeps all of it on the card.
       const next = clampStickerBox(
-        contextX.value + event.translationX,
-        contextY.value + event.translationY,
-        baseScale.value,
+        contextX.get() + event.translationX,
+        contextY.get() + event.translationY,
+        baseScale.get(),
         cardWidth,
         cardHeight,
         STICKER_WIDTH,
         STICKER_HEIGHT,
       );
-      translateX.value = next.x;
-      translateY.value = next.y;
+      translateX.set(next.x);
+      translateY.set(next.y);
     })
     .onEnd(() => {
       runOnJS(impact)("light");
@@ -352,86 +381,86 @@ export function DraggableSticker({
     // means a cancelled drag no longer strands the sticker between its
     // on-screen position and its stored one.
     .onFinalize(() => {
-      if (!isDragging.value) return;
-      isDragging.value = false;
-      dragScale.value = withTiming(1, {
+      if (!isDragging.get()) return;
+      isDragging.set(false);
+      dragScale.set(withTiming(1, {
         duration: 220,
         easing: Easing.out(Easing.quad),
-      });
-      liftLevel.value = withTiming(0, {
+      }));
+      liftLevel.set(withTiming(0, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
-      });
+      }));
       runOnJS(onDragEnd)(
         media.id,
-        translateX.value,
-        translateY.value,
-        baseScale.value,
+        translateX.get(),
+        translateY.get(),
+        baseScale.get(),
       );
     });
 
   const pinchGesture = Gesture.Pinch()
     .hitSlop(10)
     .onStart(() => {
-      pinchActive.value = true;
+      pinchActive.set(true);
       // Same elevation cue as a drag lift, but without the scale pop so
       // the size feedback stays pure while resizing.
-      liftLevel.value = withTiming(1, {
+      liftLevel.set(withTiming(1, {
         duration: 260,
         easing: Easing.out(Easing.cubic),
-      });
+      }));
       runOnJS(selection)();
     })
     .onUpdate((event) => {
-      baseScale.value = Math.max(
+      baseScale.set(Math.max(
         0.5,
-        Math.min(savedBaseScale.value * event.scale, 3),
-      );
+        Math.min(savedBaseScale.get() * event.scale, 3),
+      ));
       // While the pan is active (drag and resize at once) the pan owns
       // the position; during a pure pinch, keep the scaled footprint
       // inside the card as it grows so nothing drifts under the clip.
-      if (isDragging.value) return;
+      if (isDragging.get()) return;
       const clamped = clampStickerBox(
-        translateX.value,
-        translateY.value,
-        baseScale.value,
+        translateX.get(),
+        translateY.get(),
+        baseScale.get(),
         cardWidth,
         cardHeight,
         STICKER_WIDTH,
         STICKER_HEIGHT,
       );
-      translateX.value = clamped.x;
-      translateY.value = clamped.y;
+      translateX.set(clamped.x);
+      translateY.set(clamped.y);
     })
     .onEnd(() => {
       runOnJS(impact)("light");
     })
     .onFinalize(() => {
-      if (!pinchActive.value) return;
-      pinchActive.value = false;
-      savedBaseScale.value = baseScale.value;
-      if (!isDragging.value) {
+      if (!pinchActive.get()) return;
+      pinchActive.set(false);
+      savedBaseScale.set(baseScale.get());
+      if (!isDragging.get()) {
         const clamped = clampStickerBox(
-          translateX.value,
-          translateY.value,
-          baseScale.value,
+          translateX.get(),
+          translateY.get(),
+          baseScale.get(),
           cardWidth,
           cardHeight,
           STICKER_WIDTH,
           STICKER_HEIGHT,
         );
-        translateX.value = clamped.x;
-        translateY.value = clamped.y;
-        liftLevel.value = withTiming(0, {
+        translateX.set(clamped.x);
+        translateY.set(clamped.y);
+        liftLevel.set(withTiming(0, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
-        });
+        }));
       }
       runOnJS(onDragEnd)(
         media.id,
-        translateX.value,
-        translateY.value,
-        baseScale.value,
+        translateX.get(),
+        translateY.get(),
+        baseScale.get(),
       );
     });
 
@@ -459,14 +488,14 @@ export function DraggableSticker({
       left: 0,
       top: 0,
       transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { scale: baseScale.value * dragScale.value },
+        { translateX: translateX.get() },
+        { translateY: translateY.get() },
+        { scale: baseScale.get() * dragScale.get() },
       ],
-      zIndex: isDragging.value ? DRAG_Z_INDEX : restingZ.value,
-      shadowOpacity: 0.05 + liftLevel.value * 0.15,
-      shadowRadius: 4 + liftLevel.value * 8,
-      shadowOffset: { width: 0, height: 2 + liftLevel.value * 6 },
+      zIndex: isDragging.get() ? DRAG_Z_INDEX : restingZ.value,
+      shadowOpacity: 0.05 + liftLevel.get() * 0.15,
+      shadowRadius: 4 + liftLevel.get() * 8,
+      shadowOffset: { width: 0, height: 2 + liftLevel.get() * 6 },
     };
   });
 
