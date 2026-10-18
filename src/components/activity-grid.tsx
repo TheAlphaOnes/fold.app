@@ -11,6 +11,9 @@
  *  - months with writing are labelled in full ink, the rest muted;
  *  - a small less/more legend; tap a square to open that day.
  *
+ * The whole year sits on one line that fits the card exactly, no scrolling:
+ * square size is derived from the card width and the year's week count.
+ *
  * Counts come from the database (whole year, live memories only).
  * Entrance: the weeks sweep in left to right, 6ms apart, each column's
  * fade resolving faster than the sweep travels.
@@ -46,7 +49,7 @@ interface DayCell {
 }
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const CELL_GAP = 2;
+const CELL_GAP = 1.5;
 const GRID_PADDING = 16;
 const LABEL_SIZE = 9;
 const LABEL_TRACKING = 0.4;
@@ -105,7 +108,11 @@ function buildPanel(
   const monthStarts = [];
   for (let m = firstMonth; m <= lastMonth; m++) {
     const offset = Math.round((new Date(year, m, 1).getTime() - start.getTime()) / 86400000);
-    monthStarts.push({ label: MONTHS[m], month: m, week: Math.floor(offset / 7) });
+    monthStarts.push({
+      label: MONTHS[m],
+      month: m,
+      week: Math.floor(offset / 7),
+    });
   }
   return { weeks, monthStarts };
 }
@@ -124,7 +131,10 @@ function TodayOutline({ size }: { size: number }) {
     glow.set(
       withRepeat(
         withSequence(
-          withTiming(0.35, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+          withTiming(0.35, {
+            duration: 1100,
+            easing: Easing.inOut(Easing.quad),
+          }),
           withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
         ),
         -1,
@@ -136,16 +146,12 @@ function TodayOutline({ size }: { size: number }) {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.todayOutline,
-        { width: size + 2, height: size + 2, borderColor: theme.accentWarm },
-        style,
-      ]}
+      style={[styles.todayOutline, { width: size + 2, height: size + 2, borderColor: theme.accentWarm }, style]}
     />
   );
 }
 
-function HalfYear({
+function YearStrip({
   panel,
   cellSize,
   columnPitch,
@@ -179,7 +185,12 @@ function HalfYear({
     const endX = (monthStarts[i + 1]?.week ?? weeks.length) * columnPitch;
     const band = Math.max(0, endX - startX);
     const text = band >= textWidth(ms.label) + 4 ? ms.label : ms.label[0];
-    return { key: ms.label, text, left: startX + Math.max(0, (band - textWidth(text)) / 2), active: activeMonths.has(ms.month) };
+    return {
+      key: ms.label,
+      text,
+      left: startX + Math.max(0, (band - textWidth(text)) / 2),
+      active: activeMonths.has(ms.month),
+    };
   });
 
   return (
@@ -223,7 +234,13 @@ function HalfYear({
         {labels.map((label) => (
           <ThemedText
             key={label.key}
-            style={[styles.xLabel, { color: label.active ? theme.text : theme.textMuted, left: label.left }]}
+            style={[
+              styles.xLabel,
+              {
+                color: label.active ? theme.text : theme.textMuted,
+                left: label.left,
+              },
+            ]}
           >
             {label.text}
           </ThemedText>
@@ -255,7 +272,7 @@ export function ActivityGrid() {
     };
   }, [currentYear, hydrationVersion]);
 
-  const { halves, litDays, activeMonths } = useMemo(() => {
+  const { year, litDays, activeMonths } = useMemo(() => {
     const months = new Set<number>();
     let lit = 0;
     for (const [key, count] of Object.entries(countMap)) {
@@ -264,17 +281,16 @@ export function ActivityGrid() {
         months.add(Number(key.slice(5, 7)) - 1);
       }
     }
-    // The year as two stacked panels (Jan–Jun, Jul–Dec): half as many
-    // columns each, so the squares can be nearly twice the size.
-    const panels: Panel[] = [
-      buildPanel(currentYear, 0, 5, countMap, todayKey),
-      buildPanel(currentYear, 6, 11, countMap, todayKey),
-    ];
-    return { halves: panels, litDays: lit, activeMonths: months };
+    return {
+      year: buildPanel(currentYear, 0, 11, countMap, todayKey),
+      litDays: lit,
+      activeMonths: months,
+    };
   }, [countMap, currentYear, todayKey]);
 
-  const innerWidth = width - 64;
-  const columns = Math.max(...halves.map((half) => half.weeks.length));
+  // Card is inset 16pt from each screen edge; the grid 16pt inside it.
+  const innerWidth = width - 32 - GRID_PADDING * 2;
+  const columns = year.weeks.length;
   const cellSize = Math.floor(((innerWidth - (columns - 1) * CELL_GAP) / columns) * 10) / 10;
   const columnPitch = cellSize + CELL_GAP;
   const ink = theme.accentWarm;
@@ -291,19 +307,14 @@ export function ActivityGrid() {
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{pad3(litDays)} DAYS</ThemedText>
       </Animated.View>
 
-      <View style={styles.halves}>
-        {halves.map((half, index) => (
-          <HalfYear
-            key={index}
-            panel={half}
-            cellSize={cellSize}
-            columnPitch={columnPitch}
-            activeMonths={activeMonths}
-            delayBase={60 + index * 120}
-            reduceMotion={reduceMotion}
-          />
-        ))}
-      </View>
+      <YearStrip
+        panel={year}
+        cellSize={cellSize}
+        columnPitch={columnPitch}
+        activeMonths={activeMonths}
+        delayBase={60}
+        reduceMotion={reduceMotion}
+      />
 
       <Animated.View
         entering={reduceMotion ? undefined : fadeIn(240, 300)}
@@ -346,16 +357,13 @@ const styles = StyleSheet.create({
     gap: CELL_GAP,
   },
   cell: {
-    borderRadius: 2.5,
-  },
-  halves: {
-    gap: 14,
+    borderRadius: 1.5,
   },
   todayOutline: {
     position: 'absolute',
     top: -1,
     left: -1,
-    borderRadius: 3.5,
+    borderRadius: 2.5,
     borderWidth: 1,
   },
   xLabels: {
