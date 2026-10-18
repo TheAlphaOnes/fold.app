@@ -246,6 +246,31 @@ export async function getDayCoversForMonth(yearMonth: string): Promise<Record<st
   return covers;
 }
 
+/** Memories per day for one year, keyed "YYYY-MM-DD" (live memories only). */
+export async function getDayCountsForYear(year: number): Promise<Record<string, number>> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ day: string; n: number }>(
+    `SELECT strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) AS day, COUNT(*) AS n
+     FROM compositions
+     WHERE deleted_at IS NULL
+       AND strftime('%Y', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
+     GROUP BY day`,
+    String(year),
+  );
+  const counts: Record<string, number> = {};
+  for (const row of rows) counts[row.day] = Number(row.n);
+  return counts;
+}
+
+/** The earliest year that has a live memory, or null for an empty journal. */
+export async function getFirstMemoryYear(): Promise<number | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ first: number | null }>(
+    'SELECT MIN(created_at) AS first FROM compositions WHERE deleted_at IS NULL',
+  );
+  return row?.first ? new Date(Number(row.first)).getFullYear() : null;
+}
+
 export async function getDatesWithMemories(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ date_str: string }>(

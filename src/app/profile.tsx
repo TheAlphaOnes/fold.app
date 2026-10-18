@@ -227,7 +227,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Heat Map (Activity Grid) */}
-        <ActivityGrid compositions={compositions} />
+        <ActivityGrid />
 
         {/* Time Machine Section */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
