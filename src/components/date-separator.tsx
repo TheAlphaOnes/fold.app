@@ -1,11 +1,23 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated as RNAnimated, Easing } from 'react-native';
+/**
+ * DateSeparator — the quiet divider between years, months or days in the feed.
+ *
+ * Its entrance is split into segments that land at different rates: the two
+ * hairlines draw outward from the label (left 380ms, right 460ms), the label
+ * ticks in character by character like a split-flap readout, and in monthly
+ * or daily mode the accent dot pops in last. Respects reduced motion.
+ */
+
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { Keyframe } from 'react-native-reanimated';
+
+import { EASE_OUT, SPRING_BOUNCE } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import type { TimelineMode } from '@/hooks/use-settings';
-import type { PeriodGranularity } from '@/db/journal-repository';
-import { PeriodPhotoStack } from '@/components/period-photo-stack';
 
 export const DATE_SEPARATOR_HEIGHT = 72;
+
+const CHAR_STAGGER = 35;
 
 interface DateSeparatorProps {
   date: Date;
@@ -33,115 +45,77 @@ function formatSeparatorLabel(date: Date, mode: string): { prefix: string; suffi
   return { prefix: dow, suffix: `${dd}.${mm}.${yyyy}` };
 }
 
-/** The block a separator introduces, for its photo stack. */
-function periodOf(date: Date, mode: string): { granularity: PeriodGranularity; value: string } {
-  const yyyy = String(date.getFullYear());
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  if (mode === 'yearly') return { granularity: 'year', value: yyyy };
-  if (mode === 'monthly') return { granularity: 'month', value: `${yyyy}-${mm}` };
-  return { granularity: 'day', value: `${yyyy}-${mm}-${String(date.getDate()).padStart(2, '0')}` };
+const drawLine = (delay: number, duration: number) =>
+  new Keyframe({
+    0: { opacity: 0, transform: [{ scaleX: 0 }] },
+    100: { opacity: 1, transform: [{ scaleX: 1 }], easing: EASE_OUT },
+  })
+    .duration(duration)
+    .delay(delay);
+
+const tickIn = (delay: number) =>
+  new Keyframe({
+    0: { opacity: 0, transform: [{ translateY: 9 }] },
+    100: { opacity: 1, transform: [{ translateY: 0 }], easing: EASE_OUT },
+  })
+    .duration(260)
+    .delay(delay);
+
+const dotIn = (delay: number) =>
+  new Keyframe({
+    0: { opacity: 0, transform: [{ scale: 0 }] },
+    100: { opacity: 1, transform: [{ scale: 1 }], easing: SPRING_BOUNCE },
+  })
+    .duration(260)
+    .delay(delay);
+
+/** One label rendered as individually ticking characters. */
+function TickerLabel({ text, color, startDelay }: { text: string; color: string; startDelay: number }) {
+  return (
+    <View style={styles.ticker} accessible accessibilityLabel={text}>
+      {Array.from(text).map((char, index) => (
+        <Animated.Text
+          key={`${index}-${char}`}
+          entering={tickIn(startDelay + index * CHAR_STAGGER)}
+          style={[styles.primaryLabel, { color }]}
+          allowFontScaling={false}
+          importantForAccessibility="no"
+        >
+          {char}
+        </Animated.Text>
+      ))}
+    </View>
+  );
 }
 
-export const DateSeparator = React.memo(function DateSeparator({
-  date,
-  timelineMode,
-}: DateSeparatorProps) {
+export const DateSeparator = React.memo(function DateSeparator({ date, timelineMode }: DateSeparatorProps) {
   const theme = useTheme();
   const { prefix, suffix } = formatSeparatorLabel(date, timelineMode);
-  const period = periodOf(date, timelineMode);
-
-  // Three staggered animation segments so the separator feels alive, not monotonous
-  const lineOpacity = useRef(new RNAnimated.Value(0)).current;
-  const textTranslate = useRef(new RNAnimated.Value(6)).current;
-  const textOpacity = useRef(new RNAnimated.Value(0)).current;
-  const dotScale = useRef(new RNAnimated.Value(0)).current;
-
-  useEffect(() => {
-    // Segment 1: hairline fades in (0–180ms)
-    RNAnimated.timing(lineOpacity, {
-      toValue: 1,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-
-    // Segment 2: label slides up from slight offset (80–300ms)
-    RNAnimated.parallel([
-      RNAnimated.timing(textOpacity, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(textTranslate, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Segment 3: accent dot pops in (delay 200, dur 200)
-    RNAnimated.sequence([
-      RNAnimated.delay(200),
-      RNAnimated.spring(dotScale, {
-        toValue: 1,
-        friction: 5,
-        tension: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [lineOpacity, textOpacity, textTranslate, dotScale]);
+  const suffixDelay = 120 + (prefix ? prefix.length * CHAR_STAGGER + 60 : 0);
 
   return (
     <View style={[styles.container, { height: DATE_SEPARATOR_HEIGHT }]}>
-      {/* Left hairline */}
-      <RNAnimated.View
-        style={[styles.line, { backgroundColor: theme.border, opacity: lineOpacity }]}
+      <Animated.View
+        entering={drawLine(60, 380)}
+        style={[styles.line, styles.lineLeft, { backgroundColor: theme.border }]}
       />
 
-      <RNAnimated.View
-        style={[
-          styles.labelContainer,
-          {
-            opacity: textOpacity,
-            transform: [{ translateY: textTranslate }],
-          },
-        ]}
-      >
+      <View style={styles.labelContainer}>
         {!!prefix && (
           <>
-            <Text
-              style={[styles.primaryLabel, { color: theme.textMuted }]}
-              allowFontScaling={false}
-            >
-              {prefix}
-            </Text>
-            
-            {/* Accent dot */}
-            <RNAnimated.View
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: theme.accentWarm,
-                  transform: [{ scale: dotScale }],
-                },
-              ]}
+            <TickerLabel text={prefix} color={theme.textMuted} startDelay={120} />
+            <Animated.View
+              entering={dotIn(suffixDelay - 20)}
+              style={[styles.dot, { backgroundColor: theme.accentWarm }]}
             />
           </>
         )}
+        <TickerLabel text={suffix} color={theme.text} startDelay={suffixDelay} />
+      </View>
 
-        <Text
-          style={[styles.primaryLabel, { color: theme.text }]}
-          allowFontScaling={false}
-        >
-          {suffix}
-        </Text>
-      </RNAnimated.View>
-
-      <PeriodPhotoStack granularity={period.granularity} period={period.value} />
-
-      {/* Right hairline */}
-      <RNAnimated.View
-        style={[styles.line, { backgroundColor: theme.border, opacity: lineOpacity }]}
+      <Animated.View
+        entering={drawLine(100, 460)}
+        style={[styles.line, styles.lineRight, { backgroundColor: theme.border }]}
       />
     </View>
   );
@@ -159,6 +133,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: StyleSheet.hairlineWidth,
   },
+  // Lines grow outward from the label.
+  lineLeft: {
+    transformOrigin: 'right',
+  },
+  lineRight: {
+    transformOrigin: 'left',
+  },
   dot: {
     width: 5,
     height: 5,
@@ -168,6 +149,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  ticker: {
+    flexDirection: 'row',
   },
   primaryLabel: {
     fontFamily: 'JetBrainsMono-Bold',
