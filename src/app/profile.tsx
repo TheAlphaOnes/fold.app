@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_READY_ART } from '@/constants/ascii-art';
 import { ActivityGrid } from '@/components/activity-grid';
-import { ProfileStats } from '@/components/profile-stats';
+import { FromYourPastCard } from '@/components/from-your-past-card';
 import { StreakCard } from '@/components/streak-card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { TECalendar } from '@/components/te-calendar';
@@ -153,6 +153,9 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
+        {/* Today's memory from the past — photo-first, opens the memory */}
+        <FromYourPastCard />
+
         {/* Combined Dashboard Card */}
         <StreakCard compositions={compositions} />
 
@@ -237,9 +240,6 @@ export default function ProfileScreen() {
             onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)}
           />
         </View>
-
-        {/* Stats */}
-        <ProfileStats compositions={compositions} />
 
         {/* ASCII Easter Egg Mascot */}
         <View style={styles.mascotContainer}>

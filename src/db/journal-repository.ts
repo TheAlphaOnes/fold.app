@@ -196,6 +196,31 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
+/** Memories on this month-day in years before `beforeYear`, newest year first. */
+export async function getCompositionsOnMonthDayBefore(monthDay: string, beforeYear: number): Promise<Composition[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `${COMPOSITION_SELECT}
+     WHERE strftime('%m-%d', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) = ?
+       AND CAST(strftime('%Y', datetime(c.created_at / 1000, 'unixepoch', 'localtime')) AS INTEGER) < ?
+     ORDER BY c.created_at DESC`,
+    monthDay,
+    beforeYear,
+  );
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
+/** The most recent memories created before `timestamp` (ms), newest first. */
+export async function getCompositionsBefore(timestamp: number, limit: number): Promise<Composition[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync(
+    `${COMPOSITION_SELECT} WHERE c.created_at < ? ORDER BY c.created_at DESC LIMIT ?`,
+    timestamp,
+    limit,
+  );
+  return rows.map((row) => rowToComposition(mapRow(row)));
+}
+
 export async function getDatesWithMemories(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ date_str: string }>(
