@@ -8,6 +8,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useGuideProgress } from '@/hooks/use-guide-progress';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ThemedText } from '@/components/themed-text';
@@ -27,8 +28,9 @@ export function FieldGuideTab() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { completedCount, totalCount, isAllCompleted } = useGuideProgress();
+  const guideDismissed = useSettingsStore((state) => state.settings.guideDismissed);
 
-  if (isAllCompleted) {
+  if (isAllCompleted || guideDismissed) {
     return null;
   }
 

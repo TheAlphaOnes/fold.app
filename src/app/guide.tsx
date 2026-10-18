@@ -50,7 +50,7 @@ export default function FieldGuideScreen() {
   const cardHeight = Math.min(screenWidth * 1.618, screenHeight * 0.78);
   const cardWidth = screenWidth - 42;
 
-  const { settings, completeGuideStep } = useSettingsStore();
+  const { settings, completeGuideStep, updateSetting } = useSettingsStore();
   const { compositions, addComposition } = useJournalStore();
   const { stories = [], refreshStories } = useStoriesStore();
   const initialStoryCount = useRef(stories?.length ?? 0);
@@ -121,9 +121,9 @@ export default function FieldGuideScreen() {
     if (phaseNum === 3) completeGuideStep('capture');
     if (phaseNum === 4) completeGuideStep('inspect');
     if (phaseNum === 5) completeGuideStep('share');
-    if (phaseNum === 6) completeGuideStep('stickers');
+    if (phaseNum === 7) completeGuideStep('stickers');
     // phases 8-11 are all part of the stories curriculum
-    if (phaseNum === 11) completeGuideStep('stories');
+    if (phaseNum === 11 || phaseNum === 12) completeGuideStep('stories');
   }, [completeGuideStep]);
 
   const handleActionSuccess = useCallback(() => {
@@ -140,7 +140,11 @@ export default function FieldGuideScreen() {
 
     setTimeout(() => {
       setIsSuccess(false);
-      setPhase((prev) => (prev < 11 ? prev + 1 : 12));
+      setPhase((prev) => {
+        const next = prev < 12 ? prev + 1 : 12;
+        phaseRef.current = next;
+        return next;
+      });
     }, 1000);
   }, [textScale, syncStepProgress]);
 
@@ -202,6 +206,41 @@ export default function FieldGuideScreen() {
     }, [isSuccess, handleActionSuccess])
   );
 
+  // Phase 12: Mark all guide steps complete and dismiss guide
+  useEffect(() => {
+    if (phase === 12) {
+      updateSetting('guideProgress', {
+        write: true,
+        voice: true,
+        capture: true,
+        inspect: true,
+        share: true,
+        stickers: true,
+        stories: true,
+      });
+      updateSetting('guideDismissed', true);
+    }
+  }, [phase, updateSetting]);
+
+  const handleFinishGuide = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    await updateSetting('guideProgress', {
+      write: true,
+      voice: true,
+      capture: true,
+      inspect: true,
+      share: true,
+      stickers: true,
+      stories: true,
+    });
+    await updateSetting('guideDismissed', true);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }, [updateSetting]);
+
   // Dedicated text memory card for Phase 4 & 5 guide demonstration
   // Guarantees Text medium so it renders rich text content rather than an audio/photo view
   const guideTextMemory: Composition = useMemo(() => {
@@ -242,7 +281,7 @@ export default function FieldGuideScreen() {
         type: 'image',
         x_pos: 20,
         y_pos: 24,
-        scale: 0.95,
+        scale: 1,
         width: 100,
         height: 120,
       },
@@ -252,7 +291,7 @@ export default function FieldGuideScreen() {
         type: 'image',
         x_pos: Math.max(120, cardWidth - 140),
         y_pos: 150,
-        scale: 0.95,
+        scale: 1,
         width: 120,
         height: 110,
       },
@@ -260,6 +299,28 @@ export default function FieldGuideScreen() {
   }, [cardWidth]);
 
   const [guideStickers, setGuideStickers] = useState<MediaElement[]>(initialStickerElements);
+
+  // Snapshot refs to isolate Phase 6 (drag) from Phase 7 (pinch)
+  const phase6StartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const phase7StartScalesRef = useRef<Map<string, number>>(new Map());
+
+  // Snapshot positions when entering Phase 6
+  useEffect(() => {
+    if (phase === 6) {
+      const map = new Map<string, { x: number; y: number }>();
+      guideStickers.forEach(s => map.set(s.id, { x: s.x_pos, y: s.y_pos }));
+      phase6StartPositionsRef.current = map;
+    }
+  }, [phase]);
+
+  // Snapshot scales when entering Phase 7
+  useEffect(() => {
+    if (phase === 7) {
+      const map = new Map<string, number>();
+      guideStickers.forEach(s => map.set(s.id, s.scale ?? 1));
+      phase7StartScalesRef.current = map;
+    }
+  }, [phase]);
 
   const guideStickerMemory: Composition = useMemo(() => ({
     id: 999998,
@@ -278,27 +339,42 @@ export default function FieldGuideScreen() {
   }, [compositions]);
 
   const handleStickerUpdatePositions = useCallback((_id: number, updatedMedia: MediaElement[]) => {
+    setGuideStickers(updatedMedia);
+    if (isSuccess) return;
+
     const currentPhase = phaseRef.current;
-    if ((currentPhase === 6 || currentPhase === 7) && !isSuccess) {
-      // Phase 6: success on drag (position moved > 4px)
-      const positionChanged = updatedMedia.some(u => {
-        const prev = guideStickers.find(s => s.id === u.id);
-        return prev && (Math.abs(u.x_pos - prev.x_pos) > 4 || Math.abs(u.y_pos - prev.y_pos) > 4);
-      });
-      // Phase 7: success on pinch (scale changed > 4%)
-      const scaleChanged = updatedMedia.some(u => {
-        const prev = guideStickers.find(s => s.id === u.id);
-        return prev && Math.abs((u.scale ?? 1) - (prev.scale ?? 1)) > 0.04;
-      });
-      const shouldAdvance = currentPhase === 6 ? positionChanged : scaleChanged;
-      if (shouldAdvance) {
-        setGuideStickers(updatedMedia);
-        handleActionSuccess();
+    if (currentPhase === 6) {
+      // If Phase 6 baseline is not yet initialized, set it and return without advancing
+      if (phase6StartPositionsRef.current.size === 0) {
+        updatedMedia.forEach(s => phase6StartPositionsRef.current.set(s.id, { x: s.x_pos, y: s.y_pos }));
         return;
       }
+      // Phase 6: only drag counts (position moved > 15px from Phase 6 baseline)
+      const positionMoved = updatedMedia.some(u => {
+        const start = phase6StartPositionsRef.current.get(u.id);
+        if (!start) return false;
+        return Math.hypot(u.x_pos - start.x, u.y_pos - start.y) > 15;
+      });
+      if (positionMoved) {
+        handleActionSuccess();
+      }
+    } else if (currentPhase === 7) {
+      // If Phase 7 baseline scale is not yet initialized, set it and return without advancing
+      if (phase7StartScalesRef.current.size === 0) {
+        updatedMedia.forEach(s => phase7StartScalesRef.current.set(s.id, s.scale ?? 1.0));
+        return;
+      }
+      // Phase 7: only pinch scale counts (scale changed >= 15% from Phase 7 baseline)
+      const scaleChanged = updatedMedia.some(u => {
+        const baseScale = phase7StartScalesRef.current.get(u.id) ?? 1.0;
+        const currentScale = u.scale ?? 1.0;
+        return Math.abs(currentScale - baseScale) >= 0.15;
+      });
+      if (scaleChanged) {
+        handleActionSuccess();
+      }
     }
-    setGuideStickers(updatedMedia);
-  }, [handleActionSuccess, isSuccess, guideStickers]);
+  }, [handleActionSuccess, isSuccess]);
 
   // Phase 1 handler
   const handleTap = () => {
@@ -889,14 +965,7 @@ export default function FieldGuideScreen() {
             <Animated.View entering={FadeInUp.duration(500).springify()}>
               <ActionLink
                 text="OPEN JOURNAL"
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                  if (router.canGoBack()) {
-                    router.back();
-                  } else {
-                    router.replace('/');
-                  }
-                }}
+                onPress={handleFinishGuide}
               />
             </Animated.View>
           ) : null}

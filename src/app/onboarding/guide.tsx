@@ -49,7 +49,7 @@ export default function OnboardingGuideScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const cardHeight = Math.min(screenWidth * 1.618, screenHeight * 0.78);
   const cardWidth = screenWidth - 42;
-  const { updateSetting } = useSettingsStore();
+  const { updateSetting, completeGuideStep } = useSettingsStore();
   const { compositions, addComposition } = useJournalStore();
 
   const [phase, setPhase] = useState(1);
@@ -102,7 +102,7 @@ export default function OnboardingGuideScreen() {
         type: 'image',
         x_pos: 20,
         y_pos: 24,
-        scale: 0.95,
+        scale: 1,
         width: 100,
         height: 120,
       },
@@ -112,7 +112,7 @@ export default function OnboardingGuideScreen() {
         type: 'image',
         x_pos: Math.max(120, cardWidth - 140),
         y_pos: 150,
-        scale: 0.95,
+        scale: 1,
         width: 120,
         height: 110,
       },
@@ -120,6 +120,28 @@ export default function OnboardingGuideScreen() {
   }, [cardWidth]);
 
   const [guideStickers, setGuideStickers] = useState<MediaElement[]>(initialStickerElements);
+
+  // Snapshot refs to isolate Phase 6 (drag) from Phase 7 (pinch)
+  const phase6StartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const phase7StartScalesRef = useRef<Map<string, number>>(new Map());
+
+  // Snapshot positions when entering Phase 6
+  useEffect(() => {
+    if (phase === 6) {
+      const map = new Map<string, { x: number; y: number }>();
+      guideStickers.forEach(s => map.set(s.id, { x: s.x_pos, y: s.y_pos }));
+      phase6StartPositionsRef.current = map;
+    }
+  }, [phase]);
+
+  // Snapshot scales when entering Phase 7
+  useEffect(() => {
+    if (phase === 7) {
+      const map = new Map<string, number>();
+      guideStickers.forEach(s => map.set(s.id, s.scale ?? 1));
+      phase7StartScalesRef.current = map;
+    }
+  }, [phase]);
 
   const guideStickerMemory: Composition = useMemo(() => ({
     id: 999998,
@@ -137,11 +159,23 @@ export default function OnboardingGuideScreen() {
   const [showCreateStoryTray, setShowCreateStoryTray] = useState(false);
   const hasVisitedStoriesRef = useRef(false);
 
+  // Sync guide progress step on success
+  const syncStepProgress = useCallback((phaseNum: number) => {
+    if (phaseNum === 1) completeGuideStep('write');
+    if (phaseNum === 2) completeGuideStep('voice');
+    if (phaseNum === 3) completeGuideStep('capture');
+    if (phaseNum === 4) completeGuideStep('inspect');
+    if (phaseNum === 5) completeGuideStep('share');
+    if (phaseNum === 7) completeGuideStep('stickers');
+    if (phaseNum === 11 || phaseNum === 12) completeGuideStep('stories');
+  }, [completeGuideStep]);
+
   // Phase advancement
   const handleActionSuccess = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid), 60);
 
+    syncStepProgress(phaseRef.current);
     setIsSuccess(true);
 
     textScale.value = withSequence(
@@ -151,9 +185,13 @@ export default function OnboardingGuideScreen() {
 
     setTimeout(() => {
       setIsSuccess(false);
-      setPhase(prev => (prev < 12 ? prev + 1 : 12));
+      setPhase(prev => {
+        const next = prev < 12 ? prev + 1 : 12;
+        phaseRef.current = next;
+        return next;
+      });
     }, 1000);
-  }, [textScale]);
+  }, [textScale, syncStepProgress]);
 
   // Phase 9: detect story created
   useFocusEffect(
@@ -196,27 +234,42 @@ export default function OnboardingGuideScreen() {
 
   // Handler for sticker gestures in phases 6 (drag) & 7 (pinch)
   const handleStickerUpdatePositions = useCallback((_id: number, updatedMedia: MediaElement[]) => {
+    setGuideStickers(updatedMedia);
+    if (isSuccess) return;
+
     const currentPhase = phaseRef.current;
-    if ((currentPhase === 6 || currentPhase === 7) && !isSuccess) {
-      // Phase 6: success on drag (position moved > 4px)
-      const positionChanged = updatedMedia.some(u => {
-        const prev = guideStickers.find(s => s.id === u.id);
-        return prev && (Math.abs(u.x_pos - prev.x_pos) > 4 || Math.abs(u.y_pos - prev.y_pos) > 4);
-      });
-      // Phase 7: success on pinch (scale changed > 4%)
-      const scaleChanged = updatedMedia.some(u => {
-        const prev = guideStickers.find(s => s.id === u.id);
-        return prev && Math.abs((u.scale ?? 1) - (prev.scale ?? 1)) > 0.04;
-      });
-      const shouldAdvance = currentPhase === 6 ? positionChanged : scaleChanged;
-      if (shouldAdvance) {
-        setGuideStickers(updatedMedia);
-        handleActionSuccess();
+    if (currentPhase === 6) {
+      // If Phase 6 baseline is not yet initialized, set it and return without advancing
+      if (phase6StartPositionsRef.current.size === 0) {
+        updatedMedia.forEach(s => phase6StartPositionsRef.current.set(s.id, { x: s.x_pos, y: s.y_pos }));
         return;
       }
+      // Phase 6: only drag counts (position moved > 15px from Phase 6 baseline)
+      const positionMoved = updatedMedia.some(u => {
+        const start = phase6StartPositionsRef.current.get(u.id);
+        if (!start) return false;
+        return Math.hypot(u.x_pos - start.x, u.y_pos - start.y) > 15;
+      });
+      if (positionMoved) {
+        handleActionSuccess();
+      }
+    } else if (currentPhase === 7) {
+      // If Phase 7 baseline scale is not yet initialized, set it and return without advancing
+      if (phase7StartScalesRef.current.size === 0) {
+        updatedMedia.forEach(s => phase7StartScalesRef.current.set(s.id, s.scale ?? 1.0));
+        return;
+      }
+      // Phase 7: only pinch scale counts (scale changed >= 15% from Phase 7 baseline)
+      const scaleChanged = updatedMedia.some(u => {
+        const baseScale = phase7StartScalesRef.current.get(u.id) ?? 1.0;
+        const currentScale = u.scale ?? 1.0;
+        return Math.abs(currentScale - baseScale) >= 0.15;
+      });
+      if (scaleChanged) {
+        handleActionSuccess();
+      }
     }
-    setGuideStickers(updatedMedia);
-  }, [handleActionSuccess, isSuccess, guideStickers]);
+  }, [handleActionSuccess, isSuccess]);
 
   // Monitor Composition Count to auto-advance Phase 1, 2, and 3
   useFocusEffect(
@@ -242,19 +295,39 @@ export default function OnboardingGuideScreen() {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await updateSetting('guideProgress', {
+      write: true,
+      voice: true,
+      capture: true,
+      inspect: true,
+      share: true,
+      stickers: true,
+      stories: true,
+    });
+    await updateSetting('guideDismissed', true);
     await updateSetting('hasOnboarded', true);
     router.replace('/');
   };
 
-  // Phase 9: show a CTA button after a brief dramatic pause
+  // Phase 12: show a CTA button and mark guide complete
   const [showProceedBtn, setShowProceedBtn] = useState(false);
   useEffect(() => {
-    if (phase === 9) {
+    if (phase === 12) {
       setShowProceedBtn(false);
-      const timer = setTimeout(() => setShowProceedBtn(true), 1200);
+      updateSetting('guideProgress', {
+        write: true,
+        voice: true,
+        capture: true,
+        inspect: true,
+        share: true,
+        stickers: true,
+        stories: true,
+      });
+      updateSetting('guideDismissed', true);
+      const timer = setTimeout(() => setShowProceedBtn(true), 600);
       return () => clearTimeout(timer);
     }
-  }, [phase]);
+  }, [phase, updateSetting]);
 
   // ---------------------------------------------------------------------------
   // Phase 1: Tap to write
