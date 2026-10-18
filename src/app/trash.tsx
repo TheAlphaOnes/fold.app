@@ -345,9 +345,11 @@ const styles = StyleSheet.create({
     gap: GAP,
     marginBottom: 20,
   },
+  // Baseline alignment: the note sits on the same line as 'memory waiting'
+  // even though the count beside it is set much larger.
   summary: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: 16,
     paddingBottom: 18,
