@@ -17,10 +17,29 @@ import { useThemeContext } from '@/hooks/use-theme';
 import { GrainBackground } from './grain-background';
 import { ThemedText } from './themed-text';
 import { AsciiArt } from '@/components/ascii-art';
+import { haptic } from '@/services/haptics';
 import { SYS_CORE_ART, CAT_ART } from '@/constants/ascii-art';
 
 interface BiometricGateProps {
   children: React.ReactNode;
+}
+
+/** Short, human reason for a failed unlock. */
+function failureCopy(error: LocalAuthentication.LocalAuthenticationError | undefined): string {
+  switch (error) {
+    case 'user_cancel':
+    case 'system_cancel':
+    case 'app_cancel':
+      return 'unlock cancelled.';
+    case 'lockout':
+      return 'too many attempts. use your passcode to unlock.';
+    case 'authentication_failed':
+      return "that didn't match. try again.";
+    case 'passcode_not_set':
+      return 'set a device passcode to use the lock.';
+    default:
+      return "couldn't unlock. try again.";
+  }
 }
 
 export const BiometricContext = React.createContext({ isLocked: false });
@@ -44,33 +63,6 @@ export function BiometricGate({ children }: BiometricGateProps) {
   const coreScale = useSharedValue(1);
   const coreOpacity = useSharedValue(1);
 
-  const authenticate = async () => {
-    if (authStatus === 'authenticating' || authStatus === 'success') return;
-    setAuthStatus('authenticating');
-    try {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      
-      if (!hasHardware || !isEnrolled) {
-        handleSuccess();
-        return;
-      }
-
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock your journal',
-        disableDeviceFallback: false,
-      });
-
-      if (result.success) {
-        handleSuccess();
-      } else {
-        setAuthStatus('idle');
-      }
-    } catch {
-      setAuthStatus('idle');
-    }
-  };
-
   const handleSuccess = () => {
     setAuthStatus('success');
     lastUnlockTime.current = Date.now();
@@ -91,12 +83,59 @@ export function BiometricGate({ children }: BiometricGateProps) {
     coreOpacity.value = 1;
   };
 
+  // Why the last attempt did not unlock, shown above the retry button.
+  const [failure, setFailure] = useState<string | null>(null);
+  // In-flight guard as a ref: state read inside listeners can be stale, which
+  // either blocked retries or let two prompts start at once.
+  const inFlight = useRef(false);
+
+  const authenticate = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setFailure(null);
+    setAuthStatus('authenticating');
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (!hasHardware || !isEnrolled) {
+        handleSuccess();
+        return;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Unlock your journal',
+        disableDeviceFallback: false,
+      });
+
+      if (result.success) {
+        handleSuccess();
+      } else {
+        setAuthStatus('idle');
+        setFailure(failureCopy(result.error));
+        haptic.warning();
+      }
+    } catch (error) {
+      console.error('Biometric unlock failed to start', error);
+      setAuthStatus('idle');
+      setFailure("couldn't start unlock. try again.");
+    } finally {
+      inFlight.current = false;
+    }
+  };
+
+  // Listeners always call the latest authenticate, never a stale closure.
+  const authenticateRef = useRef(authenticate);
+  useEffect(() => {
+    authenticateRef.current = authenticate;
+  });
+
   useEffect(() => {
     if (!loading && initialMount.current) {
       initialMount.current = false;
       if (settings.requireBiometrics) {
         setIsLocked(true);
-        authenticate();
+        authenticateRef.current();
       }
     }
   }, [loading]);
@@ -126,15 +165,22 @@ export function BiometricGate({ children }: BiometricGateProps) {
       // gate from firing when the user is mid-interaction.
       if (prev === 'background' && nextAppState === 'active') {
         setShowPrivacy(false);
+        // A prompt that was open when the app left is gone; never let it
+        // leave the gate stuck in "authenticating" with no way to retry.
+        inFlight.current = false;
         const elapsed = Date.now() - lastUnlockTime.current;
         if (settings.requireBiometrics && !initialMount.current && elapsed > RELOCK_DEBOUNCE_MS) {
           setIsLocked(true);
           resetAnimation();
-          authenticate();
+          authenticateRef.current();
+        } else {
+          setAuthStatus((status) => (status === 'authenticating' ? 'idle' : status));
         }
       } 
       // Show privacy screen when going to background (not inactive)
       else if (prev === 'active' && nextAppState === 'background') {
+        // Close any open prompt so it cannot resolve into a stale state.
+        LocalAuthentication.cancelAuthenticate().catch(() => {});
         if (settings.privacyScreen) {
           setShowPrivacy(true);
         }
@@ -196,11 +242,26 @@ export function BiometricGate({ children }: BiometricGateProps) {
             ) : (
               <>
                 <ThemedText style={[styles.subtitle, { color: colors.textMuted }]}>
-                  AUTHENTICATE TO OPEN
+                  {authStatus === 'authenticating' ? 'UNLOCKING…' : 'AUTHENTICATE TO OPEN'}
                 </ThemedText>
+                {failure && authStatus === 'idle' && (
+                  <ThemedText style={[styles.failure, { color: colors.accentWarm }]}>{failure}</ThemedText>
+                )}
                 {authStatus === 'idle' && (
-                  <Pressable onPress={authenticate} style={[styles.retryBtn, { borderColor: colors.border }]}>
-                    <ThemedText style={[styles.retryText, { color: colors.text }]}>RETRY</ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      haptic.tap();
+                      authenticate();
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Try unlocking again"
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.retryBtn,
+                      { borderColor: colors.text, opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    ]}
+                  >
+                    <ThemedText style={[styles.retryText, { color: colors.text }]}>TRY AGAIN</ThemedText>
                   </Pressable>
                 )}
               </>
@@ -230,12 +291,20 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginTop: 24,
   },
+  failure: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 12,
+    textAlign: 'center',
+  },
   retryBtn: {
-    marginTop: 32,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginTop: 28,
+    minHeight: 44,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 22,
   },
   retryText: {
     fontFamily: 'JetBrainsMono-Bold',
