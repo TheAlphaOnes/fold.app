@@ -16,7 +16,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { GrainBackground } from '@/components/grain-background';
 import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
-import { BOOK_ART } from '@/constants/ascii-art';
+import { BIN_ART } from '@/constants/ascii-art';
 import { fadeIn, fadeOut, riseIn } from '@/constants/motion';
 import { BALANCED_TEXT } from '@/constants/theme';
 import { getTrashedCompositions } from '@/db/journal-repository';
@@ -248,11 +248,11 @@ export default function TrashScreen() {
       ) : (
         <View style={styles.empty}>
           <Animated.View entering={fadeIn(400)} style={styles.emptyArt}>
-            <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={9} />
+            <AsciiArt art={BIN_ART} color={theme.textMuted} fontSize={12} />
           </Animated.View>
           <Animated.View entering={riseIn(300, 80)}>
             <ThemedText {...BALANCED_TEXT} style={[styles.note, { color: theme.textSecondary }]}>
-              {`nothing here. deleted memories wait here for ${TRASH_DAYS} days.`}
+              {`nothing here.\nwhat you delete waits ${TRASH_DAYS} days.`}
             </ThemedText>
           </Animated.View>
         </View>

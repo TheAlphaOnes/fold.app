@@ -129,3 +129,14 @@ export const COFFEE_ART = [
   "|    |]",
   "`----'",
 ].join("\n");
+
+/** Recently Deleted empty state: an empty bin with its lid lifted. */
+export const BIN_ART = [
+  "     ______     ",
+  "  __|______|__  ",
+  " |____________| ",
+  "  |  |  |  |  | ",
+  "  |  |  |  |  | ",
+  "  |  |  |  |  | ",
+  "  |__|__|__|__| ",
+].join("\n");
