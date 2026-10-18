@@ -2,33 +2,45 @@
  * AmbientBackdrop — the centred memory's own colour, washed behind the feed.
  *
  * Takes the active memory's first photo (or video thumbnail; GIFs skipped),
- * blurs it and lays it under the cards at low opacity. Text-only and voice
- * memories leave the plain background, so the colour only ever comes from
- * what the user captured.
+ * blurs it and lays it under the cards. Text-only and voice memories leave
+ * the plain background, so the colour only ever comes from what the user
+ * captured. Strength follows the Background Glow setting.
+ *
+ * Transitions are deliberately unhurried in both directions: presence eases
+ * in over 900ms and out over 1100ms, and photo-to-photo swaps cross-dissolve
+ * over 900ms. The last photo is kept while fading out, so moving onto a text
+ * memory no longer drops the image in a single frame.
  *
  * Performance: one image layer, blur capped at 8px (the project's GPU budget
- * for blur), crossfades handled natively by expo-image. Presence (whether
- * there is any colour) eases separately from the image swap, so moving from
- * a photo to a text memory fades out more slowly than photos crossfade.
+ * for blur), crossfades handled natively by expo-image.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 
-import { EASE_OUT } from '@/constants/motion';
 import { useJournalStore } from '@/hooks/use-journal';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { useThemeContext } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { isGifMedia } from '@/utils/media-kind';
 
 const BLUR_RADIUS = 8;
-const OPACITY_DARK = 0.28;
-const OPACITY_LIGHT = 0.18;
+const FADE_IN_MS = 900;
+const FADE_OUT_MS = 1100;
+const CROSSFADE_MS = 900;
+
+/**
+ * Opacity at full intensity. Light mode needs more: a photo over a white
+ * page washes out far faster than over near-black.
+ */
+const MAX_OPACITY_DARK = 0.7;
+const MAX_OPACITY_LIGHT = 0.75;
 
 export function AmbientBackdrop() {
   const { isDark } = useThemeContext();
+  const intensity = useSettingsStore((state) => state.settings.backdropIntensity);
   const activeId = useJournalStore((state) => state.activeCompositionId);
   const memory = useJournalStore((state) => (activeId !== null ? state.hydratedById[activeId] : undefined));
 
@@ -36,27 +48,39 @@ export function AmbientBackdrop() {
     (m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m),
   );
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
-  const uri = visual?.type === 'video' ? videoThumb : visual?.uri;
+  const uri = intensity > 0 ? (visual?.type === 'video' ? videoThumb : visual?.uri) ?? null : null;
 
+  // Keep showing the last photo while the layer fades out; it is cleared
+  // only once the fade has finished.
+  const [shownUri, setShownUri] = useState<string | null>(uri);
+  if (uri && uri !== shownUri) setShownUri(uri);
   const presence = useSharedValue(0);
+
   useEffect(() => {
-    presence.value = withTiming(uri ? 1 : 0, { duration: uri ? 500 : 700, easing: EASE_OUT });
+    if (uri) {
+      presence.set(withTiming(1, { duration: FADE_IN_MS, easing: Easing.inOut(Easing.cubic) }));
+    } else {
+      presence.set(
+        withTiming(0, { duration: FADE_OUT_MS, easing: Easing.inOut(Easing.cubic) }, (finished) => {
+          if (finished) runOnJS(setShownUri)(null);
+        }),
+      );
+    }
   }, [uri, presence]);
 
-  const style = useAnimatedStyle(() => ({
-    opacity: presence.value * (isDark ? OPACITY_DARK : OPACITY_LIGHT),
-  }));
+  const maxOpacity = (isDark ? MAX_OPACITY_DARK : MAX_OPACITY_LIGHT) * intensity;
+  const style = useAnimatedStyle(() => ({ opacity: presence.get() * maxOpacity }));
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
-      {uri ? (
+      {shownUri ? (
         <Image
-          source={{ uri }}
+          source={{ uri: shownUri }}
           style={[StyleSheet.absoluteFill, styles.image]}
           contentFit="cover"
           blurRadius={BLUR_RADIUS}
           cachePolicy="memory-disk"
-          transition={{ duration: 450, effect: 'cross-dissolve' }}
+          transition={{ duration: CROSSFADE_MS, effect: 'cross-dissolve' }}
         />
       ) : null}
     </Animated.View>

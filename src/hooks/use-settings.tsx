@@ -41,6 +41,8 @@ export interface UserSettings {
   autoPlayMusic: boolean;
   /** Touch feedback across the app. On by default. */
   hapticsEnabled: boolean;
+  /** Strength of the home feed's photo backdrop, 0 (off) to 1. */
+  backdropIntensity: number;
   timelineMode: TimelineMode;
   guideProgress: GuideProgress;
   guideDismissed: boolean;
@@ -59,6 +61,7 @@ const defaultSettings: UserSettings = {
   autoLocationTagging: false,
   autoPlayMusic: false,
   hapticsEnabled: true,
+  backdropIntensity: 0.6,
   timelineMode: 'yearly',
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
@@ -109,6 +112,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           autoLocationTagging: stored.autoLocationTagging === "true",
           autoPlayMusic: stored.autoPlayMusic === "true",
           hapticsEnabled: stored.hapticsEnabled !== "false",
+          backdropIntensity:
+            stored.backdropIntensity !== undefined && !Number.isNaN(Number(stored.backdropIntensity))
+              ? Math.min(1, Math.max(0, Number(stored.backdropIntensity)))
+              : defaultSettings.backdropIntensity,
           timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",

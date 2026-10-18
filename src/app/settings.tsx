@@ -14,6 +14,7 @@ import { countTrashed } from '@/db/journal-repository';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ToggleSwitch } from '@/components/toggle-switch';
+import { IntensitySlider } from '@/components/intensity-slider';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
@@ -24,6 +25,9 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting, resetGuide } = useSettingsStore();
+  // Live readout while the glow slider moves; null once the value is saved.
+  const [glowDraft, setGlowDraft] = useState<number | null>(null);
+  const glowPreview = glowDraft ?? settings.backdropIntensity;
   
   const [easterEggActive, setEasterEggActive] = useState(false);
 
@@ -221,6 +225,32 @@ export default function SettingsScreen() {
                 {settings.timelineMode.toUpperCase()}
               </ThemedText>
             </Pressable>
+          </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.sliderRow}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingRowLeft}>
+                <ThemedText style={[styles.settingText, { color: theme.text }]}>PHOTO GLOW</ThemedText>
+              </View>
+              <ThemedText style={[styles.settingSubtext, styles.sliderValue, { color: theme.textSecondary }]}>
+                {glowPreview === 0 ? 'OFF' : `${Math.round(glowPreview * 100)}%`}
+              </ThemedText>
+            </View>
+            <IntensitySlider
+              value={settings.backdropIntensity}
+              onChange={setGlowDraft}
+              onCommit={async (next) => {
+                setGlowDraft(next);
+                await updateSetting('backdropIntensity', next);
+                setGlowDraft(null);
+              }}
+              accessibilityLabel="Photo glow behind the timeline"
+            />
+            <ThemedText style={[styles.settingSubtext, styles.sliderHint, { color: theme.textSecondary }]}>
+              how much each photo tints the timeline
+            </ThemedText>
           </View>
 
           <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
@@ -495,6 +525,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 12,
+  },
+  sliderRow: {
+    paddingBottom: 12,
+  },
+  sliderValue: {
+    fontVariant: ['tabular-nums'],
+  },
+  sliderHint: {
+    marginTop: 10,
   },
   settingRow: {
     flexDirection: 'row',
