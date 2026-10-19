@@ -5,7 +5,6 @@ import {
   getAllSettings,
 } from "@/db/settings-repository";
 import type { ThemeMode } from "./use-theme";
-import { DEFAULT_DAILY_GOAL, isDailyGoal, type DailyGoal } from "@/constants/progression";
 
 export type TimelineMode = 'yearly' | 'monthly' | 'infinite';
 
@@ -49,10 +48,12 @@ export interface UserSettings {
   guideDismissed: boolean;
   /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
   guideResetAt: number;
-  /** Memories a day that meet the daily goal. */
-  dailyGoal: DailyGoal;
-  /** Hides the daily goal and reward moments for people who just want a journal. */
+  /** Hides today's moments and their stamps for people who just want a journal. */
   quietMode: boolean;
+  /** A local notification in each moment of the day, asking for a photo. */
+  momentReminders: boolean;
+  /** The one-time "want reminders?" offer has been shown. */
+  reminderOffered: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -71,8 +72,9 @@ const defaultSettings: UserSettings = {
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
   guideResetAt: 0,
-  dailyGoal: DEFAULT_DAILY_GOAL,
   quietMode: false,
+  momentReminders: false,
+  reminderOffered: false,
 };
 
 interface SettingsState {
@@ -127,8 +129,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
-          dailyGoal: isDailyGoal(Number(stored.dailyGoal)) ? (Number(stored.dailyGoal) as DailyGoal) : DEFAULT_DAILY_GOAL,
           quietMode: stored.quietMode === "true",
+          momentReminders: stored.momentReminders === "true",
+          reminderOffered: stored.reminderOffered === "true",
         },
         loading: false,
       });

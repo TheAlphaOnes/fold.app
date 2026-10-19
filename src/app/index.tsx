@@ -36,6 +36,7 @@ import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
+import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
 import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
 
@@ -70,6 +71,8 @@ export default function HomeScreen() {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
   const quickCapture = useQuickCapture();
+  // A tapped moment reminder lands here and goes straight to the camera.
+  useFulfilPhotoRequest(quickCapture.capturePhoto);
   
   const { settings, updateSetting } = useSettingsStore();
   

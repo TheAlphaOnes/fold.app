@@ -31,6 +31,7 @@ LogBox.ignoreLogs([
   'Network error while fetching PostHog'
 ]);
 import { RewardHost } from "@/components/reward-host";
+import { configureNotifications } from "@/services/reminders.service";
 import { useProgressionStore } from "@/hooks/use-progression";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -82,6 +83,9 @@ import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { getAgeRange } from '@/utils/dob';
 
 SplashScreen.preventAutoHideAsync();
+
+// Moment reminders that arrive while Fold is open still show as a banner.
+configureNotifications();
 
 function PostHogSync() {
   const posthog = usePostHog();

@@ -2,8 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, Target } from 'lucide-react-native';
-import { nextDailyGoal } from '@/constants/progression';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
+import { useMomentReminders } from '@/hooks/use-moment-reminders';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -26,6 +26,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting, resetGuide } = useSettingsStore();
+  const momentReminders = useMomentReminders();
   // Live readout while the glow slider moves; null once the value is saved.
   const [glowDraft, setGlowDraft] = useState<number | null>(null);
   const glowPreview = glowDraft ?? settings.backdropIntensity;
@@ -102,11 +103,6 @@ export default function SettingsScreen() {
     const currentIndex = modes.indexOf(settings.timelineMode);
     const nextMode = modes[(currentIndex + 1) % modes.length];
     await updateSetting('timelineMode', nextMode);
-  };
-
-  const cycleDailyGoal = async () => {
-    haptic.select();
-    await updateSetting('dailyGoal', nextDailyGoal(settings.dailyGoal));
   };
 
 
@@ -318,28 +314,16 @@ export default function SettingsScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextBlock}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>DAILY GOAL</ThemedText>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>MOMENT REMINDERS</ThemedText>
               <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                memories a day for the FOLDED stamp
+                a nudge each morning, afternoon and evening
               </ThemedText>
             </View>
-            <Pressable
-              onPress={cycleDailyGoal}
-              disabled={settings.quietMode}
-              accessibilityRole="button"
-              accessibilityLabel={`Daily goal, ${settings.dailyGoal} a day`}
-              accessibilityHint="Changes how many memories a day meet the goal"
-              style={[
-                styles.themeBtn,
-                { borderColor: theme.border, backgroundColor: theme.backgroundElement },
-                settings.quietMode && styles.disabled,
-              ]}
-            >
-              <Target size={14} color={theme.text} />
-              <ThemedText style={[styles.themeBtnText, { color: theme.text }]}>
-                {`${settings.dailyGoal} / DAY`}
-              </ThemedText>
-            </Pressable>
+            <ToggleSwitch
+              value={momentReminders.enabled}
+              onValueChange={(val) => void momentReminders.setEnabled(val)}
+              accessibilityLabel="Moment reminders"
+            />
           </View>
 
           <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
@@ -348,7 +332,7 @@ export default function SettingsScreen() {
             <View style={styles.settingTextBlock}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>QUIET MODE</ThemedText>
               <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                hide the daily goal and rewards
+                hide today's moments and stamps
               </ThemedText>
             </View>
             <ToggleSwitch
@@ -603,9 +587,6 @@ const styles = StyleSheet.create({
   settingTextBlock: {
     flexShrink: 1,
     paddingRight: 16,
-  },
-  disabled: {
-    opacity: 0.4,
   },
   settingRowLeft: {
     flexDirection: 'row',

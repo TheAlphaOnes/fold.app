@@ -1,5 +1,5 @@
 /**
- * RewardStamp — the "FOLDED" moment when the daily goal is met.
+ * RewardStamp — the "FOLDED" stamp when a moment of the day is captured.
  *
  * Choreography, each part finishing at its own rate:
  *   0ms     scrim fades in
@@ -27,7 +27,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { Type } from '@/constants/theme';
 import { EASE_IN, EASE_OUT, SPRING_BOUNCE } from '@/constants/motion';
-import type { Reward } from '@/constants/progression';
+import { MOMENTS, getMoment, type Reward } from '@/constants/progression';
 
 const IMPACT_MS = 330;
 const AUTO_DISMISS_MS = 3400;
@@ -43,8 +43,13 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function streakLine(streak: number): string {
-  return streak > 1 ? `DAY ${pad2(streak)} OF YOUR CONTINUUM` : 'YOUR CONTINUUM STARTS TODAY';
+/** What the stamp says under the word: what's next today, or that the day is full. */
+function stampLine(reward: Reward): string {
+  if (reward.done >= MOMENTS.length) {
+    return `FULL DAY  ·  ${pad2(Math.max(1, reward.streak))} DAY STREAK`;
+  }
+  if (reward.next) return `${getMoment(reward.next).label} IS NEXT`;
+  return `${reward.done} OF ${MOMENTS.length} TODAY`;
 }
 
 export function RewardStamp({ reward, onDone }: RewardStampProps) {
@@ -89,14 +94,14 @@ export function RewardStamp({ reward, onDone }: RewardStampProps) {
     const landed = setTimeout(() => haptic.success(), IMPACT_MS + 260);
     const auto = setTimeout(leave, AUTO_DISMISS_MS);
     AccessibilityInfo.announceForAccessibility(
-      `Daily goal met. ${reward.streak > 1 ? `Day ${reward.streak} of your continuum.` : 'Your continuum starts today.'}`,
+      `${getMoment(reward.moment).label.toLowerCase()} folded. ${stampLine(reward).toLowerCase()}.`,
     );
     return () => {
       clearTimeout(impact);
       clearTimeout(landed);
       clearTimeout(auto);
     };
-  }, [drop, hint, ink, leave, line, rail, reduceMotion, reward.streak, scrim, stampOpacity]);
+  }, [drop, hint, ink, leave, line, rail, reduceMotion, reward, scrim, stampOpacity]);
 
   const onPress = useCallback(() => {
     if (Date.now() - shownAt.current < TAP_GUARD_MS) return;
@@ -131,7 +136,7 @@ export function RewardStamp({ reward, onDone }: RewardStampProps) {
       style={StyleSheet.absoluteFill}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Daily goal met. ${streakLine(reward.streak).toLowerCase()}. Tap to continue.`}
+      accessibilityLabel={`${getMoment(reward.moment).label.toLowerCase()} folded. ${stampLine(reward).toLowerCase()}. Tap to continue.`}
       accessibilityViewIsModal
     >
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: theme.background }, scrimStyle]} />
@@ -143,10 +148,8 @@ export function RewardStamp({ reward, onDone }: RewardStampProps) {
           <Animated.View style={[styles.ink, { borderColor: accent }, inkStyle]} />
           <View style={[styles.stamp, { borderColor: accent, backgroundColor: theme.backgroundElement }]}>
             <Animated.View style={[styles.rail, railStyle]}>
-              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>DAILY FOLD</ThemedText>
-              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
-                {`${pad2(reward.goal)}/${pad2(reward.goal)}`}
-              </ThemedText>
+              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{getMoment(reward.moment).label}</ThemedText>
+              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`${reward.done}/${MOMENTS.length}`}</ThemedText>
             </Animated.View>
 
             <ThemedText style={[styles.word, { color: accent }]} allowFontScaling={false}>
@@ -154,7 +157,7 @@ export function RewardStamp({ reward, onDone }: RewardStampProps) {
             </ThemedText>
 
             <Animated.View style={[styles.lineRow, { borderTopColor: theme.border }, lineStyle]}>
-              <ThemedText style={[styles.line, { color: theme.text }]}>{streakLine(reward.streak)}</ThemedText>
+              <ThemedText style={[styles.line, { color: theme.text }]}>{stampLine(reward)}</ThemedText>
             </Animated.View>
           </View>
         </Animated.View>
