@@ -5,7 +5,10 @@
 
 export type MomentId = 'morning' | 'afternoon' | 'evening';
 
-/** One wording of a reminder. Each moment has a few, rotated day to day. */
+/**
+ * One wording of a reminder. Each moment has several, plain and playful
+ * mixed, rotated day to day.
+ */
 export interface Nudge {
   title: string;
   body: string;
@@ -34,6 +37,10 @@ export const MOMENTS: readonly Moment[] = [
       { title: 'Good morning', body: 'Snap the first frame of your day.' },
       { title: 'Morning check-in', body: "What's in front of you right now? Take one photo." },
       { title: 'Start today’s page', body: 'One photo of this morning. Tap to open the camera.' },
+      { title: 'Rise and shine (or don’t)', body: 'Even a messy bed deserves a photo.' },
+      { title: 'Coffee first?', body: 'Fine. Then snap the coffee.' },
+      { title: 'Your morning called', body: 'It wants a picture. Don’t leave it on read.' },
+      { title: 'Plot twist', body: 'Today’s story starts with one photo. Yours.' },
     ],
   },
   {
@@ -46,6 +53,10 @@ export const MOMENTS: readonly Moment[] = [
       { title: 'Afternoon check-in', body: "What are you up to? Snap it." },
       { title: 'Midday frame', body: 'Show what your afternoon looks like in one photo.' },
       { title: 'Quick one', body: "Tap and capture what you're doing right now." },
+      { title: 'Caught you', body: 'Doing something? Doing nothing? Snap it either way.' },
+      { title: 'Lunch looked good', body: 'Did it though? Prove it.' },
+      { title: 'Afternoon slump detected', body: 'Cure: one photo. Doctor’s orders.' },
+      { title: 'Hey, you', body: 'Yes, you. What’s happening right now?' },
     ],
   },
   {
@@ -58,6 +69,10 @@ export const MOMENTS: readonly Moment[] = [
       { title: 'Evening check-in', body: 'How did today go? Snap one frame.' },
       { title: 'Before the day ends', body: 'Catch this evening in one photo.' },
       { title: 'Today’s last page', body: 'One photo of your evening. Tap to open the camera.' },
+      { title: 'Main character energy', body: 'End today’s episode with one frame.' },
+      { title: 'Day’s almost wrapped', body: 'Don’t let it leave without a photo.' },
+      { title: 'Spill the tea', body: 'How was today? Your journal is listening.' },
+      { title: 'Lights low?', body: 'Catch tonight before it slips away.' },
     ],
   },
 ];
