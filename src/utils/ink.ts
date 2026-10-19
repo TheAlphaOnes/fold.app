@@ -16,16 +16,13 @@ export interface DayActivity {
 }
 
 /** How many times each factor was earned on a day, already capped. */
-export type DayEarned = Record<InkFactorId, number>;
+type DayEarned = Record<InkFactorId, number>;
 
 export interface InkSummary {
   /** YYYY-MM of the month being counted. */
   monthKey: string;
   /** Ink earned so far this month. */
   month: number;
-  /** Ink earned today. */
-  today: number;
-  todayEarned: DayEarned;
   /** The most ink any month has held, this one included. */
   record: number;
 }
@@ -48,7 +45,7 @@ export function groupByDay(signals: MemorySignal[]): Map<string, DayActivity> {
   return days;
 }
 
-export function earnedOn(day: DayActivity | undefined): DayEarned {
+function earnedOn(day: DayActivity | undefined): DayEarned {
   const earned: DayEarned = {
     day: day ? 1 : 0,
     moments: day ? day.moments.size : 0,
@@ -71,12 +68,9 @@ export function computeInk(days: Map<string, DayActivity>, todayKey: string): In
     const key = dayKey.slice(0, 7);
     byMonth.set(key, (byMonth.get(key) ?? 0) + inkFor(earnedOn(day)));
   }
-  const todayEarned = earnedOn(days.get(todayKey));
   return {
     monthKey,
     month: byMonth.get(monthKey) ?? 0,
-    today: inkFor(todayEarned),
-    todayEarned,
     record: Math.max(0, ...byMonth.values()),
   };
 }
@@ -84,7 +78,5 @@ export function computeInk(days: Map<string, DayActivity>, todayKey: string): In
 export const NO_INK: InkSummary = {
   monthKey: '',
   month: 0,
-  today: 0,
-  todayEarned: { day: 0, moments: 0, words: 0, photo: 0 },
   record: 0,
 };
