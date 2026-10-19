@@ -79,6 +79,7 @@ import { AnimatedSplashScreen } from "@/components/splash-screen";
 import { PostHogProvider } from "posthog-react-native";
 import { posthog } from "@/services/analytics";
 import { AnalyticsSync } from "@/components/analytics-sync";
+import { useStartupPermissions } from "@/hooks/use-startup-permissions";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -140,6 +141,7 @@ function RootLayoutNav() {
   });
 
   const isAppReady = dbReady && fontsLoaded && !settingsLoading;
+  useStartupPermissions(isAppReady);
 
   const BaseTheme = isDark ? DarkTheme : DefaultTheme;
   const FoldTheme = {

@@ -12,7 +12,6 @@
  *     no story titles. Only shapes: counts, types, length buckets, times.
  *   - Never the user's name or date of birth; age only as a bracket.
  *   - The person is anonymous. Fold has no accounts and never identifies.
- *   - "Share usage data" off in Settings opts the device out entirely.
  */
 
 import PostHog from 'posthog-react-native';
@@ -98,6 +97,7 @@ export interface AnalyticsEvents {
 
   // Reminders
   notification_permission: { status: NotificationPermission; prompted: boolean };
+  startup_permissions: { notifications: boolean; camera: boolean; microphone: boolean; photos: boolean; location: boolean };
   reminder_opened: { moment: MomentId; nudge: string; tone: 'plain' | 'playful' };
 
   // Field guide
@@ -108,7 +108,16 @@ export interface AnalyticsEvents {
   setting_changed: { setting: string; value: string | number | boolean };
   feedback_submitted: { text: string; length: TextLengthBucket };
   test_notification_sent: { result: 'scheduled' | 'denied' | 'failed' };
-  haptics_test_played: { haptics_enabled: boolean };
+  haptics_test_played: {
+    haptics_enabled: boolean;
+    /** Android only; null on iOS or builds without the native module. */
+    has_vibrator: boolean | null;
+    touch_feedback: boolean | null;
+    power_save: boolean | null;
+    ringer_mode: string | null;
+    android_sdk: number | null;
+    manufacturer: string | null;
+  };
 }
 
 export type AnalyticsEvent = keyof AnalyticsEvents;
@@ -161,8 +170,9 @@ export function registerSuperProperties(properties: PersonProperties): void {
   void posthog.register(properties).catch((error) => console.error('Failed to register properties', error));
 }
 
-export function setAnalyticsEnabled(enabled: boolean): void {
-  void (enabled ? posthog.optIn() : posthog.optOut());
+/** Undoes an opt-out an earlier build may have stored on the device. */
+export function optInAnalytics(): void {
+  void posthog.optIn();
 }
 
 // ---------------------------------------------------------------------------

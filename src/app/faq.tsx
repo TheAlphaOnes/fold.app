@@ -126,7 +126,7 @@ export default function FAQScreen() {
           Your memories live only on this device and never leave it unless you share them. Use your phone's backup to
           keep them safe.{'\n\n'}
           Fold sends anonymous usage data, such as which features are used and crash reports, but never what you write
-          or capture. Turn it off any time in Settings → Share Usage Data. The Privacy Policy has the details.
+          or capture. The Privacy Policy has the details.
         </ThemedText>
       </ScrollView>
     </View>

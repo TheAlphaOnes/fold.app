@@ -18,7 +18,14 @@ import { MOMENTS, momentAt, type Moment, type MomentId, type Nudge } from '@/con
 import { addDays, toDayKey } from '@/utils/format-date';
 import { track, trackError, type NotificationPermission } from '@/services/analytics';
 
-const CHANNEL_ID = 'moments';
+/**
+ * Android channel settings are fixed once the channel exists, so a change
+ * needs a new id. v2 raised importance to HIGH (banner + sound) and added
+ * vibration; the old channel is deleted so it leaves the phone's settings.
+ */
+const CHANNEL_ID = 'moments-v2';
+const RETIRED_CHANNEL_IDS = ['moments'];
+const VIBRATION_PATTERN = [0, 250, 150, 250];
 const ID_PREFIX = 'moment-';
 const DAYS_AHEAD = 7;
 
@@ -51,8 +58,14 @@ async function ensureChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Moments',
     description: 'A nudge each morning, afternoon and evening',
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: 'default',
+    enableVibrate: true,
+    vibrationPattern: VIBRATION_PATTERN,
+    lightColor: '#FF4B00',
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
+  await Promise.all(RETIRED_CHANNEL_IDS.map((id) => Notifications.deleteNotificationChannelAsync(id)));
 }
 
 function isGranted(permissions: Notifications.NotificationPermissionsStatus): boolean {
@@ -121,7 +134,14 @@ function nudgeFor(day: Date, moment: Moment): Nudge {
 
 function contentFor(moment: Moment, nudge: Nudge): Notifications.NotificationContentInput {
   const data: MomentNotificationData = { kind: 'moment', moment: moment.id, nudge: nudge.title, tone: nudge.tone };
-  return { title: nudge.title, body: nudge.body, sound: 'default', data: { ...data } };
+  return {
+    title: nudge.title,
+    body: nudge.body,
+    sound: 'default',
+    vibrate: VIBRATION_PATTERN,
+    priority: Notifications.AndroidNotificationPriority.HIGH,
+    data: { ...data },
+  };
 }
 
 async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {

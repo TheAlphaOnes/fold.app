@@ -49,8 +49,8 @@ export interface UserSettings {
   guideDismissed: boolean;
   /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
   guideResetAt: number;
-  /** Anonymous usage analytics. On by default; off opts this device out entirely. */
-  analyticsEnabled: boolean;
+  /** The first-launch permission prompts have run. */
+  startupPermissionsAsked: boolean;
 }
 
 /**
@@ -66,7 +66,6 @@ const TRACKED_SETTINGS: Partial<Record<keyof UserSettings, string>> = {
   hapticsEnabled: 'haptics',
   backdropIntensity: 'photo_glow',
   timelineMode: 'timeline_mode',
-  analyticsEnabled: 'analytics',
 };
 
 const defaultSettings: UserSettings = {
@@ -85,7 +84,7 @@ const defaultSettings: UserSettings = {
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
   guideResetAt: 0,
-  analyticsEnabled: true,
+  startupPermissionsAsked: false,
 };
 
 interface SettingsState {
@@ -140,7 +139,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
-          analyticsEnabled: stored.analyticsEnabled !== "false",
+          startupPermissionsAsked: stored.startupPermissionsAsked === "true",
         },
         loading: false,
       });
@@ -171,7 +170,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       await dbSetSetting(key, strValue);
       const trackedAs = TRACKED_SETTINGS[key];
       if (trackedAs && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
-        // Turning analytics off is the one change that is sent before the opt-out lands.
         track("setting_changed", { setting: trackedAs, value: typeof value === "number" ? Math.round(value * 100) / 100 : value });
       }
       return true;

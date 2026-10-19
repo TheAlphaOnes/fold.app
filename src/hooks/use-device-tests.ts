@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 
 import { useSettingsStore } from '@/hooks/use-settings';
-import { HAPTIC_TEST_STEPS, playHapticTest } from '@/services/haptics';
+import { HAPTIC_TEST_STEPS, describeHapticsBlocker, diagnoseHaptics, playHapticTest } from '@/services/haptics';
 import { sendTestNotification } from '@/services/reminders.service';
 import { track } from '@/services/analytics';
 
@@ -38,11 +38,21 @@ export function useDeviceTests() {
   const testHaptics = useCallback(() => {
     cancelHaptics.current?.();
     cancelHaptics.current = playHapticTest();
-    track('haptics_test_played', { haptics_enabled: hapticsEnabled });
+    const diagnosis = diagnoseHaptics();
+    track('haptics_test_played', {
+      haptics_enabled: hapticsEnabled,
+      has_vibrator: diagnosis?.hasVibrator ?? null,
+      touch_feedback: diagnosis?.touchFeedbackEnabled ?? null,
+      power_save: diagnosis?.powerSaveMode ?? null,
+      ringer_mode: diagnosis?.ringerMode ?? null,
+      android_sdk: diagnosis?.sdk ?? null,
+      manufacturer: diagnosis?.manufacturer ?? null,
+    });
+    // Name what the phone itself is blocking first; it outranks the in-app switch.
+    const blocker = diagnosis ? describeHapticsBlocker(diagnosis) : null;
     setHapticStatus(
-      hapticsEnabled
-        ? HAPTIC_TEST_STEPS.join(' · ')
-        : 'Haptics is off above — only the long buzz plays',
+      blocker ??
+        (hapticsEnabled ? HAPTIC_TEST_STEPS.join(' · ') : 'Haptics is off above — only the long buzz plays'),
     );
   }, [hapticsEnabled]);
 

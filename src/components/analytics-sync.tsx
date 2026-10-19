@@ -1,7 +1,7 @@
 /**
  * AnalyticsSync — renders nothing. Keeps PostHog in step with the app:
  *
- *   - opt-in follows the "Share usage data" setting;
+ *   - the device is always opted in (an earlier build could opt out);
  *   - every event carries where the device is set to (region, language,
  *     timezone). PostHog's GeoIP adds country and city from the IP on top;
  *   - the anonymous person carries preferences and an age bracket, for
@@ -18,7 +18,7 @@ import * as Localization from 'expo-localization';
 import { useSettingsStore } from '@/hooks/use-settings';
 import {
   registerSuperProperties,
-  setAnalyticsEnabled,
+  optInAnalytics,
   setPersonProperties,
   trackScreen,
 } from '@/services/analytics';
@@ -105,14 +105,12 @@ function useScreenViews(enabled: boolean) {
 }
 
 export function AnalyticsSync() {
-  const enabled = useSettingsStore((state) => state.settings.analyticsEnabled);
-  const loading = useSettingsStore((state) => state.loading);
-  // Until settings load, the stored choice is unknown; hold everything.
-  const active = !loading && enabled;
+  // Person properties read settings, so wait until they have loaded.
+  const active = !useSettingsStore((state) => state.loading);
 
   useEffect(() => {
-    if (!loading) setAnalyticsEnabled(enabled);
-  }, [enabled, loading]);
+    optInAnalytics();
+  }, []);
 
   useLocaleProperties(active);
   usePreferenceProperties(active);

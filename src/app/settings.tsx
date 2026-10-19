@@ -337,21 +337,6 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.rowTextBlock}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>SHARE USAGE DATA</ThemedText>
-              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                anonymous, never what you write or capture
-              </ThemedText>
-            </View>
-            <ToggleSwitch
-              value={settings.analyticsEnabled}
-              onValueChange={(val) => updateSetting('analyticsEnabled', val)}
-              accessibilityLabel="Share anonymous usage data"
-            />
-          </View>
         </View>
 
         {/* System Actions Section */}
