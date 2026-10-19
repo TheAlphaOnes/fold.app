@@ -14,12 +14,13 @@ import {
   Text,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { X, Search, Heart } from 'lucide-react-native';
+import { Search, Heart } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from './themed-text';
 import { GrainBackground } from './grain-background';
 import { useGifStore } from '@/hooks/use-gif-store';
+import { CloseButton } from '@/components/round-button';
 
 const KLIPY_API_KEY = process.env.EXPO_PUBLIC_KLIPY_API_KEY || '';
 
@@ -221,9 +222,7 @@ export function GifPicker({ visible, onClose, onSelect }: GifPickerProps) {
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Add GIF</Text>
-          <Pressable onPress={onClose} style={[styles.closeBtnHeader, { borderColor: theme.border }]} hitSlop={20}>
-            <X size={18} color={theme.text} />
-          </Pressable>
+          <CloseButton onPress={onClose} hitSlop={12} />
         </View>
 
         {/* Search Bar */}
@@ -315,14 +314,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 16,
-  },
-  closeBtnHeader: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   searchWrap: {
     paddingHorizontal: 16,

@@ -16,13 +16,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Play, X } from 'lucide-react-native';
+import { Play } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { VinylRecord } from '@/components/vinyl-record';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { memoryTextMetrics } from '@/utils/memory-text';
+import { CloseButton } from '@/components/round-button';
 
 interface StoryItem {
   id: string;
@@ -263,15 +264,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
     <Animated.View style={[StyleSheet.absoluteFill, overlayStyle, { zIndex: 1000 }]}>
       {/* Header */}
       <Animated.View style={[styles.header, headerSlideStyle, { top: Math.max(insets.top, 20) }]}>
-        <Pressable 
-          onPress={handleClose}
-          style={({ pressed }) => [
-            styles.closeBtn,
-            { backgroundColor: theme.backgroundElement, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }
-          ]}
-        >
-          <X size={20} color={theme.text} />
-        </Pressable>
+        <CloseButton onPress={handleClose} />
       </Animated.View>
 
       {/* Carousel */}
@@ -319,14 +312,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     zIndex: 10,
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
   },
   counterContainer: {
     position: 'absolute',

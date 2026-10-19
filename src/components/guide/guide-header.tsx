@@ -11,9 +11,9 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, interpolateColor } from 'react-native-reanimated';
-import { X } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { CloseButton } from '@/components/round-button';
 import { useTheme } from '@/hooks/use-theme';
 import { EASE_OUT } from '@/constants/motion';
 import { GUIDE_CHAPTERS, type GuideMissionId } from '@/constants/guide';
@@ -89,21 +89,7 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <Pressable
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel="Close field guide"
-        style={({ pressed }) => [
-          styles.close,
-          {
-            borderColor: theme.border,
-            backgroundColor: pressed ? theme.backgroundSelected : theme.backgroundElement,
-            transform: [{ scale: pressed ? 0.96 : 1 }],
-          },
-        ]}
-      >
-        <X size={16} color={theme.text} strokeWidth={2} />
-      </Pressable>
+      <CloseButton onPress={onClose} accessibilityLabel="Close field guide" />
 
       <View style={styles.ticks} accessibilityRole="tablist">
         {GUIDE_CHAPTERS.map((chapter) => (
@@ -145,14 +131,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     gap: 12,
     zIndex: 200,
-  },
-  close: {
-    width: HIT,
-    height: HIT,
-    borderRadius: HIT / 2,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   ticks: {
     flex: 1,

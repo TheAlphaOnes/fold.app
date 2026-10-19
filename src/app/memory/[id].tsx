@@ -5,7 +5,7 @@ import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import type { Composition, MediaElement } from '@/types/journal';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
+import { Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -19,6 +19,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { ageInDays, track } from '@/services/analytics';
 import { useAudioFocus } from '@/hooks/use-audio-focus';
+import { CloseButton, RoundButton } from '@/components/round-button';
 import * as Sharing from 'expo-sharing';
 import { haptic } from '@/services/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -589,110 +590,37 @@ export default function MemoryDetailScreen() {
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>
         <View style={styles.leftActions}>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.actionBtn, 
-              { 
-                borderColor: theme.border,
-                backgroundColor: theme.background,
-                opacity: pressed ? 0.5 : 1 
-              }
-            ]} 
-            onPress={() => {
-              haptic.tap();
-              goBack();
-            }}
-          >
-            <X size={16} color={theme.text} />
-          </Pressable>
+          <CloseButton />
         </View>
 
         <View style={styles.rightActions}>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.actionBtn, 
-              { 
-                borderColor: theme.border,
-                backgroundColor: theme.background,
-                opacity: pressed ? 0.5 : 1 
-              }
-            ]} 
-            onPress={() => {
-              haptic.tap();
-              router.push({ pathname: '/compose', params: { editId: id } });
-            }}
-          >
-            <Pencil size={15} color={theme.text} />
-          </Pressable>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.actionBtn, 
-              { 
-                borderColor: (composition?.storyIds?.length ?? 0) > 0 ? theme.text : theme.border,
-                backgroundColor: theme.background,
-                opacity: pressed ? 0.5 : 1 
-              }
-            ]} 
-            onPress={() => {
-              haptic.tap();
-              setIsStoryPickerVisible(true);
-            }}
-          >
-            {(composition?.storyIds?.length ?? 0) > 0 ? (
-              <Book size={16} color={theme.text} />
-            ) : (
-              <BookPlus size={16} color={theme.text} />
-            )}
-          </Pressable>
-          <Pressable 
-            style={({ pressed }) => [
-              styles.actionBtn, 
-              { 
-                borderColor: theme.border,
-                backgroundColor: theme.background,
-                opacity: pressed ? 0.5 : 1 
-              }
-            ]} 
-            onPress={() => {
-              haptic.tap();
-              setIsShareMenuVisible(true);
-            }}
-          >
-            <ShareIcon size={16} color={theme.text} />
-          </Pressable>
-
+          <RoundButton
+            icon={Pencil}
+            accessibilityLabel="Edit memory"
+            onPress={() => router.push({ pathname: '/compose', params: { editId: id } })}
+          />
+          <RoundButton
+            icon={(composition?.storyIds?.length ?? 0) > 0 ? Book : BookPlus}
+            accessibilityLabel="File in a story"
+            onPress={() => setIsStoryPickerVisible(true)}
+          />
+          <RoundButton icon={ShareIcon} accessibilityLabel="Share memory" onPress={() => setIsShareMenuVisible(true)} />
           {slides[currentIndex]?.type === 'media' && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionBtn,
-                {
-                  borderColor: theme.border,
-                  backgroundColor: theme.background,
-                  opacity: pressed ? 0.5 : 1,
-                }
-              ]}
+            <RoundButton
+              icon={Download}
+              accessibilityLabel="Save to photos"
               onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
-            >
-              <Download size={16} color={theme.text} />
-            </Pressable>
+            />
           )}
-
-          <Pressable 
-            style={({ pressed }) => [
-              styles.actionBtn, 
-              { 
-                borderColor: 'rgba(255,59,48,0.3)',
-                backgroundColor: 'rgba(255,59,48,0.1)',
-                opacity: pressed ? 0.5 : 1 
-              }
-            ]} 
+          <RoundButton
+            icon={Trash2}
+            iconColor={theme.destructive}
+            accessibilityLabel="Delete memory"
             onPress={() => {
               haptic.warning();
               handleDelete();
             }}
-          >
-            <Trash2 size={16} color="#FF3B30" />
-          </Pressable>
+          />
         </View>
       </View>
 
@@ -805,14 +733,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  actionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   bottomBar: {
     position: 'absolute',

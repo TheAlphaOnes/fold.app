@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -16,6 +16,7 @@ import Animated, {
 
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { CloseButton, RoundButton } from '@/components/round-button';
 import { AsciiArt } from '@/components/ascii-art';
 import { FLOWER_ART } from '@/constants/ascii-art';
 import {
@@ -30,11 +31,9 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
 import { clampToToday, startOfDay, toDayKey } from '@/utils/format-date';
 import type { Composition } from '@/types/journal';
-import { goBack } from '@/utils/navigation';
 
 const EASE_OUT = Easing.bezier(0.19, 1, 0.22, 1);
 const CARD_GAP = 21;
-const CLOSE_SIZE = 34;
 const ADJACENT_SCALE = 0.95;
 
 function parseDayParam(day?: string): Date {
@@ -238,46 +237,19 @@ export default function TimeMachineScreen() {
         {formatTapeDate(selected)}
       </ThemedText>
 
-      <Pressable
+      {/* Close on the left, add on the right — the same round buttons as every header. */}
+      <CloseButton accessibilityLabel="Go back" style={[s.corner, s.left, { top: Math.max(insets.top, 20) }]} />
+      <RoundButton
+        icon={Plus}
         onPress={() =>
           router.push({
             pathname: '/compose',
             params: { dateTimestamp: selected.getTime().toString() },
           })
         }
-        accessibilityRole="button"
         accessibilityLabel="Add memory on this date"
-        style={({ pressed }) => [
-          s.addBtn,
-          {
-            top: Math.max(insets.top, 20),
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border,
-            opacity: pressed ? 0.8 : 1,
-          },
-          pressed && s.pressed,
-        ]}
-      >
-        <Plus size={16} color={theme.text} />
-      </Pressable>
-
-      <Pressable
-        onPress={() => goBack()}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-        style={({ pressed }) => [
-          s.close,
-          {
-            top: Math.max(insets.top, 20),
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border,
-            opacity: pressed ? 0.8 : 1,
-          },
-          pressed && s.pressed,
-        ]}
-      >
-        <X size={16} color={theme.text} />
-      </Pressable>
+        style={[s.corner, s.right, { top: Math.max(insets.top, 20) }]}
+      />
     </View>
   );
 }
@@ -307,27 +279,15 @@ const s = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
-  addBtn: {
+  corner: {
     position: 'absolute',
-    left: 20,
     zIndex: 100,
-    width: CLOSE_SIZE,
-    height: CLOSE_SIZE,
-    borderRadius: CLOSE_SIZE / 2,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  close: {
-    position: 'absolute',
+  left: {
+    left: 20,
+  },
+  right: {
     right: 20,
-    zIndex: 100,
-    width: CLOSE_SIZE,
-    height: CLOSE_SIZE,
-    borderRadius: CLOSE_SIZE / 2,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   pressed: {
     transform: [{ scale: 0.96 }],

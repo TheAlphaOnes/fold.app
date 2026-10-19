@@ -25,6 +25,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import { ThemedText } from "@/components/themed-text";
+import { CloseButton } from "@/components/round-button";
 import { useJournalStore } from "@/hooks/use-journal";
 import { consumePendingCameraMedia } from "@/utils/pending-camera-media";
 import { useSettings } from "@/hooks/use-settings";
@@ -815,18 +816,7 @@ export default function ComposeScreen() {
       >
         {/* ─── Toolbar ─── */}
         <View style={[styles.toolbar, { paddingTop: insets.top + 8 }]}>
-          {/* Close button — circular, industrial */}
-          <Pressable
-            onPress={handleClose}
-            style={({ pressed }) => [
-              styles.closeButton,
-              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 },
-            ]}
-            accessibilityLabel="Close"
-            accessibilityRole="button"
-          >
-            <X size={16} color={theme.text} />
-          </Pressable>
+          <CloseButton onPress={handleClose} />
 
           <View style={styles.toolbarSpacer} />
 
@@ -1210,14 +1200,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 21,
     paddingBottom: 13,
-  },
-  closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
   toolbarSpacer: {
     flex: 1,

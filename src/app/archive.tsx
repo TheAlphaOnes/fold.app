@@ -13,7 +13,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Plus } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { MemoryCard } from '@/components/memory-card';
@@ -24,7 +24,7 @@ import { EmptyState } from '@/components/empty-state';
 import { useCallback, useRef, useEffect, useState } from 'react';
 
 import { CarouselItem } from '@/components/carousel-item';
-import { goBack } from '@/utils/navigation';
+import { CloseButton } from '@/components/round-button';
 
 const CARD_GAP = 21;
 
@@ -93,20 +93,7 @@ export default function ArchiveScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <Pressable 
-        style={({ pressed }) => [
-          styles.backButton, 
-          { 
-            top: insets.top > 0 ? insets.top + 8 : 21, 
-            opacity: pressed ? 0.5 : 1,
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border
-          }
-        ]}
-        onPress={() => goBack()}
-      >
-        <ArrowLeft size={20} color={theme.text} />
-      </Pressable>
+      <CloseButton style={[styles.backButton, { top: insets.top > 0 ? insets.top + 8 : 21 }]} />
 
       <Pressable 
         style={({ pressed }) => [
@@ -181,17 +168,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 21,
     zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   addButton: {
     position: 'absolute',

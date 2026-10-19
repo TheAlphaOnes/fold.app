@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Settings as SettingsIcon } from 'lucide-react-native';
+import { Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
@@ -15,11 +15,10 @@ import { FromYourPastCard } from '@/components/from-your-past-card';
 import { ContinuumCard } from '@/components/continuum/continuum-card';
 import { StoryBoardCard } from '@/components/profile/story-board-card';
 import { ProfileAvatar } from '@/components/profile-avatar';
+import { CloseButton, RoundButton } from '@/components/round-button';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
-import { haptic } from '@/services/haptics';
-import { goBack } from '@/utils/navigation';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -48,30 +47,8 @@ export default function ProfileScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <Pressable 
-            onPress={() => {
-              haptic.tap();
-              router.push('/settings');
-            }}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
-            ]}
-          >
-            <SettingsIcon size={16} color={fg} />
-          </Pressable>
-          <Pressable 
-            onPress={() => {
-              haptic.tap();
-              goBack();
-            }}
-            style={({ pressed }) => [
-              styles.iconBtn, 
-              { borderColor: theme.border, opacity: pressed ? 0.5 : 1 }
-            ]}
-          >
-            <X size={16} color={fg} />
-          </Pressable>
+          <RoundButton icon={SettingsIcon} accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+          <CloseButton />
         </View>
       </View>
 
@@ -142,14 +119,6 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 16,
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     paddingHorizontal: 16,

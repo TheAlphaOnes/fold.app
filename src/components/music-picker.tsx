@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, Modal, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { Search, X, Music, Heart } from 'lucide-react-native';
+import { Search, Music, Heart } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAudioPlayer } from 'expo-audio';
@@ -10,6 +10,7 @@ import * as Localization from 'expo-localization';
 import { useMusicStore, type MusicTrack } from '@/hooks/use-music-store';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { useAudioFocus } from '@/hooks/use-audio-focus';
+import { CloseButton } from '@/components/round-button';
 
 
 function TrackPreviewPlayer({ url }: { url: string }) {
@@ -185,9 +186,7 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Add Music</Text>
-          <Pressable onPress={onClose} style={[styles.closeBtn, { borderColor: theme.border }]}>
-            <X size={18} color={theme.text} />
-          </Pressable>
+          <CloseButton onPress={onClose} />
         </View>
 
         <View style={styles.searchWrapper}>
@@ -336,14 +335,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 15,
     height: '100%',
-  },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   list: {
     paddingTop: 0,

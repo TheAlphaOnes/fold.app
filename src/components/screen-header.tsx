@@ -1,27 +1,27 @@
 /**
  * ScreenHeader — the floating-pill header used by the story screens:
  *
- *   ( ← )          [  TITLE  ]          ( a ) ( b )
+ *   ( × )          [  TITLE  ]          ( a ) ( b )
  *
- * A round back button, the title in a centred pill, and round actions. The
+ * A round close button, the title in a centred pill, and round actions. The
  * pill is centred on the screen and inset by the wider of the two button
  * groups, so it stays optically centred while using all the room it has —
  * a long title only truncates at the true edge.
  *
- * HeaderIconButton is the shared 40pt round control for both sides.
+ * HeaderIconButton is RoundButton (components/round-button), the same
+ * control as every other header in the app.
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { haptic } from '@/services/haptics';
-import { goBack } from '@/utils/navigation';
+import { CloseButton, ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 
-const BUTTON = 40;
+const BUTTON = ROUND_BUTTON_SIZE;
 const ACTION_GAP = 12;
 const SIDE_PADDING = 16;
 const PILL_CLEARANCE = 12;
@@ -35,28 +35,15 @@ interface HeaderIconButtonProps {
   tone?: ButtonTone;
 }
 
-export function HeaderIconButton({ icon: Icon, onPress, accessibilityLabel, tone = 'default' }: HeaderIconButtonProps) {
+export function HeaderIconButton({ icon, onPress, accessibilityLabel, tone = 'default' }: HeaderIconButtonProps) {
   const theme = useTheme();
   return (
-    <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress();
-      }}
-      accessibilityRole="button"
+    <RoundButton
+      icon={icon}
+      onPress={onPress}
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor: theme.backgroundElement,
-          borderColor: theme.border,
-          opacity: pressed ? 0.8 : 1,
-          transform: [{ scale: pressed ? 0.95 : 1 }],
-        },
-      ]}
-    >
-      <Icon size={16} color={tone === 'danger' ? theme.destructive : theme.text} />
-    </Pressable>
+      iconColor={tone === 'danger' ? theme.destructive : undefined}
+    />
   );
 }
 
@@ -82,7 +69,7 @@ export function ScreenHeader({ title, actions = [], onBack, floating = false }: 
 
   return (
     <View style={[styles.header, { paddingTop: top }, floating && styles.floating]}>
-      <HeaderIconButton icon={ArrowLeft} onPress={onBack ?? (() => goBack())} accessibilityLabel="Back" />
+      <CloseButton onPress={onBack} />
 
       <View style={styles.actions}>
         {actions.map((action, index) => (
@@ -147,18 +134,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     // Balances the trailing letter-spacing on the last character.
     marginLeft: 2,
-  },
-  button: {
-    width: BUTTON,
-    height: BUTTON,
-    borderRadius: BUTTON / 2,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
 });

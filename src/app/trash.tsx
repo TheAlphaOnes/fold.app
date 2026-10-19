@@ -20,6 +20,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { GrainBackground } from '@/components/grain-background';
 import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
+import { Type } from '@/constants/theme';
 import { BIN_ART } from '@/constants/ascii-art';
 import { fadeIn, fadeOut, riseIn } from '@/constants/motion';
 import { BALANCED_TEXT } from '@/constants/theme';
@@ -268,16 +269,11 @@ export default function TrashScreen() {
             itemLayoutAnimation={LinearTransition.duration(240)}
             ListHeaderComponent={
               <Animated.View entering={fadeIn(260)} style={[styles.summary, { borderColor: theme.border }]}>
-                <View style={styles.summaryCount}>
-                  <ThemedText style={[styles.countNumber, { color: theme.text }]}>
-                    {String(count).padStart(2, '0')}
-                  </ThemedText>
-                  <ThemedText style={[styles.countLabel, { color: theme.textMuted }]}>
-                    {count === 1 ? 'memory waiting' : 'memories waiting'}
-                  </ThemedText>
-                </View>
-                <ThemedText style={[styles.summaryNote, { color: theme.textMuted }]} numberOfLines={1}>
-                  {`auto-deletes in ${TRASH_DAYS} days`}
+                <ThemedText style={[Type.rail, { color: theme.textMuted }]} numberOfLines={1}>
+                  {`${String(count).padStart(2, '0')} ${count === 1 ? 'MEMORY' : 'MEMORIES'} WAITING`}
+                </ThemedText>
+                <ThemedText style={[Type.rail, styles.summaryNote, { color: theme.textMuted }]} numberOfLines={1}>
+                  {`DELETES IN ${TRASH_DAYS} DAYS`}
                 </ThemedText>
               </Animated.View>
             }
@@ -345,38 +341,19 @@ const styles = StyleSheet.create({
     gap: GAP,
     marginBottom: 20,
   },
-  // Baseline alignment: the note sits on the same line as 'memory waiting'
-  // even though the count beside it is set much larger.
+  // One rail line, the same as the card rails across the app
+  // (ACTIVITY … 011 DAYS): count on the left, the rule on the right.
   summary: {
     flexDirection: 'row',
-    alignItems: 'baseline',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 16,
-    paddingBottom: 18,
+    paddingBottom: 16,
     marginBottom: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  summaryCount: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 10,
-  },
-  countNumber: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
-    lineHeight: 36,
-    fontVariant: ['tabular-nums'],
-  },
-  countLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 12,
-    lineHeight: 16,
-  },
   summaryNote: {
     flexShrink: 1,
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    lineHeight: 14,
     textAlign: 'right',
   },
   card: {

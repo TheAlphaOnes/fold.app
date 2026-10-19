@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Check } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { textLengthBucket, track } from '@/services/analytics';
 
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
+import { CloseButton } from '@/components/round-button';
 import { ActionLink } from "@/components/action-link";
 import { goBack } from '@/utils/navigation';
 
@@ -46,12 +47,7 @@ export default function FeedbackScreen() {
       
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <ThemedText style={[styles.title, { color: theme.text }]}>FEEDBACK</ThemedText>
-        <Pressable 
-          onPress={() => goBack()}
-          style={[styles.closeBtn, { borderColor: theme.border }]}
-        >
-          <X size={16} color={theme.text} />
-        </Pressable>
+        <CloseButton />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -123,14 +119,6 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 18,
     letterSpacing: 2,
-  },
-  closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
     paddingHorizontal: 21,

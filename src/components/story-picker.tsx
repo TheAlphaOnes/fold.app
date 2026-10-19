@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable, FlatList, TextInput, Platform, Keyboard, KeyboardAvoidingView } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation } from 'react-native-reanimated';
-import { X, Plus, Book, Check } from 'lucide-react-native';
+import { Plus, Book, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '@/services/haptics';
 import { Image } from 'expo-image';
@@ -13,6 +13,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { COFFEE_ART } from '@/constants/ascii-art';
 import { CANVAS_TERMINAL_ART } from '@/constants/ascii-art';
 import type { Story } from '@/types/journal';
+import { CloseButton } from '@/components/round-button';
 
 // ─── Single-select mode (compose screen: one story per entry) ───────────────
 interface SingleSelectProps {
@@ -265,19 +266,7 @@ export function StoryPicker(props: StoryPickerProps) {
                     <Check size={16} color={newTitle.trim() ? theme.text : theme.textMuted} />
                   </Pressable>
                   {/* Circular X cancel create button */}
-                  <Pressable
-                    onPress={() => setIsCreating(false)}
-                    hitSlop={12}
-                    style={({ pressed }) => [
-                      styles.closeBtn,
-                      {
-                        borderColor: theme.border,
-                        backgroundColor: pressed ? theme.backgroundElement : 'transparent',
-                      },
-                    ]}
-                  >
-                    <X size={16} color={theme.text} />
-                  </Pressable>
+                  <CloseButton onPress={() => setIsCreating(false)} accessibilityLabel="Cancel new story" hitSlop={12} />
                 </>
               ) : (
                 <>

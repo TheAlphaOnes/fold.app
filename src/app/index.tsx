@@ -42,6 +42,10 @@ import { EdgeTab } from '@/components/edge-tab';
 import { InkGain } from '@/components/ink-gain';
 
 const CARD_GAP = 21; // Fibonacci sequence
+/** A drag must cover this share of a card to move to the next one… */
+const SNAP_MIN_DRAG = 0.2;
+/** …unless it ends in a deliberate flick (points per millisecond, as both platforms report it). */
+const SNAP_FLICK_VELOCITY = 1.2;
 
 import { CarouselItem } from '@/components/carousel-item';
 import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separator';
@@ -247,6 +251,23 @@ export default function HomeScreen() {
 
   const scrollY = useSharedValue(0);
   const lastSyncOffset = useSharedValue(0);
+  const dragStartOffset = useSharedValue(0);
+
+  /**
+   * Native snapping with disableIntervalMomentum moves to the neighbouring
+   * card whenever a drag ends with any velocity at all, so a slight push
+   * flipped the card. A drag that is both short and slow is sent back to
+   * the card it started on instead; real swipes keep the native snap.
+   */
+  const returnToCard = useCallback((fromOffset: number) => {
+    const offsets = timelineData.offsets;
+    if (offsets.length === 0) return;
+    let nearest = offsets[0];
+    for (const offset of offsets) {
+      if (Math.abs(offset - fromOffset) < Math.abs(nearest - fromOffset)) nearest = offset;
+    }
+    listRef.current?.scrollToOffset({ offset: nearest, animated: true });
+  }, [timelineData.offsets]);
   const syncWindow = useCallback((offsetY: number) => {
     const index = memoryIndexNearOffset(offsetsRef.current, offsetY);
     hydrateAround(index);
@@ -282,6 +303,16 @@ export default function HomeScreen() {
   }, [timelineData.offsets, settleActive, scrollY]);
 
   const scrollHandler = useAnimatedScrollHandler({
+    onBeginDrag: (event) => {
+      dragStartOffset.value = event.contentOffset.y;
+    },
+    onEndDrag: (event) => {
+      const distance = Math.abs(event.contentOffset.y - dragStartOffset.value);
+      const speed = Math.abs(event.velocity?.y ?? 0);
+      if (distance < snapInterval * SNAP_MIN_DRAG && speed < SNAP_FLICK_VELOCITY) {
+        runOnJS(returnToCard)(dragStartOffset.value);
+      }
+    },
     onScroll: (event) => {
       scrollY.set(event.contentOffset.y);
       if (Math.abs(event.contentOffset.y - lastSyncOffset.value) > snapInterval * 0.85) {

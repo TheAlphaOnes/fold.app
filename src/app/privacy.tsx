@@ -1,13 +1,12 @@
 import React from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
-import { goBack } from '@/utils/navigation';
+import { CloseButton } from '@/components/round-button';
 
 export default function PrivacyScreen() {
   const theme = useTheme();
@@ -19,12 +18,7 @@ export default function PrivacyScreen() {
       
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
         <ThemedText style={[styles.title, { color: theme.text }]}>PRIVACY POLICY</ThemedText>
-        <Pressable 
-          onPress={() => goBack()}
-          style={[styles.closeBtn, { borderColor: theme.border }]}
-        >
-          <X size={16} color={theme.text} />
-        </Pressable>
+        <CloseButton />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -63,7 +57,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 21, paddingBottom: 21 },
   title: { fontFamily: 'JetBrainsMono-Bold', fontSize: 18, letterSpacing: 2 },
-  closeBtn: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   content: { paddingHorizontal: 21, paddingBottom: 40 },
   heading: { fontFamily: 'JetBrainsMono-Bold', fontSize: 14, letterSpacing: 1, marginTop: 24, marginBottom: 8 },
   paragraph: { fontFamily: 'JetBrainsMono-Regular', fontSize: 14, lineHeight: 22, letterSpacing: -0.2 }
