@@ -6,20 +6,20 @@
  * The schedule is rebuilt from scratch whenever progression refreshes (a
  * save, a delete, the app returning to the foreground), so it skips
  * moments already captured today. Each reminder lands at a different
- * minute every day, inside its moment's window, so it never feels like an
- * alarm. Seven days ahead is 21 notifications, well under iOS's 64 pending.
+ * minute every day inside its moment's window, with wording that rotates,
+ * so it never feels like an alarm. Seven days ahead is 21 notifications,
+ * well under iOS's 64 pending.
  */
 
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { MOMENTS, momentAt, type Moment, type MomentId } from '@/constants/progression';
+import { MOMENTS, momentAt, type Moment, type MomentId, type Nudge } from '@/constants/progression';
 import { addDays, toDayKey } from '@/utils/format-date';
 
 const CHANNEL_ID = 'moments';
 const ID_PREFIX = 'moment-';
 const DAYS_AHEAD = 7;
-const TITLE = 'Fold';
 
 export interface MomentNotificationData {
   kind: 'moment';
@@ -76,16 +76,38 @@ export async function requestReminderPermission(): Promise<boolean> {
   }
 }
 
-/** A stable pseudo-random minute for this day and moment, inside its nudge window. */
-function nudgeTime(day: Date, moment: Moment): Date {
-  const seed = `${toDayKey(day)}:${moment.id}`;
+/** A stable pseudo-random number for a seed, so a rebuilt schedule keeps the same picks. */
+function hashOf(seed: string): number {
   let hash = 0;
-  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < seed.length; i++) hash = (Math.imul(hash, 31) + seed.charCodeAt(i)) >>> 0;
+  // Consecutive dates differ by one character, which barely moves the sum
+  // above; this finaliser (MurmurHash3's fmix32) spreads that across all bits
+  // so neighbouring days land far apart.
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+  return hash >>> 0;
+}
+
+/** This day's minute for the moment, inside its nudge window. */
+function nudgeTime(day: Date, moment: Moment): Date {
   const span = (moment.nudgeToHour - moment.nudgeFromHour) * 60;
-  const minute = moment.nudgeFromHour * 60 + (hash % span);
+  const minute = moment.nudgeFromHour * 60 + (hashOf(`${toDayKey(day)}:${moment.id}:time`) % span);
   const at = new Date(day);
   at.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
   return at;
+}
+
+/** This day's wording for the moment. */
+function nudgeFor(day: Date, moment: Moment): Nudge {
+  return moment.nudges[hashOf(`${toDayKey(day)}:${moment.id}:copy`) % moment.nudges.length];
+}
+
+function contentFor(moment: Moment, nudge: Nudge): Notifications.NotificationContentInput {
+  const data: MomentNotificationData = { kind: 'moment', moment: moment.id };
+  return { title: nudge.title, body: nudge.body, sound: 'default', data: { ...data } };
 }
 
 async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
@@ -106,10 +128,9 @@ async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
       if (offset === 0 && capturedToday.has(moment.id)) continue;
       const at = nudgeTime(day, moment);
       if (at.getTime() <= now) continue;
-      const data: MomentNotificationData = { kind: 'moment', moment: moment.id };
       await Notifications.scheduleNotificationAsync({
         identifier: `${ID_PREFIX}${toDayKey(day)}-${moment.id}`,
-        content: { title: TITLE, body: moment.nudge, sound: 'default', data: { ...data } },
+        content: contentFor(moment, nudgeFor(day, moment)),
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: CHANNEL_ID },
       });
     }
@@ -126,12 +147,13 @@ export type TestNotificationResult = 'scheduled' | 'denied' | 'failed';
 export async function sendTestNotification(delaySeconds = 5): Promise<TestNotificationResult> {
   try {
     if (!(await requestReminderPermission())) return 'denied';
-    const moment = momentAt(new Date());
-    const data: MomentNotificationData = { kind: 'moment', moment: moment.id };
+    // Worded for the moment it arrives in, picking a different wording each time.
+    const moment = momentAt(new Date(Date.now() + delaySeconds * 1000));
+    const nudge = moment.nudges[Math.floor(Math.random() * moment.nudges.length)];
     await Notifications.scheduleNotificationAsync({
       // Outside ID_PREFIX, so a schedule rebuild never cancels it.
       identifier: `test-${Date.now()}`,
-      content: { title: TITLE, body: moment.nudge, sound: 'default', data: { ...data } },
+      content: contentFor(moment, nudge),
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: delaySeconds,
