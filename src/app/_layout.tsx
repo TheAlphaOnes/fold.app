@@ -244,7 +244,7 @@ function RootLayoutNav() {
     getDatabase()
       .then(async () => {
         await useSettingsStore.getState().loadSettings();
-        // The Fold Score and the streak, before the profile first reads them.
+        // Ink and the streak, before the profile first reads them.
         await useProgressionStore.getState().refresh();
         setDbReady(true);
         // Recently Deleted keeps memories for 30 days; clear out the expired

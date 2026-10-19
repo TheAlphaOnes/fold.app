@@ -1,31 +1,20 @@
+/**
+ * ContinuumTrack — the last 21 days as marks in three weeks. Days in the
+ * current streak take the accent; other written days stay quiet.
+ */
+
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, {
-  Easing,
-  FadeIn,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
-import { ThemedText } from './themed-text';
-import { useTheme } from '@/hooks/use-theme';
-import { Type } from '@/constants/theme';
-import { useProgressionStore } from '@/hooks/use-progression';
+import { StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+
+import { EASE_OUT } from '@/constants/motion';
 import { toDayKey } from '@/utils/format-date';
 
 const WINDOW_DAYS = 21;
 const WEEK_SIZE = 7;
 const WEEK_COUNT = WINDOW_DAYS / WEEK_SIZE;
 
-const EASE_OUT = Easing.bezier(0.19, 1, 0.22, 1);
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-interface DayMark {
+export interface DayMark {
   key: string;
   written: boolean;
   inStreak: boolean;
@@ -97,7 +86,7 @@ function ContinuumMark({
   );
 }
 
-function ContinuumTrack({
+export function ContinuumTrack({
   days,
   color,
   idleColor,
@@ -131,78 +120,12 @@ function ContinuumTrack({
   );
 }
 
-export function StreakCard() {
-  const theme = useTheme();
-  const reduceMotion = useReducedMotion() ?? false;
-
-  // Read from the progression store: it sees every memory's day, not just
-  // the latest page the profile happens to have loaded.
-  const activeDays = useProgressionStore((state) => state.activeDays);
-  const { current: currentStreak, longest: longestStreak } = useProgressionStore((state) => state.streak);
-
-  const days = useMemo(
-    () => buildWindow(activeDays, currentStreak),
-    [activeDays, currentStreak],
-  );
-
-  const live = currentStreak > 0;
-  const ink = live ? theme.accentWarm : theme.textMuted;
-  const unit = currentStreak === 1 ? 'day' : 'days';
-
-  return (
-    <View
-      style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-      accessible
-      accessibilityRole="summary"
-      accessibilityLabel={`Continuum, ${currentStreak} ${unit}. Best ${longestStreak} ${longestStreak === 1 ? 'day' : 'days'}.`}
-    >
-      <Animated.View
-        entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
-        style={s.rail}
-      >
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>CONTINUUM</ThemedText>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
-          {`BEST ${longestStreak} ${longestStreak === 1 ? 'DAY' : 'DAYS'}`}
-        </ThemedText>
-      </Animated.View>
-
-      <ContinuumTrack
-        days={days}
-        color={ink}
-        idleColor={theme.border}
-        reduceMotion={reduceMotion}
-      />
-
-      <Animated.View
-        entering={reduceMotion ? undefined : FadeIn.delay(160).duration(280).easing(EASE_OUT)}
-        style={s.readout}
-      >
-        <View style={s.readoutLead}>
-          <ThemedText style={[s.count, { color: live ? theme.text : theme.textMuted }]}>
-            {pad2(currentStreak)}
-          </ThemedText>
-          <ThemedText style={[s.rank, { color: ink }]}>{unit}</ThemedText>
-        </View>
-      </Animated.View>
-    </View>
-  );
+/** Builds the 21-day window from the store's active days. */
+export function useContinuumWindow(activeDays: Set<string>, currentStreak: number): DayMark[] {
+  return useMemo(() => buildWindow(activeDays, currentStreak), [activeDays, currentStreak]);
 }
 
 const s = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  rail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
   trackBlock: {
     paddingHorizontal: 16,
     gap: 12,
@@ -236,30 +159,5 @@ const s = StyleSheet.create({
   rule: {
     height: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-  },
-  readout: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-  },
-  readoutLead: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 12,
-    flexShrink: 0,
-  },
-  count: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
-    lineHeight: 36,
-    fontVariant: ['tabular-nums'],
-  },
-  rank: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 13,
-    letterSpacing: 1,
-    lineHeight: 18,
   },
 });

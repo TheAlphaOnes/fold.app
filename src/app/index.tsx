@@ -39,7 +39,7 @@ import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
 import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
-import { ScoreGain } from '@/components/score-gain';
+import { InkGain } from '@/components/ink-gain';
 
 const CARD_GAP = 21; // Fibonacci sequence
 
@@ -325,7 +325,7 @@ export default function HomeScreen() {
         <User size={16} color={theme.text} strokeWidth={2.5} />
         <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </EdgeTab>
-      <ScoreGain />
+      <InkGain />
 
       <FieldGuideTab />
 

@@ -201,7 +201,7 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
-/** What the Fold Score reads from one live memory. */
+/** What ink is counted from, for one live memory. */
 export interface MemorySignal {
   createdAt: number;
   /** Characters of written text, trimmed. */
@@ -210,7 +210,7 @@ export interface MemorySignal {
   hasVisual: boolean;
 }
 
-/** One lightweight row per live memory, for the Fold Score and the Continuum. */
+/** One lightweight row per live memory, for ink and the Continuum. */
 export async function getMemorySignals(): Promise<MemorySignal[]> {
   const db = await getDatabase();
   // CASE guards json_each: it throws on malformed JSON, and AND does not short-circuit in SQLite.

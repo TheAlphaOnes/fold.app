@@ -15,8 +15,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { SYS_READY_ART } from '@/constants/ascii-art';
 import { ActivityGrid } from '@/components/activity-grid';
 import { FromYourPastCard } from '@/components/from-your-past-card';
-import { FoldScoreCard } from '@/components/fold-score-card';
-import { StreakCard } from '@/components/streak-card';
+import { ContinuumCard } from '@/components/continuum/continuum-card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
@@ -143,8 +142,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
         {/* Combined Dashboard Card */}
-        <FoldScoreCard />
-        <StreakCard />
+        <ContinuumCard />
 
                 {/* Extended Story Board Card */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>

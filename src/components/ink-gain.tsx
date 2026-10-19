@@ -1,7 +1,7 @@
 /**
- * ScoreGain — after a save, the points it earned slide out from beside the
- * profile tab, rest a moment, and drift away. No overlay, no sound, nothing
- * to dismiss: the Fold Score on the profile is where it adds up.
+ * InkGain — after a save, the ink it earned slides out from beside the
+ * profile tab, rests a moment, and drifts away. No overlay, no sound,
+ * nothing to dismiss: the Continuum card on the profile is where it adds up.
  *
  * It waits until home is in view and the new memory's own card animation
  * has played, so the two never compete. Segments finish at different rates:
@@ -26,7 +26,7 @@ import { ThemedText } from '@/components/themed-text';
 import { EDGE_TAB_HEIGHT, EDGE_TAB_WIDTH } from '@/components/edge-tab';
 import { EASE_IN, EASE_OUT } from '@/constants/motion';
 import { useJournalStore } from '@/hooks/use-journal';
-import { useProgressionStore, type ScoreGain as Gain } from '@/hooks/use-progression';
+import { useProgressionStore, type InkGain as Gain } from '@/hooks/use-progression';
 import { useTheme } from '@/hooks/use-theme';
 
 /** Lets the new memory's card scroll in and settle first. */
@@ -68,7 +68,7 @@ function GainPill({ gain, onDone }: { gain: Gain; onDone: (id: number) => void }
     <Animated.View
       pointerEvents="none"
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`Fold Score plus ${gain.points}`}
+      accessibilityLabel={`plus ${gain.points} ink`}
       style={[
         s.pill,
         { top, backgroundColor: theme.backgroundElement, borderColor: theme.border },
@@ -80,7 +80,7 @@ function GainPill({ gain, onDone }: { gain: Gain; onDone: (id: number) => void }
   );
 }
 
-export function ScoreGain() {
+export function InkGain() {
   const gain = useProgressionStore((state) => state.gain);
   const clearGain = useProgressionStore((state) => state.clearGain);
   const appVisible = useJournalStore((state) => state.isAppVisible);
