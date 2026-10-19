@@ -17,6 +17,8 @@ export interface GuideProgress {
   share: boolean;
   stickers: boolean;
   stories: boolean;
+  /** The HABIT chapter: ink and the daily reminders. */
+  rhythm: boolean;
 }
 
 export const defaultGuideProgress: GuideProgress = {
@@ -27,6 +29,7 @@ export const defaultGuideProgress: GuideProgress = {
   share: false,
   stickers: false,
   stories: false,
+  rhythm: false,
 };
 
 export interface UserSettings {

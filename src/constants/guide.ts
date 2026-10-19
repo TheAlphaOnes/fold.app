@@ -6,9 +6,9 @@
  * between surfaces.
  *
  * Hierarchy:
- *   Chapter (4)  → a theme, shown as a tick group in the guide header
- *   Mission (7)  → a persisted unit of progress (GuideProgress key, ring count)
- *   Step    (9)  → one gesture or action; a mission completes on its last step
+ *   Chapter (5)  → a theme, shown as a tick group in the guide header
+ *   Mission (8)  → a persisted unit of progress (GuideProgress key, ring count)
+ *   Step    (11) → one gesture, action or explainer; a mission completes on its last step
  */
 
 import type { GuideProgress } from '@/hooks/use-settings';
@@ -24,10 +24,12 @@ export type GuideStepId =
   | 'drag'
   | 'pinch'
   | 'chapter'
-  | 'tag';
+  | 'tag'
+  | 'ink'
+  | 'reminders';
 
 /** Which interactive surface a step is performed on. */
-export type GuideStage = 'trigger' | 'memory' | 'canvas' | 'chapter' | 'tag';
+export type GuideStage = 'trigger' | 'memory' | 'canvas' | 'chapter' | 'tag' | 'ink' | 'reminders';
 
 /** The gesture the ghost-finger demo performs for a step. */
 export type GuideGesture =
@@ -40,7 +42,7 @@ export type GuideGesture =
   | 'pinch'
   | 'none';
 
-export type GuideChapterId = 'capture' | 'revisit' | 'canvas' | 'stories';
+export type GuideChapterId = 'capture' | 'revisit' | 'canvas' | 'stories' | 'habit';
 
 export interface GuideChapter {
   id: GuideChapterId;
@@ -64,6 +66,7 @@ export const GUIDE_CHAPTERS: readonly GuideChapter[] = [
   { id: 'revisit', label: 'REVISIT', missions: ['inspect', 'share'] },
   { id: 'canvas', label: 'CANVAS', missions: ['stickers'] },
   { id: 'stories', label: 'STORIES', missions: ['stories'] },
+  { id: 'habit', label: 'HABIT', missions: ['rhythm'] },
 ];
 
 export const GUIDE_STEPS: readonly GuideStep[] = [
@@ -157,6 +160,26 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     hint: 'open it, then tap the book.',
     success: 'FILED',
   },
+  {
+    id: 'ink',
+    mission: 'rhythm',
+    chapter: 'habit',
+    stage: 'ink',
+    gesture: 'none',
+    title: 'EVERY DAY INKS',
+    hint: 'show up, and your month fills with ink.',
+    success: 'GOT IT',
+  },
+  {
+    id: 'reminders',
+    mission: 'rhythm',
+    chapter: 'habit',
+    stage: 'reminders',
+    gesture: 'none',
+    title: 'THREE NUDGES A DAY',
+    hint: 'tap one and the camera opens.',
+    success: 'ALL SET',
+  },
 ];
 
 export const GUIDE_MISSION_COUNT = GUIDE_CHAPTERS.reduce(
@@ -173,6 +196,7 @@ export const COMPLETED_GUIDE_PROGRESS: GuideProgress = {
   share: true,
   stickers: true,
   stories: true,
+  rhythm: true,
 };
 
 export function stepIndexOf(id: GuideStepId): number {
