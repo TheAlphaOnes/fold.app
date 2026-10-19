@@ -15,6 +15,9 @@ import { fadeOut, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
+/** Height of every compose toolbar chip (ink, size, font), so they line up. */
+export const TOOL_CHIP_HEIGHT = 42;
+
 const SWATCH = 28;
 const SWATCH_HIT = (40 - SWATCH) / 2;
 
@@ -99,9 +102,10 @@ export function InkPalette({ color, onChange }: InkPaletteProps) {
 }
 
 const styles = StyleSheet.create({
+  // A circle at the toolbar chip height, level with the size and font chips.
   button: {
-    width: 34,
-    height: 34,
+    width: TOOL_CHIP_HEIGHT,
+    height: TOOL_CHIP_HEIGHT,
     paddingHorizontal: 0,
     paddingVertical: 0,
     justifyContent: 'center',

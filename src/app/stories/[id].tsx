@@ -35,7 +35,7 @@ import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { AsciiArt } from '@/components/ascii-art';
-import { CASSETTE_ART } from '@/constants/ascii-art';
+import { ALBUM_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
 import { isGifMedia } from '@/utils/media-kind';
 import { goBack } from '@/utils/navigation';
@@ -502,7 +502,7 @@ export default function StoryDetailScreen() {
           <View style={styles.emptyColumn} pointerEvents="box-none">
             <View pointerEvents="none">
               <AsciiArt
-                art={CASSETTE_ART}
+                art={ALBUM_ART}
                 color={theme.textMuted}
                 fontSize={5}
               />

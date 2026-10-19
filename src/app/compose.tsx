@@ -76,7 +76,7 @@ import { trackError, type CaptureSource } from "@/services/analytics";
 import { MusicPicker } from "@/components/music-picker";
 import { StoryPicker } from "@/components/story-picker";
 import { ComposeBottomBar } from "@/components/compose/compose-bottom-bar";
-import { InkButton, InkPalette } from "@/components/compose/ink-palette";
+import { InkButton, InkPalette, TOOL_CHIP_HEIGHT } from "@/components/compose/ink-palette";
 import { GifPicker } from "@/components/gif-picker";
 import type { MusicTrack } from "@/hooks/use-music-store";
 import { useStoriesStore } from "@/hooks/use-stories";
@@ -1217,9 +1217,10 @@ const styles = StyleSheet.create({
   fontButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
+    height: TOOL_CHIP_HEIGHT,
     paddingHorizontal: 12,
-    paddingVertical: 8,
     borderRadius: 34,
     borderWidth: 1,
     marginRight: 12,
