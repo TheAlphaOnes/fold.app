@@ -89,14 +89,12 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   },
 }));
 
-/** Today's progress against the daily goal, for the orange key. */
+/** Today's progress against the daily goal, for the Continuum card. */
 export function useDailyGoal() {
   const count = useProgressionStore((state) => state.todayCount);
   const loaded = useProgressionStore((state) => state.loaded);
   const goal = useSettingsStore((state) => state.settings.dailyGoal);
   const quietMode = useSettingsStore((state) => state.settings.quietMode);
 
-  const visible = loaded && !quietMode;
-  const label = visible ? `${Math.min(count, goal)} of ${goal} today${count >= goal ? ', goal met' : ''}` : undefined;
-  return { count, goal, visible, label };
+  return { count, goal, visible: loaded && !quietMode };
 }

@@ -320,7 +320,7 @@ export default function SettingsScreen() {
             <View style={styles.settingTextBlock}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>DAILY GOAL</ThemedText>
               <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                memories a day to close the ring
+                memories a day for the FOLDED stamp
               </ThemedText>
             </View>
             <Pressable
@@ -328,7 +328,7 @@ export default function SettingsScreen() {
               disabled={settings.quietMode}
               accessibilityRole="button"
               accessibilityLabel={`Daily goal, ${settings.dailyGoal} a day`}
-              accessibilityHint="Changes how many memories a day close the ring"
+              accessibilityHint="Changes how many memories a day meet the goal"
               style={[
                 styles.themeBtn,
                 { borderColor: theme.border, backgroundColor: theme.backgroundElement },
@@ -348,7 +348,7 @@ export default function SettingsScreen() {
             <View style={styles.settingTextBlock}>
               <ThemedText style={[styles.settingText, { color: theme.text }]}>QUIET MODE</ThemedText>
               <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                hide the ring and rewards
+                hide the daily goal and rewards
               </ThemedText>
             </View>
             <ToggleSwitch

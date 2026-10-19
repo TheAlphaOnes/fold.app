@@ -49,9 +49,9 @@ export interface UserSettings {
   guideDismissed: boolean;
   /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
   guideResetAt: number;
-  /** Memories a day that close the orange key's ring. */
+  /** Memories a day that meet the daily goal. */
   dailyGoal: DailyGoal;
-  /** Hides the daily goal ring and reward moments for people who just want a journal. */
+  /** Hides the daily goal and reward moments for people who just want a journal. */
   quietMode: boolean;
 }
 

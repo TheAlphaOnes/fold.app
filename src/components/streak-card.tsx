@@ -12,7 +12,8 @@ import Animated, {
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Type } from '@/constants/theme';
-import { useProgressionStore } from '@/hooks/use-progression';
+import { useDailyGoal, useProgressionStore } from '@/hooks/use-progression';
+import { TodayGoalRow } from './today-goal-row';
 import { toDayKey } from '@/utils/format-date';
 
 const WINDOW_DAYS = 21;
@@ -139,6 +140,7 @@ export function StreakCard() {
   // the latest page the profile happens to have loaded.
   const activeDays = useProgressionStore((state) => state.activeDays);
   const { current: currentStreak, longest: longestStreak } = useProgressionStore((state) => state.streak);
+  const dailyGoal = useDailyGoal();
 
   const days = useMemo(
     () => buildWindow(activeDays, currentStreak),
@@ -195,6 +197,19 @@ export function StreakCard() {
           {hint}
         </ThemedText>
       </Animated.View>
+
+      {dailyGoal.visible && (
+        <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(220).duration(240).easing(EASE_OUT)}>
+          <TodayGoalRow
+            count={dailyGoal.count}
+            goal={dailyGoal.goal}
+            color={theme.accentWarm}
+            idleColor={theme.border}
+            mutedColor={theme.textMuted}
+            reduceMotion={reduceMotion}
+          />
+        </Animated.View>
+      )}
 
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.delay(280).duration(220).easing(EASE_OUT)}

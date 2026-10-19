@@ -3,7 +3,7 @@
  * Kept as data so later phases (missions, ranks, unlocks) extend one table.
  */
 
-/** Memories a day that close the key's ring. One is the default: the first win is easy. */
+/** Memories a day that meet the goal. One is the default: the first win is easy. */
 export const DAILY_GOAL_OPTIONS = [1, 3, 5] as const;
 export type DailyGoal = (typeof DAILY_GOAL_OPTIONS)[number];
 export const DEFAULT_DAILY_GOAL: DailyGoal = 1;
