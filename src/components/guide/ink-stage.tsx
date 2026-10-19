@@ -21,12 +21,12 @@ import { useProgressionStore } from '@/hooks/use-progression';
 import { useTheme } from '@/hooks/use-theme';
 import type { GuideStageProps } from './types';
 
-/** What each factor asks for, in the guide's voice. */
+/** What each factor asks for, short enough to share its row with the label. */
 const FACTOR_COPY: Record<InkFactorId, string> = {
-  day: 'save anything that day',
-  moments: 'each of morning, afternoon, evening',
-  words: `write ${WORDS_MIN_CHARS}+ characters`,
-  photo: 'a photo or video of your own',
+  day: 'any memory',
+  moments: 'morning · noon · night',
+  words: `${WORDS_MIN_CHARS}+ characters`,
+  photo: 'your own',
 };
 
 function pad2(n: number): string {
@@ -78,19 +78,16 @@ export function InkStage({ status, onSuccess }: Pick<GuideStageProps, 'status' |
             <ThemedText style={[styles.points, { color: theme.accentWarm }]}>
               {factor.perDay > 1 ? `+${factor.points}×${factor.perDay}` : `+${factor.points}`}
             </ThemedText>
-            <View style={styles.rowText}>
-              <ThemedText style={[styles.rowLabel, { color: theme.text }]}>{factor.label}</ThemedText>
-              <ThemedText style={[styles.rowCopy, { color: theme.textMuted }]}>{FACTOR_COPY[factor.id]}</ThemedText>
-            </View>
+            <ThemedText style={[styles.rowLabel, { color: theme.text }]}>{factor.label}</ThemedText>
+            <ThemedText style={[styles.rowCopy, { color: theme.textMuted }]} numberOfLines={1}>
+              {FACTOR_COPY[factor.id]}
+            </ThemedText>
           </Animated.View>
         ))}
       </View>
 
       <Animated.View entering={reduceMotion ? undefined : fadeIn(320, 820)}>
-        <ThemedText style={[styles.footnote, { color: theme.textMuted }]}>
-          counted once a day, so saving more of the same adds nothing. ink starts again on the 1st; your best month
-          stays as the record.
-        </ThemedText>
+        <ThemedText style={[styles.footnote, { color: theme.textMuted }]}>resets on the 1st · best month = record</ThemedText>
       </Animated.View>
 
       <View style={styles.action}>
@@ -105,10 +102,12 @@ export function InkStage({ status, onSuccess }: Pick<GuideStageProps, 'status' |
 }
 
 const styles = StyleSheet.create({
+  // Content starts under the prompt and the action sits at the foot, so no
+  // band of empty space opens up between the title and the page.
   container: {
     flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 21,
+    paddingTop: 12,
     gap: 20,
   },
   card: {
@@ -167,10 +166,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontVariant: ['tabular-nums'],
   },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
   rowLabel: {
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 11,
@@ -178,9 +173,11 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   rowCopy: {
+    flex: 1,
+    textAlign: 'right',
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
   },
   footnote: {
     fontFamily: 'JetBrainsMono-Regular',
@@ -189,7 +186,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   action: {
+    marginTop: 'auto',
     minHeight: 48,
+    paddingBottom: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

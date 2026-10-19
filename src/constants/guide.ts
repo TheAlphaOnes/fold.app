@@ -87,7 +87,7 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     stage: 'trigger',
     gesture: 'hold',
     title: 'HOLD TO RECORD',
-    hint: 'hold the key to start. tap to stop and save.',
+    hint: 'hold to start, tap to stop.',
     success: 'RECORDED',
   },
   {

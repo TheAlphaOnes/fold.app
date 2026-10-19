@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import Animated, { useSharedValue } from 'react-native-reanimated';
-import { Book } from 'lucide-react-native';
+import { Book, BookPlus } from 'lucide-react-native';
 
 import { CarouselItem } from '@/components/carousel-item';
 import { ThemedText } from '@/components/themed-text';
@@ -151,7 +151,14 @@ export function TagStage({ step, status, area, latest, onSuccess, onNudge, onGoT
           index="02"
           label="TAP THE BOOK"
           state={filed ? 'done' : opened ? 'next' : 'waiting'}
-          icon={<Book size={12} color={opened && !filed ? theme.text : theme.textMuted} />}
+          // The same icons as the memory's story button: book-plus until filed, then a book.
+          icon={
+            filed ? (
+              <Book size={12} color={theme.textMuted} />
+            ) : (
+              <BookPlus size={12} color={opened ? theme.text : theme.textMuted} />
+            )
+          }
         />
       </Animated.View>
     </View>
