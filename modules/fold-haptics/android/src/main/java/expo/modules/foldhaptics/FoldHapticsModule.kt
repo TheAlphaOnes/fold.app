@@ -21,12 +21,13 @@ import expo.modules.kotlin.modules.ModuleDefinition
  * React Native's Vibration and expo-haptics both vibrate without saying
  * what the vibration is for. Android 13+ files such vibrations under
  * "media", and many phones ship with media vibration off, so they were
- * silently dropped. Here every effect is labelled as touch feedback — the
- * same category as keyboard taps — so it follows the phone's touch
- * feedback setting, which is on by default.
+ * silently dropped. Here effects are labelled as touch feedback — the same
+ * category as keyboard taps — so they follow the phone's touch feedback
+ * setting, which is on by default. If the user has turned that off, they
+ * go out unlabelled instead, under the phone's general vibration setting.
  *
- * Effects use the system's predefined clicks where available (API 29+):
- * they are tuned per device and feel crisp on modern motors.
+ * Effects use the system's predefined clicks where the phone confirms it
+ * implements them; elsewhere, plain pulses sized to the phone's motor.
  */
 class FoldHapticsModule : Module() {
   private val context: Context
@@ -47,10 +48,11 @@ class FoldHapticsModule : Module() {
       val v = vibrator ?: return@Function false
       if (!v.hasVibrator()) return@Function false
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrate(v, effectFor(kind))
+        vibrate(v, effectFor(v, kind))
       } else {
+        // Android 7 has no amplitude control to ask about; assume a slow motor.
         @Suppress("DEPRECATION")
-        v.vibrate(legacyPattern(kind), -1)
+        v.vibrate(pulseFor(kind, slowMotor = true), -1)
       }
       true
     }
@@ -60,16 +62,12 @@ class FoldHapticsModule : Module() {
       val v = vibrator
       val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
       val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-      val touchFeedback = Settings.System.getInt(
-        context.contentResolver,
-        Settings.System.HAPTIC_FEEDBACK_ENABLED,
-        1
-      ) == 1
       mapOf(
         "hasVibrator" to (v?.hasVibrator() == true),
         "hasAmplitudeControl" to
           (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && v?.hasAmplitudeControl() == true),
-        "touchFeedbackEnabled" to touchFeedback,
+        "touchFeedbackEnabled" to touchFeedbackEnabled(),
+        "predefinedClicks" to (v != null && supportsPredefined(v, VibrationEffect.EFFECT_CLICK)),
         "powerSaveMode" to (power?.isPowerSaveMode == true),
         "ringerMode" to when (audio?.ringerMode) {
           AudioManager.RINGER_MODE_SILENT -> "silent"
@@ -82,9 +80,18 @@ class FoldHapticsModule : Module() {
     }
   }
 
+  /** The phone's "Touch feedback" switch; on unless the user turned it off. */
+  private fun touchFeedbackEnabled(): Boolean =
+    Settings.System.getInt(context.contentResolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) == 1
+
   @TargetApi(Build.VERSION_CODES.O)
   private fun vibrate(v: Vibrator, effect: VibrationEffect) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (!touchFeedbackEnabled()) {
+      // Touch-labelled vibrations would be dropped. Unlabelled ones fall
+      // under the phone's general vibration setting instead, which is the
+      // best chance left of being felt.
+      v.vibrate(effect)
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH))
     } else {
       // Before Android 13, sonification audio attributes map to touch feedback.
@@ -97,37 +104,68 @@ class FoldHapticsModule : Module() {
     }
   }
 
+  /** The system click for a kind, if it has one. */
+  private fun predefinedFor(kind: String): Int? = when (kind) {
+    "tap", "toggleOn" -> VibrationEffect.EFFECT_CLICK
+    "select", "toggleOff" -> VibrationEffect.EFFECT_TICK
+    "press", "thud" -> VibrationEffect.EFFECT_HEAVY_CLICK
+    "success" -> VibrationEffect.EFFECT_DOUBLE_CLICK
+    else -> null
+  }
+
+  /**
+   * Predefined clicks only where the phone confirms it implements them
+   * (Android 11+ can say). Elsewhere they may silently play nothing, which
+   * is why haptics worked on some phones and not others.
+   */
+  private fun supportsPredefined(v: Vibrator, effectId: Int): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+      v.areAllEffectsSupported(effectId) == Vibrator.VIBRATION_EFFECT_SUPPORT_YES
+
   @TargetApi(Build.VERSION_CODES.O)
-  private fun effectFor(kind: String): VibrationEffect {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      when (kind) {
-        "tap", "toggleOn" -> return VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-        "select", "toggleOff" -> return VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-        "press", "thud" -> return VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-        "success" -> return VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
-      }
+  private fun effectFor(v: Vibrator, kind: String): VibrationEffect {
+    val predefined = predefinedFor(kind)
+    if (predefined != null && supportsPredefined(v, predefined)) {
+      return VibrationEffect.createPredefined(predefined)
     }
-    return when (kind) {
-      "test" -> VibrationEffect.createOneShot(400, VibrationEffect.DEFAULT_AMPLITUDE)
-      "select", "toggleOff" -> VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE)
-      "press" -> VibrationEffect.createOneShot(22, VibrationEffect.DEFAULT_AMPLITUDE)
-      "thud" -> VibrationEffect.createOneShot(35, VibrationEffect.DEFAULT_AMPLITUDE)
-      "success" -> VibrationEffect.createWaveform(longArrayOf(0, 16, 70, 28), -1)
-      "warning" -> VibrationEffect.createWaveform(longArrayOf(0, 24, 90, 24), -1)
-      "error" -> VibrationEffect.createWaveform(longArrayOf(0, 30, 60, 30, 60, 30), -1)
-      else -> VibrationEffect.createOneShot(16, VibrationEffect.DEFAULT_AMPLITUDE)
+    val pattern = pulseFor(kind, slowMotor = !v.hasAmplitudeControl())
+    return if (pattern.size == 2) {
+      VibrationEffect.createOneShot(pattern[1], VibrationEffect.DEFAULT_AMPLITUDE)
+    } else {
+      VibrationEffect.createWaveform(pattern, -1)
     }
   }
 
-  /** Android 7: plain on/off patterns, [wait, buzz, wait, buzz…] in ms. */
-  private fun legacyPattern(kind: String): LongArray = when (kind) {
-    "test" -> longArrayOf(0, 400)
-    "select", "toggleOff" -> longArrayOf(0, 12)
-    "press" -> longArrayOf(0, 22)
-    "thud" -> longArrayOf(0, 35)
-    "success" -> longArrayOf(0, 16, 70, 28)
-    "warning" -> longArrayOf(0, 24, 90, 24)
-    "error" -> longArrayOf(0, 30, 60, 30, 60, 30)
-    else -> longArrayOf(0, 16)
+  /**
+   * [wait, buzz, wait, buzz…] in ms. Phones without amplitude control
+   * usually have a spinning (ERM) motor that needs ~20–30ms to spin up,
+   * so their pulses are longer or they would never be felt.
+   */
+  private fun pulseFor(kind: String, slowMotor: Boolean): LongArray = if (slowMotor) {
+    when (kind) {
+      "test" -> longArrayOf(0, 400)
+      "select" -> longArrayOf(0, 22)
+      "toggleOff" -> longArrayOf(0, 24)
+      "toggleOn" -> longArrayOf(0, 32)
+      "press" -> longArrayOf(0, 40)
+      "thud" -> longArrayOf(0, 55)
+      "success" -> longArrayOf(0, 30, 80, 40)
+      "warning" -> longArrayOf(0, 36, 100, 36)
+      "error" -> longArrayOf(0, 40, 70, 40, 70, 40)
+      else -> longArrayOf(0, 30)
+    }
+  } else {
+    when (kind) {
+      "test" -> longArrayOf(0, 400)
+      "select" -> longArrayOf(0, 12)
+      "toggleOff" -> longArrayOf(0, 14)
+      "toggleOn" -> longArrayOf(0, 20)
+      "press" -> longArrayOf(0, 26)
+      "thud" -> longArrayOf(0, 40)
+      "success" -> longArrayOf(0, 18, 70, 30)
+      "warning" -> longArrayOf(0, 26, 90, 26)
+      "error" -> longArrayOf(0, 32, 60, 32, 60, 32)
+      else -> longArrayOf(0, 18)
+    }
   }
 }

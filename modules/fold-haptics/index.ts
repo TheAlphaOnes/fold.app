@@ -25,6 +25,8 @@ export interface HapticsDiagnosis {
   hasVibrator: boolean;
   hasAmplitudeControl: boolean;
   touchFeedbackEnabled: boolean;
+  /** The phone implements Android's predefined click effects. */
+  predefinedClicks: boolean;
   powerSaveMode: boolean;
   ringerMode: 'silent' | 'vibrate' | 'normal';
   sdk: number;

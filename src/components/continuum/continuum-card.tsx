@@ -53,6 +53,15 @@ function useInkCount(reduceMotion: boolean): number {
   });
 }
 
+/**
+ * The ink number on its own, so the count-up re-renders one Text per frame
+ * rather than the whole card and its 21 track marks.
+ */
+function InkCount({ reduceMotion, color }: { reduceMotion: boolean; color: string }) {
+  const shown = useInkCount(reduceMotion);
+  return <ThemedText style={[s.count, { color }]}>{formatInk(shown)}</ThemedText>;
+}
+
 export function ContinuumCard() {
   const theme = useTheme();
   const reduceMotion = useReducedMotion() ?? false;
@@ -62,7 +71,6 @@ export function ContinuumCard() {
   const activeDays = useProgressionStore((state) => state.activeDays);
   const { current: currentStreak, longest: longestStreak } = useProgressionStore((state) => state.streak);
   const ink = useProgressionStore((state) => state.ink);
-  const shownInk = useInkCount(reduceMotion);
   // The bests land once the ink has mostly counted.
   const bestEntering = reduceMotion
     ? undefined
@@ -109,9 +117,7 @@ export function ContinuumCard() {
         </View>
         <View style={[s.column, s.columnEnd]}>
           <View style={s.figure}>
-            <ThemedText style={[s.count, { color: ink.month > 0 ? theme.text : theme.textMuted }]}>
-              {formatInk(shownInk)}
-            </ThemedText>
+            <InkCount reduceMotion={reduceMotion} color={ink.month > 0 ? theme.text : theme.textMuted} />
             <ThemedText style={[s.unit, { color: ink.month > 0 ? theme.accentWarm : theme.textMuted }]}>ink</ThemedText>
           </View>
           <Animated.View entering={bestEntering}>

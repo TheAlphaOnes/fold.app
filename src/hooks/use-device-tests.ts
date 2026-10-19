@@ -1,39 +1,20 @@
 /**
- * useDeviceTests — the Settings checks for notifications and haptics. Each
- * returns a short status line the row shows under its title.
+ * useDeviceTests — the Settings haptics check. Returns a short status line
+ * the row shows under its title.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking } from 'react-native';
 
 import { useSettingsStore } from '@/hooks/use-settings';
 import { HAPTIC_TEST_STEPS, describeHapticsBlocker, diagnoseHaptics, playHapticTest } from '@/services/haptics';
-import { sendTestNotification } from '@/services/reminders.service';
 import { track } from '@/services/analytics';
-
-const NOTIFICATION_DELAY_S = 5;
 
 export function useDeviceTests() {
   const hapticsEnabled = useSettingsStore((state) => state.settings.hapticsEnabled);
-  const [notificationStatus, setNotificationStatus] = useState<string | null>(null);
   const [hapticStatus, setHapticStatus] = useState<string | null>(null);
   const cancelHaptics = useRef<(() => void) | null>(null);
 
   useEffect(() => () => cancelHaptics.current?.(), []);
-
-  const testNotification = useCallback(async () => {
-    setNotificationStatus('sending…');
-    const result = await sendTestNotification(NOTIFICATION_DELAY_S);
-    track('test_notification_sent', { result });
-    if (result === 'scheduled') {
-      setNotificationStatus(`arrives in ${NOTIFICATION_DELAY_S}s — lock the phone to see it`);
-    } else if (result === 'denied') {
-      setNotificationStatus('notifications are off for Fold — opening Settings');
-      void Linking.openSettings();
-    } else {
-      setNotificationStatus('could not send — try again');
-    }
-  }, []);
 
   const testHaptics = useCallback(() => {
     cancelHaptics.current?.();
@@ -43,6 +24,8 @@ export function useDeviceTests() {
       haptics_enabled: hapticsEnabled,
       has_vibrator: diagnosis?.hasVibrator ?? null,
       touch_feedback: diagnosis?.touchFeedbackEnabled ?? null,
+      predefined_clicks: diagnosis?.predefinedClicks ?? null,
+      amplitude_control: diagnosis?.hasAmplitudeControl ?? null,
       power_save: diagnosis?.powerSaveMode ?? null,
       ringer_mode: diagnosis?.ringerMode ?? null,
       android_sdk: diagnosis?.sdk ?? null,
@@ -56,5 +39,5 @@ export function useDeviceTests() {
     );
   }, [hapticsEnabled]);
 
-  return { notificationStatus, hapticStatus, testNotification, testHaptics };
+  return { hapticStatus, testHaptics };
 }

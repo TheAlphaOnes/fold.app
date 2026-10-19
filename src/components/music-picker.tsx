@@ -9,11 +9,15 @@ import * as Localization from 'expo-localization';
 
 import { useMusicStore, type MusicTrack } from '@/hooks/use-music-store';
 import { getHighResArtwork } from '@/utils/media-attach';
+import { useAudioFocus } from '@/hooks/use-audio-focus';
 
 
 function TrackPreviewPlayer({ url }: { url: string }) {
   const player = useAudioPlayer(url);
+  const claimAudio = useAudioFocus(() => player.pause());
   useEffect(() => {
+    // Previewing a song silences anything else, like a card on the timeline.
+    claimAudio();
     player.play();
     return () => {
       try {
@@ -22,7 +26,7 @@ function TrackPreviewPlayer({ url }: { url: string }) {
         // Ignored: The native shared object might have already been released
       }
     };
-  }, [player]);
+  }, [player, claimAudio]);
   return null;
 }
 

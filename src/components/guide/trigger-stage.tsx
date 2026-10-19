@@ -124,11 +124,6 @@ export function TriggerStage({
     if (result === 'denied') onNudge(PERMISSION_NUDGE.mic);
   };
 
-  const handleHoldEnd = () => {
-    // Fires after every gesture on the key; only meaningful mid-take.
-    if (expected === 'hold') quickCapture.stopRecording();
-  };
-
   const handleSwipeUp = async () => {
     if (expected !== 'swipe') return nudgeFor('swipe');
     const result = await quickCapture.capturePhoto();
@@ -192,8 +187,7 @@ export function TriggerStage({
         <View style={styles.keyAnchor}>
           <AddButton
             onPress={handleTap}
-            onLongPressStart={handleHoldStart}
-            onLongPressEnd={handleHoldEnd}
+            onHold={handleHoldStart}
             onSwipeUp={handleSwipeUp}
           />
           <GestureHint gesture={step.gesture} visible={isActive && !quickCapture.isRecording} />

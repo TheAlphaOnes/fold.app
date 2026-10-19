@@ -28,7 +28,7 @@ Over time those seconds add up. Fold folds them back to you as a timeline you'll
 | | |
 |---|---|
 | **Tap** to write | A clean page opens straight away. Pick a typeface and an ink colour, and Fold balances the text so it always looks considered. |
-| **Hold** to record | Hold the key, talk, let go. Your voice note is saved as a memory before you've put the phone down. |
+| **Hold** to record | Hold the key and start talking. Let go whenever you like; tap once to stop, and your voice note is saved as a memory. |
 | **Swipe up** to snap | Slide the key up and the camera opens. Take the shot and it becomes a memory. |
 
 Every memory can carry more than words: photos, videos, GIFs, a song, the place you were. Fold arranges them on the card for you, and you can drag and pinch anything to make it your own.

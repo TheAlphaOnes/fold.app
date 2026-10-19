@@ -14,8 +14,9 @@ import Animated, {
   type AnimatedStyle,
 } from "react-native-reanimated";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { usePathname } from "expo-router";
+import { useIsFocused, usePathname } from "expo-router";
 import { track } from "@/services/analytics";
+import { useAudioFocus } from "@/hooks/use-audio-focus";
 import type { MediaElement } from "@/types/journal";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useTheme } from "@/hooks/use-theme";
@@ -107,12 +108,16 @@ function CanvasAudioSticker({
   const autoPlayMusicRef = React.useRef(autoPlayMusic);
   const hasAutoPlayed = React.useRef(false);
   const pathname = usePathname();
-  // Audio should auto-play on screens where memory cards are visible:
-  // home (/), time machine (/time-machine), and memory detail (/memory/*)
-  const isPlayableScreen = pathname === "/" || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
+  // Audio auto-plays on screens where memory cards are visible — home (/),
+  // time machine (/time-machine), memory detail (/memory/*) — and only while
+  // this sticker's own screen is in front, not from a screen covered by another.
+  const isFocused = useIsFocused();
+  const isPlayableScreen =
+    isFocused && (pathname === "/" || pathname.startsWith("/time-machine") || pathname.startsWith("/memory"));
   const hasTrackedPlay = React.useRef(false);
 
   // Safe play — seek to start if track ended naturally, then play
+  const claimAudio = useAudioFocus(() => player.pause());
   const safeTryPlay = React.useCallback(() => {
     if (!isLoaded) return;
     try {
@@ -121,9 +126,10 @@ function CanvasAudioSticker({
       if (dur > 0 && cur >= dur - 0.5) {
         player.seekTo(0);
       }
+      claimAudio();
       player.play();
     } catch (e) {}
-  }, [isLoaded, player]);
+  }, [isLoaded, player, claimAudio]);
 
   useEffect(() => {
     autoPlayMusicRef.current = autoPlayMusic;

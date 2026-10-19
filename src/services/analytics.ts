@@ -107,12 +107,13 @@ export interface AnalyticsEvents {
   // Settings & support
   setting_changed: { setting: string; value: string | number | boolean };
   feedback_submitted: { text: string; length: TextLengthBucket };
-  test_notification_sent: { result: 'scheduled' | 'denied' | 'failed' };
   haptics_test_played: {
     haptics_enabled: boolean;
     /** Android only; null on iOS or builds without the native module. */
     has_vibrator: boolean | null;
     touch_feedback: boolean | null;
+    predefined_clicks: boolean | null;
+    amplitude_control: boolean | null;
     power_save: boolean | null;
     ringer_mode: string | null;
     android_sdk: number | null;

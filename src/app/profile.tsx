@@ -1,14 +1,12 @@
-import React, { useCallback, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import React from 'react';
+import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Settings as SettingsIcon, Book, ChevronRight } from 'lucide-react-native';
+import { X, Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
-import { useJournalStore } from '@/hooks/use-journal';
-
-import { useStoriesStore } from '@/hooks/use-stories';
+import { useStagedMount } from '@/hooks/use-staged-mount';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -16,6 +14,7 @@ import { SYS_READY_ART } from '@/constants/ascii-art';
 import { ActivityGrid } from '@/components/activity-grid';
 import { FromYourPastCard } from '@/components/from-your-past-card';
 import { ContinuumCard } from '@/components/continuum/continuum-card';
+import { StoryBoardCard } from '@/components/profile/story-board-card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
@@ -23,71 +22,19 @@ import { toDayKey } from '@/utils/format-date';
 import { haptic } from '@/services/haptics';
 import { goBack } from '@/utils/navigation';
 
+/**
+ * Sections below the Continuum card, in the order they mount once the
+ * screen has slid in — one per frame. Mounting all of them (the year's
+ * heatmap alone is ~370 views) on the frames that animate the push is
+ * what made opening the profile stutter.
+ */
+const STAGED_SECTIONS = 5;
+
 export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
-  const { stories, refreshStories } = useStoriesStore();
-  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-
-  const reloadData = useCallback(async () => {
-    try {
-      await refreshStories();
-    } catch (err) {
-      console.error('Failed to reload profile data', err);
-    }
-  }, [refreshStories]);
-
-  useEffect(() => {
-    reloadData();
-  }, [reloadData, hydrationVersion]);
-
-  useFocusEffect(
-    useCallback(() => {
-      reloadData();
-    }, [reloadData])
-  );
-  const randomStoryMedia = React.useMemo(() => {
-    // 1. Gather all possible media across all stories
-    type StoryMedia = { storyId: number; title: string; uri: string | null };
-    let allMedia: StoryMedia[] = [];
-    let emptyStories: StoryMedia[] = [];
-
-    stories.forEach(story => {
-      let hasMedia = false;
-      if (story.coverImageUri) {
-        allMedia.push({ storyId: story.id, title: story.title, uri: story.coverImageUri });
-        hasMedia = true;
-      }
-      if (story.sampleMedia && story.sampleMedia.length > 0) {
-        story.sampleMedia.forEach(m => {
-          // Avoid duplicating the cover image if it's in sampleMedia
-          if (m.uri !== story.coverImageUri) {
-            allMedia.push({ storyId: story.id, title: story.title, uri: m.uri });
-          }
-        });
-        hasMedia = true;
-      }
-
-      if (!hasMedia) {
-        emptyStories.push({ storyId: story.id, title: story.title, uri: null });
-      }
-    });
-
-    // 2. Shuffle the media pool
-    const shuffledMedia = allMedia.sort(() => 0.5 - Math.random());
-    
-    // 3. Take up to 5
-    let selected = shuffledMedia.slice(0, 5);
-
-    // 4. If we don't have 5, fill with empty stories
-    if (selected.length < 5 && emptyStories.length > 0) {
-      const shuffledEmpty = emptyStories.sort(() => 0.5 - Math.random());
-      selected = [...selected, ...shuffledEmpty].slice(0, 5);
-    }
-
-    return selected;
-  }, [stories]);
+  const revealed = useStagedMount(STAGED_SECTIONS);
 
   const bg = theme.background;
   const fg = theme.text;
@@ -144,96 +91,31 @@ export default function ProfileScreen() {
         {/* Combined Dashboard Card */}
         <ContinuumCard />
 
-                {/* Extended Story Board Card */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
-          <Pressable 
-            style={({ pressed }) => [
-              { 
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: 16,
-                backgroundColor: pressed ? 'rgba(255,255,255,0.05)' : 'transparent', 
-              }
-            ]}
-            onPress={() => {
-              haptic.tap();
-              router.push('/stories');
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <Book size={14} color={theme.textMuted} />
-              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
-            </View>
-            <ChevronRight size={16} color={mutedText} />
-          </Pressable>
-
-          {stories.length > 0 && (
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}
-            >
-              {randomStoryMedia.map((item, idx) => (
-                <Pressable
-                  key={`${item.storyId}-${idx}`}
-                  onPress={() => {
-                    haptic.tap();
-                    router.push(`/stories/${item.storyId}` as any);
-                  }}
-                  style={({ pressed }) => [
-                    {
-                      width: 100,
-                      height: 140,
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      backgroundColor: theme.backgroundElement,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                      opacity: pressed ? 0.8 : 1,
-                    }
-                  ]}
-                >
-                  {item.uri ? (
-                    <Image source={{ uri: item.uri }} style={{ width: '100%', height: '100%' }} />
-                  ) : (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                      <ThemedText style={{ color: theme.textMuted, fontFamily: 'JetBrainsMono-Bold' }}>///</ThemedText>
-                    </View>
-                  )}
-                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)' }]} />
-                  <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8 }}>
-                    <ThemedText style={{ color: '#fff', fontFamily: 'JetBrainsMono-Bold', fontSize: 10, textTransform: 'uppercase' }} numberOfLines={1}>
-                      {item.title}
-                    </ThemedText>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+        {revealed > 0 && <StoryBoardCard />}
 
         {/* Heat Map (Activity Grid) */}
-        <ActivityGrid />
+        {revealed > 1 && <ActivityGrid />}
 
         {/* Time Machine Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>
-          <View style={[styles.portfolioHeader, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, marginBottom: 0 }]}>
-            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+        {revealed > 2 && (
+          <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+            <View style={styles.portfolioHeader}>
+              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+            </View>
+            <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
           </View>
-          <TECalendar
-            onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)}
-          />
-        </View>
+        )}
 
         {/* Today's memory from the past — photo-first, opens the memory */}
-        <FromYourPastCard />
+        {revealed > 3 && <FromYourPastCard />}
 
         {/* ASCII Easter Egg Mascot */}
-        <View style={styles.mascotContainer}>
-          <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
-          <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
-        </View>
+        {revealed > 4 && (
+          <View style={styles.mascotContainer}>
+            <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
+            <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
+          </View>
+        )}
 
       </ScrollView>
     </View>
@@ -291,27 +173,18 @@ const styles = StyleSheet.create({
   },
   portfolioSection: {
     marginBottom: 24,
-    padding: 16,
-    backgroundColor: '#0F0F0F',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 4,
-  },
-  sleekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    marginBottom: 24,
     borderWidth: 1,
     borderRadius: 4,
+    overflow: 'hidden',
   },
   portfolioHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   mascotContainer: {
     marginTop: 40,
@@ -326,15 +199,4 @@ const styles = StyleSheet.create({
     marginTop: 8,
     letterSpacing: 2,
   },
-  timeMachineBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeMachineBtnText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 14,
-  }
 });

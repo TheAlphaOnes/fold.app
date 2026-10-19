@@ -2,7 +2,8 @@
  * useQuickCapture — the orange key's two shortcut gestures, shared by the
  * home screen and the field guide so both behave identically.
  *
- *   hold      → record a voice take, saved instantly as its own memory
+ *   hold      → start a voice take; it keeps recording after release and
+ *               is saved as its own memory when the user taps to stop
  *   swipe up  → open the camera, then hand the photo to the compose screen
  */
 
@@ -43,9 +44,10 @@ export function useQuickCapture() {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 100);
 
-  // The finger can lift while permissions/prepare are still resolving.
+  // A stop can land while permissions/prepare are still resolving; the
+  // start then backs out instead of recording with nothing to end it.
   const recordIntentRef = useRef(false);
-  // Release and the overlay's tap-to-stop can both fire; only one may save.
+  // A double tap on the overlay can fire stop twice; only one may save.
   const isStoppingRef = useRef(false);
   const isCameraOpenRef = useRef(false);
 

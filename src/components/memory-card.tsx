@@ -22,9 +22,10 @@ import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { usePathname } from "expo-router";
+import { useIsFocused, usePathname } from "expo-router";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { track } from "@/services/analytics";
+import { useAudioFocus } from "@/hooks/use-audio-focus";
 import { getHighResArtwork } from "@/utils/media-attach";
 
 interface MemoryCardProps {
@@ -65,8 +66,12 @@ function SingleAudioCard({
   const hasAutoPlayed = React.useRef(false);
   const pathname = usePathname();
   const isHomeScreen = pathname === "/";
-  // Audio should auto-play on screens where memory cards are visible
-  const isPlayableScreen = isHomeScreen || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
+  // Audio auto-plays on screens where memory cards are visible, and only
+  // while this card's own screen is in front: a card on home stays mounted
+  // under a memory opened on top of it, and must fall silent.
+  const isFocused = useIsFocused();
+  const isPlayableScreen =
+    isFocused && (isHomeScreen || pathname.startsWith("/time-machine") || pathname.startsWith("/memory"));
   const hasTrackedPlay = React.useRef(false);
 
   // Detect when the track has ended naturally (not paused, not playing, at end)
@@ -76,6 +81,7 @@ function SingleAudioCard({
     isLoaded && !isPlaying && duration > 0 && currentTime >= duration - 0.5;
 
   // Safe play — seek to start first if track has ended, then play
+  const claimAudio = useAudioFocus(() => player.pause());
   const safeTryPlay = React.useCallback(() => {
     if (!isLoaded) return;
     try {
@@ -84,9 +90,10 @@ function SingleAudioCard({
       if (dur > 0 && cur >= dur - 0.5) {
         player.seekTo(0);
       }
+      claimAudio();
       player.play();
     } catch (e) {}
-  }, [isLoaded, player]);
+  }, [isLoaded, player, claimAudio]);
 
   useEffect(() => {
     autoPlayMusicRef.current = autoPlayMusic;

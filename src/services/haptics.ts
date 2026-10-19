@@ -142,6 +142,8 @@ export function diagnoseHaptics(): HapticsDiagnosis | null {
 export function describeHapticsBlocker(diagnosis: HapticsDiagnosis): string | null {
   if (!diagnosis.hasVibrator) return 'this phone reports no vibration motor';
   if (diagnosis.powerSaveMode) return 'Battery Saver is on — it blocks vibration';
-  if (!diagnosis.touchFeedbackEnabled) return 'Touch feedback is off in your phone’s Sound & vibration settings';
+  if (!diagnosis.touchFeedbackEnabled) {
+    return 'Touch feedback is off in your phone’s Sound & vibration settings — turn it on for reliable haptics';
+  }
   return null;
 }

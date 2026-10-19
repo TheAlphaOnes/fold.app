@@ -19,13 +19,13 @@ import { Camera, Plus } from 'lucide-react-native';
 interface AddButtonProps {
   onPress: () => void;
   onSwipeUp?: (type: 'photo') => void;
-  onLongPressStart?: () => void;
-  onLongPressEnd?: () => void;
+  /** A long press. Recording starts here and keeps going after release; it is stopped by a tap. */
+  onHold?: () => void;
 }
 
 const PHOTO_THRESHOLD = -110;
 
-export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd }: AddButtonProps) {
+export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
@@ -50,13 +50,9 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     if (onSwipeUp) onSwipeUp('photo');
   }, [onSwipeUp]);
 
-  const fireLongPressStart = useCallback(() => {
-    if (onLongPressStart) onLongPressStart();
-  }, [onLongPressStart]);
-
-  const fireLongPressEnd = useCallback(() => {
-    if (onLongPressEnd) onLongPressEnd();
-  }, [onLongPressEnd]);
+  const fireHold = useCallback(() => {
+    if (onHold) onHold();
+  }, [onHold]);
 
   useAnimatedReaction(
     () => swipeStage.value,
@@ -87,12 +83,12 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
       isActive.value = true;
       scale.value = withTiming(0.85, { duration: 150 });
       runOnJS(fireHapticHeavy)();
-      runOnJS(fireLongPressStart)();
+      runOnJS(fireHold)();
     })
     .onFinalize(() => {
+      // Letting go only settles the key; a recording it started carries on.
       isActive.value = false;
       scale.value = withTiming(1, { duration: 150 });
-      runOnJS(fireLongPressEnd)();
     });
 
   const panGesture = Gesture.Pan()

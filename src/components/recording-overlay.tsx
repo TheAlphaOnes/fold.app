@@ -12,23 +12,22 @@ interface RecordingOverlayProps {
   visible: boolean;
   /** Live take duration from useAudioRecorderState. */
   durationMillis: number;
-  /** Fired when the user taps anywhere on the overlay (or presses back). */
+  /** Fired when the user taps anywhere on the overlay — the only way a take ends. */
   onStop: () => void;
 }
 
 /**
  * Full-screen recording overlay: vignette, TP-7 wheel, elapsed time.
  *
- * **Architecture note:** This intentionally uses an absolutely positioned View
- * instead of a Modal. A Modal creates a separate native view hierarchy which
- * rips the active touch away from gesture handlers (GestureDetector). When the
- * AddButton's LongPress gesture starts recording and this overlay appears
- * mid-hold, a Modal would steal the touch — the gesture's onFinalize would
- * never fire, and the user couldn't stop recording by releasing.
+ * A take starts with a hold on the orange key and keeps going after the
+ * finger lifts; a tap anywhere here stops and saves it.
  *
- * With an absolute View in the same tree, the gesture handler keeps tracking
- * the original touch. Releasing the finger fires onFinalize → stops recording.
- * Tapping the overlay also works because the Pressable is the sole interactive
+ * **Architecture note:** This intentionally uses an absolutely positioned View
+ * instead of a Modal. The overlay appears mid-hold, and a Modal's separate
+ * native hierarchy would rip the active touch away from the key's gesture
+ * handler, leaving the key stuck pressed. In the same tree, the hold simply
+ * ends when the finger lifts, and because that touch began on the key, its
+ * release is not a tap on the overlay. The Pressable is the sole interactive
  * element (all visuals are pointerEvents="none").
  */
 export function RecordingOverlay({ visible, durationMillis, onStop }: RecordingOverlayProps) {

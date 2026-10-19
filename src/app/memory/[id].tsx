@@ -18,6 +18,7 @@ import { getHighResArtwork } from '@/utils/media-attach';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
 import { ageInDays, track } from '@/services/analytics';
+import { useAudioFocus } from '@/hooks/use-audio-focus';
 import * as Sharing from 'expo-sharing';
 import { haptic } from '@/services/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -87,21 +88,25 @@ function VideoSlide({ media, width, height, isActive }: { media: MediaElement; w
   const player = useVideoPlayer(media.uri, (p) => {
     p.loop = true;
   });
+  const claimAudio = useAudioFocus(() => player.pause());
 
   useEffect(() => {
     if (isActive) {
+      claimAudio();
       player.play();
     } else {
       player.pause();
     }
-  }, [isActive, player]);
+  }, [isActive, player, claimAudio]);
 
   const handlePressIn = () => {
     if (isActive) player.pause();
   };
 
   const handlePressOut = () => {
-    if (isActive) player.play();
+    if (!isActive) return;
+    claimAudio();
+    player.play();
   };
 
   return (
@@ -143,14 +148,19 @@ function AudioSlide({ media, width, height, isActive }: { media: MediaElement; w
     player.loop = true;
   }, [player]);
 
+  const claimAudio = useAudioFocus(() => player.pause());
+
   useEffect(() => {
     if (!isLoaded) return; // Wait for player to be ready
     if (isActive && !isPausedByUser) {
-      try { player.play(); } catch (e) {}
+      try {
+        claimAudio();
+        player.play();
+      } catch (e) {}
     } else {
       try { player.pause(); } catch (e) {}
     }
-  }, [isActive, isLoaded, player, isPausedByUser]);
+  }, [isActive, isLoaded, player, isPausedByUser, claimAudio]);
 
   const seekTo = (seconds: number) => {
     try { player.seekTo(seconds); } catch (e) {}

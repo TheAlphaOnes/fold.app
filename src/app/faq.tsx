@@ -58,7 +58,7 @@ export default function FAQScreen() {
         <ThemedText style={heading}>1. Creating memories</ThemedText>
         <ThemedText style={text}>
           <B>TAP</B> the orange key to write a memory.{'\n'}
-          <B>HOLD</B> the orange key to record a voice note. Let go and it is saved.{'\n'}
+          <B>HOLD</B> the orange key to start a voice note. You can let go; <B>TAP</B> anywhere to stop and save it.{'\n'}
           <B>SWIPE UP</B> on the orange key to take a photo, then add words to it.{'\n'}
           You can also share text or photos into Fold from other apps.
         </ThemedText>
@@ -116,9 +116,9 @@ export default function FAQScreen() {
 
         <ThemedText style={heading}>9. Not getting reminders or haptics?</ThemedText>
         <ThemedText style={text}>
-          Settings → Testing has two checks. <B>TEST NOTIFICATION</B> sends a reminder in 5 seconds. <B>TEST HAPTICS</B>{' '}
-          plays a long buzz and then each pattern. If you feel nothing, check your phone's vibration settings and Do Not
-          Disturb.
+          For reminders, make sure notifications are allowed for Fold in your phone's Settings. For haptics, Settings →
+          Testing → <B>TEST HAPTICS</B> plays a long buzz and then each pattern, and names anything on your phone that
+          blocks vibration, like Battery Saver.
         </ThemedText>
 
         <ThemedText style={heading}>10. Data & privacy</ThemedText>

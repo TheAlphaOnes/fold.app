@@ -4,9 +4,29 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 /**
  * Module-level cache of generated thumbnails, keyed by video URI.
  * Toggling story view modes remounts every node; without this cache each
- * remount re-runs the native thumbnail generation.
+ * remount re-runs the native thumbnail generation. Requests already in
+ * flight are shared too, so two views asking at once decode one frame.
  */
 const thumbnailCache = new Map<string, string>();
+const pending = new Map<string, Promise<string>>();
+
+function thumbnailFor(videoUri: string): Promise<string> {
+  const inFlight = pending.get(videoUri);
+  if (inFlight) return inFlight;
+  // expo-video-thumbnails expects a file:// URI.
+  const fileUri = videoUri.startsWith('file://') ? videoUri : `file://${videoUri}`;
+  const request = VideoThumbnails.getThumbnailAsync(fileUri, {
+    time: 500, // 500ms into the video for a meaningful frame
+    quality: 0.7,
+  })
+    .then(({ uri }) => {
+      thumbnailCache.set(videoUri, uri);
+      return uri;
+    })
+    .finally(() => pending.delete(videoUri));
+  pending.set(videoUri, request);
+  return request;
+}
 
 /**
  * Generates a thumbnail URI from a video file path.
@@ -19,32 +39,16 @@ export function useVideoThumbnail(videoUri: string | undefined): string | null {
   const [generated, setGenerated] = useState<{ source: string; uri: string } | null>(null);
 
   useEffect(() => {
-    if (!videoUri) return;
+    // A cached thumbnail is read below; generating it again decoded a video
+    // frame every time a view (the feed backdrop, above all) came back to it.
+    if (!videoUri || thumbnailCache.has(videoUri)) return;
 
     let cancelled = false;
-
-    const generate = async () => {
-      try {
-        // Strip file:// prefix if present — expo-video-thumbnails works with filesystem paths
-        const cleanUri = videoUri.startsWith('file://')
-          ? videoUri
-          : `file://${videoUri}`;
-
-        const { uri } = await VideoThumbnails.getThumbnailAsync(cleanUri, {
-          time: 500, // 500ms into the video for a meaningful frame
-          quality: 0.7,
-        });
-
-        thumbnailCache.set(videoUri, uri);
-        if (!cancelled) {
-          setGenerated({ source: videoUri, uri });
-        }
-      } catch (error) {
-        console.warn('Video thumbnail generation failed:', error);
-      }
-    };
-
-    generate();
+    thumbnailFor(videoUri)
+      .then((uri) => {
+        if (!cancelled) setGenerated({ source: videoUri, uri });
+      })
+      .catch((error) => console.warn('Video thumbnail generation failed:', error));
 
     return () => {
       cancelled = true;

@@ -387,8 +387,7 @@ export default function HomeScreen() {
         <AddButton 
           onPress={handleAdd} 
           onSwipeUp={quickCapture.capturePhoto}
-          onLongPressStart={quickCapture.startRecording}
-          onLongPressEnd={quickCapture.stopRecording}
+          onHold={quickCapture.startRecording}
         />
       </View>
 

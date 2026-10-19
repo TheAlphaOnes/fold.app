@@ -14,7 +14,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { MOMENTS, momentAt, type Moment, type MomentId, type Nudge } from '@/constants/progression';
+import { MOMENTS, type Moment, type MomentId, type Nudge } from '@/constants/progression';
 import { addDays, toDayKey } from '@/utils/format-date';
 import { track, trackError, type NotificationPermission } from '@/services/analytics';
 
@@ -168,36 +168,6 @@ async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: CHANNEL_ID },
       });
     }
-  }
-}
-
-export type TestNotificationResult = 'scheduled' | 'denied' | 'failed';
-
-/**
- * Sends a real moment reminder a few seconds from now, for checking that
- * notifications arrive (lock the phone or leave the app to see it as a
- * banner). Tapping it opens the camera, like the real ones.
- */
-export async function sendTestNotification(delaySeconds = 5): Promise<TestNotificationResult> {
-  try {
-    if (!(await requestReminderPermission())) return 'denied';
-    // Worded for the moment it arrives in, picking a different wording each time.
-    const moment = momentAt(new Date(Date.now() + delaySeconds * 1000));
-    const nudge = moment.nudges[Math.floor(Math.random() * moment.nudges.length)];
-    await Notifications.scheduleNotificationAsync({
-      // Outside ID_PREFIX, so a schedule rebuild never cancels it.
-      identifier: `test-${Date.now()}`,
-      content: contentFor(moment, nudge),
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: delaySeconds,
-        channelId: CHANNEL_ID,
-      },
-    });
-    return 'scheduled';
-  } catch (error) {
-    console.error('Failed to send a test notification', error);
-    return 'failed';
   }
 }
 

@@ -11,12 +11,16 @@
  * over 900ms. The last photo is kept while fading out, so moving onto a text
  * memory no longer drops the image in a single frame.
  *
- * Performance: one image layer, blur capped at 8px (the project's GPU budget
- * for blur), crossfades handled natively by expo-image.
+ * Performance: the photo is drawn into a box 1/8 of the screen and scaled
+ * up on the GPU. expo-image decodes to the size it is drawn at, so a 12MP
+ * camera photo becomes a ~135×300 bitmap and the blur runs over 1/64 of
+ * the pixels — decoding and blurring at full size on every swap is what
+ * made the feed stutter on Android. Upscaling a tiny image is itself a
+ * soft blur, so the look is unchanged. Crossfades are native to expo-image.
  */
 
 import React, { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 
@@ -26,7 +30,12 @@ import { useThemeContext } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { isGifMedia } from '@/utils/media-kind';
 
-const BLUR_RADIUS = 8;
+/** The photo is decoded and blurred at 1/DOWNSCALE of the screen, then scaled back up. */
+const DOWNSCALE = 8;
+/** In downscaled pixels; the upscale adds the rest of the softness. */
+const BLUR_RADIUS = 2;
+/** Slight overscan hides the soft, darkened edge a blur leaves at the frame. */
+const OVERSCAN = 1.15;
 const FADE_IN_MS = 900;
 const FADE_OUT_MS = 1100;
 const CROSSFADE_MS = 900;
@@ -40,6 +49,7 @@ const MAX_OPACITY_LIGHT = 0.75;
 
 export function AmbientBackdrop() {
   const { isDark } = useThemeContext();
+  const { width, height } = useWindowDimensions();
   const intensity = useSettingsStore((state) => state.settings.backdropIntensity);
   const activeId = useJournalStore((state) => state.activeCompositionId);
   const memory = useJournalStore((state) => (activeId !== null ? state.hydratedById[activeId] : undefined));
@@ -71,25 +81,29 @@ export function AmbientBackdrop() {
   const maxOpacity = (isDark ? MAX_OPACITY_DARK : MAX_OPACITY_LIGHT) * intensity;
   const style = useAnimatedStyle(() => ({ opacity: presence.get() * maxOpacity }));
 
+  const small = { width: Math.ceil(width / DOWNSCALE), height: Math.ceil(height / DOWNSCALE) };
+
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
+    <Animated.View style={[StyleSheet.absoluteFill, styles.center, style]} pointerEvents="none">
       {shownUri ? (
-        <Image
-          source={{ uri: shownUri }}
-          style={[StyleSheet.absoluteFill, styles.image]}
-          contentFit="cover"
-          blurRadius={BLUR_RADIUS}
-          cachePolicy="memory-disk"
-          transition={{ duration: CROSSFADE_MS, effect: 'cross-dissolve' }}
-        />
+        <View style={[small, { transform: [{ scale: DOWNSCALE * OVERSCAN }] }]}>
+          <Image
+            source={{ uri: shownUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            blurRadius={BLUR_RADIUS}
+            cachePolicy="memory-disk"
+            transition={{ duration: CROSSFADE_MS, effect: 'cross-dissolve' }}
+          />
+        </View>
       ) : null}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Slight overscan hides the soft, darkened edge a blur leaves at the frame.
-  image: {
-    transform: [{ scale: 1.15 }],
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

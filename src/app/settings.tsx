@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, BellRing, Vibrate } from 'lucide-react-native';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, Vibrate } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -412,31 +412,6 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>TESTING</ThemedText>
           <View style={[styles.divider, { backgroundColor: theme.text }]} />
-
-          <Pressable
-            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => {
-              haptic.tap();
-              void deviceTests.testNotification();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Test notification"
-            accessibilityHint="Sends a moment reminder in a few seconds"
-          >
-            <View style={styles.rowTextBlock}>
-              <View style={styles.settingRowLeft}>
-                <BellRing size={16} color={theme.text} />
-                <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST NOTIFICATION</ThemedText>
-              </View>
-              {deviceTests.notificationStatus && (
-                <ThemedText style={[styles.settingSubtext, styles.testStatus, { color: theme.textSecondary }]}>
-                  {deviceTests.notificationStatus}
-                </ThemedText>
-              )}
-            </View>
-          </Pressable>
-
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
 
           <Pressable
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
