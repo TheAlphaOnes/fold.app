@@ -6,7 +6,6 @@ import { X, Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
-import { useStagedMount } from '@/hooks/use-staged-mount';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -22,20 +21,10 @@ import { toDayKey } from '@/utils/format-date';
 import { haptic } from '@/services/haptics';
 import { goBack } from '@/utils/navigation';
 
-/**
- * Sections below the Continuum card, in the order they mount once the
- * screen has slid in — one per frame. Mounting all of them (the year's
- * heatmap alone is ~370 views) on the frames that animate the push is
- * what made opening the profile stutter.
- */
-const STAGED_SECTIONS = 5;
-
 export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
-  const revealed = useStagedMount(STAGED_SECTIONS);
-
   const bg = theme.background;
   const fg = theme.text;
   const elementBg = theme.backgroundElement;
@@ -91,31 +80,27 @@ export default function ProfileScreen() {
         {/* Combined Dashboard Card */}
         <ContinuumCard />
 
-        {revealed > 0 && <StoryBoardCard />}
+        <StoryBoardCard />
 
         {/* Heat Map (Activity Grid) */}
-        {revealed > 1 && <ActivityGrid />}
+        <ActivityGrid />
 
         {/* Time Machine Section */}
-        {revealed > 2 && (
-          <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-            <View style={styles.portfolioHeader}>
-              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
-            </View>
-            <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+          <View style={styles.portfolioHeader}>
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
           </View>
-        )}
+          <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
+        </View>
 
         {/* Today's memory from the past — photo-first, opens the memory */}
-        {revealed > 3 && <FromYourPastCard />}
+        <FromYourPastCard />
 
         {/* ASCII Easter Egg Mascot */}
-        {revealed > 4 && (
-          <View style={styles.mascotContainer}>
-            <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
-            <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
-          </View>
-        )}
+        <View style={styles.mascotContainer}>
+          <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
+          <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
+        </View>
 
       </ScrollView>
     </View>

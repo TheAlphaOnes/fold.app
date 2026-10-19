@@ -15,12 +15,17 @@
  * square size is derived from the card width and the year's week count.
  *
  * Counts come from the database (whole year, live memories only).
- * Entrance: the weeks sweep in left to right, 6ms apart, each column's
- * fade resolving faster than the sweep travels.
+ *
+ * Performance: the ~370 squares are one SVG — a single native view —
+ * rather than two views each. As views (plus an entrance animation per
+ * week) they were the bulk of what made the profile slow to open.
+ * Entrance: a card-coloured wipe uncovers the weeks left to right while
+ * the month labels and legend fade in on their own, slower clocks.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
 import { router } from 'expo-router';
 import Animated, {
   Easing,
@@ -28,13 +33,14 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withRepeat,
+  withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
 import { ThemedText } from './themed-text';
 import { Type } from '@/constants/theme';
-import { fadeIn } from '@/constants/motion';
+import { EASE_OUT, fadeIn } from '@/constants/motion';
 import { getDayCountsForYear } from '@/db/journal-repository';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
@@ -54,7 +60,8 @@ const GRID_PADDING = 16;
 const LABEL_SIZE = 9;
 const LABEL_TRACKING = 0.4;
 const LABEL_CHAR = LABEL_SIZE * 0.62;
-const WEEK_STAGGER = 6;
+/** How long the wipe takes to uncover the whole year. */
+const WIPE_MS = 520;
 /** Accent opacity for 1, 2, 3 and 4+ memories in a day. */
 const LEVELS = [0.42, 0.62, 0.82, 1];
 
@@ -122,7 +129,7 @@ function levelFor(count: number): number {
 }
 
 /** Today's square: an accent outline that breathes, so "now" is findable. */
-function TodayOutline({ size }: { size: number }) {
+function TodayOutline({ size, left, top }: { size: number; left: number; top: number }) {
   const theme = useTheme();
   const reduceMotion = useReducedMotion();
   const glow = useSharedValue(1);
@@ -146,9 +153,23 @@ function TodayOutline({ size }: { size: number }) {
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.todayOutline, { width: size + 2, height: size + 2, borderColor: theme.accentWarm }, style]}
+      style={[
+        styles.todayOutline,
+        { width: size + 2, height: size + 2, left: left - 1, top: top - 1, borderColor: theme.accentWarm },
+        style,
+      ]}
     />
   );
+}
+
+/** A card-coloured cover that slides off to the right, uncovering the weeks in order. */
+function Wipe({ color, delay }: { color: string; delay: number }) {
+  const cover = useSharedValue(1);
+  useEffect(() => {
+    cover.set(withDelay(delay, withTiming(0, { duration: WIPE_MS, easing: EASE_OUT })));
+  }, [cover, delay]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scaleX: cover.get() }] }));
+  return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.wipe, { backgroundColor: color }, style]} />;
 }
 
 function YearStrip({
@@ -193,6 +214,35 @@ function YearStrip({
     };
   });
 
+  const gridWidth = weeks.length * columnPitch - CELL_GAP;
+  const gridHeight = 7 * columnPitch - CELL_GAP;
+  const todayWeek = weeks.findIndex((days) => days.some((day) => day.isToday));
+  const today =
+    todayWeek >= 0
+      ? { left: todayWeek * columnPitch, top: weeks[todayWeek].findIndex((day) => day.isToday) * columnPitch }
+      : null;
+  const squares: React.ReactElement[] = [];
+  weeks.forEach((days, week) => {
+    days.forEach((day, weekday) => {
+      if (!day.inYear) return;
+      const left = week * columnPitch;
+      const top = weekday * columnPitch;
+      const lit = day.count > 0;
+      squares.push(
+        <Rect
+          key={day.date}
+          x={left}
+          y={top}
+          width={cellSize}
+          height={cellSize}
+          rx={1.5}
+          fill={lit ? ink : theme.border}
+          opacity={lit ? levelFor(day.count) : day.isFuture ? 0.1 : 0.28}
+        />,
+      );
+    });
+  });
+
   return (
     <View>
       <Pressable
@@ -201,33 +251,14 @@ function YearStrip({
         accessibilityLabel="Open a day in the Time Machine"
         style={styles.grid}
       >
-        {weeks.map((days, index) => (
-          <Animated.View
-            key={`week-${index}`}
-            entering={reduceMotion ? undefined : fadeIn(180, delayBase + index * WEEK_STAGGER)}
-            style={styles.column}
-          >
-            {days.map((day) => {
-              if (!day.inYear) return <View key={day.date} style={{ width: cellSize, height: cellSize }} />;
-              const lit = day.count > 0;
-              return (
-                <View key={day.date} style={{ width: cellSize, height: cellSize }}>
-                  <View
-                    style={[
-                      StyleSheet.absoluteFill,
-                      styles.cell,
-                      {
-                        backgroundColor: lit ? ink : theme.border,
-                        opacity: lit ? levelFor(day.count) : day.isFuture ? 0.1 : 0.28,
-                      },
-                    ]}
-                  />
-                  {day.isToday && <TodayOutline size={cellSize} />}
-                </View>
-              );
-            })}
-          </Animated.View>
-        ))}
+        {/* Not a touch target itself, so tap positions are measured from the Pressable. */}
+        <View style={{ width: gridWidth, height: gridHeight }} pointerEvents="none">
+          <Svg width={gridWidth} height={gridHeight}>
+            {squares}
+          </Svg>
+          {today && <TodayOutline size={cellSize} left={today.left} top={today.top} />}
+          {!reduceMotion && <Wipe color={theme.backgroundElement} delay={delayBase} />}
+        </View>
       </Pressable>
 
       <Animated.View entering={reduceMotion ? undefined : fadeIn(240, delayBase + 160)} style={styles.xLabels}>
@@ -348,23 +379,15 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   grid: {
-    flexDirection: 'row',
-    gap: CELL_GAP,
     paddingHorizontal: GRID_PADDING,
-  },
-  column: {
-    flexDirection: 'column',
-    gap: CELL_GAP,
-  },
-  cell: {
-    borderRadius: 1.5,
   },
   todayOutline: {
     position: 'absolute',
-    top: -1,
-    left: -1,
     borderRadius: 2.5,
     borderWidth: 1,
+  },
+  wipe: {
+    transformOrigin: 'right',
   },
   xLabels: {
     position: 'relative',

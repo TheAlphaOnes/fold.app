@@ -161,7 +161,7 @@ export function TECalendar({ onSelect }: TECalendarProps) {
             if (cover) {
               return (
                 <>
-                  <CalendarDayPhoto key={`${monthKey}-${dayNum}`} cover={cover} dayNumber={dayNum} pressed={pressed} />
+                  <CalendarDayPhoto key={`${monthKey}-${dayNum}`} cover={cover} pressed={pressed} />
                   {/* The number rides on its own dark chip so it reads over
                       any photo, bright sky or white wall included. */}
                   <View style={[styles.photoChip, isTodayCell && styles.photoChipToday]}>
