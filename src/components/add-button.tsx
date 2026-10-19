@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -21,11 +21,18 @@ interface AddButtonProps {
   onSwipeUp?: (type: 'photo') => void;
   onLongPressStart?: () => void;
   onLongPressEnd?: () => void;
+  /** Drawn around the key, moving with it; fades out while the key is swiped. Sized from KEY_SIZE. */
+  halo?: ReactNode;
+  /** Spoken after the key's label, e.g. today's progress. */
+  accessibilityValue?: string;
 }
 
 const PHOTO_THRESHOLD = -110;
 
-export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd }: AddButtonProps) {
+/** The orange key's footprint, for anything drawn around it. */
+export const KEY_SIZE = { width: 150, height: 34, radius: 13 } as const;
+
+export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd, halo, accessibilityValue }: AddButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
@@ -133,6 +140,12 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
     ],
   }));
 
+  // The halo follows the key but clears out of the way of the swipe track.
+  const haloAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateY.value, [-36, -4], [0, 1], Extrapolation.CLAMP),
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
+
   // Track style
   const trackStyle = useAnimatedStyle(() => {
     const isVisible = translateY.value < -2;
@@ -172,8 +185,19 @@ export function AddButton({ onPress, onSwipeUp, onLongPressStart, onLongPressEnd
         <Camera size={18} color={theme.text} strokeWidth={2.5} />
       </Animated.View>
 
+      {halo ? (
+        <Animated.View pointerEvents="none" style={[styles.halo, haloAnimatedStyle]}>
+          {halo}
+        </Animated.View>
+      ) : null}
+
       <GestureDetector gesture={composedGesture}>
         <Animated.View
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel="New memory"
+          accessibilityHint="Tap to write, hold to record, swipe up to take a photo"
+          accessibilityValue={accessibilityValue ? { text: accessibilityValue } : undefined}
           style={[
             styles.button,
             { backgroundColor: theme.accentWarm },
@@ -213,10 +237,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  halo: {
+    position: 'absolute',
+    bottom: 0,
+    width: KEY_SIZE.width,
+    height: KEY_SIZE.height,
+    zIndex: 3,
+  },
   button: {
-    width: 150,
-    height: 34,
-    borderRadius: 13,
+    width: KEY_SIZE.width,
+    height: KEY_SIZE.height,
+    borderRadius: KEY_SIZE.radius,
     borderWidth: 1.5,
     borderColor: '#000000',
     overflow: 'hidden',

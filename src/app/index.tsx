@@ -19,7 +19,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AmbientBackdrop } from '@/components/ambient-backdrop';
-import { AddButton } from '@/components/add-button';
+import { AddButton, KEY_SIZE } from '@/components/add-button';
+import { KeyProgressRing } from '@/components/key-progress-ring';
+import { useDailyGoal } from '@/hooks/use-progression';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
@@ -70,6 +72,7 @@ export default function HomeScreen() {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
 
   const quickCapture = useQuickCapture();
+  const dailyGoal = useDailyGoal();
   
   const { settings, updateSetting } = useSettingsStore();
   
@@ -384,6 +387,18 @@ export default function HomeScreen() {
           onSwipeUp={quickCapture.capturePhoto}
           onLongPressStart={quickCapture.startRecording}
           onLongPressEnd={quickCapture.stopRecording}
+          accessibilityValue={dailyGoal.label}
+          halo={
+            dailyGoal.visible ? (
+              <KeyProgressRing
+                keyWidth={KEY_SIZE.width}
+                keyHeight={KEY_SIZE.height}
+                keyRadius={KEY_SIZE.radius}
+                count={dailyGoal.count}
+                goal={dailyGoal.goal}
+              />
+            ) : undefined
+          }
         />
       </View>
 

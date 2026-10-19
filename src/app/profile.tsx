@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,8 +7,6 @@ import { X, Settings as SettingsIcon, Book, ChevronRight } from 'lucide-react-na
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
 import { useJournalStore } from '@/hooks/use-journal';
-import { getAllCompositions } from '@/db/journal-repository';
-import type { Composition } from '@/types/journal';
 
 import { useStoriesStore } from '@/hooks/use-stories';
 import { GrainBackground } from '@/components/grain-background';
@@ -29,23 +27,12 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
-  const [compositions, setCompositions] = useState<Composition[]>([]);
   const { stories, refreshStories } = useStoriesStore();
   const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-  const lastDeletedId = useJournalStore((state) => state.lastDeletedId);
-
-  // Optimistic removal of deleted composition
-  useEffect(() => {
-    if (lastDeletedId) {
-      setCompositions((prev) => prev.filter((c) => c.id !== lastDeletedId));
-    }
-  }, [lastDeletedId]);
 
   const reloadData = useCallback(async () => {
     try {
-      refreshStories();
-      const all = await getAllCompositions();
-      setCompositions(all);
+      await refreshStories();
     } catch (err) {
       console.error('Failed to reload profile data', err);
     }
@@ -155,7 +142,7 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
         {/* Combined Dashboard Card */}
-        <StreakCard compositions={compositions} />
+        <StreakCard />
 
                 {/* Extended Story Board Card */}
         <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor, padding: 0, overflow: 'hidden' }]}>

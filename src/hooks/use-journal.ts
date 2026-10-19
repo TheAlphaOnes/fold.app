@@ -19,6 +19,7 @@ import {
 import type { Composition, MediaElement } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import { useStoriesStore } from '@/hooks/use-stories';
+import { useProgressionStore } from '@/hooks/use-progression';
 
 /** Cards kept fully decoded around the focused memory. */
 const HYDRATE_BEHIND = 4;
@@ -267,6 +268,8 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   addComposition: async (input: CreateCompositionInput) => {
     const newComp = await createComposition(input);
     set({ justAddedId: newComp.id });
+    // Not awaited: the reward check must never hold up the save.
+    void useProgressionStore.getState().recordCapture();
     await get().refresh();
     const mode = get().timelineMode;
     await get().loadTimeline(mode, new Date(newComp.createdAt), { force: true });
@@ -386,6 +389,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     set((state) => ({
       hydrationVersion: state.hydrationVersion + 1,
     }));
+    void useProgressionStore.getState().refresh();
   },
 
   removeAllCompositions: async () => {
@@ -411,12 +415,14 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     set((state) => ({
       hydrationVersion: state.hydrationVersion + 1,
     }));
+    void useProgressionStore.getState().refresh();
   },
 
   restoreAllCompositions: async () => {
     await restoreAllFromTrash();
     await get().resyncFromDatabase();
     set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));
+    void useProgressionStore.getState().refresh();
   },
 
   restoreComposition: async (id: number) => {
@@ -424,6 +430,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     // It can belong anywhere (any day, any story): re-read every feed.
     await get().resyncFromDatabase();
     set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));
+    void useProgressionStore.getState().refresh();
   },
 
   resyncFromDatabase: async () => {

@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, Target } from 'lucide-react-native';
+import { nextDailyGoal } from '@/constants/progression';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -101,6 +102,11 @@ export default function SettingsScreen() {
     const currentIndex = modes.indexOf(settings.timelineMode);
     const nextMode = modes[(currentIndex + 1) % modes.length];
     await updateSetting('timelineMode', nextMode);
+  };
+
+  const cycleDailyGoal = async () => {
+    haptic.select();
+    await updateSetting('dailyGoal', nextDailyGoal(settings.dailyGoal));
   };
 
 
@@ -302,6 +308,53 @@ export default function SettingsScreen() {
                 }
                 updateSetting('autoLocationTagging', val);
               }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>PROGRESS</ThemedText>
+          <View style={[styles.divider, { backgroundColor: theme.text }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextBlock}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>DAILY GOAL</ThemedText>
+              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
+                memories a day to close the ring
+              </ThemedText>
+            </View>
+            <Pressable
+              onPress={cycleDailyGoal}
+              disabled={settings.quietMode}
+              accessibilityRole="button"
+              accessibilityLabel={`Daily goal, ${settings.dailyGoal} a day`}
+              accessibilityHint="Changes how many memories a day close the ring"
+              style={[
+                styles.themeBtn,
+                { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+                settings.quietMode && styles.disabled,
+              ]}
+            >
+              <Target size={14} color={theme.text} />
+              <ThemedText style={[styles.themeBtnText, { color: theme.text }]}>
+                {`${settings.dailyGoal} / DAY`}
+              </ThemedText>
+            </Pressable>
+          </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextBlock}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>QUIET MODE</ThemedText>
+              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
+                hide the ring and rewards
+              </ThemedText>
+            </View>
+            <ToggleSwitch
+              value={settings.quietMode}
+              onValueChange={(val) => updateSetting('quietMode', val)}
+              accessibilityLabel="Quiet mode"
             />
           </View>
         </View>
@@ -546,6 +599,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 16,
+  },
+  settingTextBlock: {
+    flexShrink: 1,
+    paddingRight: 16,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   settingRowLeft: {
     flexDirection: 'row',

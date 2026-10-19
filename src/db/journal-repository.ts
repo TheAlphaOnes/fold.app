@@ -201,6 +201,18 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
+/** How many live memories were made on a local day (YYYY-MM-DD). */
+export async function countCompositionsOnDate(dayKey: string): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ total: number }>(
+    `SELECT COUNT(*) as total FROM compositions
+     WHERE strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
+       AND deleted_at IS NULL`,
+    dayKey,
+  );
+  return row?.total ?? 0;
+}
+
 /** A random sample of memories created before `timestamp` (ms). */
 export async function getRandomCompositionsBefore(timestamp: number, limit: number): Promise<Composition[]> {
   const db = await getDatabase();

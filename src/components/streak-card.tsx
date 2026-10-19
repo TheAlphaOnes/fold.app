@@ -9,14 +9,11 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import type { Composition } from '@/types/journal';
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Type } from '@/constants/theme';
-
-interface StreakCardProps {
-  compositions: Composition[];
-}
+import { useProgressionStore } from '@/hooks/use-progression';
+import { toDayKey } from '@/utils/format-date';
 
 const WINDOW_DAYS = 21;
 const WEEK_SIZE = 7;
@@ -28,62 +25,6 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function dayKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function computeStreak(compositions: Composition[]): {
-  currentStreak: number;
-  longestStreak: number;
-  activeDays: Set<string>;
-} {
-  if (compositions.length === 0) {
-    return { currentStreak: 0, longestStreak: 0, activeDays: new Set() };
-  }
-
-  const activeDays = new Set<string>();
-  compositions.forEach((c) => {
-    activeDays.add(dayKey(new Date(c.createdAt)));
-  });
-
-  const sortedDays = Array.from(activeDays).sort((a, b) => b.localeCompare(a));
-  let maxSoFar = 1;
-  let longest = 1;
-  for (let i = 0; i < sortedDays.length - 1; i++) {
-    const diff = Math.round(
-      (new Date(sortedDays[i]).getTime() - new Date(sortedDays[i + 1]).getTime()) / 86400000,
-    );
-    if (diff === 1) {
-      maxSoFar += 1;
-    } else {
-      longest = Math.max(longest, maxSoFar);
-      maxSoFar = 1;
-    }
-  }
-  longest = Math.max(longest, maxSoFar);
-
-  const today = new Date();
-  const yesterday = new Date(today.getTime() - 86400000);
-  const todayStr = dayKey(today);
-  const yesterdayStr = dayKey(yesterday);
-
-  let current = 0;
-  if (activeDays.has(todayStr) || activeDays.has(yesterdayStr)) {
-    let checkDate = activeDays.has(todayStr) ? today : yesterday;
-    while (true) {
-      const s = dayKey(checkDate);
-      if (activeDays.has(s)) {
-        current += 1;
-        checkDate = new Date(checkDate.getTime() - 86400000);
-      } else {
-        break;
-      }
-    }
-  }
-
-  return { currentStreak: current, longestStreak: longest, activeDays };
-}
-
 interface DayMark {
   key: string;
   written: boolean;
@@ -93,13 +34,13 @@ interface DayMark {
 
 function buildWindow(activeDays: Set<string>, currentStreak: number): DayMark[] {
   const today = new Date();
-  const todayStr = dayKey(today);
+  const todayStr = toDayKey(today);
   const marks: DayMark[] = [];
 
   for (let i = WINDOW_DAYS - 1; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
-    const key = dayKey(date);
+    const key = toDayKey(date);
     const written = activeDays.has(key);
     const daysAgo = Math.round((today.getTime() - date.getTime()) / 86400000);
     const inStreak = currentStreak > 0 && written && daysAgo < currentStreak;
@@ -190,14 +131,14 @@ function ContinuumTrack({
   );
 }
 
-export function StreakCard({ compositions }: StreakCardProps) {
+export function StreakCard() {
   const theme = useTheme();
   const reduceMotion = useReducedMotion() ?? false;
 
-  const { currentStreak, longestStreak, activeDays } = useMemo(
-    () => computeStreak(compositions),
-    [compositions],
-  );
+  // Read from the progression store: it sees every memory's day, not just
+  // the latest page the profile happens to have loaded.
+  const activeDays = useProgressionStore((state) => state.activeDays);
+  const { current: currentStreak, longest: longestStreak } = useProgressionStore((state) => state.streak);
 
   const days = useMemo(
     () => buildWindow(activeDays, currentStreak),

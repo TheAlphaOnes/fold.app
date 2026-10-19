@@ -30,6 +30,8 @@ LogBox.ignoreLogs([
   'Error while flushing PostHog',
   'Network error while fetching PostHog'
 ]);
+import { RewardHost } from "@/components/reward-host";
+import { useProgressionStore } from "@/hooks/use-progression";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   useFonts,
@@ -238,6 +240,8 @@ function RootLayoutNav() {
     getDatabase()
       .then(async () => {
         await useSettingsStore.getState().loadSettings();
+        // Today's count and the streak, before the home key first draws.
+        await useProgressionStore.getState().refresh();
         setDbReady(true);
         // Recently Deleted keeps memories for 30 days; clear out the expired
         // ones in the background so startup never waits on file cleanup.
@@ -334,6 +338,7 @@ function RootLayoutNav() {
                 }}
               />
             </Stack>
+            <RewardHost />
           </AnimatedSplashScreen>
         </BiometricGate>
       </ThemeProvider>
