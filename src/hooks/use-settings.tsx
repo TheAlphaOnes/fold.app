@@ -48,12 +48,6 @@ export interface UserSettings {
   guideDismissed: boolean;
   /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
   guideResetAt: number;
-  /** Hides today's moments and their stamps for people who just want a journal. */
-  quietMode: boolean;
-  /** A local notification in each moment of the day, asking for a photo. */
-  momentReminders: boolean;
-  /** The one-time "want reminders?" offer has been shown. */
-  reminderOffered: boolean;
 }
 
 const defaultSettings: UserSettings = {
@@ -72,9 +66,6 @@ const defaultSettings: UserSettings = {
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
   guideResetAt: 0,
-  quietMode: false,
-  momentReminders: false,
-  reminderOffered: false,
 };
 
 interface SettingsState {
@@ -129,9 +120,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
-          quietMode: stored.quietMode === "true",
-          momentReminders: stored.momentReminders === "true",
-          reminderOffered: stored.reminderOffered === "true",
         },
         loading: false,
       });

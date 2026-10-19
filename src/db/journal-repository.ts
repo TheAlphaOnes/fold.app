@@ -201,16 +201,35 @@ export async function getCompositionsOnDate(dayKey: string): Promise<Composition
   return rows.map((row) => rowToComposition(mapRow(row)));
 }
 
-/** When each live memory on a local day (YYYY-MM-DD) was made, in epoch ms. */
-export async function getCreationTimesOnDate(dayKey: string): Promise<number[]> {
+/** What the Fold Score reads from one live memory. */
+export interface MemorySignal {
+  createdAt: number;
+  /** Characters of written text, trimmed. */
+  textLength: number;
+  /** Holds a photo or video of its own (GIF stickers do not count). */
+  hasVisual: boolean;
+}
+
+/** One lightweight row per live memory, for the Fold Score and the Continuum. */
+export async function getMemorySignals(): Promise<MemorySignal[]> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<{ created_at: number }>(
-    `SELECT created_at FROM compositions
-     WHERE strftime('%Y-%m-%d', datetime(created_at / 1000, 'unixepoch', 'localtime')) = ?
-       AND deleted_at IS NULL`,
-    dayKey,
+  // CASE guards json_each: it throws on malformed JSON, and AND does not short-circuit in SQLite.
+  const rows = await db.getAllAsync<{ created_at: number; text_length: number; has_visual: number }>(
+    `SELECT c.created_at,
+            length(trim(c.text_content)) AS text_length,
+            CASE WHEN json_valid(c.media_elements) THEN EXISTS (
+              SELECT 1 FROM json_each(c.media_elements) m
+              WHERE json_extract(m.value, '$.type') IN ('image', 'video')
+                AND COALESCE(json_extract(m.value, '$.isGif'), 0) = 0
+            ) ELSE 0 END AS has_visual
+     FROM compositions c
+     WHERE c.deleted_at IS NULL`,
   );
-  return rows.map((row) => row.created_at);
+  return rows.map((row) => ({
+    createdAt: row.created_at,
+    textLength: row.text_length ?? 0,
+    hasVisual: row.has_visual === 1,
+  }));
 }
 
 /** A random sample of memories created before `timestamp` (ms). */

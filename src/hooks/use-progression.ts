@@ -1,88 +1,89 @@
 /**
- * Progression store — today's three moments, the Continuum streak, and the
- * queue of stamps waiting to play.
+ * Progression store — the Fold Score, the Continuum streak, and which of
+ * today's moments are captured (so their reminders are skipped).
  *
- * Everything here is derived from the journal itself, so it cannot drift:
- * deleting a memory can reopen a moment, restoring one fills it again. The
- * only thing stored is which of today's moments have been stamped, so each
- * stamp plays once. Every refresh also rebuilds the reminder schedule, so a
- * captured moment is never nudged.
+ * Everything is derived from the journal itself, so it cannot drift:
+ * deleting a memory lowers the score, restoring it raises it again. The only
+ * thing stored is the score last shown on the profile, so the number can
+ * count up from there.
  */
 
 import { create } from 'zustand';
-import { getCreationTimesOnDate, getDatesWithMemories } from '@/db/journal-repository';
+import { getMemorySignals } from '@/db/journal-repository';
 import { getSetting, setSetting } from '@/db/settings-repository';
-import { useSettingsStore } from '@/hooks/use-settings';
-import { syncMomentReminders } from '@/services/reminders.service';
-import {
-  MOMENTS,
-  NO_MOMENTS,
-  countDone,
-  momentAt,
-  type MomentId,
-  type MomentsDone,
-  type Reward,
-} from '@/constants/progression';
+import { requestReminderPermission, syncMomentReminders } from '@/services/reminders.service';
+import type { MomentId } from '@/constants/progression';
+import { computeFoldScore, groupByDay, type FoldScore } from '@/utils/fold-score';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
 import { toDayKey } from '@/utils/format-date';
 
-/** Stored as `YYYY-MM-DD:morning,evening` — the day and the moments already stamped on it. */
-const STAMPED_KEY = 'momentsStampedOn';
+const SEEN_SCORE_KEY = 'foldScoreSeen';
+
+const NO_SCORE: FoldScore = {
+  total: 0,
+  today: 0,
+  todayEarned: { day: 0, moments: 0, words: 0, photo: 0 },
+};
+
+/** Points just earned by a save, shown briefly beside the profile tab. */
+export interface ScoreGain {
+  id: number;
+  points: number;
+}
 
 interface ProgressionState {
   /** Local day keys (YYYY-MM-DD) that hold at least one memory. */
   activeDays: Set<string>;
   streak: StreakSummary;
-  todayKey: string;
-  moments: MomentsDone;
+  score: FoldScore;
+  /** The score the profile last showed; null until read. */
+  seenScore: number | null;
+  capturedToday: Set<MomentId>;
   loaded: boolean;
-  rewards: Reward[];
+  gain: ScoreGain | null;
 
-  /** Re-reads today's moments and the streak from the journal. Never throws. */
+  /** Re-reads everything from the journal and reschedules reminders. Never throws. */
   refresh: () => Promise<void>;
-  /** Call after a memory is saved: refreshes, then queues a stamp for any newly filled moment. */
+  /** Call after a memory is saved: refreshes and notes any points it earned. */
   recordCapture: () => Promise<void>;
-  dismissReward: (id: string) => void;
+  clearGain: (id: number) => void;
+  /** The profile has shown the current score; the next count-up starts here. */
+  markScoreSeen: () => void;
 }
 
-function momentsFrom(times: number[]): MomentsDone {
-  const done: MomentsDone = { ...NO_MOMENTS };
-  for (const time of times) done[momentAt(new Date(time)).id] = true;
-  return done;
-}
-
-function parseStamped(value: string | null, todayKey: string): Set<MomentId> {
-  if (!value) return new Set();
-  const [day, list] = value.split(':');
-  if (day !== todayKey || !list) return new Set();
-  return new Set(list.split(',').filter(Boolean) as MomentId[]);
-}
-
-/** The first moment after `current` that is still open today. */
-function nextOpen(current: MomentId, done: MomentsDone): MomentId | null {
-  const index = MOMENTS.findIndex((m) => m.id === current);
-  return MOMENTS.slice(index + 1).find((m) => !done[m.id])?.id ?? null;
+/** Asks for notification permission (once, by the system) and schedules if allowed. */
+async function enableReminders(capturedToday: ReadonlySet<MomentId>): Promise<void> {
+  if (await requestReminderPermission()) await syncMomentReminders(capturedToday);
 }
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
   activeDays: new Set(),
   streak: { current: 0, longest: 0 },
-  todayKey: toDayKey(new Date()),
-  moments: NO_MOMENTS,
+  score: NO_SCORE,
+  seenScore: null,
+  capturedToday: new Set(),
   loaded: false,
-  rewards: [],
+  gain: null,
 
   refresh: async () => {
     const todayKey = toDayKey(new Date());
     try {
-      const [dates, times] = await Promise.all([
-        getDatesWithMemories(),
-        getCreationTimesOnDate(todayKey),
+      const [signals, seen] = await Promise.all([
+        getMemorySignals(),
+        get().seenScore === null ? getSetting(SEEN_SCORE_KEY) : Promise.resolve(null),
       ]);
-      const activeDays = new Set(dates);
-      const moments = momentsFrom(times);
-      set({ activeDays, streak: computeStreak(activeDays), todayKey, moments, loaded: true });
-      void syncMomentReminders(useSettingsStore.getState().settings.momentReminders, moments);
+      const days = groupByDay(signals);
+      const activeDays = new Set(days.keys());
+      const capturedToday = days.get(todayKey)?.moments ?? new Set<MomentId>();
+      set((state) => ({
+        activeDays,
+        streak: computeStreak(activeDays),
+        score: computeFoldScore(days, todayKey),
+        capturedToday,
+        loaded: true,
+        seenScore: state.seenScore ?? (seen !== null ? Number(seen) || 0 : 0),
+      }));
+      void syncMomentReminders(capturedToday);
     } catch (error) {
       // Progress is a nicety on top of the journal; a failed read keeps the
       // last known values rather than breaking the screen that asked.
@@ -91,53 +92,25 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   },
 
   recordCapture: async () => {
+    const before = get().loaded ? get().score.total : null;
     await get().refresh();
-    if (useSettingsStore.getState().settings.quietMode) return;
-
-    const { todayKey, moments, streak } = get();
-    let stamped: Set<MomentId>;
-    try {
-      stamped = parseStamped(await getSetting(STAMPED_KEY), todayKey);
-    } catch (error) {
-      console.error('Failed to read stamped moments', error);
-      return;
+    const { score, capturedToday } = get();
+    if (before !== null && score.total > before) {
+      set({ gain: { id: Date.now(), points: score.total - before } });
     }
-
-    const fresh = MOMENTS.filter((m) => moments[m.id] && !stamped.has(m.id));
-    if (fresh.length === 0) return;
-    for (const moment of fresh) stamped.add(moment.id);
-    try {
-      await setSetting(STAMPED_KEY, `${todayKey}:${Array.from(stamped).join(',')}`);
-    } catch (error) {
-      console.error('Failed to record stamped moments', error);
-      return;
-    }
-
-    // Only the moment just captured is stamped. Earlier ones that were never
-    // stamped (memories from before an update, or made in Quiet mode) are
-    // marked silently rather than played back in a row.
-    const current = momentAt(new Date());
-    if (!fresh.some((m) => m.id === current.id)) return;
-    const reward: Reward = {
-      id: `${todayKey}:${current.id}`,
-      kind: 'moment',
-      moment: current.id,
-      done: countDone(moments),
-      next: nextOpen(current.id, moments),
-      streak: streak.current,
-    };
-    set((state) => ({ rewards: [...state.rewards, reward] }));
+    void enableReminders(capturedToday);
   },
 
-  dismissReward: (id: string) => {
-    set((state) => ({ rewards: state.rewards.filter((reward) => reward.id !== id) }));
+  clearGain: (id: number) => {
+    if (get().gain?.id === id) set({ gain: null });
+  },
+
+  markScoreSeen: () => {
+    const { total } = get().score;
+    if (get().seenScore === total) return;
+    set({ seenScore: total });
+    setSetting(SEEN_SCORE_KEY, String(total)).catch((error) =>
+      console.error('Failed to store the seen Fold Score', error),
+    );
   },
 }));
-
-/** Today's moments for the Continuum card; hidden in Quiet mode. */
-export function useTodayMoments() {
-  const moments = useProgressionStore((state) => state.moments);
-  const loaded = useProgressionStore((state) => state.loaded);
-  const quietMode = useSettingsStore((state) => state.settings.quietMode);
-  return { moments, visible: loaded && !quietMode };
-}

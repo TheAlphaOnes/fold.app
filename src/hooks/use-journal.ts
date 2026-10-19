@@ -268,7 +268,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   addComposition: async (input: CreateCompositionInput) => {
     const newComp = await createComposition(input);
     set({ justAddedId: newComp.id });
-    // Not awaited: the reward check must never hold up the save.
+    // Not awaited: scoring must never hold up the save.
     void useProgressionStore.getState().recordCapture();
     await get().refresh();
     const mode = get().timelineMode;

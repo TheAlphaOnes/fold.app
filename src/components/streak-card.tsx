@@ -12,8 +12,7 @@ import Animated, {
 import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { Type } from '@/constants/theme';
-import { useProgressionStore, useTodayMoments } from '@/hooks/use-progression';
-import { TodayMomentsRow } from './today-moments-row';
+import { useProgressionStore } from '@/hooks/use-progression';
 import { toDayKey } from '@/utils/format-date';
 
 const WINDOW_DAYS = 21;
@@ -140,7 +139,6 @@ export function StreakCard() {
   // the latest page the profile happens to have loaded.
   const activeDays = useProgressionStore((state) => state.activeDays);
   const { current: currentStreak, longest: longestStreak } = useProgressionStore((state) => state.streak);
-  const today = useTodayMoments();
 
   const days = useMemo(
     () => buildWindow(activeDays, currentStreak),
@@ -149,22 +147,14 @@ export function StreakCard() {
 
   const live = currentStreak > 0;
   const ink = live ? theme.accentWarm : theme.textMuted;
-  const wroteToday = days.some((d) => d.isToday && d.written);
   const unit = currentStreak === 1 ? 'day' : 'days';
-  // Only say things the user can act on: done today, or what to do next.
-  const hint = !live ? 'write today to start' : wroteToday ? 'you wrote today' : 'write today to keep it';
-
-  const litInView = days.filter((d) => d.written).length;
-  const yearPrefix = `${new Date().getFullYear()}-`;
-  const daysThisYear = Array.from(activeDays).filter((key) => key.startsWith(yearPrefix)).length;
-  const metrics = `${litInView} of the last ${WINDOW_DAYS} days  ·  ${daysThisYear} ${daysThisYear === 1 ? 'day' : 'days'} this year`;
 
   return (
     <View
       style={[s.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
       accessible
       accessibilityRole="summary"
-      accessibilityLabel={`Continuum, ${currentStreak} ${unit}. Best ${longestStreak} days. ${hint}. Wrote on ${metrics}.`}
+      accessibilityLabel={`Continuum, ${currentStreak} ${unit}. Best ${longestStreak} ${longestStreak === 1 ? 'day' : 'days'}.`}
     >
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
@@ -193,31 +183,6 @@ export function StreakCard() {
           </ThemedText>
           <ThemedText style={[s.rank, { color: ink }]}>{unit}</ThemedText>
         </View>
-        <ThemedText style={[s.hint, { color: wroteToday ? theme.accentWarm : theme.textMuted }]} numberOfLines={1}>
-          {hint}
-        </ThemedText>
-      </Animated.View>
-
-      {today.visible && (
-        <Animated.View entering={reduceMotion ? undefined : FadeIn.delay(220).duration(240).easing(EASE_OUT)}>
-          <TodayMomentsRow
-            moments={today.moments}
-            color={theme.accentWarm}
-            idleColor={theme.border}
-            textColor={theme.text}
-            mutedColor={theme.textMuted}
-            reduceMotion={reduceMotion}
-          />
-        </Animated.View>
-      )}
-
-      <Animated.View
-        entering={reduceMotion ? undefined : FadeIn.delay(280).duration(220).easing(EASE_OUT)}
-        style={[s.footer, { borderTopColor: theme.border }]}
-      >
-        <ThemedText style={[s.metrics, { color: theme.textMuted }]} numberOfLines={1}>
-          {metrics}
-        </ThemedText>
       </Animated.View>
     </View>
   );
@@ -275,11 +240,9 @@ const s = StyleSheet.create({
   readout: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 16,
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   readoutLead: {
     flexDirection: 'row',
@@ -298,25 +261,5 @@ const s = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 1,
     lineHeight: 18,
-  },
-  hint: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 11,
-    letterSpacing: 0.8,
-    lineHeight: 16,
-    flexShrink: 1,
-    textAlign: 'right',
-  },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  metrics: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 11,
-    letterSpacing: 0.8,
-    lineHeight: 16,
   },
 });

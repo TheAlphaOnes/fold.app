@@ -99,3 +99,26 @@ export const haptic = {
     else swallow(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error));
   },
 } as const;
+
+/** The steps of the Settings haptics test, in the order they play. */
+export const HAPTIC_TEST_STEPS = ['long buzz', 'tap', 'press', 'thud', 'success'] as const;
+const HAPTIC_TEST_GAP_MS = 700;
+
+/**
+ * Plays a long buzz, then the app's own patterns one by one, for checking
+ * feedback on a device. The long buzz ignores the in-app Haptics switch: if
+ * it is felt but the rest are not, the motor works and the short pulses are
+ * the problem; if nothing is felt, the phone's vibration settings (or Do
+ * Not Disturb) are blocking it. Returns a cancel function.
+ */
+export function playHapticTest(): () => void {
+  const steps: (() => void)[] = [
+    () => (isAndroid ? Vibration.vibrate(400) : swallow(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success))),
+    haptic.tap,
+    haptic.press,
+    haptic.thud,
+    haptic.success,
+  ];
+  const timers = steps.map((step, i) => setTimeout(step, i * HAPTIC_TEST_GAP_MS));
+  return () => timers.forEach(clearTimeout);
+}

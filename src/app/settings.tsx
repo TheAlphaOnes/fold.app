@@ -2,8 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
-import { useMomentReminders } from '@/hooks/use-moment-reminders';
+import { X, Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, BellRing, Vibrate } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -11,6 +10,7 @@ import { haptic } from '@/services/haptics';
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
+import { useDeviceTests } from '@/hooks/use-device-tests';
 import { countTrashed } from '@/db/journal-repository';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
@@ -26,7 +26,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting, resetGuide } = useSettingsStore();
-  const momentReminders = useMomentReminders();
+  const deviceTests = useDeviceTests();
   // Live readout while the glow slider moves; null once the value is saved.
   const [glowDraft, setGlowDraft] = useState<number | null>(null);
   const glowPreview = glowDraft ?? settings.backdropIntensity;
@@ -308,41 +308,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>PROGRESS</ThemedText>
-          <View style={[styles.divider, { backgroundColor: theme.text }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextBlock}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>MOMENT REMINDERS</ThemedText>
-              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                a nudge each morning, afternoon and evening
-              </ThemedText>
-            </View>
-            <ToggleSwitch
-              value={momentReminders.enabled}
-              onValueChange={(val) => void momentReminders.setEnabled(val)}
-              accessibilityLabel="Moment reminders"
-            />
-          </View>
-
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextBlock}>
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>QUIET MODE</ThemedText>
-              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
-                hide today's moments and stamps
-              </ThemedText>
-            </View>
-            <ToggleSwitch
-              value={settings.quietMode}
-              onValueChange={(val) => updateSetting('quietMode', val)}
-              accessibilityLabel="Quiet mode"
-            />
-          </View>
-        </View>
-
         {/* Security Section */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>SECURITY</ThemedText>
@@ -439,6 +404,56 @@ export default function SettingsScreen() {
             <View style={styles.settingRowLeft}>
               <Trash2 size={16} color="#FF3B30" />
               <ThemedText style={[styles.settingText, { color: '#FF3B30' }]}>CLEAR ALL MEMORIES</ThemedText>
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>TESTING</ThemedText>
+          <View style={[styles.divider, { backgroundColor: theme.text }]} />
+
+          <Pressable
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => {
+              haptic.tap();
+              void deviceTests.testNotification();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Test notification"
+            accessibilityHint="Sends a moment reminder in a few seconds"
+          >
+            <View style={styles.testRowText}>
+              <View style={styles.settingRowLeft}>
+                <BellRing size={16} color={theme.text} />
+                <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST NOTIFICATION</ThemedText>
+              </View>
+              {deviceTests.notificationStatus && (
+                <ThemedText style={[styles.settingSubtext, styles.testStatus, { color: theme.textSecondary }]}>
+                  {deviceTests.notificationStatus}
+                </ThemedText>
+              )}
+            </View>
+          </Pressable>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <Pressable
+            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={deviceTests.testHaptics}
+            accessibilityRole="button"
+            accessibilityLabel="Test haptics"
+            accessibilityHint="Plays a long buzz, then each feedback pattern"
+          >
+            <View style={styles.testRowText}>
+              <View style={styles.settingRowLeft}>
+                <Vibrate size={16} color={theme.text} />
+                <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST HAPTICS</ThemedText>
+              </View>
+              {deviceTests.hapticStatus && (
+                <ThemedText style={[styles.settingSubtext, styles.testStatus, { color: theme.textSecondary }]}>
+                  {deviceTests.hapticStatus}
+                </ThemedText>
+              )}
             </View>
           </Pressable>
         </View>
@@ -584,14 +599,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
   },
-  settingTextBlock: {
-    flexShrink: 1,
-    paddingRight: 16,
-  },
   settingRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  testRowText: {
+    flexShrink: 1,
+  },
+  testStatus: {
+    // Lines up under the title, past the 16px icon and its 12px gap.
+    marginLeft: 28,
   },
   settingText: {
     fontFamily: 'JetBrainsMono-Regular',

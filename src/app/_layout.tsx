@@ -30,7 +30,7 @@ LogBox.ignoreLogs([
   'Error while flushing PostHog',
   'Network error while fetching PostHog'
 ]);
-import { RewardHost } from "@/components/reward-host";
+import { ProgressionSync } from "@/components/progression-sync";
 import { configureNotifications } from "@/services/reminders.service";
 import { useProgressionStore } from "@/hooks/use-progression";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -244,7 +244,7 @@ function RootLayoutNav() {
     getDatabase()
       .then(async () => {
         await useSettingsStore.getState().loadSettings();
-        // Today's count and the streak, before the home key first draws.
+        // The Fold Score and the streak, before the profile first reads them.
         await useProgressionStore.getState().refresh();
         setDbReady(true);
         // Recently Deleted keeps memories for 30 days; clear out the expired
@@ -342,7 +342,7 @@ function RootLayoutNav() {
                 }}
               />
             </Stack>
-            <RewardHost />
+            <ProgressionSync />
           </AnimatedSplashScreen>
         </BiometricGate>
       </ThemeProvider>
