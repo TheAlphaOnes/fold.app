@@ -56,7 +56,6 @@ import * as Location from "expo-location";
 import { haptic } from '@/services/haptics';
 import { RecordingOverlay } from "@/components/recording-overlay";
 import type { MediaElement } from "@/types/journal";
-import { dobYear } from "@/utils/dob";
 import { MAX_MEDIA_ELEMENTS, type MediaKind } from "@/constants/media";
 import {
   alertElementCap,
@@ -72,7 +71,7 @@ import { memoryTextMetrics } from "@/utils/memory-text";
 import { arrangeStickers } from "@/utils/sticker-layout";
 import { endRecordingSession } from "@/utils/audio-session";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
-import { usePostHog } from "posthog-react-native";
+import { trackError, type CaptureSource } from "@/services/analytics";
 import { MusicPicker } from "@/components/music-picker";
 import { StoryPicker } from "@/components/story-picker";
 import { ComposeBottomBar } from "@/components/compose/compose-bottom-bar";
@@ -223,12 +222,15 @@ export default function ComposeScreen() {
       : undefined
   );
 
+  // Where this memory came from, for analytics; settled on first render.
+  const captureSourceRef = useRef<CaptureSource>(sharedText ? "share_extension" : "compose");
   const [mediaElements, setMediaElements] = useState<MediaElement[]>(() => {
     if (existingComposition?.mediaElements) {
       return existingComposition.mediaElements;
     }
     const pendingMedia = consumePendingCameraMedia();
     if (pendingMedia) {
+      captureSourceRef.current = "camera";
       const stickerSize = 120;
       const safeW = screenWidth - 60 - stickerSize;
       const safeH =
@@ -275,7 +277,6 @@ export default function ComposeScreen() {
 
   const { addComposition, updateComposition } = useJournalStore();
   const { settings } = useSettings();
-  const posthog = usePostHog();
   const [isSaving, setIsSaving] = useState(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 100);
@@ -734,62 +735,14 @@ export default function ComposeScreen() {
             : undefined,
           storyIds,
           createdAt: targetTimestamp ?? undefined,
-        });
-      }
-
-      {
-        let ageCategory = "Unknown";
-        // settings.dob is stored as DD.MM.YYYY (dots) — new Date() cannot
-        // parse that, so pull the year out explicitly.
-        const birthYear = dobYear(settings.dob);
-        if (birthYear !== null) {
-          const age = new Date().getFullYear() - birthYear;
-          if (age >= 0) {
-            if (age < 18) ageCategory = "Under 18";
-            else if (age <= 24) ageCategory = "18-24";
-            else if (age <= 34) ageCategory = "25-34";
-            else if (age <= 44) ageCategory = "35-44";
-            else if (age <= 54) ageCategory = "45-54";
-            else if (age <= 64) ageCategory = "55-64";
-            else ageCategory = "65+";
-          }
-        }
-
-        const mediaTypesCount = mediaElements.reduce(
-          (acc, el) => {
-            if (el.type === "audio" && el.metadata)
-              acc.music = (acc.music || 0) + 1;
-            else if (el.type === "audio") acc.voice = (acc.voice || 0) + 1;
-            else acc[el.type] = (acc[el.type] || 0) + 1;
-            return acc;
-          },
-          {} as Record<string, number>,
-        );
-
-        let contentType = "Empty";
-        if (body.trim().length > 0 && mediaElements.length === 0)
-          contentType = "Text Only";
-        else if (body.trim().length === 0 && mediaElements.length > 0)
-          contentType = "Media Only";
-        else if (body.trim().length > 0 && mediaElements.length > 0)
-          contentType = "Text + Media";
-
-        posthog?.capture("Memory Created", {
-          hasMedia: mediaElements.length > 0,
-          mediaCount: mediaElements.length,
-          fontFamily,
-          hasLocation: !!locationName,
-          ageCategory,
-          contentType,
-          textLength: body.trim().length,
-          ...mediaTypesCount,
-        });
+        }, captureSourceRef.current);
       }
 
       haptic.success();
       goBack();
     } catch (error) {
       console.error("Failed to save composition:", error);
+      trackError(error, numericEditId ? "memory_edit" : "memory_create");
       setIsSaving(false);
       // Stay on the page so nothing written is lost; the user can retry.
       haptic.error();

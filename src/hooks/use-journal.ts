@@ -20,6 +20,8 @@ import type { Composition, MediaElement } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useProgressionStore } from '@/hooks/use-progression';
+import { ageInDays, track, type CaptureSource } from '@/services/analytics';
+import { memoryShape, trackMemoryCreated } from '@/services/memory-analytics';
 
 /** Cards kept fully decoded around the focused memory. */
 const HYDRATE_BEHIND = 4;
@@ -58,7 +60,8 @@ interface JournalState {
   ensureComposition: (id: number) => Promise<void>;
   pinComposition: (id: number) => void;
   unpinComposition: (id: number) => void;
-  addComposition: (input: CreateCompositionInput) => Promise<void>;
+  /** `source` is where the memory came from, for analytics. */
+  addComposition: (input: CreateCompositionInput, source: CaptureSource) => Promise<void>;
   updateComposition: (input: UpdateCompositionInput) => Promise<Composition | null>;
   updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
   toggleStoryId: (id: number, storyId: number) => Promise<void>;
@@ -265,9 +268,10 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     set({ pinnedIds: get().pinnedIds.filter((pinned) => pinned !== id) });
   },
 
-  addComposition: async (input: CreateCompositionInput) => {
+  addComposition: async (input: CreateCompositionInput, source: CaptureSource) => {
     const newComp = await createComposition(input);
     set({ justAddedId: newComp.id });
+    trackMemoryCreated(input, newComp.createdAt, source);
     // Not awaited: scoring must never hold up the save.
     void useProgressionStore.getState().recordCapture();
     await get().refresh();
@@ -278,6 +282,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   updateComposition: async (input: UpdateCompositionInput) => {
     const updated = await dbUpdateComposition(input);
     if (!updated) return null;
+    track('memory_edited', memoryShape(input));
 
     const hydratedById = { ...get().hydratedById };
     if (hydratedById[input.id]) {
@@ -354,12 +359,15 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       ),
       hydratedById,
     }));
-    await toggleCompositionStoryId(id, storyId);
+    const added = await toggleCompositionStoryId(id, storyId);
+    track('story_memory_toggled', { added });
   },
 
   // Deleting moves a memory to Recently Deleted (see services/trash.service):
   // it leaves every feed now and is purged, files included, after 30 days.
   removeComposition: async (id: number) => {
+    const removed = get().hydratedById[id] ?? get().allCompositions.find((comp) => comp.id === id);
+    track('memory_deleted', { age_days: removed ? ageInDays(removed.createdAt) : -1 });
     const hydratedById = { ...get().hydratedById };
     delete hydratedById[id];
     set((state) => ({
@@ -393,6 +401,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   },
 
   removeAllCompositions: async () => {
+    track('all_memories_cleared', { count: useProgressionStore.getState().memoryCount });
     set({
       lastDeletedId: null,
       compositions: [],
@@ -420,6 +429,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
 
   restoreAllCompositions: async () => {
     await restoreAllFromTrash();
+    track('memory_restored', { from: 'all' });
     await get().resyncFromDatabase();
     set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));
     void useProgressionStore.getState().refresh();
@@ -427,6 +437,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
 
   restoreComposition: async (id: number) => {
     await restoreFromTrash(id);
+    track('memory_restored', { from: 'single' });
     // It can belong anywhere (any day, any story): re-read every feed.
     await get().resyncFromDatabase();
     set((state) => ({ hydrationVersion: state.hydrationVersion + 1 }));

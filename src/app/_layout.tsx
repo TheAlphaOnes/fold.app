@@ -15,13 +15,10 @@ import {
   ThemeProvider,
   useSegments,
   router,
-  usePathname,
-  useGlobalSearchParams,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as NavigationBar from "expo-navigation-bar";
-import * as Localization from "expo-localization";
 import { useEffect, useState } from "react";
 import { Platform, LogBox } from "react-native";
 
@@ -79,91 +76,14 @@ import { purgeExpiredTrash } from "@/services/trash.service";
 import { AppThemeProvider, useThemeContext } from "@/hooks/use-theme";
 import { useSettingsStore } from "@/hooks/use-settings";
 import { AnimatedSplashScreen } from "@/components/splash-screen";
-import { PostHogProvider, usePostHog } from "posthog-react-native";
-import { getAgeRange } from '@/utils/dob';
+import { PostHogProvider } from "posthog-react-native";
+import { posthog } from "@/services/analytics";
+import { AnalyticsSync } from "@/components/analytics-sync";
 
 SplashScreen.preventAutoHideAsync();
 
 // Moment reminders that arrive while Fold is open still show as a banner.
 configureNotifications();
-
-function PostHogSync() {
-  const posthog = usePostHog();
-  const { settings } = useSettingsStore();
-  const pathname = usePathname();
-  const params = useGlobalSearchParams();
-
-  useEffect(() => {
-    // Always ensure telemetry is on for bare-minimum growth tracking (app opens/views).
-    // This undoes the previous optOut state so we can track growth anonymously.
-    posthog?.optIn();
-
-    if (posthog) {
-      try {
-        const locales = Localization.getLocales();
-        if (locales && locales.length > 0) {
-          const mainLocale = locales[0];
-          const timezone =
-            Localization.getCalendars()[0]?.timeZone ||
-            Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-          posthog.register({
-            device_region: mainLocale.regionCode,
-            device_language: mainLocale.languageCode,
-            device_timezone: timezone,
-          });
-        }
-      } catch (e) {
-        // Silently ignore localization errors
-      }
-    }
-  }, [posthog]);
-
-  // Track screen views
-  useEffect(() => {
-    if (posthog && pathname) {
-      posthog.screen(pathname, params as Record<string, any>);
-    }
-  }, [posthog, pathname, params]);
-
-  // Sync user demographic props
-  useEffect(() => {
-    if (posthog) {
-      const ageRange = getAgeRange(settings.dob);
-      const props = {
-        has_name: !!settings.name,
-        
-        ...(ageRange ? { age_range: ageRange } : {})
-      };
-      posthog.register(props);
-      posthog.capture("$set", { $set: props });
-    }
-  }, [posthog, settings.dob, settings.name, ]);
-
-  // Global Error Handler
-  useEffect(() => {
-    if (posthog) {
-      const defaultHandler =
-        (ErrorUtils.getGlobalHandler && ErrorUtils.getGlobalHandler()) ||
-        ErrorUtils.getGlobalHandler();
-
-      ErrorUtils.setGlobalHandler((error: any, isFatal?: boolean) => {
-        posthog.capture("uncaught_exception", {
-          error_message: error.message,
-          error_name: error.name,
-          error_stack: error.stack,
-          is_fatal: isFatal ?? false,
-        });
-
-        if (defaultHandler) {
-          defaultHandler(error, isFatal);
-        }
-      });
-    }
-  }, [posthog]);
-
-  return null;
-}
 
 function RootLayoutNav() {
   const [dbReady, setDbReady] = useState(false);
@@ -276,13 +196,12 @@ function RootLayoutNav() {
 
   return (
     <PostHogProvider
-      apiKey="phc_AKV5YBb3G838EHFrSUyauGYK6CZYZpNNFsdCdrssx9Uy"
-      options={{
-        host: "https://us.i.posthog.com",
-      }}
+      client={posthog}
+      // Screens are tracked by route template in AnalyticsSync; touches never.
+      autocapture={{ captureScreens: false, captureTouches: false }}
     >
       <ThemeProvider value={FoldTheme}>
-        <PostHogSync />
+        <AnalyticsSync />
         <BiometricGate>
           <AnimatedSplashScreen isAppReady={isAppReady}>
             <StatusBar hidden />

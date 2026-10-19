@@ -15,7 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { usePathname } from "expo-router";
-import { usePostHog } from "posthog-react-native";
+import { track } from "@/services/analytics";
 import type { MediaElement } from "@/types/journal";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useTheme } from "@/hooks/use-theme";
@@ -110,7 +110,6 @@ function CanvasAudioSticker({
   // Audio should auto-play on screens where memory cards are visible:
   // home (/), time machine (/time-machine), and memory detail (/memory/*)
   const isPlayableScreen = pathname === "/" || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
-  const posthog = usePostHog();
   const hasTrackedPlay = React.useRef(false);
 
   // Safe play — seek to start if track ended naturally, then play
@@ -143,10 +142,7 @@ function CanvasAudioSticker({
         hasAutoPlayed.current = true;
         safeTryPlay();
         if (!hasTrackedPlay.current) {
-          posthog?.capture("Audio Played", {
-            context: "canvas_sticker",
-            auto_play: true,
-          });
+          track('audio_played', { surface: 'canvas', auto_play: true });
           hasTrackedPlay.current = true;
         }
       }
@@ -191,10 +187,7 @@ function CanvasAudioSticker({
       }
       safeTryPlay();
       if (!hasTrackedPlay.current) {
-        posthog?.capture("Audio Played", {
-          context: "canvas_sticker",
-          auto_play: false,
-        });
+        track('audio_played', { surface: 'canvas', auto_play: false });
         hasTrackedPlay.current = true;
       }
     }

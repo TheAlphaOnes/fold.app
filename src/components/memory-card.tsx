@@ -24,7 +24,7 @@ import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { usePathname } from "expo-router";
 import { memoryTextMetrics } from "@/utils/memory-text";
-import { usePostHog } from "posthog-react-native";
+import { track } from "@/services/analytics";
 import { getHighResArtwork } from "@/utils/media-attach";
 
 interface MemoryCardProps {
@@ -67,7 +67,6 @@ function SingleAudioCard({
   const isHomeScreen = pathname === "/";
   // Audio should auto-play on screens where memory cards are visible
   const isPlayableScreen = isHomeScreen || pathname.startsWith("/time-machine") || pathname.startsWith("/memory");
-  const posthog = usePostHog();
   const hasTrackedPlay = React.useRef(false);
 
   // Detect when the track has ended naturally (not paused, not playing, at end)
@@ -105,10 +104,7 @@ function SingleAudioCard({
         hasAutoPlayed.current = true;
         safeTryPlay();
         if (!hasTrackedPlay.current) {
-          posthog?.capture("Audio Played", {
-            context: "single_audio_card",
-            auto_play: true,
-          });
+          track('audio_played', { surface: 'card', auto_play: true });
           hasTrackedPlay.current = true;
         }
       }
@@ -151,10 +147,7 @@ function SingleAudioCard({
       }
       safeTryPlay();
       if (!hasTrackedPlay.current) {
-        posthog?.capture("Audio Played", {
-          context: "single_audio_card",
-          auto_play: false,
-        });
+        track('audio_played', { surface: 'card', auto_play: false });
         hasTrackedPlay.current = true;
       }
     }

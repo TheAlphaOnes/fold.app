@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '@/services/haptics';
 import { Image } from 'expo-image';
 
-import { usePostHog } from 'posthog-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
@@ -49,7 +48,6 @@ const TIMING_OUT = { duration: 180 };
 
 export function StoryPicker(props: StoryPickerProps) {
   const theme = useTheme();
-  const posthog = usePostHog();
   const insets = useSafeAreaInsets();
   const { stories, refreshStories, addStory } = useStoriesStore();
 

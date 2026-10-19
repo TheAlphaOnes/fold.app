@@ -12,6 +12,7 @@ import { create } from 'zustand';
 import { getMemorySignals } from '@/db/journal-repository';
 import { getSetting, setSetting } from '@/db/settings-repository';
 import { requestReminderPermission, syncMomentReminders } from '@/services/reminders.service';
+import { setPersonProperties, track, type PersonProperties } from '@/services/analytics';
 import type { MomentId } from '@/constants/progression';
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
@@ -35,6 +36,8 @@ export interface InkGain {
 interface ProgressionState {
   /** Local day keys (YYYY-MM-DD) that hold at least one memory. */
   activeDays: Set<string>;
+  /** Live memories in the journal. */
+  memoryCount: number;
   streak: StreakSummary;
   ink: InkSummary;
   /** Null until read from storage. */
@@ -57,6 +60,24 @@ function parseSeen(value: string | null): SeenInk {
   return { monthKey, value: Number(amount) || 0 };
 }
 
+let lastSentPerson = '';
+
+/** Keeps the anonymous person's progress current in analytics; sends only on change. */
+function syncPersonProgress(state: Pick<ProgressionState, 'memoryCount' | 'activeDays' | 'streak' | 'ink'>): void {
+  const properties: PersonProperties = {
+    memories_total: state.memoryCount,
+    active_days_total: state.activeDays.size,
+    current_streak: state.streak.current,
+    longest_streak: state.streak.longest,
+    ink_this_month: state.ink.month,
+    ink_record: state.ink.record,
+  };
+  const key = JSON.stringify(properties);
+  if (key === lastSentPerson) return;
+  lastSentPerson = key;
+  setPersonProperties(properties);
+}
+
 /** Asks for notification permission (once, by the system) and schedules if allowed. */
 async function enableReminders(capturedToday: ReadonlySet<MomentId>): Promise<void> {
   if (await requestReminderPermission()) await syncMomentReminders(capturedToday);
@@ -64,6 +85,7 @@ async function enableReminders(capturedToday: ReadonlySet<MomentId>): Promise<vo
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
   activeDays: new Set(),
+  memoryCount: 0,
   streak: { current: 0, longest: 0 },
   ink: NO_INK,
   seenInk: null,
@@ -83,6 +105,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
       const capturedToday = days.get(todayKey)?.moments ?? new Set<MomentId>();
       set((state) => ({
         activeDays,
+        memoryCount: signals.length,
         streak: computeStreak(activeDays),
         ink: computeInk(days, todayKey),
         capturedToday,
@@ -90,6 +113,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
         seenInk: state.seenInk ?? parseSeen(seen),
       }));
       void syncMomentReminders(capturedToday);
+      syncPersonProgress(get());
     } catch (error) {
       // Progress is a nicety on top of the journal; a failed read keeps the
       // last known values rather than breaking the screen that asked.
@@ -98,11 +122,22 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   },
 
   recordCapture: async () => {
-    const before = get().loaded ? get().ink : null;
+    const before = get().loaded ? { ink: get().ink, streak: get().streak } : null;
     await get().refresh();
-    const { ink, capturedToday } = get();
-    if (before && before.monthKey === ink.monthKey && ink.month > before.month) {
-      set({ gain: { id: Date.now(), points: ink.month - before.month } });
+    const { ink, streak, capturedToday } = get();
+    if (before && before.ink.monthKey === ink.monthKey && ink.month > before.ink.month) {
+      const points = ink.month - before.ink.month;
+      set({ gain: { id: Date.now(), points } });
+      track('ink_earned', {
+        points,
+        month_total: ink.month,
+        record: ink.record,
+        is_record_month: ink.month >= ink.record,
+        streak: streak.current,
+      });
+    }
+    if (before && streak.current > before.streak.current) {
+      track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
     }
     void enableReminders(capturedToday);
   },

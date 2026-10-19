@@ -336,6 +336,22 @@ export default function SettingsScreen() {
               accessibilityLabel="Privacy screen"
             />
           </View>
+
+          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.rowTextBlock}>
+              <ThemedText style={[styles.settingText, { color: theme.text }]}>SHARE USAGE DATA</ThemedText>
+              <ThemedText style={[styles.settingSubtext, { color: theme.textSecondary }]}>
+                anonymous, never what you write or capture
+              </ThemedText>
+            </View>
+            <ToggleSwitch
+              value={settings.analyticsEnabled}
+              onValueChange={(val) => updateSetting('analyticsEnabled', val)}
+              accessibilityLabel="Share anonymous usage data"
+            />
+          </View>
         </View>
 
         {/* System Actions Section */}
@@ -422,7 +438,7 @@ export default function SettingsScreen() {
             accessibilityLabel="Test notification"
             accessibilityHint="Sends a moment reminder in a few seconds"
           >
-            <View style={styles.testRowText}>
+            <View style={styles.rowTextBlock}>
               <View style={styles.settingRowLeft}>
                 <BellRing size={16} color={theme.text} />
                 <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST NOTIFICATION</ThemedText>
@@ -444,7 +460,7 @@ export default function SettingsScreen() {
             accessibilityLabel="Test haptics"
             accessibilityHint="Plays a long buzz, then each feedback pattern"
           >
-            <View style={styles.testRowText}>
+            <View style={styles.rowTextBlock}>
               <View style={styles.settingRowLeft}>
                 <Vibrate size={16} color={theme.text} />
                 <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST HAPTICS</ThemedText>
@@ -604,7 +620,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  testRowText: {
+  rowTextBlock: {
     flexShrink: 1,
   },
   testStatus: {

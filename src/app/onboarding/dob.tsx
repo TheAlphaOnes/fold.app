@@ -10,9 +10,10 @@ import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
-import { formatDobInput, isValidDob } from '@/utils/dob';
+import { formatDobInput, getAgeRange, isValidDob } from '@/utils/dob';
 import { AsciiArt } from '@/components/ascii-art';
 import { haptic } from '@/services/haptics';
+import { track } from '@/services/analytics';
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
@@ -42,6 +43,7 @@ export default function OnboardingDobScreen() {
     await updateSetting('name', providedName);
     await updateSetting('dob', dob);
     await updateSetting('hasOnboarded', true);
+    track('onboarding_completed', { age_range: getAgeRange(dob) });
 
     router.replace('/');
   };

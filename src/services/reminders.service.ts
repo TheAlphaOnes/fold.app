@@ -16,6 +16,7 @@ import * as Notifications from 'expo-notifications';
 
 import { MOMENTS, momentAt, type Moment, type MomentId, type Nudge } from '@/constants/progression';
 import { addDays, toDayKey } from '@/utils/format-date';
+import { track, trackError, type NotificationPermission } from '@/services/analytics';
 
 const CHANNEL_ID = 'moments';
 const ID_PREFIX = 'moment-';
@@ -24,6 +25,9 @@ const DAYS_AHEAD = 7;
 export interface MomentNotificationData {
   kind: 'moment';
   moment: MomentId;
+  /** The wording sent, so a tap can be credited to it. */
+  nudge: string;
+  tone: Nudge['tone'];
 }
 
 export function isMomentNotification(data: unknown): data is MomentNotificationData {
@@ -69,11 +73,21 @@ export async function requestReminderPermission(): Promise<boolean> {
     const current = await Notifications.getPermissionsAsync();
     if (isGranted(current)) return true;
     if (!current.canAskAgain) return false;
-    return isGranted(await Notifications.requestPermissionsAsync());
+    const granted = isGranted(await Notifications.requestPermissionsAsync());
+    track('notification_permission', { status: granted ? 'granted' : 'denied', prompted: true });
+    return granted;
   } catch (error) {
+    trackError(error, 'notification_permission');
     console.error('Failed to request notification permission', error);
     return false;
   }
+}
+
+/** The current permission, without asking. For analytics. */
+export async function getNotificationPermission(): Promise<NotificationPermission> {
+  const current = await Notifications.getPermissionsAsync();
+  if (isGranted(current)) return 'granted';
+  return current.canAskAgain ? 'undetermined' : 'denied';
 }
 
 /** A stable pseudo-random number for a seed, so a rebuilt schedule keeps the same picks. */
@@ -106,7 +120,7 @@ function nudgeFor(day: Date, moment: Moment): Nudge {
 }
 
 function contentFor(moment: Moment, nudge: Nudge): Notifications.NotificationContentInput {
-  const data: MomentNotificationData = { kind: 'moment', moment: moment.id };
+  const data: MomentNotificationData = { kind: 'moment', moment: moment.id, nudge: nudge.title, tone: nudge.tone };
   return { title: nudge.title, body: nudge.body, sound: 'default', data: { ...data } };
 }
 

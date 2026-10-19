@@ -12,6 +12,7 @@ import { BiometricContext } from '@/components/biometric-gate';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { isMomentNotification } from '@/services/reminders.service';
+import { noteReminderTap, track } from '@/services/analytics';
 
 interface CaptureRequestState {
   photoRequested: boolean;
@@ -33,12 +34,17 @@ export function useMomentReminderTaps(): void {
   useEffect(() => {
     if (!response || !hasOnboarded) return;
     if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    if (!isMomentNotification(response.notification.request.content.data)) return;
+    const data = response.notification.request.content.data;
+    if (!isMomentNotification(data)) return;
 
     // Cleared first so the same tap is not handled again on the next launch.
     Notifications.clearLastNotificationResponseAsync().catch((error) =>
       console.error('Failed to clear notification response', error),
     );
+    // Reminders scheduled before wordings were tagged carry no nudge.
+    const nudge = data.nudge ?? 'unknown';
+    track('reminder_opened', { moment: data.moment, nudge, tone: data.tone ?? 'plain' });
+    noteReminderTap(nudge);
     router.navigate('/');
     useCaptureRequest.getState().requestPhoto();
   }, [response, hasOnboarded]);

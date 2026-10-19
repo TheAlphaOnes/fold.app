@@ -17,7 +17,7 @@ import { memoryTextMetrics } from '@/utils/memory-text';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
-import { usePostHog } from 'posthog-react-native';
+import { ageInDays, track } from '@/services/analytics';
 import * as Sharing from 'expo-sharing';
 import { haptic } from '@/services/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -338,6 +338,15 @@ export default function MemoryDetailScreen() {
     return () => unpinComposition(numericId);
   }, [numericId, ensureComposition, pinComposition, unpinComposition]);
 
+  // Once per memory opened: how far back people go when they revisit.
+  const openedCreatedAt = composition?.createdAt;
+  const trackedOpenRef = useRef<number | null>(null);
+  React.useEffect(() => {
+    if (openedCreatedAt === undefined || trackedOpenRef.current === numericId) return;
+    trackedOpenRef.current = numericId;
+    track('memory_opened', { age_days: ageInDays(openedCreatedAt) });
+  }, [numericId, openedCreatedAt]);
+
   useFocusEffect(
     React.useCallback(() => {
       if (Number.isFinite(numericId)) {
@@ -349,7 +358,6 @@ export default function MemoryDetailScreen() {
   const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const posthog = usePostHog();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
   const [isStoryPickerVisible, setIsStoryPickerVisible] = useState(false);
@@ -456,7 +464,7 @@ export default function MemoryDetailScreen() {
           dialogTitle: 'Share Memory Card',
           mimeType: 'image/png',
         });
-        posthog?.capture('Memory Shared', { method: 'card' });
+        track('memory_shared', { method: 'card' });
       }
     } catch (e) {
       console.error('Failed to capture memory card:', e);
@@ -472,13 +480,13 @@ export default function MemoryDetailScreen() {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(current.media.uri);
-          posthog?.capture('Memory Shared', { method: 'raw_media' });
+          track('memory_shared', { method: 'raw_media' });
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
         }
       } else if (current.type === 'text') {
         await Share.share({ message: current.text });
-        posthog?.capture('Memory Shared', { method: 'raw_text' });
+        track('memory_shared', { method: 'raw_text' });
       }
     } catch (e) {
       console.error(e);

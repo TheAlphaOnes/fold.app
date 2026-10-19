@@ -9,6 +9,7 @@ import { Linking } from 'react-native';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { HAPTIC_TEST_STEPS, playHapticTest } from '@/services/haptics';
 import { sendTestNotification } from '@/services/reminders.service';
+import { track } from '@/services/analytics';
 
 const NOTIFICATION_DELAY_S = 5;
 
@@ -23,6 +24,7 @@ export function useDeviceTests() {
   const testNotification = useCallback(async () => {
     setNotificationStatus('sending…');
     const result = await sendTestNotification(NOTIFICATION_DELAY_S);
+    track('test_notification_sent', { result });
     if (result === 'scheduled') {
       setNotificationStatus(`arrives in ${NOTIFICATION_DELAY_S}s — lock the phone to see it`);
     } else if (result === 'denied') {
@@ -36,6 +38,7 @@ export function useDeviceTests() {
   const testHaptics = useCallback(() => {
     cancelHaptics.current?.();
     cancelHaptics.current = playHapticTest();
+    track('haptics_test_played', { haptics_enabled: hapticsEnabled });
     setHapticStatus(
       hapticsEnabled
         ? HAPTIC_TEST_STEPS.join(' · ')

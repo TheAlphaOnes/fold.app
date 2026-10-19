@@ -11,6 +11,7 @@ import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
 import { AsciiArt } from '@/components/ascii-art';
 import { MASTER_SWORD_ART } from '@/constants/ascii-art';
+import { track } from '@/services/analytics';
 
 export default function OnboardingNameScreen() {
   const theme = useTheme();
@@ -26,6 +27,7 @@ export default function OnboardingNameScreen() {
       setShowError(true);
       return;
     }
+    track('onboarding_name_entered', {});
     router.push({
       pathname: '/onboarding/dob',
       params: { name: name.trim() }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,11 +10,17 @@ import { ThemedText } from '@/components/themed-text';
 import { ActionLink } from '@/components/action-link';
 import { AsciiArt } from '@/components/ascii-art';
 import { CONTROLLER_ART } from '@/constants/ascii-art';
+import { track } from '@/services/analytics';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+
+  // Top of the onboarding funnel.
+  useEffect(() => {
+    track('onboarding_started', {});
+  }, []);
 
   const bg = theme.background;
   const fg = theme.text;

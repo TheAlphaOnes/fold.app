@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingVie
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Check } from 'lucide-react-native';
-import { usePostHog } from 'posthog-react-native';
+import { textLengthBucket, track } from '@/services/analytics';
 
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
@@ -15,7 +15,6 @@ import { goBack } from '@/utils/navigation';
 export default function FeedbackScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const posthog = usePostHog();
   
   const [feedback, setFeedback] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
@@ -27,7 +26,8 @@ export default function FeedbackScreen() {
     
     // Simulate network delay for UX
     setTimeout(() => {
-      posthog?.capture('user_feedback', { text: feedback.trim() });
+      const text = feedback.trim();
+      track('feedback_submitted', { text, length: textLengthBucket(text.length) });
       setStatus('success');
       
       // Auto close after success

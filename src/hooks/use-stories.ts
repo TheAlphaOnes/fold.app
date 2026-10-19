@@ -10,6 +10,7 @@ import {
   type UpdateStoryInput
 } from '@/db/stories-repository';
 import { toggleCompositionStoryId } from '@/db/journal-repository';
+import { track } from '@/services/analytics';
 import type { Story, Composition } from '@/types/journal';
 
 interface StoriesState {
@@ -56,6 +57,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
 
   addStory: async (input: CreateStoryInput) => {
     const newStory = await createStory(input);
+    track('story_created', { has_cover: Boolean(input.coverImageUri) });
     await get().refreshStories();
     return newStory;
   },
@@ -78,6 +80,7 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
       activeStoryMemories: state.activeStory?.id === id ? [] : state.activeStoryMemories,
     }));
     await deleteStory(id);
+    track('story_deleted', {});
     await get().refreshStories();
   },
 
@@ -121,7 +124,8 @@ export const useStoriesStore = create<StoriesState>((set, get) => ({
   },
 
   assignMemoryToStory: async (memoryId: number, storyId: number) => {
-    await toggleCompositionStoryId(memoryId, storyId);
+    const added = await toggleCompositionStoryId(memoryId, storyId);
+    track('story_memory_toggled', { added });
     
     // Refresh the active story if we are currently viewing one
     const { activeStory } = get();

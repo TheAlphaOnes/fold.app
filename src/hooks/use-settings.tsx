@@ -4,6 +4,7 @@ import {
   setSetting as dbSetSetting,
   getAllSettings,
 } from "@/db/settings-repository";
+import { track } from "@/services/analytics";
 import type { ThemeMode } from "./use-theme";
 
 export type TimelineMode = 'yearly' | 'monthly' | 'infinite';
@@ -48,7 +49,25 @@ export interface UserSettings {
   guideDismissed: boolean;
   /** Epoch ms of the last guide restart. Only memories made after it auto-credit missions. */
   guideResetAt: number;
+  /** Anonymous usage analytics. On by default; off opts this device out entirely. */
+  analyticsEnabled: boolean;
 }
+
+/**
+ * Settings whose changes are reported to analytics, by their event name.
+ * Personal ones (name, date of birth, photo) and internal state are never sent.
+ */
+const TRACKED_SETTINGS: Partial<Record<keyof UserSettings, string>> = {
+  theme: 'theme',
+  requireBiometrics: 'require_biometrics',
+  privacyScreen: 'privacy_screen',
+  autoLocationTagging: 'auto_location',
+  autoPlayMusic: 'autoplay_audio',
+  hapticsEnabled: 'haptics',
+  backdropIntensity: 'photo_glow',
+  timelineMode: 'timeline_mode',
+  analyticsEnabled: 'analytics',
+};
 
 const defaultSettings: UserSettings = {
   name: "",
@@ -66,6 +85,7 @@ const defaultSettings: UserSettings = {
   guideProgress: defaultGuideProgress,
   guideDismissed: false,
   guideResetAt: 0,
+  analyticsEnabled: true,
 };
 
 interface SettingsState {
@@ -120,6 +140,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideProgress: parsedGuideProgress,
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
+          analyticsEnabled: stored.analyticsEnabled !== "false",
         },
         loading: false,
       });
@@ -148,6 +169,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const strValue = typeof value === "object" ? JSON.stringify(value) : String(value);
     try {
       await dbSetSetting(key, strValue);
+      const trackedAs = TRACKED_SETTINGS[key];
+      if (trackedAs && (typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+        // Turning analytics off is the one change that is sent before the opt-out lands.
+        track("setting_changed", { setting: trackedAs, value: typeof value === "number" ? Math.round(value * 100) / 100 : value });
+      }
       return true;
     } catch (error) {
       console.error(`Failed to save setting "${String(key)}"`, error);
@@ -165,7 +191,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const current = get().settings.guideProgress;
     if (current[step]) return;
     const updated = { ...current, [step]: true };
-    await get().updateSetting('guideProgress', updated);
+    if (await get().updateSetting('guideProgress', updated)) {
+      track('guide_step_completed', {
+        step,
+        completed_count: Object.values(updated).filter(Boolean).length,
+      });
+    }
   },
 
   resetGuide: async () => {
@@ -173,6 +204,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await updateSetting('guideProgress', defaultGuideProgress);
     await updateSetting('guideDismissed', false);
     await updateSetting('guideResetAt', Date.now());
+    track('guide_reset', {});
   },
 }));
 

@@ -35,7 +35,9 @@ export default function PrivacyScreen() {
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>2. Telemetry and Usage Data</ThemedText>
         <ThemedText style={[styles.paragraph, { color: theme.text }]}>
-          To ensure the stability and improvement of Fold, we collect anonymized telemetry via PostHog. This includes crash reports, screen views, and generalized demographic brackets (such as an aggregated age range derived from your provided Date of Birth, e.g., "18-24"). This data is strictly stripped of PII (Personally Identifiable Information) and cannot be traced back to your individual device or identity.
+          To keep Fold stable and learn what helps, we collect anonymous usage data via PostHog. That covers crash reports, which screens are opened, and how features are used: for example that a memory was saved, whether it held text, a photo or a voice note, roughly how long the text was, and the time of day. It also covers your streak and ink totals, which reminder wording was tapped, and your settings choices.{'\n\n'}
+          We also collect an age bracket derived from your date of birth (e.g. "18-24"), and the region, language and timezone your phone is set to. PostHog also estimates country and city from your connection.{'\n\n'}
+          We never collect what you write or capture: no memory text, photos, audio, place names, story titles, your name, or your date of birth. There are no accounts, and your device is identified only by a random ID. You can turn this off at any time in Settings → Share Usage Data.
         </ThemedText>
 
         <ThemedText style={[styles.heading, { color: theme.text }]}>3. Third-Party Integrations</ThemedText>

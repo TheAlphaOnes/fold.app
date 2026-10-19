@@ -22,6 +22,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { endRecordingSession } from '@/utils/audio-session';
 import type { MediaElement } from '@/types/journal';
+import { trackError } from '@/services/analytics';
 
 export type CaptureStartResult = 'started' | 'denied' | 'released' | 'failed';
 export type PhotoCaptureResult = 'opened' | 'denied' | 'cancelled' | 'busy' | 'failed';
@@ -101,10 +102,11 @@ export function useQuickCapture() {
         mediaElements: [media],
         fontFamily: 'JetBrainsMono-Regular',
         fontSize: 16,
-      });
+      }, 'voice_hold');
       return true;
     } catch (error) {
       console.error('Failed to save quick record', error);
+      trackError(error, 'quick_voice_save');
       return false;
     } finally {
       isStoppingRef.current = false;
