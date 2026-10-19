@@ -75,12 +75,12 @@ export function InkStage({ status, onSuccess }: Pick<GuideStageProps, 'status' |
             entering={enter(280, 380 + i * 90, 10)}
             style={[styles.row, { borderBottomColor: theme.border }]}
           >
-            <ThemedText style={[styles.points, { color: theme.accentWarm }]}>
-              {factor.perDay > 1 ? `+${factor.points}×${factor.perDay}` : `+${factor.points}`}
-            </ThemedText>
             <ThemedText style={[styles.rowLabel, { color: theme.text }]}>{factor.label}</ThemedText>
             <ThemedText style={[styles.rowCopy, { color: theme.textMuted }]} numberOfLines={1}>
               {FACTOR_COPY[factor.id]}
+            </ThemedText>
+            <ThemedText style={[styles.points, { color: theme.accentWarm }]}>
+              {factor.perDay > 1 ? `+${factor.points}×${factor.perDay}` : `+${factor.points}`}
             </ThemedText>
           </Animated.View>
         ))}
@@ -152,32 +152,33 @@ const styles = StyleSheet.create({
   rows: {
     gap: 0,
   },
+  // Label, then its copy in one aligned column, points at the end.
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 10,
+    alignItems: 'baseline',
+    gap: 12,
+    paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   points: {
-    width: 52,
     fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontVariant: ['tabular-nums'],
   },
   rowLabel: {
+    // Wide enough for the longest label, so every row's copy starts at one edge.
+    width: 72,
     fontFamily: 'JetBrainsMono-Bold',
     fontSize: 11,
     letterSpacing: 1.4,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   rowCopy: {
     flex: 1,
-    textAlign: 'right',
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 11,
-    lineHeight: 14,
+    lineHeight: 16,
   },
   footnote: {
     fontFamily: 'JetBrainsMono-Regular',
