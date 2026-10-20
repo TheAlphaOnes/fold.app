@@ -433,8 +433,9 @@ export default function MemoryDetailScreen() {
         return;
       }
 
-      // For iOS Expo Go, and built apps on both platforms, do the proper native save
-      const { status } = await MediaLibrary.requestPermissionsAsync();
+      // For iOS Expo Go, and built apps on both platforms, do the proper native save.
+      // Save-only access: Fold never reads the gallery, so it never asks to.
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Allow Fold to access your gallery to save media.');
         return;

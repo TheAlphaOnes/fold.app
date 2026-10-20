@@ -43,7 +43,8 @@ export async function requestStartupPermissions(): Promise<StartupPermissions> {
   const notifications = await requestReminderPermission();
   const camera = await granted('camera', ImagePicker.requestCameraPermissionsAsync);
   const microphone = await granted('microphone', AudioModule.requestRecordingPermissionsAsync);
-  const photos = await granted('photos', () => MediaLibrary.requestPermissionsAsync());
+  // Save-only: Fold saves memories to the gallery but never reads it.
+  const photos = await granted('photos', () => MediaLibrary.requestPermissionsAsync(true));
   const locationBefore = await Location.getForegroundPermissionsAsync().catch(() => null);
   const location = await granted('location', Location.requestForegroundPermissionsAsync);
 
