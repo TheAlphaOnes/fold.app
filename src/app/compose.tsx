@@ -230,24 +230,22 @@ export default function ComposeScreen() {
       return existingComposition.mediaElements;
     }
     const pendingMedia = consumePendingCameraMedia();
-    if (pendingMedia) {
+    if (pendingMedia.length > 0) {
       captureSourceRef.current = "camera";
       const stickerSize = 120;
       const safeW = screenWidth - 60 - stickerSize;
       const safeH =
         Math.min(screenWidth * 1.618, screenHeight * 0.78) - stickerSize - 60;
 
-      return [
-        {
-          id: Math.random().toString(36).substring(2, 9),
-          uri: pendingMedia.uri,
-          type: pendingMedia.type,
-          x_pos: 30 + Math.random() * safeW,
-          y_pos: 30 + Math.random() * safeH,
-          width: pendingMedia.width,
-          height: pendingMedia.height,
-        },
-      ];
+      return pendingMedia.map((media) => ({
+        id: Math.random().toString(36).substring(2, 9),
+        uri: media.uri,
+        type: media.type,
+        x_pos: 30 + Math.random() * safeW,
+        y_pos: 30 + Math.random() * safeH,
+        width: media.width,
+        height: media.height,
+      }));
     }
     return [];
   });

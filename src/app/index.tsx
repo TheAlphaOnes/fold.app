@@ -30,8 +30,9 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useSettingsStore } from '@/hooks/use-settings';
 import * as FileSystem from 'expo-file-system/legacy';
-import { setPendingCameraMedia } from '@/utils/pending-camera-media';
-import { copyWithinFileSize, alertFileTooLarge } from '@/utils/media-attach';
+import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
+import { copyWithinFileSize, alertFileTooLarge, alertElementCap, sliceToElementCap } from '@/utils/media-attach';
+import type { MediaKind } from '@/constants/media';
 import { useShareIntent } from 'expo-share-intent';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { RecordingOverlay } from '@/components/recording-overlay';
@@ -119,26 +120,44 @@ export default function HomeScreen() {
 
     // Handle shared files (images, videos, audio, docs)
     if (shareIntent.files && shareIntent.files.length > 0) {
-      const file = shareIntent.files[0];
-      const mime = file.mimeType || '';
-      const isVideo = mime.startsWith('video/') || file.path?.endsWith('.mp4') || file.path?.endsWith('.mov');
-      const isAudio = mime.startsWith('audio/');
-      const ext = isVideo ? 'mp4' : isAudio ? 'm4a' : 'jpg';
-      
-      const dest = `${FileSystem.documentDirectory}shared_${Date.now()}.${ext}`;
-      copyWithinFileSize({ from: file.path, to: dest, kind: isVideo ? 'video' : isAudio ? 'audio' : 'image' })
-        .then((copied) => {
+      // Every shared file becomes a sticker on one new memory, up to the
+      // card's element cap; files over the size limit are skipped and
+      // reported together.
+      const { accepted: files, capped } = sliceToElementCap(0, shareIntent.files);
+      const oversized: Record<MediaKind, number> = { image: 0, video: 0, audio: 0 };
+
+      Promise.all(
+        files.map(async (file, i): Promise<PendingMedia | null> => {
+          const mime = file.mimeType || '';
+          const kind: MediaKind =
+            mime.startsWith('video/') || file.path?.endsWith('.mp4') || file.path?.endsWith('.mov')
+              ? 'video'
+              : mime.startsWith('audio/')
+                ? 'audio'
+                : 'image';
+          const ext = kind === 'video' ? 'mp4' : kind === 'audio' ? 'm4a' : 'jpg';
+          const dest = `${FileSystem.documentDirectory}shared_${Date.now()}_${i}.${ext}`;
+          const copied = await copyWithinFileSize({ from: file.path, to: dest, kind });
           if (!copied) {
-            alertFileTooLarge(isVideo ? 'video' : isAudio ? 'audio' : 'image');
-            resetShareIntent();
-            return;
+            oversized[kind] += 1;
+            return null;
           }
-          setPendingCameraMedia({ uri: dest, type: isVideo ? 'video' : isAudio ? 'audio' : 'image' });
+          return { uri: dest, type: kind, width: file.width ?? undefined, height: file.height ?? undefined };
+        }),
+      )
+        .then((results) => {
+          const media = results.filter((m): m is PendingMedia => m !== null);
           resetShareIntent();
+          if (capped) alertElementCap();
+          for (const kind of ['image', 'video', 'audio'] as MediaKind[]) {
+            if (oversized[kind] > 0) alertFileTooLarge(kind, oversized[kind]);
+          }
+          if (media.length === 0) return;
+          setPendingCameraMedia(media);
           router.push('/compose');
         })
-        .catch(err => {
-          console.error('Failed to copy shared file', err);
+        .catch((err) => {
+          console.error('Failed to copy shared files', err);
           resetShareIntent();
         });
       return;

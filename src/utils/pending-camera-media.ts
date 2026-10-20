@@ -17,14 +17,15 @@ export interface PendingMedia {
   height?: number;
 }
 
-let _pending: PendingMedia | null = null;
+let _pending: PendingMedia[] = [];
 
-export function setPendingCameraMedia(media: PendingMedia): void {
-  _pending = media;
+/** One capture from the camera, or every file shared into Fold at once. */
+export function setPendingCameraMedia(media: PendingMedia | PendingMedia[]): void {
+  _pending = Array.isArray(media) ? media : [media];
 }
 
-export function consumePendingCameraMedia(): PendingMedia | null {
+export function consumePendingCameraMedia(): PendingMedia[] {
   const media = _pending;
-  _pending = null;
+  _pending = [];
   return media;
 }
