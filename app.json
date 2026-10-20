@@ -13,7 +13,7 @@
       "bundleIdentifier": "com.fold.app"
     },
     "android": {
-      "package": "com.fold.app",
+      "package": "org.taohq.fold",
       "allowBackup": true,
       "adaptiveIcon": {
         "backgroundColor": "#FAFAF7",
