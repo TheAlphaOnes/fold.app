@@ -44,3 +44,6 @@ example
 
 # env files
 .env
+
+# Launch-video renders from the brag skill
+brag-output*/
