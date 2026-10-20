@@ -1,9 +1,15 @@
 /**
- * ShareTray — a slide-up bottom tray with horizontal share options.
+ * ShareTray — the share sheet for a memory.
  *
- * Renders two primary actions (Export as Canvas, Share Original) plus
- * app shortcuts (WhatsApp, Instagram Stories, X/Twitter). Uses Reanimated
- * spring-driven slide for entrance and ease-in for dismissal — never fade.
+ * A floating card that springs up from the bottom: the two ways to share
+ * (the card as an image, or the original), then shortcuts to the apps
+ * people send to. It sits inset from the screen edges with the memory
+ * card's own 34pt corners, so it reads as part of the timeline rather than
+ * a system sheet.
+ *
+ * Motion is split into segments that land at different times: the tray
+ * springs in, then the header, the two share tiles and the app row each
+ * rise on their own short delay. Dismissal is a single quick ease-in.
  *
  * The tray is self-contained and renders its own backdrop overlay.
  */
@@ -19,6 +25,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  FadeInDown,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -27,22 +34,27 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
-import {
-  Image as ImageIcon,
-  FileText,
-  Download,
-} from 'lucide-react-native';
+import { Image as ImageIcon, FileText, Download, type LucideIcon } from 'lucide-react-native';
 import { IconWhatsApp, IconInstagram, IconX } from '@/components/brand-icons';
+import { DiagonalStripes } from '@/components/diagonal-stripes';
+import { CloseButton } from '@/components/round-button';
+import { Type } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { haptic } from '@/services/haptics';
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
-const TRAY_HEIGHT = 200;
+const TRAY_HEIGHT = 320;
+/** Gap between the floating tray and the screen edges. */
+const INSET = 10;
 
 /** Maya spring — snappy, slight overshoot for user-triggered entrance. */
 const SPRING_IN = { damping: 22, stiffness: 280, mass: 0.8 };
 /** Maya ease-in — exits faster than entrance (150ms feel). */
 const TIMING_OUT = { duration: 180 };
+
+/** Each block of the tray rises on its own beat after the tray lands. */
+const rise = (delay: number) => FadeInDown.delay(delay).duration(320).withInitialValues({ transform: [{ translateY: 10 }] });
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -55,34 +67,76 @@ interface ShareTrayProps {
   onShareOriginal: () => void;
 }
 
-interface ShareItemProps {
+// ─── Share Tile ───────────────────────────────────────────────────────────
+
+interface ShareTileProps {
+  icon: LucideIcon;
+  label: string;
+  hint: string;
+  /** The primary tile is filled with the ink colour and carries the card's hatching. */
+  primary?: boolean;
+  onPress: () => void;
+}
+
+const ShareTile = memo(function ShareTile({ icon: Icon, label, hint, primary, onPress }: ShareTileProps) {
+  const theme = useTheme();
+  const fg = primary ? theme.background : theme.text;
+
+  return (
+    <Pressable
+      onPress={() => {
+        haptic.tap();
+        onPress();
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${hint.toLowerCase()}`}
+      style={({ pressed }) => [
+        s.tile,
+        primary
+          ? { backgroundColor: theme.text, borderColor: theme.text }
+          : { backgroundColor: theme.background, borderColor: theme.border },
+        pressed && s.pressed,
+      ]}
+    >
+      {primary && <DiagonalStripes color={theme.background} opacity={0.08} />}
+      <Icon size={20} color={fg} />
+      <View style={s.tileText}>
+        <Text style={[s.tileLabel, { color: fg }]}>{label}</Text>
+        <Text style={[s.tileHint, { color: primary ? theme.background : theme.textMuted }, primary && s.tileHintOnInk]}>
+          {hint}
+        </Text>
+      </View>
+    </Pressable>
+  );
+});
+
+// ─── App Chip ─────────────────────────────────────────────────────────────
+
+interface AppChipProps {
   icon: React.ReactNode;
   label: string;
   onPress: () => void;
 }
 
-// ─── Share Item ───────────────────────────────────────────────────────────
-
-const ShareItem = memo(function ShareItem({ icon, label, onPress }: ShareItemProps) {
+const AppChip = memo(function AppChip({ icon, label, onPress }: AppChipProps) {
   const theme = useTheme();
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        haptic.tap();
+        onPress();
+      }}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={`Open ${label}`}
       style={({ pressed }) => [
-        s.item,
-        pressed && s.itemPressed,
+        s.chip,
+        { backgroundColor: theme.background, borderColor: theme.border },
+        pressed && s.pressed,
       ]}
     >
-      <View style={[s.itemIcon, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-        {icon}
-      </View>
-      <Text
-        style={[s.itemLabel, { color: theme.textMuted }]}
-        numberOfLines={2}
-      >
+      {icon}
+      <Text style={[s.chipLabel, { color: theme.text }]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -170,13 +224,13 @@ export const ShareTray = memo(function ShareTray({
 
   if (!mounted) return null;
 
-  const bottomPad = Math.max(insets.bottom, 20);
+  const bottomGap = Math.max(insets.bottom - 14, INSET);
 
   return (
     <View style={[StyleSheet.absoluteFill, { zIndex: 10000, elevation: 1000 }]} pointerEvents="box-none">
       {/* Backdrop */}
       <Animated.View style={[s.overlay, overlayStyle]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close share menu" />
       </Animated.View>
 
       {/* Tray */}
@@ -184,57 +238,38 @@ export const ShareTray = memo(function ShareTray({
         style={[
           s.tray,
           trayStyle,
-          {
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.border,
-            paddingBottom: bottomPad,
-          },
+          { bottom: bottomGap, backgroundColor: theme.backgroundElement, borderColor: theme.border },
         ]}
       >
-        {/* Handle */}
-        <View style={s.handleRow}>
-          <View style={[s.handle, { backgroundColor: theme.border }]} />
-        </View>
+        <Animated.View entering={rise(60)} style={s.header}>
+          <Text style={[Type.rail, { color: theme.textMuted }]}>SHARE</Text>
+          <CloseButton onPress={onClose} accessibilityLabel="Close share menu" />
+        </Animated.View>
 
-        {/* Section: Primary Actions */}
-        <Text style={[s.sectionLabel, { color: theme.textMuted }]}>SHARE</Text>
-
-        <View style={s.row}>
-          <ShareItem
-            icon={<ImageIcon size={20} color={theme.text} />}
+        <Animated.View entering={rise(110)} style={s.tiles}>
+          <ShareTile
+            primary
+            icon={ImageIcon}
             label="Canvas"
+            hint="AS AN IMAGE"
             onPress={() => { onClose(); onExportCanvas(); }}
           />
-          <ShareItem
-            icon={
-              currentSlideIsMedia
-                ? <Download size={20} color={theme.text} />
-                : <FileText size={20} color={theme.text} />
-            }
+          <ShareTile
+            icon={currentSlideIsMedia ? Download : FileText}
             label="Original"
+            hint={currentSlideIsMedia ? 'THE FILE ITSELF' : 'JUST THE WORDS'}
             onPress={() => { onClose(); onShareOriginal(); }}
           />
+        </Animated.View>
 
-          {/* Separator */}
-          <View style={[s.separator, { backgroundColor: theme.border }]} />
-
-          {/* App Shortcuts */}
-          <ShareItem
-            icon={<IconWhatsApp size={22} />}
-            label="WhatsApp"
-            onPress={handleWhatsApp}
-          />
-          <ShareItem
-            icon={<IconInstagram size={22} />}
-            label="Instagram"
-            onPress={handleInstagram}
-          />
-          <ShareItem
-            icon={<IconX size={20} color={theme.text} />}
-            label="X"
-            onPress={handleTwitter}
-          />
-        </View>
+        <Animated.View entering={rise(170)}>
+          <Text style={[Type.rail, s.sendLabel, { color: theme.textMuted }]}>OPEN</Text>
+          <View style={s.chips}>
+            <AppChip icon={<IconWhatsApp size={16} />} label="WhatsApp" onPress={handleWhatsApp} />
+            <AppChip icon={<IconInstagram size={16} />} label="Instagram" onPress={handleInstagram} />
+            <AppChip icon={<IconX size={14} color={theme.text} />} label="X" onPress={handleTwitter} />
+          </View>
+        </Animated.View>
       </Animated.View>
     </View>
   );
@@ -253,67 +288,79 @@ const s = StyleSheet.create({
   },
   tray: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    left: INSET,
+    right: INSET,
+    borderRadius: 34,
+    borderWidth: 1,
+    padding: 21,
+    paddingTop: 18,
+    gap: 21,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  handleRow: {
-    alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  handle: {
-    width: 32,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.4,
-  },
-  sectionLabel: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    letterSpacing: 2.5,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 14,
-  },
-  row: {
+  header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    gap: 6,
-  },
-  separator: {
-    width: StyleSheet.hairlineWidth,
-    height: 48,
-    marginHorizontal: 6,
-    marginTop: 4,
-    opacity: 0.5,
-  },
-  item: {
     alignItems: 'center',
-    width: 64,
+    justifyContent: 'space-between',
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tile: {
+    flex: 1,
+    height: 112,
+    padding: 16,
+    borderRadius: 21,
+    borderWidth: 1,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  tileText: {
+    gap: 4,
+  },
+  tileLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 16,
+    letterSpacing: -0.2,
+  },
+  tileHint: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 9,
+    letterSpacing: 1.2,
+  },
+  tileHintOnInk: {
+    opacity: 0.55,
+  },
+  sendLabel: {
+    marginBottom: 10,
+  },
+  chips: {
+    flexDirection: 'row',
     gap: 8,
   },
-  itemPressed: {
-    transform: [{ scale: 0.96 }],
-    opacity: 0.7,
-  },
-  itemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+  chip: {
+    flex: 1,
+    height: 42,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    borderRadius: 21,
+    borderWidth: 1,
   },
-  itemLabel: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
+  chipLabel: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
     letterSpacing: 0.2,
-    textAlign: 'center',
-    lineHeight: 13,
+    flexShrink: 1,
+  },
+  pressed: {
+    transform: [{ scale: 0.97 }],
+    opacity: 0.75,
   },
 });
