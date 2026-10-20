@@ -921,7 +921,8 @@ export default function ComposeScreen() {
               contentContainerStyle={styles.metaActionsRow}
               style={{ marginTop: 12, marginHorizontal: -24 }}
             >
-              <View style={{ width: 24 }} /> {/* left padding spacer for scroll */}
+              {/* left padding spacer for scroll */}
+              <View style={{ width: 24 }} />
               
               {/* 1. Camera (Photo) - First Option */}
               <Pressable
@@ -1045,7 +1046,8 @@ export default function ComposeScreen() {
                 </View>
               )}
 
-              <View style={{ width: 24 }} /> {/* right padding spacer for scroll */}
+              {/* right padding spacer for scroll */}
+              <View style={{ width: 24 }} />
             </ScrollView>
           </View>
 
