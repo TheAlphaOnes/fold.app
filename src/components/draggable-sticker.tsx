@@ -33,6 +33,8 @@ interface DraggableStickerProps {
   cardHeight: number;
   compositionId: number;
   isFirstAudio?: boolean;
+  /** The offscreen copy captured for sharing: no player, never shows playback state. */
+  isExporting?: boolean;
 }
 
 /** How long a touch must rest on a sticker before the drag lifts it. */
@@ -88,6 +90,7 @@ function CanvasAudioSticker({
   compositionId,
   isFirstAudio = true,
   onFront,
+  isExporting = false,
 }: {
   media: MediaElement;
   composedGesture: ComposedGesture;
@@ -95,11 +98,12 @@ function CanvasAudioSticker({
   compositionId: number;
   isFirstAudio?: boolean;
   onFront?: (id: string) => void;
+  isExporting?: boolean;
 }) {
   const theme = useTheme();
-  const player = useAudioPlayer(media.uri);
+  const player = useAudioPlayer(isExporting ? null : media.uri);
   const status = useAudioPlayerStatus(player);
-  const isPlaying = status.playing;
+  const isPlaying = !isExporting && status.playing;
   // Guard: only attempt play when player has fully loaded the source
   const isLoaded = status.isLoaded;
   const activeCompositionId = useJournalStore((s) => s.activeCompositionId);
@@ -136,7 +140,7 @@ function CanvasAudioSticker({
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId && isPlayableScreen) {
+    if (!isExporting && activeCompositionId === compositionId && isPlayableScreen) {
       if (
         isAppVisible &&
         autoPlayMusicRef.current &&
@@ -264,6 +268,7 @@ export function DraggableSticker({
   cardHeight,
   compositionId,
   isFirstAudio,
+  isExporting,
 }: DraggableStickerProps) {
   const theme = useTheme();
   const { selection, impact } = useHaptics();
@@ -507,6 +512,7 @@ export function DraggableSticker({
         compositionId={compositionId}
         isFirstAudio={isFirstAudio}
         onFront={onFront}
+        isExporting={isExporting}
       />
     );
   }

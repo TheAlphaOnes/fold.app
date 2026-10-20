@@ -48,15 +48,18 @@ function SingleAudioCard({
   cardWidth,
   theme,
   compositionId,
+  isExporting = false,
 }: {
   media: MediaElement;
   cardWidth: number;
   theme: any;
   compositionId: number;
+  /** The offscreen copy captured for sharing: no player, never shows playback state. */
+  isExporting?: boolean;
 }) {
-  const player = useAudioPlayer(media.uri);
+  const player = useAudioPlayer(isExporting ? null : media.uri);
   const status = useAudioPlayerStatus(player);
-  const isPlaying = status.playing;
+  const isPlaying = !isExporting && status.playing;
   // Guard: only attempt play when player has fully loaded the source
   const isLoaded = status.isLoaded;
   const activeCompositionId = useJournalStore((s) => s.activeCompositionId);
@@ -100,7 +103,7 @@ function SingleAudioCard({
   }, [autoPlayMusic]);
 
   useEffect(() => {
-    if (activeCompositionId === compositionId && isPlayableScreen) {
+    if (!isExporting && activeCompositionId === compositionId && isPlayableScreen) {
       if (
         isAppVisible &&
         autoPlayMusicRef.current &&
@@ -414,6 +417,7 @@ export function MemoryCard({
                 cardWidth={cardWidth}
                 theme={theme}
                 compositionId={item.id}
+                isExporting={isExporting}
               />
             ) : (
               <View style={styles.heroImageWrapper}>
@@ -484,6 +488,7 @@ export function MemoryCard({
                 cardWidth={cardWidth}
                 cardHeight={height}
                 compositionId={item.id}
+                isExporting={isExporting}
                 isFirstAudio={
                   m.id ===
                   item.mediaElements.find((media) => media.type === "audio")?.id
