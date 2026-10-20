@@ -54,6 +54,8 @@ export interface UserSettings {
   guideResetAt: number;
   /** The first-launch permission prompts have run. */
   startupPermissionsAsked: boolean;
+  /** Android: the one-time ask to allow exact alarms for on-time reminders has run. */
+  exactRemindersAsked: boolean;
 }
 
 /**
@@ -88,6 +90,7 @@ const defaultSettings: UserSettings = {
   guideDismissed: false,
   guideResetAt: 0,
   startupPermissionsAsked: false,
+  exactRemindersAsked: false,
 };
 
 interface SettingsState {
@@ -143,6 +146,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
           startupPermissionsAsked: stored.startupPermissionsAsked === "true",
+          exactRemindersAsked: stored.exactRemindersAsked === "true",
         },
         loading: false,
       });

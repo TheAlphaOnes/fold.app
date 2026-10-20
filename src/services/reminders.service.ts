@@ -14,6 +14,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
+import { FoldAlarms } from '../../modules/fold-alarms';
 import { MOMENTS, type Moment, type MomentId, type Nudge } from '@/constants/progression';
 import { addDays, toDayKey } from '@/utils/format-date';
 import { track, trackError, type NotificationPermission } from '@/services/analytics';
@@ -101,6 +102,20 @@ export async function getNotificationPermission(): Promise<NotificationPermissio
   const current = await Notifications.getPermissionsAsync();
   if (isGranted(current)) return 'granted';
   return current.canAskAgain ? 'undetermined' : 'denied';
+}
+
+/**
+ * Whether reminders will land on their minute. On Android 12+ that needs
+ * exact alarms; without them the system may hold a reminder for hours or
+ * drop it, so a day can pass with fewer than three. Always true on iOS.
+ */
+export function remindersFireOnTime(): boolean {
+  return FoldAlarms?.canScheduleExactAlarms() ?? true;
+}
+
+/** Opens Android's "Alarms & reminders" page for Fold. False when there is none. */
+export function openReminderTimingSettings(): boolean {
+  return FoldAlarms?.openExactAlarmSettings() ?? false;
 }
 
 /** A stable pseudo-random number for a seed, so a rebuilt schedule keeps the same picks. */
