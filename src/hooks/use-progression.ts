@@ -13,7 +13,6 @@ import { getMemorySignals } from '@/db/journal-repository';
 import { getSetting, setSetting } from '@/db/settings-repository';
 import { requestReminderPermission, syncMomentReminders } from '@/services/reminders.service';
 import { setPersonProperties, track, type PersonProperties } from '@/services/analytics';
-import type { MomentId } from '@/constants/progression';
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
 import { toDayKey } from '@/utils/format-date';
@@ -42,7 +41,6 @@ interface ProgressionState {
   ink: InkSummary;
   /** Null until read from storage. */
   seenInk: SeenInk | null;
-  capturedToday: Set<MomentId>;
   loaded: boolean;
   gain: InkGain | null;
 
@@ -79,8 +77,8 @@ function syncPersonProgress(state: Pick<ProgressionState, 'memoryCount' | 'activ
 }
 
 /** Asks for notification permission (once, by the system) and schedules if allowed. */
-async function enableReminders(capturedToday: ReadonlySet<MomentId>): Promise<void> {
-  if (await requestReminderPermission()) await syncMomentReminders(capturedToday);
+async function enableReminders(): Promise<void> {
+  if (await requestReminderPermission()) await syncMomentReminders();
 }
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
@@ -89,7 +87,6 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   streak: { current: 0, longest: 0 },
   ink: NO_INK,
   seenInk: null,
-  capturedToday: new Set(),
   loaded: false,
   gain: null,
 
@@ -102,17 +99,15 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
       ]);
       const days = groupByDay(signals);
       const activeDays = new Set(days.keys());
-      const capturedToday = days.get(todayKey)?.moments ?? new Set<MomentId>();
       set((state) => ({
         activeDays,
         memoryCount: signals.length,
         streak: computeStreak(activeDays),
         ink: computeInk(days, todayKey),
-        capturedToday,
         loaded: true,
         seenInk: state.seenInk ?? parseSeen(seen),
       }));
-      void syncMomentReminders(capturedToday);
+      void syncMomentReminders();
       syncPersonProgress(get());
     } catch (error) {
       // Progress is a nicety on top of the journal; a failed read keeps the
@@ -124,7 +119,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   recordCapture: async () => {
     const before = get().loaded ? { ink: get().ink, streak: get().streak } : null;
     await get().refresh();
-    const { ink, streak, capturedToday } = get();
+    const { ink, streak } = get();
     if (before && before.ink.monthKey === ink.monthKey && ink.month > before.ink.month) {
       const points = ink.month - before.ink.month;
       set({ gain: { id: Date.now(), points } });
@@ -139,7 +134,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     if (before && streak.current > before.streak.current) {
       track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
     }
-    void enableReminders(capturedToday);
+    void enableReminders();
   },
 
   clearGain: (id: number) => {

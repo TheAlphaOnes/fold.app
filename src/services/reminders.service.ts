@@ -3,9 +3,10 @@
  * asking for a photo of what you're doing. Always on once the system
  * allows notifications; nothing leaves the phone.
  *
- * The schedule is rebuilt from scratch whenever progression refreshes (a
- * save, a delete, the app returning to the foreground), so it skips
- * moments already captured today. Each reminder lands at a different
+ * Every moment gets its reminder every day, whether or not something was
+ * already kept in it. The schedule is rebuilt from scratch whenever
+ * progression refreshes (a save, a delete, the app returning to the
+ * foreground), which keeps it seven days ahead. Each reminder lands at a different
  * minute every day inside its moment's window, with wording that rotates,
  * so it never feels like an alarm. Seven days ahead is 21 notifications,
  * well under iOS's 64 pending.
@@ -159,7 +160,7 @@ function contentFor(moment: Moment, nudge: Nudge): Notifications.NotificationCon
   };
 }
 
-async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
+async function rebuild(): Promise<void> {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   await Promise.all(
     scheduled
@@ -174,7 +175,6 @@ async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
   for (let offset = 0; offset < DAYS_AHEAD; offset++) {
     const day = addDays(today, offset);
     for (const moment of MOMENTS) {
-      if (offset === 0 && capturedToday.has(moment.id)) continue;
       const at = nudgeTime(day, moment);
       if (at.getTime() <= now) continue;
       await Notifications.scheduleNotificationAsync({
@@ -189,9 +189,9 @@ async function rebuild(capturedToday: ReadonlySet<MomentId>): Promise<void> {
 let pending: Promise<void> = Promise.resolve();
 
 /** Rebuilds the reminder schedule. Calls run one after another; never throws. */
-export function syncMomentReminders(capturedToday: ReadonlySet<MomentId>): Promise<void> {
+export function syncMomentReminders(): Promise<void> {
   pending = pending
-    .then(() => rebuild(capturedToday))
+    .then(() => rebuild())
     .catch((error) => console.error('Failed to schedule moment reminders', error));
   return pending;
 }
