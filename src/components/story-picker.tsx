@@ -5,7 +5,7 @@
  * screen edges with the memory card's 34pt corners, a rail title, and the
  * shared round buttons (new story, confirm, close). Stories sit in one
  * swipeable row as covers: the newest photo on top of a second card edge,
- * so a story reads as a small stack. A chosen story gets an ink ring and a
+ * so a story reads as a small stack, its name underneath. A chosen story gets an ink ring and a
  * check badge drawn inside the cover, so nothing pokes past its corners.
  *
  * Two modes: `single` (pick one and close) and `multi` (toggle many and
@@ -199,14 +199,9 @@ export function StoryPicker(props: StoryPickerProps) {
           style={({ pressed }) => [styles.storyItem, pressed && styles.pressed]}
         >
           <StoryCover story={item} active={active} />
-          <View style={styles.storyText}>
-            <ThemedText style={[styles.storyTitle, { color: active ? theme.text : theme.textMuted }]} numberOfLines={1}>
-              {item.title.toUpperCase()}
-            </ThemedText>
-            <ThemedText style={[styles.storyCount, { color: theme.textMuted }]}>
-              {String(count).padStart(2, '0')}
-            </ThemedText>
-          </View>
+          <ThemedText style={[styles.storyTitle, { color: active ? theme.text : theme.textMuted }]} numberOfLines={1}>
+            {item.title.toUpperCase()}
+          </ThemedText>
         </Pressable>
       </Animated.View>
     );
@@ -390,22 +385,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  storyText: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 2,
-  },
   storyTitle: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     letterSpacing: 1,
     textAlign: 'center',
     width: '100%',
-  },
-  storyCount: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 10,
-    letterSpacing: 1,
   },
   empty: {
     height: COVER + 40,
