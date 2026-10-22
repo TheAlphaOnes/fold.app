@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
+import { useTransitionDone } from '@/hooks/use-transition-done';
+import { riseIn } from '@/constants/motion';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -29,6 +32,9 @@ export default function ProfileScreen() {
   const elementBg = theme.backgroundElement;
   const borderColor = theme.border;
   const mutedText = '#878787';
+  // The cards below the streak are heavy (grid, calendar, photo wall); they
+  // mount once the slide-in has finished so the push never waits on them.
+  const settled = useTransitionDone();
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -57,27 +63,41 @@ export default function ProfileScreen() {
         {/* Combined Dashboard Card */}
         <ContinuumCard />
 
-        <StoryBoardCard />
+        {settled && (
+          <>
+            {/* Each card rises on its own clock, so the page assembles in steps. */}
+            <Animated.View entering={riseIn(320, 0, 12)}>
+              <StoryBoardCard />
+            </Animated.View>
 
-        {/* Heat Map (Activity Grid) */}
-        <ActivityGrid />
+            {/* Heat Map (Activity Grid) */}
+            <Animated.View entering={riseIn(360, 70, 12)}>
+              <ActivityGrid />
+            </Animated.View>
 
-        {/* Time Machine Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-          <View style={styles.portfolioHeader}>
-            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
-          </View>
-          <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
-        </View>
+            {/* Time Machine Section */}
+            <Animated.View
+              entering={riseIn(400, 140, 12)}
+              style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}
+            >
+              <View style={styles.portfolioHeader}>
+                <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+              </View>
+              <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
+            </Animated.View>
 
-        {/* Today's memory from the past — photo-first, opens the memory */}
-        <FromYourPastCard />
+            {/* Today's memory from the past — photo-first, opens the memory */}
+            <Animated.View entering={riseIn(440, 210, 12)}>
+              <FromYourPastCard />
+            </Animated.View>
 
-        {/* ASCII Easter Egg Mascot */}
-        <View style={styles.mascotContainer}>
-          <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
-          <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
-        </View>
+            {/* ASCII Easter Egg Mascot */}
+            <View style={styles.mascotContainer}>
+              <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
+              <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
+            </View>
+          </>
+        )}
 
       </ScrollView>
     </View>

@@ -16,16 +16,17 @@
  *
  * Counts come from the database (whole year, live memories only).
  *
- * Performance: the ~370 squares are one SVG — a single native view —
- * rather than two views each. As views (plus an entrance animation per
- * week) they were the bulk of what made the profile slow to open.
+ * Performance: react-native-svg mounts a native view for every shape, so
+ * ~370 <Rect>s were still ~370 views and stalled the profile's slide-in.
+ * Squares are grouped by shade instead: one <Path> per fill and opacity,
+ * about seven in all, drawing exactly the same grid.
  * Entrance: a card-coloured wipe uncovers the weeks left to right while
  * the month labels and legend fade in on their own, slower clocks.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import Animated, {
   Easing,
@@ -128,6 +129,15 @@ function levelFor(count: number): number {
   return LEVELS[Math.min(count, LEVELS.length) - 1];
 }
 
+/** SVG path data for a square with corners rounded by r, at (x, y). */
+function roundedSquare(x: number, y: number, size: number, r: number): string {
+  const e = size - 2 * r;
+  return (
+    `M${x + r} ${y}h${e}a${r} ${r} 0 0 1 ${r} ${r}v${e}a${r} ${r} 0 0 1 ${-r} ${r}` +
+    `h${-e}a${r} ${r} 0 0 1 ${-r} ${-r}v${-e}a${r} ${r} 0 0 1 ${r} ${-r}z`
+  );
+}
+
 /** Today's square: an accent outline that breathes, so "now" is findable. */
 function TodayOutline({ size, left, top }: { size: number; left: number; top: number }) {
   const theme = useTheme();
@@ -221,25 +231,17 @@ function YearStrip({
     todayWeek >= 0
       ? { left: todayWeek * columnPitch, top: weeks[todayWeek].findIndex((day) => day.isToday) * columnPitch }
       : null;
-  const squares: React.ReactElement[] = [];
+  // One path per shade: lit days by level, then lived and future empty days.
+  const shades = new Map<string, { lit: boolean; opacity: number; d: string }>();
   weeks.forEach((days, week) => {
     days.forEach((day, weekday) => {
       if (!day.inYear) return;
-      const left = week * columnPitch;
-      const top = weekday * columnPitch;
       const lit = day.count > 0;
-      squares.push(
-        <Rect
-          key={day.date}
-          x={left}
-          y={top}
-          width={cellSize}
-          height={cellSize}
-          rx={1.5}
-          fill={lit ? ink : theme.border}
-          opacity={lit ? levelFor(day.count) : day.isFuture ? 0.1 : 0.28}
-        />,
-      );
+      const opacity = lit ? levelFor(day.count) : day.isFuture ? 0.1 : 0.28;
+      const key = `${lit}:${opacity}`;
+      const shade = shades.get(key) ?? { lit, opacity, d: '' };
+      shade.d += roundedSquare(week * columnPitch, weekday * columnPitch, cellSize, 1.5);
+      shades.set(key, shade);
     });
   });
 
@@ -254,7 +256,9 @@ function YearStrip({
         {/* Not a touch target itself, so tap positions are measured from the Pressable. */}
         <View style={{ width: gridWidth, height: gridHeight }} pointerEvents="none">
           <Svg width={gridWidth} height={gridHeight}>
-            {squares}
+            {[...shades].map(([key, shade]) => (
+              <Path key={key} d={shade.d} fill={shade.lit ? ink : theme.border} opacity={shade.opacity} />
+            ))}
           </Svg>
           {today && <TodayOutline size={cellSize} left={today.left} top={today.top} />}
           {!reduceMotion && <Wipe color={theme.backgroundElement} delay={delayBase} />}
