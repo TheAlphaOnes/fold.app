@@ -115,6 +115,7 @@
           "color": "#FF4B00"
         }
       ],
+      "./plugins/withAndroidFreeOrientation",
       [
         "expo-build-properties",
         {
