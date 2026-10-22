@@ -81,6 +81,7 @@ import { posthog } from "@/services/analytics";
 import { AnalyticsSync } from "@/components/analytics-sync";
 import { useStartupPermissions } from "@/hooks/use-startup-permissions";
 import { usePhonePortraitLock } from "@/hooks/use-phone-portrait-lock";
+import { useProfileDataSync } from "@/hooks/use-profile-data";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -143,6 +144,8 @@ function RootLayoutNav() {
 
   const isAppReady = dbReady && fontsLoaded && !settingsLoading;
   usePhonePortraitLock();
+  // Profile data loads in the background, so opening the profile never waits.
+  useProfileDataSync(isAppReady);
   // Not during the Field Guide: its first steps would sit under the prompts.
   useStartupPermissions(isAppReady && segments[0] !== "guide");
 

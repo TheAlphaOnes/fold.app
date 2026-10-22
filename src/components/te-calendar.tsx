@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { useJournalStore } from '@/hooks/use-journal';
-import { getDatesWithMemories, getDayCoversForMonth, type DayCover } from '@/db/journal-repository';
+import { type DayCover } from '@/db/journal-repository';
+import { useProfileDataStore } from '@/hooks/use-profile-data';
 import { CalendarDayPhoto } from './calendar-day-photo';
 import { ThemedText } from './themed-text';
 import { haptic } from '@/services/haptics';
@@ -16,6 +16,7 @@ type ViewMode = 'days' | 'months' | 'years';
 
 const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const DOW_LABELS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+const NO_DATES: ReadonlySet<string> = new Set();
 
 export function TECalendar({ onSelect }: TECalendarProps) {
   const theme = useTheme();
@@ -27,37 +28,26 @@ export function TECalendar({ onSelect }: TECalendarProps) {
   const [currentDate, setCurrentDate] = useState(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
-  const [activeDates, setActiveDates] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('days');
   const [yearPageStart, setYearPageStart] = useState(
     Math.floor(currentDate.getFullYear() / 12) * 12
   );
 
-  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-
-  useEffect(() => {
-    getDatesWithMemories().then(dates => {
-      setActiveDates(new Set(dates));
-    }).catch(console.error);
-  }, [hydrationVersion]);
+  // From the profile cache, so the calendar draws at once; it refreshes
+  // itself when the journal changes.
+  const activeDates = useProfileDataStore((state) => state.activeDates) ?? NO_DATES;
 
   // Photo for each day of the visible month, so the calendar shows the
-  // user's own colour instead of grey numbers.
+  // user's own colour instead of grey numbers. Months other than the
+  // current one load the first time they're viewed.
   const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-  const [dayCovers, setDayCovers] = useState<{ month: string; covers: Record<string, DayCover> }>({ month: '', covers: {} });
+  const monthCovers = useProfileDataStore((state) => state.covers[monthKey]);
+  const ensureCovers = useProfileDataStore((state) => state.ensureCovers);
   useEffect(() => {
-    let cancelled = false;
-    getDayCoversForMonth(monthKey)
-      .then((covers) => {
-        if (!cancelled) setDayCovers({ month: monthKey, covers });
-      })
-      .catch((error) => console.error('Failed to load calendar photos', error));
-    return () => {
-      cancelled = true;
-    };
-  }, [monthKey, hydrationVersion]);
+    void ensureCovers(monthKey);
+  }, [monthKey, ensureCovers]);
   const coverFor = (dayNum: number): DayCover | undefined =>
-    dayCovers.month === monthKey ? dayCovers.covers[`${monthKey}-${String(dayNum).padStart(2, '0')}`] : undefined;
+    monthCovers?.[`${monthKey}-${String(dayNum).padStart(2, '0')}`];
 
   const changePage = (delta: number) => {
     if (viewMode === 'days') {

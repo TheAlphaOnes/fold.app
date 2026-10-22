@@ -14,7 +14,7 @@
  * The whole year sits on one line that fits the card exactly, no scrolling:
  * square size is derived from the card width and the year's week count.
  *
- * Counts come from the database (whole year, live memories only).
+ * Counts come from the profile cache (whole year, live memories only).
  *
  * Performance: react-native-svg mounts a native view for every shape, so
  * ~370 <Rect>s were still ~370 views and stalled the profile's slide-in.
@@ -42,8 +42,7 @@ import Animated, {
 import { ThemedText } from './themed-text';
 import { Type } from '@/constants/theme';
 import { EASE_OUT, fadeIn } from '@/constants/motion';
-import { getDayCountsForYear } from '@/db/journal-repository';
-import { useJournalStore } from '@/hooks/use-journal';
+import { useProfileDataStore } from '@/hooks/use-profile-data';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
@@ -63,6 +62,7 @@ const LABEL_TRACKING = 0.4;
 const LABEL_CHAR = LABEL_SIZE * 0.62;
 /** How long the wipe takes to uncover the whole year. */
 const WIPE_MS = 520;
+const EMPTY_COUNTS: Record<string, number> = {};
 /** Accent opacity for 1, 2, 3 and 4+ memories in a day. */
 const LEVELS = [0.42, 0.62, 0.82, 1];
 
@@ -289,23 +289,14 @@ export function ActivityGrid() {
   const { width } = useWindowDimensions();
   const theme = useTheme();
   const reduceMotion = useReducedMotion() ?? false;
-  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
   const [now] = useState(() => new Date());
   const currentYear = now.getFullYear();
   const todayKey = formatDate(now);
 
-  const [countMap, setCountMap] = useState<Record<string, number>>({});
-  useEffect(() => {
-    let cancelled = false;
-    getDayCountsForYear(currentYear)
-      .then((counts) => {
-        if (!cancelled) setCountMap(counts);
-      })
-      .catch((error) => console.error('Failed to load activity', error));
-    return () => {
-      cancelled = true;
-    };
-  }, [currentYear, hydrationVersion]);
+  // From the profile cache: drawn at once, replaced when a refresh lands.
+  const cachedCounts = useProfileDataStore((state) => state.dayCounts);
+  const cachedYear = useProfileDataStore((state) => state.dayCountsYear);
+  const countMap = cachedCounts && cachedYear === currentYear ? cachedCounts : EMPTY_COUNTS;
 
   const { year, litDays, activeMonths } = useMemo(() => {
     const months = new Set<number>();

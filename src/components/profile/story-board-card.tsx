@@ -1,64 +1,29 @@
 /**
  * StoryBoardCard — the profile's row of stories, each shown by a photo
- * from inside it (or its cover), up to five, reshuffled as stories change.
+ * from inside it (or its cover), up to five, picked afresh each day.
  *
  * Photos go through expo-image, which decodes them at the 100×140 they are
  * drawn at; React Native's Image decoded full camera photos here.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Book, ChevronRight } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
-import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
-import type { Story } from '@/types/journal';
-
-const MAX_TILES = 5;
-
-interface StoryTile {
-  storyId: number;
-  title: string;
-  uri: string | null;
-}
-
-function shuffle<T>(items: T[]): T[] {
-  return [...items].sort(() => 0.5 - Math.random());
-}
-
-/** Up to five tiles: photos from stories first, then stories with none. */
-function pickTiles(stories: Story[]): StoryTile[] {
-  const withMedia: StoryTile[] = [];
-  const empty: StoryTile[] = [];
-  for (const story of stories) {
-    // Only photos can fill a tile; voice notes and videos have no frame to show here.
-    const uris = new Set<string>();
-    if (story.coverImageUri) uris.add(story.coverImageUri);
-    for (const media of story.sampleMedia ?? []) if (media.type === 'image') uris.add(media.uri);
-    if (uris.size === 0) empty.push({ storyId: story.id, title: story.title, uri: null });
-    for (const uri of uris) withMedia.push({ storyId: story.id, title: story.title, uri });
-  }
-  return [...shuffle(withMedia), ...shuffle(empty)].slice(0, MAX_TILES);
-}
+import { pickTiles } from '@/utils/story-tiles';
 
 export function StoryBoardCard() {
   const theme = useTheme();
   const stories = useStoriesStore((state) => state.stories);
-  const refreshStories = useStoriesStore((state) => state.refreshStories);
-  const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
-
-  // On focus, and again whenever the journal changes while focused.
-  useFocusEffect(
-    useCallback(() => {
-      refreshStories().catch((error) => console.error('Failed to load stories', error));
-    }, [refreshStories, hydrationVersion]),
-  );
+  // Kept fresh by the profile cache (useProfileDataSync), so the card
+  // never queries on open.
 
   const tiles = useMemo(() => pickTiles(stories), [stories]);
 

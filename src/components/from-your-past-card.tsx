@@ -274,7 +274,7 @@ export function FromYourPastCard() {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const reduceMotion = useReducedMotion() ?? false;
-  const { memories, loaded, sampleId, reshuffle } = useRandomPastMemories(18);
+  const { memories, loaded, sampleId, reshuffle } = useRandomPastMemories();
   const [paused, setPaused] = useState(false);
 
   const columnWidth = (screenWidth - SIDE_PADDING * 2 - GAP * (COLUMNS - 1)) / COLUMNS;

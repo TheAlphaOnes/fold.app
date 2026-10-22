@@ -32,8 +32,9 @@ export default function ProfileScreen() {
   const elementBg = theme.backgroundElement;
   const borderColor = theme.border;
   const mutedText = '#878787';
-  // The cards below the streak are heavy (grid, calendar, photo wall); they
-  // mount once the slide-in has finished so the push never waits on them.
+  // Every card reads the profile cache, which loads in the background, so
+  // the visible cards draw in the same frame as the slide. Only the photo
+  // wall at the bottom (dozens of images, off screen) waits for the slide.
   const settled = useTransitionDone();
 
   return (
@@ -63,40 +64,30 @@ export default function ProfileScreen() {
         {/* Combined Dashboard Card */}
         <ContinuumCard />
 
+        <StoryBoardCard />
+
+        {/* Heat Map (Activity Grid) */}
+        <ActivityGrid />
+
+        {/* Time Machine Section */}
+        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+          <View style={styles.portfolioHeader}>
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+          </View>
+          <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
+        </View>
+
         {settled && (
-          <>
-            {/* Each card rises on its own clock, so the page assembles in steps. */}
-            <Animated.View entering={riseIn(320, 0, 12)}>
-              <StoryBoardCard />
-            </Animated.View>
-
-            {/* Heat Map (Activity Grid) */}
-            <Animated.View entering={riseIn(360, 70, 12)}>
-              <ActivityGrid />
-            </Animated.View>
-
-            {/* Time Machine Section */}
-            <Animated.View
-              entering={riseIn(400, 140, 12)}
-              style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}
-            >
-              <View style={styles.portfolioHeader}>
-                <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
-              </View>
-              <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
-            </Animated.View>
-
+          <Animated.View entering={riseIn(420, 0, 12)}>
             {/* Today's memory from the past — photo-first, opens the memory */}
-            <Animated.View entering={riseIn(440, 210, 12)}>
-              <FromYourPastCard />
-            </Animated.View>
+            <FromYourPastCard />
 
             {/* ASCII Easter Egg Mascot */}
             <View style={styles.mascotContainer}>
               <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
               <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
             </View>
-          </>
+          </Animated.View>
         )}
 
       </ScrollView>
