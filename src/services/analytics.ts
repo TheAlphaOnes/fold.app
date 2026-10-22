@@ -62,7 +62,7 @@ export interface AnalyticsEvents {
   // Onboarding funnel
   onboarding_started: Record<string, never>;
   onboarding_name_entered: Record<string, never>;
-  onboarding_completed: { age_range: string | null };
+  onboarding_completed: { age_range: string | null; took_tour: boolean };
 
   // Memories
   memory_created: MemoryShape & {

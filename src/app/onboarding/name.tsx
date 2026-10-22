@@ -1,161 +1,43 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
+import { Keyboard } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
 
-import { useTheme } from '@/hooks/use-theme';
-import { GrainBackground } from '@/components/grain-background';
-import { ThemedText } from '@/components/themed-text';
-import { ActionLink } from '@/components/action-link';
 import { CleanInput } from '@/components/clean-input';
-import { AsciiArt } from '@/components/ascii-art';
-import { MASTER_SWORD_ART } from '@/constants/ascii-art';
+import { OnboardingFrame } from '@/components/onboarding/onboarding-frame';
 import { track } from '@/services/analytics';
 
 export default function OnboardingNameScreen() {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
-  const [showError, setShowError] = useState(false);
-
   const isValid = name.trim().length > 0;
 
   const handleNext = () => {
+    if (!isValid) return;
     Keyboard.dismiss();
-    if (!isValid) {
-      setShowError(true);
-      return;
-    }
     track('onboarding_name_entered', {});
-    router.push({
-      pathname: '/onboarding/dob',
-      params: { name: name.trim() }
-    });
+    router.push({ pathname: '/onboarding/dob', params: { name: name.trim() } });
   };
-
-  const handleChangeText = (text: string) => {
-    setName(text);
-    setShowError(false);
-  };
-
-  const bg = theme.background;
-  const fg = theme.text;
-  const mutedText = '#878787';
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <OnboardingFrame
+      step={1}
+      title="YOUR NAME"
+      subtitle={'WHAT SHOULD FOLD\nCALL YOU?'}
+      footnote={'Only you see it. Change it\nanytime in settings.'}
+      cta={{ text: 'CONTINUE', onPress: handleNext, disabled: !isValid }}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={[styles.container, { backgroundColor: bg }]}>
-          <GrainBackground />
-          
-          <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            
-            <View style={styles.topSpacer} />
-
-            
-
-            <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
-              <View style={styles.header}>
-                <ThemedText style={[styles.title, { color: fg }]}>YOUR NAME</ThemedText>
-                <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                  HOW SHOULD YOUR JOURNAL ADDRESS YOU?
-                </ThemedText>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <CleanInput
-                  value={name}
-                  onChangeText={handleChangeText}
-                  placeholder="NOAH"
-                  autoCapitalize="characters"
-                  maxLength={12}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleNext}
-                />
-                {showError && !isValid && (
-                  <Animated.View entering={FadeIn.duration(200)}>
-                    <ThemedText style={[styles.errorText, { color: '#FF3B30' }]}>
-                      NAME REQUIRED
-                    </ThemedText>
-                  </Animated.View>
-                )}
-              </View>
-            </Animated.View>
-
-            <View style={styles.bottomSpacer} />
-
-            <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
-              <ActionLink 
-                text="CONTINUE" 
-                onPress={handleNext}
-                disabled={!isValid}
-              />
-            </Animated.View>
-
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      <CleanInput
+        value={name}
+        onChangeText={setName}
+        hint="type your first name"
+        autoCapitalize="characters"
+        autoCorrect={false}
+        autoComplete="given-name"
+        textContentType="givenName"
+        maxLength={12}
+        autoFocus
+        returnKeyType="next"
+        onSubmitEditing={handleNext}
+      />
+    </OnboardingFrame>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-  },
-  topSpacer: {
-    flex: 1,
-  },
-  bottomSpacer: {
-    flex: 1.5,
-  },
-  asciiContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-    width: '100%',
-  },
-  centerSection: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
-    lineHeight: 44,
-    letterSpacing: 4,
-  },
-  subtitle: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    letterSpacing: 2,
-    marginTop: 8,
-  },
-  inputContainer: {
-    width: '100%',
-  },
-  errorText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    letterSpacing: 2,
-    marginTop: 12,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  ctaContainer: {
-    marginBottom: 60,
-  },
-});

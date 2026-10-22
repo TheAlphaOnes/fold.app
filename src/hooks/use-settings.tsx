@@ -56,6 +56,8 @@ export interface UserSettings {
   startupPermissionsAsked: boolean;
   /** Android: the one-time ask to allow exact alarms for on-time reminders has run. */
   exactRemindersAsked: boolean;
+  /** The home screen has pointed out the Field Guide tab once. */
+  guideTabIntroduced: boolean;
 }
 
 /**
@@ -91,6 +93,7 @@ const defaultSettings: UserSettings = {
   guideResetAt: 0,
   startupPermissionsAsked: false,
   exactRemindersAsked: false,
+  guideTabIntroduced: false,
 };
 
 interface SettingsState {
@@ -147,6 +150,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideResetAt: Number(stored.guideResetAt) || 0,
           startupPermissionsAsked: stored.startupPermissionsAsked === "true",
           exactRemindersAsked: stored.exactRemindersAsked === "true",
+          guideTabIntroduced: stored.guideTabIntroduced === "true",
         },
         loading: false,
       });

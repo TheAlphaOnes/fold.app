@@ -1,178 +1,97 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Platform, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
-import { useTheme } from '@/hooks/use-theme';
-import { useSettingsStore } from '@/hooks/use-settings';
-import { GrainBackground } from '@/components/grain-background';
+import { DobField } from '@/components/onboarding/dob-field';
+import { OnboardingFrame } from '@/components/onboarding/onboarding-frame';
 import { ThemedText } from '@/components/themed-text';
-import { ActionLink } from '@/components/action-link';
-import { CleanInput } from '@/components/clean-input';
-import { formatDobInput, getAgeRange, isValidDob } from '@/utils/dob';
-import { AsciiArt } from '@/components/ascii-art';
+import { fadeIn } from '@/constants/motion';
+import { useSettingsStore } from '@/hooks/use-settings';
+import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
-import { track } from '@/services/analytics';
+import { isValidDob, parseDob } from '@/utils/dob';
+import { goBack } from '@/utils/navigation';
+
+/** Whole years since the date of birth. */
+function ageFrom(dob: string): number | null {
+  const parts = parseDob(dob);
+  if (!parts) return null;
+  const now = new Date();
+  const hadBirthday =
+    now.getMonth() + 1 > parts.month || (now.getMonth() + 1 === parts.month && now.getDate() >= parts.day);
+  return now.getFullYear() - parts.year - (hadBirthday ? 0 : 1);
+}
 
 export default function OnboardingDobScreen() {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const { updateSetting } = useSettingsStore();
-  const params = useLocalSearchParams();
-  const providedName = params.name as string | undefined;
-
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
+  const { name } = useLocalSearchParams<{ name?: string }>();
   const [dob, setDob] = useState('');
 
   // A deep link can land here without a name — send the user back to step one.
+  const hasName = !!name?.trim();
   useEffect(() => {
-    if (!providedName || !providedName.trim()) {
-      router.replace('/onboarding/name');
-    }
-  }, [providedName]);
+    if (!hasName) router.replace('/onboarding/name');
+  }, [hasName]);
 
+  const complete = dob.replace(/\D/g, '').length === 8;
   const isValid = isValidDob(dob);
-  const hasFullDigits = dob.replace(/\D/g, '').length === 8;
-  const errorText = hasFullDigits ? 'INVALID DATE' : 'ENTER FULL DATE - DD.MM.YYYY';
+  const age = isValid ? ageFrom(dob) : null;
 
-  const handleComplete = async () => {
+  // A full, valid date is a finished answer: a small tick of haptics.
+  useEffect(() => {
+    if (isValid) haptic.select();
+  }, [isValid]);
+
+  const handleNext = async () => {
+    if (!isValid || !name) return;
     Keyboard.dismiss();
-    if (!isValid || !providedName) return;
-
-    haptic.success();
-    await updateSetting('name', providedName);
+    // Saved now, so the tour step can never lose them; onboarding itself is
+    // marked done on the next step.
+    await updateSetting('name', name.trim());
     await updateSetting('dob', dob);
-    await updateSetting('hasOnboarded', true);
-    track('onboarding_completed', { age_range: getAgeRange(dob) });
-
-    router.replace('/');
+    router.push('/onboarding/tour');
   };
 
-  const handleChangeText = (text: string) => {
-    setDob(formatDobInput(text));
-  };
-
-  // Waiting on the redirect above — render nothing rather than flash a
-  // form that has no name to save.
-  if (!providedName || !providedName.trim()) {
-    return null;
-  }
-
-  const bg = theme.background;
-  const fg = theme.text;
-  const mutedText = '#878787';
+  if (!hasName) return null;
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <OnboardingFrame
+      step={2}
+      title="BIRTHDAY"
+      subtitle={'WHEN DID YOUR\nSTORY BEGIN?'}
+      footnote={'Stays on your phone. We only\never see an age range.'}
+      onBack={() => goBack('/onboarding/name')}
+      cta={{ text: 'CONTINUE', onPress: handleNext, disabled: !isValid }}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={[styles.container, { backgroundColor: bg }]}>
-          <GrainBackground />
-          
-          <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            
-            <View style={styles.topSpacer} />
+      <DobField value={dob} onChange={setDob} invalid={complete && !isValid} autoFocus />
 
-            
-
-            <Animated.View entering={FadeIn.delay(200).duration(800)} style={styles.centerSection}>
-              <View style={styles.header}>
-                <ThemedText style={[styles.title, { color: fg }]}>ORIGIN</ThemedText>
-                <ThemedText style={[styles.subtitle, { color: mutedText }]}>
-                  WHEN DID YOUR STORY BEGIN?
-                </ThemedText>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <CleanInput
-                  value={dob}
-                  onChangeText={handleChangeText}
-                  placeholder="DD.MM.YYYY"
-                  keyboardType="number-pad"
-                  maxLength={10}
-                  autoFocus
-                />
-                {dob.length > 0 && !isValid && (
-                  <Animated.View entering={FadeIn.duration(200)}>
-                    <ThemedText style={[styles.errorText, { color: '#FF3B30' }]}>
-                      {errorText}
-                    </ThemedText>
-                  </Animated.View>
-                )}
-              </View>
-            </Animated.View>
-
-            <View style={styles.bottomSpacer} />
-
-            <Animated.View entering={FadeInUp.delay(400).duration(800).springify()} style={styles.ctaContainer}>
-              <ActionLink 
-                text="CONTINUE" 
-                onPress={handleComplete}
-                disabled={!isValid}
-              />
-            </Animated.View>
-
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      {/* One fixed-height line under the field, so it never pushes the layout. */}
+      <View style={styles.status}>
+        {complete && (
+          <Animated.View key={isValid ? 'ok' : 'bad'} entering={fadeIn(220)}>
+            <ThemedText style={[styles.statusText, { color: isValid ? theme.textMuted : '#FF3B30' }]}>
+              {isValid ? `${age} years of story so far` : 'that date doesn’t exist'}
+            </ThemedText>
+          </Animated.View>
+        )}
+      </View>
+    </OnboardingFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
+  status: {
+    height: 20,
+    marginTop: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  topSpacer: {
-    flex: 1,
-  },
-  bottomSpacer: {
-    flex: 1.5,
-  },
-  asciiContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-    width: '100%',
-  },
-  centerSection: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontFamily: 'BitcountGridDouble-Light',
-    fontSize: 32,
-    lineHeight: 44,
-    letterSpacing: 4,
-  },
-  subtitle: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    letterSpacing: 2,
-    marginTop: 8,
-  },
-  inputContainer: {
-    width: '100%',
-  },
-  errorText: {
+  statusText: {
     fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 2,
-    marginTop: 12,
-    textAlign: 'center',
     textTransform: 'uppercase',
-  },
-  ctaContainer: {
-    marginBottom: 60,
   },
 });

@@ -141,7 +141,8 @@ function RootLayoutNav() {
   });
 
   const isAppReady = dbReady && fontsLoaded && !settingsLoading;
-  useStartupPermissions(isAppReady);
+  // Not during the Field Guide: its first steps would sit under the prompts.
+  useStartupPermissions(isAppReady && segments[0] !== "guide");
 
   const BaseTheme = isDark ? DarkTheme : DefaultTheme;
   const FoldTheme = {

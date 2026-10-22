@@ -1,28 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, TextInput, TextInputProps, TouchableWithoutFeedback } from 'react-native';
-import { useTheme } from '@/hooks/use-theme';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
   withRepeat,
   withSequence,
-  withTiming
+  withTiming,
 } from 'react-native-reanimated';
 
-interface CleanInputProps extends Omit<TextInputProps, 'style'> {
+import { useTheme } from '@/hooks/use-theme';
+import { EASE_OUT } from '@/constants/motion';
+import { ThemedText } from './themed-text';
+
+interface CleanInputProps extends Omit<TextInputProps, 'style' | 'placeholder'> {
   value: string;
-  placeholder?: string;
+  /**
+   * Small muted instruction under the line. It is never drawn in the field
+   * itself: a big example word next to the cursor reads as text already
+   * typed, and people try to delete it.
+   */
+  hint?: string;
   style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
 }
 
-export function CleanInput({ value, placeholder, style, onFocus, onBlur, ...props }: CleanInputProps) {
+/**
+ * CleanInput — one big line of type over a hairline, with an accent cursor.
+ * Empty, it is just the cursor on the line; the underline warms to accent
+ * while focused.
+ */
+export function CleanInput({ value, hint, style, onFocus, onBlur, ...props }: CleanInputProps) {
   const theme = useTheme();
-  const inputRef = React.useRef<TextInput>(null);
+  const inputRef = useRef<TextInput>(null);
   const [isFocused, setIsFocused] = useState(false);
 
-  // Blinking cursor opacity
+  // Blinking cursor; hidden when blurred.
   const cursorOpacity = useSharedValue(1);
-  
   useEffect(() => {
     if (isFocused) {
       cursorOpacity.value = withRepeat(
@@ -30,73 +42,73 @@ export function CleanInput({ value, placeholder, style, onFocus, onBlur, ...prop
           withTiming(0, { duration: 0 }),
           withTiming(0, { duration: 500 }),
           withTiming(1, { duration: 0 }),
-          withTiming(1, { duration: 500 })
+          withTiming(1, { duration: 500 }),
         ),
-        -1
+        -1,
       );
     } else {
-      cursorOpacity.value = 0; // Hide cursor when blurred
+      cursorOpacity.value = 0;
     }
-  }, [isFocused]);
+  }, [isFocused, cursorOpacity]);
+  const cursorStyle = useAnimatedStyle(() => ({ opacity: cursorOpacity.value }));
 
-  const cursorStyle = useAnimatedStyle(() => ({
-    opacity: cursorOpacity.value,
-  }));
-
-  const handleFocus = (e: any) => {
-    setIsFocused(true);
-    if (onFocus) onFocus(e);
-  };
-
-  const handleBlur = (e: any) => {
-    setIsFocused(false);
-    if (onBlur) onBlur(e);
-  };
-
-  const handlePress = () => {
-    inputRef.current?.focus();
-  };
-
-  const displayString = value.length > 0 ? value : (placeholder || '');
-  const showPlaceholder = value.length === 0;
+  // The line fills with accent from the centre while focused.
+  const lineFill = useSharedValue(0);
+  useEffect(() => {
+    lineFill.value = withTiming(isFocused ? 1 : 0, { duration: 360, easing: EASE_OUT });
+  }, [isFocused, lineFill]);
+  const lineStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: lineFill.value }] }));
 
   return (
-    <TouchableWithoutFeedback onPress={handlePress}>
+    <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()} accessible={false}>
       <View style={[styles.container, style]}>
-        
-        {/* Actual Input - Hidden purely for keyboard handling */}
+        {/* The real input, invisible, owns the keyboard. */}
         <TextInput
           ref={inputRef}
           style={styles.hiddenInput}
           value={value}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
+          onFocus={(e) => {
+            setIsFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            onBlur?.(e);
+          }}
           caretHidden
+          accessibilityHint={hint}
           {...props}
         />
 
-        {/* Visual Typography Input */}
-        <View style={styles.visualContainer}>
-          <Animated.Text 
+        <View style={styles.visualContainer} pointerEvents="none">
+          {value.length > 0 && (
+            <Animated.Text
+              style={[styles.text, { color: theme.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {value}
+            </Animated.Text>
+          )}
+          <Animated.View
             style={[
-              styles.text, 
-              { color: showPlaceholder ? theme.textMuted : theme.text }
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {displayString}
-          </Animated.Text>
-          
-          {/* Elegant blinking cursor */}
-          <Animated.View 
-            style={[
-              styles.cursor, 
+              styles.cursor,
+              value.length > 0 && styles.cursorAfterText,
               { backgroundColor: theme.accentWarm },
-              cursorStyle
-            ]} 
+              cursorStyle,
+            ]}
           />
         </View>
+
+        <View style={[styles.line, { backgroundColor: theme.border }]} pointerEvents="none">
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: theme.accentWarm }, lineStyle]} />
+        </View>
+
+        {hint && (
+          <ThemedText style={[styles.hint, { color: theme.textMuted }]} pointerEvents="none">
+            {hint}
+          </ThemedText>
+        )}
       </View>
     </TouchableWithoutFeedback>
   );
@@ -105,7 +117,7 @@ export function CleanInput({ value, placeholder, style, onFocus, onBlur, ...prop
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingVertical: 12,
+    paddingTop: 12,
   },
   hiddenInput: {
     position: 'absolute',
@@ -117,11 +129,12 @@ const styles = StyleSheet.create({
   visualContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center', // Center the text visually
+    justifyContent: 'center',
     width: '100%',
+    height: 64,
   },
   text: {
-    fontFamily: 'JetBrainsMono-Regular', // Regular weight for elegance
+    fontFamily: 'JetBrainsMono-Regular',
     fontSize: 48,
     letterSpacing: 2,
     textAlign: 'center',
@@ -129,8 +142,24 @@ const styles = StyleSheet.create({
   },
   cursor: {
     width: 3,
-    height: 48, // Match font size
-    marginLeft: 8,
+    height: 48,
     borderRadius: 2,
-  }
+  },
+  cursorAfterText: {
+    marginLeft: 8,
+  },
+  line: {
+    height: 1,
+    marginTop: 12,
+    marginHorizontal: 24,
+    overflow: 'hidden',
+  },
+  hint: {
+    fontFamily: 'JetBrainsMono-Regular',
+    fontSize: 11,
+    letterSpacing: 2,
+    marginTop: 12,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
 });
