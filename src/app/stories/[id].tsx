@@ -17,6 +17,7 @@ import Animated, {
   withTiming,
   runOnJS,
   SlideInRight,
+  FadeIn,
   FadeOut,
   Easing,
 } from 'react-native-reanimated';
@@ -31,6 +32,7 @@ import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
+import { MusicDisc } from '@/components/stories/music-disc';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { StoryViewer } from '@/components/story-viewer';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
@@ -39,6 +41,7 @@ import { ALBUM_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
 import { isGifMedia } from '@/utils/media-kind';
 import { goBack } from '@/utils/navigation';
+import { getHighResArtwork } from '@/utils/media-attach';
 
 interface StoryItem {
   id: string;
@@ -50,6 +53,28 @@ interface StoryItem {
   fontSize?: number;
   textColor?: string;
   metadata?: any;
+}
+
+const MAX_SLOTS = 12;
+
+/** A picked song (it carries title and artwork), as opposed to a voice note. */
+function isSong(item?: StoryItem): boolean {
+  return item?.type === 'audio' && !!item.metadata;
+}
+
+/**
+ * Fills the wheel in story order with at most one song on it; everything
+ * else waits in the queue to be swapped in.
+ */
+function fillSlots(items: StoryItem[]): { slots: StoryItem[]; queue: StoryItem[] } {
+  const slots: StoryItem[] = [];
+  const queue: StoryItem[] = [];
+  for (const item of items) {
+    const songTaken = isSong(item) && slots.some(isSong);
+    if (slots.length < MAX_SLOTS && !songTaken) slots.push(item);
+    else queue.push(item);
+  }
+  return { slots, queue };
 }
 
 const CarouselNode = React.memo(({ 
@@ -123,32 +148,44 @@ const CarouselNode = React.memo(({
   return (
     <Animated.View style={[styles.itemContainer, { height: ITEM_HEIGHT, width: ITEM_WIDTH, position: 'absolute', top: height / 2 - ITEM_HEIGHT / 2, left: width / 2 - ITEM_WIDTH / 2 }, animatedStyle]}>
       <Pressable onPress={handlePress} style={styles.itemPressable}>
-        <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-          
-          {/* Native expo-image crossfade when source changes */}
-          {!hasError && (
-            <Image 
-              source={imageSource} 
-              style={StyleSheet.absoluteFill} 
-              contentFit="cover" 
-              transition={0}
-              onError={() => setHasError(true)} 
-            />
-          )}
+        {/* Keyed by item: when the wheel swaps this slot, the old one fades
+            out while the new one fades in, on slightly different clocks. */}
+        <Animated.View
+          key={item.id}
+          entering={FadeIn.duration(700).easing(Easing.out(Easing.cubic))}
+          exiting={FadeOut.duration(450).easing(Easing.in(Easing.quad))}
+          style={StyleSheet.absoluteFill}
+        >
+          {isSong(item) ? (
+            <View style={styles.songSlot}>
+              <MusicDisc size={ITEM_WIDTH} artwork={getHighResArtwork(item.metadata?.artwork)} />
+            </View>
+          ) : (
+            <View style={[styles.mediaCard, { borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
+              {!hasError && (
+                <Image
+                  source={imageSource}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  transition={0}
+                  onError={() => setHasError(true)}
+                />
+              )}
 
-          {hasError && (
-            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-              <ImageOff size={32} color={theme.text} opacity={0.3} />
+              {hasError && (
+                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <ImageOff size={32} color={theme.text} opacity={0.3} />
+                </View>
+              )}
+
+              {item.type === 'video' && !hasError && (
+                <View style={styles.videoOverlay}>
+                  <Play size={20} color="#FFF" fill="#FFF" />
+                </View>
+              )}
             </View>
           )}
-
-          {item.type === 'video' && !hasError && (
-            <View style={styles.videoOverlay}>
-              <Play size={20} color="#FFF" fill="#FFF" />
-            </View>
-          )}
-
-        </View>
+        </Animated.View>
       </Pressable>
     </Animated.View>
   );
@@ -209,13 +246,14 @@ export default function StoryDetailScreen() {
     }
   };
 
-  // Flatten media into a loop of items (only photos and videos — GIF stickers
-  // are decoration on a memory, not moments of the story)
+  // Flatten media into a loop of items: photos, videos and songs. GIF
+  // stickers are decoration on a memory and voice notes have nothing to
+  // show, so neither rides the wheel.
   const storyItems = useMemo<StoryItem[]>(() => {
     const items: StoryItem[] = [];
     activeStoryMemories.forEach(mem => {
       mem.mediaElements.forEach((media, index) => {
-        if (media.type === 'audio' || isGifMedia(media)) return;
+        if ((media.type === 'audio' && !media.metadata) || isGifMedia(media)) return;
         
         items.push({
           id: `media-${mem.id}-${index}`,
@@ -261,7 +299,6 @@ export default function StoryDetailScreen() {
     return items.reverse();
   }, [activeStoryMemories]);
 
-  const MAX_SLOTS = 12;
   const [activeSlots, setActiveSlots] = useState<StoryItem[]>([]);
   const queueRef = useRef<StoryItem[]>([]);
   const [viewerState, setViewerState] = useState({ isOpen: false, initialIndex: 0 });
@@ -323,20 +360,17 @@ export default function StoryDetailScreen() {
 
   // Initialize slots. Always resync — including to empty — so a memory
   // deleted from this story never lingers on the wheel.
+  const initialWheel = useMemo(() => fillSlots(storyItems), [storyItems]);
+  const hasQueue = initialWheel.queue.length > 0;
   useEffect(() => {
-    if (storyItems.length <= MAX_SLOTS) {
-      setActiveSlots(storyItems);
-      queueRef.current = [];
-    } else {
-      setActiveSlots(storyItems.slice(0, MAX_SLOTS));
-      queueRef.current = storyItems.slice(MAX_SLOTS);
-    }
-  }, [storyItems]);
+    setActiveSlots(initialWheel.slots);
+    queueRef.current = initialWheel.queue;
+  }, [initialWheel]);
 
   // Queue swapping logic — gated on wheel mode so it never re-renders the
   // screen (and through it, the mounted list cells) while the list is showing.
   useEffect(() => {
-    if (storyItems.length <= MAX_SLOTS || viewerState.isOpen || viewMode !== 'wheel') return;
+    if (!hasQueue || viewerState.isOpen || viewMode !== 'wheel') return;
 
     const interval = setInterval(() => {
       // Read shared value outside state updater to avoid reading during React's render phase
@@ -351,7 +385,7 @@ export default function StoryDetailScreen() {
         // translateY = -Math.cos(currentAngle) * RADIUS
         // The back of the wheel is where cos(angle) is positive (closest to 1)
         const slotScores = prev.map((_, i) => {
-          const baseAngle = (i / MAX_SLOTS) * Math.PI * 2;
+          const baseAngle = (i / prev.length) * Math.PI * 2;
           const currentAngle = baseAngle + currentRotation;
           return { index: i, score: Math.cos(currentAngle) };
         });
@@ -359,17 +393,30 @@ export default function StoryDetailScreen() {
         // Sort descending by score (highest score = furthest back)
         slotScores.sort((a, b) => b.score - a.score);
         
-        // Pick randomly from the top 3 furthest back cards
-        const candidates = slotScores.slice(0, 3);
-        const picked = candidates[Math.floor(Math.random() * candidates.length)];
-        const slotToReplace = picked.index;
-        
+        // Try the three furthest-back cards in random order. A song may only
+        // come in where it replaces the song already on the wheel, or when
+        // none is on it: one song at a time.
+        const songOnWheel = prev.some(isSong);
+        const candidates = slotScores.slice(0, 3).sort(() => Math.random() - 0.5);
+        let slotToReplace = -1;
+        let queueIndex = -1;
+        for (const candidate of candidates) {
+          const replacingSong = isSong(prev[candidate.index]);
+          const found = nextQueue.findIndex((item) => !isSong(item) || replacingSong || !songOnWheel);
+          if (found !== -1) {
+            slotToReplace = candidate.index;
+            queueIndex = found;
+            break;
+          }
+        }
+        if (slotToReplace === -1) return prev;
+
         const oldItem = prev[slotToReplace];
-        const newItem = nextQueue.shift()!;
+        const [newItem] = nextQueue.splice(queueIndex, 1);
         nextQueue.push(oldItem); // Put the old item back at the end of the queue
-        
+
         queueRef.current = nextQueue;
-        
+
         const newSlots = [...prev];
         newSlots[slotToReplace] = newItem;
         return newSlots;
@@ -377,7 +424,7 @@ export default function StoryDetailScreen() {
     }, 5000); // Swap an item every 5 seconds
 
     return () => clearInterval(interval);
-  }, [storyItems.length, viewerState.isOpen, viewMode]);
+  }, [hasQueue, viewerState.isOpen, viewMode]);
 
   // Auto-rotation + momentum decay loop — gated on wheel mode so it fully
   // stops in list view (no per-frame wake-ups, and the exiting wheel
@@ -615,6 +662,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
+  },
+  songSlot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   mediaCard: {
     width: '100%',
