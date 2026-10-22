@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { useTheme } from '@/hooks/use-theme';
 import { GrainBackground } from '@/components/grain-background';
@@ -11,6 +11,7 @@ import { ActionLink } from '@/components/action-link';
 import { AsciiArt } from '@/components/ascii-art';
 import { CONTROLLER_ART } from '@/constants/ascii-art';
 import { track } from '@/services/analytics';
+import { riseIn } from '@/constants/motion';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -46,7 +47,7 @@ export default function OnboardingStartScreen() {
         <View style={styles.bottomSpacer} />
 
         {/* Minimalist CTA Link */}
-        <Animated.View entering={FadeInUp.delay(600).duration(800).springify()} style={styles.ctaContainer}>
+        <Animated.View entering={riseIn(600, 600, 12)} style={styles.ctaContainer}>
           <ActionLink 
             text="BEGIN" 
             onPress={() => router.push('/onboarding/name')} 

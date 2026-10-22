@@ -14,11 +14,11 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { fadeIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDobInput } from '@/utils/dob';
 
@@ -91,17 +91,6 @@ export function DobField({ value, onChange, invalid = false, autoFocus }: DobFie
 function Cell({ digit, active, lineColor }: { digit?: string; active: boolean; lineColor: string }) {
   const theme = useTheme();
 
-  // A digit pops in a touch large and settles.
-  const scale = useSharedValue(1);
-  const previous = useRef(digit);
-  useEffect(() => {
-    if (digit && digit !== previous.current) {
-      scale.value = 1.18;
-      scale.value = withSpring(1, { damping: 14, stiffness: 320 });
-    }
-    previous.current = digit;
-  }, [digit, scale]);
-  const digitStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   // The empty active cell blinks its cursor.
   const blink = useSharedValue(1);
@@ -120,7 +109,10 @@ function Cell({ digit, active, lineColor }: { digit?: string; active: boolean; l
   return (
     <View style={styles.cell}>
       {digit ? (
-        <Animated.Text style={[styles.digit, { color: theme.text }, digitStyle]}>{digit}</Animated.Text>
+        // A digit fades in, no bounce.
+        <Animated.Text entering={fadeIn(160)} style={[styles.digit, { color: theme.text }]}>
+          {digit}
+        </Animated.Text>
       ) : (
         <Animated.View style={[styles.cursor, { backgroundColor: theme.accentWarm }, cursorStyle]} />
       )}
