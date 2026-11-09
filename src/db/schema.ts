@@ -84,6 +84,15 @@ export async function initSchema(db: SQLiteDatabase): Promise<void> {
     if (!e.message?.includes('duplicate column name')) throw e;
   }
 
+  // Story-style canvases: the template id and the designed layout (JSON CanvasDoc).
+  for (const column of ['template TEXT', 'layout TEXT']) {
+    try {
+      await db.execAsync(`ALTER TABLE compositions ADD COLUMN ${column};`);
+    } catch (e: any) {
+      if (!e.message?.includes('duplicate column name')) throw e;
+    }
+  }
+
   // Recently Deleted bin: a timestamp, not a hard delete, until it expires.
   try {
     await db.execAsync("ALTER TABLE compositions ADD COLUMN deleted_at INTEGER;");
@@ -126,5 +135,6 @@ export function mapRow(row: unknown): CompositionRow {
     location_coords: r.location_coords ? String(r.location_coords) : undefined,
     story_ids: r.story_ids ? String(r.story_ids) : undefined,
     story_id: r.story_id ? Number(r.story_id) : undefined,
+    layout: r.layout ? String(r.layout) : undefined,
   };
 }

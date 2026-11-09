@@ -1,6 +1,7 @@
 import { getDatabase } from './client';
 import { mapRow } from './schema';
 import type { Composition, CompositionRow, MediaElement, LocationData } from '@/types/journal';
+import type { CanvasDoc } from '@/canvas/types';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import * as FileSystem from 'expo-file-system/legacy';
 import { isGifMedia } from '@/utils/media-kind';
@@ -40,6 +41,7 @@ export interface CreateCompositionInput {
   locationCoords?: string;
   storyIds?: number[];
   createdAt?: number;
+  layout?: CanvasDoc;
 }
 
 export interface UpdateCompositionInput {
@@ -52,6 +54,7 @@ export interface UpdateCompositionInput {
   locationName?: string;
   locationCoords?: string;
   storyIds?: number[];
+  layout?: CanvasDoc;
 }
 
 export interface UpdateMediaPositionsInput {
@@ -84,6 +87,15 @@ export function rowToComposition(row: CompositionRow): Composition {
     location = { latitude: 0, longitude: 0, name: row.location_name };
   }
 
+  let layout: CanvasDoc | undefined;
+  if (row.layout) {
+    try {
+      layout = JSON.parse(row.layout) as CanvasDoc;
+    } catch (e) {
+      console.error('Failed to parse layout for composition', row.id, e);
+    }
+  }
+
   return {
     id: row.id,
     textContent: row.text_content,
@@ -95,6 +107,7 @@ export function rowToComposition(row: CompositionRow): Composition {
     deletedAt: row.deleted_at,
     location,
     storyIds: row.story_ids ? row.story_ids.split(',').map(Number) : (row.story_id ? [row.story_id] : []),
+    layout,
   };
 }
 
@@ -340,7 +353,7 @@ export async function createComposition(input: CreateCompositionInput): Promise<
   const mediaJson = JSON.stringify(input.mediaElements);
   
   const result = await db.runAsync(
-    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, text_color, location_name, location_coords, story_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO compositions (text_content, media_elements, created_at, font_family, font_size, text_color, location_name, location_coords, story_id, template, layout) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     input.textContent,
     mediaJson,
     creationTime,
@@ -349,7 +362,9 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     input.textColor ?? null,
     input.locationName || null,
     input.locationCoords || null,
-    null // Legacy story_id
+    null, // Legacy story_id
+    input.layout?.template ?? null,
+    input.layout ? JSON.stringify(input.layout) : null,
   );
   
   const compositionId = result.lastInsertRowId as number;
@@ -382,6 +397,7 @@ export async function createComposition(input: CreateCompositionInput): Promise<
     textColor: input.textColor ?? undefined,
     location,
     storyIds: input.storyIds || [],
+    layout: input.layout,
   };
 }
 
@@ -389,7 +405,7 @@ export async function updateComposition(input: UpdateCompositionInput): Promise<
   const db = await getDatabase();
   const mediaJson = JSON.stringify(input.mediaElements);
   await db.runAsync(
-    'UPDATE compositions SET text_content = ?, media_elements = ?, font_family = ?, font_size = ?, text_color = ?, location_name = ?, location_coords = ? WHERE id = ?',
+    'UPDATE compositions SET text_content = ?, media_elements = ?, font_family = ?, font_size = ?, text_color = ?, location_name = ?, location_coords = ?, template = COALESCE(?, template), layout = COALESCE(?, layout) WHERE id = ?',
     input.textContent,
     mediaJson,
     input.fontFamily,
@@ -397,6 +413,8 @@ export async function updateComposition(input: UpdateCompositionInput): Promise<
     input.textColor ?? null,
     input.locationName || null,
     input.locationCoords || null,
+    input.layout?.template ?? null,
+    input.layout ? JSON.stringify(input.layout) : null,
     input.id
   );
 

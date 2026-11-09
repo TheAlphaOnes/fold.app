@@ -1,0 +1,223 @@
+/**
+ * The look of each layer kind at a given canvas width. Each view is drawn
+ * centred on its anchor point (see LayerAnchor in canvas-view), so it only
+ * worries about its own size and shape.
+ */
+
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { MapPin } from 'lucide-react-native';
+
+import { MusicDisc } from '@/components/stories/music-disc';
+import { VinylRecord } from '@/components/vinyl-record';
+import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
+import { useMemoryAudio } from '@/canvas/render/use-memory-audio';
+import { useTheme } from '@/hooks/use-theme';
+import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import type { MediaElement } from '@/types/journal';
+import { getHighResArtwork } from '@/utils/media-attach';
+import { memoryTextMetrics } from '@/utils/memory-text';
+
+/** Widths old 90/120pt stickers had on a 348pt card, as fractions of canvas width. */
+const STICKER_W = { portrait: 90 / 348, landscape: 120 / 348 } as const;
+const AUDIO_DISC = 0.3;
+/** Text wraps inside this share of the canvas width. */
+const TEXT_MAX_WIDTH = 0.84;
+
+// ─── Text ───────────────────────────────────────────────────────────────
+
+export function TextLayerView({ layer, width }: { layer: TextLayer; width: number }) {
+  const theme = useTheme();
+  const metrics = memoryTextMetrics(layer.font, layer.size * width * layer.scale);
+  const ink = layer.color ?? theme.text;
+  const highlighted = layer.style === 'highlight';
+  return (
+    <View
+      style={[
+        { maxWidth: TEXT_MAX_WIDTH * width },
+        highlighted && {
+          backgroundColor: ink === '#FFFFFF' || ink.toUpperCase() === '#FFF' ? '#000000CC' : '#FFFFFFE6',
+          paddingHorizontal: metrics.fontSize * 0.5,
+          paddingVertical: metrics.fontSize * 0.2,
+          borderRadius: metrics.fontSize * 0.4,
+        },
+      ]}
+    >
+      <Text style={[metrics, { fontFamily: layer.font, color: ink, textAlign: layer.align }]}>{layer.text}</Text>
+    </View>
+  );
+}
+
+// ─── Photo / video stickers ─────────────────────────────────────────────
+
+function stickerSize(media: MediaElement, width: number, scale: number) {
+  const landscape = media.width && media.height ? media.width > media.height : false;
+  const w = (landscape ? STICKER_W.landscape : STICKER_W.portrait) * width * scale;
+  const h = landscape ? w * 0.75 : w * (4 / 3);
+  return { w, h };
+}
+
+export function MediaStickerView({ layer, media, width }: { layer: MediaSticker; media: MediaElement; width: number }) {
+  const thumb = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
+  const uri = media.type === 'video' ? thumb : media.uri;
+  let { w, h } = stickerSize(media, width, layer.scale);
+  if (layer.shape === 'circle' || layer.shape === 'stamp') h = w;
+
+  const image = uri ? (
+    <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
+  ) : null;
+
+  return <ShapeFrame shape={layer.shape} w={w} h={h}>{image}</ShapeFrame>;
+}
+
+function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number; h: number; children: React.ReactNode }) {
+  const theme = useTheme();
+  if (shape === 'polaroid') {
+    const pad = w * 0.06;
+    return (
+      <View style={[styles.polaroid, { padding: pad, paddingBottom: pad * 4 }]}>
+        <View style={{ width: w, height: h, overflow: 'hidden' }}>{children}</View>
+      </View>
+    );
+  }
+  if (shape === 'stamp') {
+    const pad = w * 0.07;
+    const dots = 9;
+    return (
+      <View style={[styles.stamp, { padding: pad }]}>
+        <View style={{ width: w, height: h, overflow: 'hidden' }}>{children}</View>
+        {/* Perforations: punched dots along each edge. */}
+        {(['top', 'bottom', 'left', 'right'] as const).map((edge) =>
+          Array.from({ length: dots }, (_, i) => {
+            const t = ((i + 0.5) / dots) * (w + pad * 2);
+            const r = pad * 0.42;
+            const pos =
+              edge === 'top' ? { top: -r, left: t - r } : edge === 'bottom' ? { bottom: -r, left: t - r } : edge === 'left' ? { left: -r, top: t - r } : { right: -r, top: t - r };
+            return <View key={`${edge}${i}`} style={[styles.perforation, pos, { width: r * 2, height: r * 2, borderRadius: r, backgroundColor: theme.backgroundElement }]} />;
+          }),
+        )}
+      </View>
+    );
+  }
+  if (shape === 'tape') {
+    return (
+      <View>
+        <View style={[styles.photoShadow, { width: w, height: h, overflow: 'hidden' }]}>{children}</View>
+        <View style={[styles.tape, { width: w * 0.42, height: w * 0.12, top: -w * 0.05, left: w * 0.29 }]} />
+      </View>
+    );
+  }
+  const radius = shape === 'circle' ? w / 2 : shape === 'square' ? 2 : w * 0.1;
+  return <View style={[styles.photoShadow, { width: w, height: h, borderRadius: radius, overflow: 'hidden' }]}>{children}</View>;
+}
+
+// ─── Songs and voice notes ──────────────────────────────────────────────
+
+export function AudioStickerView({
+  layer,
+  media,
+  width,
+  compositionId,
+  interactive,
+}: {
+  layer: AudioSticker;
+  media: MediaElement;
+  width: number;
+  compositionId: number;
+  interactive: boolean;
+}) {
+  const theme = useTheme();
+  const { isPlaying, toggle } = useMemoryAudio(media.uri, compositionId, interactive);
+  const size = AUDIO_DISC * width * layer.scale;
+  const artwork = getHighResArtwork(media.metadata?.artwork);
+
+  const disc = media.metadata && artwork ? <MusicDisc size={size} artwork={artwork} /> : <VinylRecord size={size} isPlaying={isPlaying} />;
+  const body = (
+    <View style={styles.audio}>
+      {disc}
+      {media.metadata && (
+        <View style={[styles.audioLabel, { backgroundColor: theme.background, borderColor: theme.border, maxWidth: size * 1.4 }]}>
+          <Text style={[styles.audioTitle, { color: theme.text, fontSize: size * 0.085 }]} numberOfLines={1}>
+            {media.metadata.title}
+          </Text>
+          <Text style={[styles.audioArtist, { color: theme.textMuted, fontSize: size * 0.07 }]} numberOfLines={1}>
+            {media.metadata.artist}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (!interactive) return body;
+  return (
+    <Pressable
+      onPress={toggle}
+      accessibilityRole="button"
+      accessibilityLabel={media.metadata ? `${isPlaying ? 'Pause' : 'Play'} ${media.metadata.title}` : `${isPlaying ? 'Pause' : 'Play'} voice note`}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+// ─── Location and date ──────────────────────────────────────────────────
+
+export function LocationStickerView({ name, width, scale }: { name: string; width: number; scale: number }) {
+  const size = 0.034 * width * scale;
+  return (
+    <View style={[styles.pill, { paddingHorizontal: size * 0.9, paddingVertical: size * 0.5, gap: size * 0.4 }]}>
+      <MapPin size={size * 1.1} color="#111111" />
+      <Text style={[styles.pillText, { fontSize: size }]}>{name.toUpperCase()}</Text>
+    </View>
+  );
+}
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+export function DateStickerView({ layer, createdAt, width }: { layer: DateSticker; createdAt: number; width: number }) {
+  const d = new Date(createdAt);
+  const size = 0.036 * width * layer.scale;
+  if (layer.style === 'stamp') {
+    return (
+      <View style={[styles.dateStamp, { padding: size * 0.6, borderRadius: size * 0.4 }]}>
+        <Text style={[styles.dateStampDay, { fontSize: size * 2.2 }]}>{String(d.getDate()).padStart(2, '0')}</Text>
+        <Text style={[styles.dateStampMonth, { fontSize: size * 0.8 }]}>
+          {MONTHS[d.getMonth()]} {d.getFullYear()}
+        </Text>
+      </View>
+    );
+  }
+  const stamp = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  return <Text style={[styles.dateMono, { fontSize: size * 1.3 }]}>{stamp}</Text>;
+}
+
+const styles = StyleSheet.create({
+  photoShadow: {
+    backgroundColor: '#1A1A1A',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+  },
+  polaroid: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  stamp: { backgroundColor: '#FAF7F0' },
+  perforation: { position: 'absolute' },
+  tape: { position: 'absolute', backgroundColor: '#F2E6B8CC', transform: [{ rotate: '-4deg' }] },
+  audio: { alignItems: 'center', gap: 8 },
+  audioLabel: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' },
+  audioTitle: { fontFamily: 'JetBrainsMono-Bold' },
+  audioArtist: { fontFamily: 'JetBrainsMono-Medium' },
+  pill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 999 },
+  pillText: { fontFamily: 'JetBrainsMono-Bold', letterSpacing: 1.5, color: '#111111' },
+  dateStamp: { backgroundColor: '#111111', alignItems: 'center' },
+  dateStampDay: { fontFamily: 'BitcountGridDouble-Light', color: '#FFFFFF' },
+  dateStampMonth: { fontFamily: 'JetBrainsMono-Medium', letterSpacing: 2, color: '#FFFFFF' },
+  dateMono: { fontFamily: 'JetBrainsMono-Medium', letterSpacing: 2, color: '#FFFFFF', textShadowColor: '#0008', textShadowRadius: 6 },
+});
