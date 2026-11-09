@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS user_settings (
   key TEXT PRIMARY KEY NOT NULL,
   value TEXT NOT NULL
 );
+
+-- Snapshots of derived data (profile stats, video thumbnails) so screens
+-- can draw at once on launch and refresh in the background. Disposable:
+-- every row can be rebuilt from the tables above.
+CREATE TABLE IF NOT EXISTS app_cache (
+  key        TEXT PRIMARY KEY NOT NULL,
+  value      TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 `;
 
 export async function initSchema(db: SQLiteDatabase): Promise<void> {

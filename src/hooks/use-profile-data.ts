@@ -2,22 +2,40 @@
  * Profile data cache — everything the profile's cards read from the
  * database, loaded in the background before the profile is ever opened.
  *
- * Stale-while-revalidate: cards render whatever is cached at once, and the
- * cache refreshes itself whenever the journal changes (hydrationVersion).
- * Opening the profile therefore never waits on a query; new data just
- * replaces the old when it lands.
+ * Stale-while-revalidate, across launches: the last snapshot is kept in
+ * the app_cache table and loaded first thing (one small read), so the
+ * profile has data before any real query runs. The real refresh waits until
+ * startup has settled, runs in the background, and saves a new snapshot.
+ * It runs again whenever the journal changes (hydrationVersion). Opening the
+ * profile never waits on a query; new data replaces the old when it lands.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Image } from 'expo-image';
 import { create } from 'zustand';
 
+import { readCache, writeCache } from '@/db/cache-repository';
 import { getDatesWithMemories, getDayCountsForYear, getDayCoversForMonth, type DayCover } from '@/db/journal-repository';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { pickTiles } from '@/utils/story-tiles';
 import { findRandomPastMemories } from '@/services/resurface.service';
-import type { Composition } from '@/types/journal';
+import type { Composition, Story } from '@/types/journal';
+
+/** Bump when the snapshot's shape changes; old rows are then ignored. */
+const SNAPSHOT_KEY = 'profile:v1';
+/** After launch, wait this long past the first idle moment before refreshing. */
+const LAUNCH_REFRESH_DELAY_MS = 1200;
+
+interface ProfileSnapshot {
+  dayCounts: Record<string, number>;
+  dayCountsYear: number;
+  activeDates: string[];
+  monthKey: string;
+  monthCovers: Record<string, DayCover>;
+  pastMemories: Composition[];
+  stories: Story[];
+}
 
 /** How many past memories the "from your past" wall samples. */
 export const PAST_SAMPLE_SIZE = 18;
@@ -39,6 +57,8 @@ interface ProfileDataState {
   /** Bumps each time a new sample lands; the wall keys on it. */
   pastSampleId: number;
 
+  /** Fills the store from the saved snapshot, if it's still empty. */
+  hydrateFromSnapshot: () => Promise<void>;
   /** Reloads everything for the current journal. Concurrent calls share one load. */
   refresh: () => Promise<void>;
   /** Loads one month's calendar photos if they aren't cached yet. */
@@ -48,6 +68,26 @@ interface ProfileDataState {
 }
 
 let inFlight: Promise<void> | null = null;
+
+/** Saves what the store holds now, for the next launch. */
+async function saveSnapshot(monthKey: string): Promise<void> {
+  const state = useProfileDataStore.getState();
+  if (!state.dayCounts || !state.activeDates || !state.pastMemories) return;
+  const snapshot: ProfileSnapshot = {
+    dayCounts: state.dayCounts,
+    dayCountsYear: state.dayCountsYear,
+    activeDates: [...state.activeDates],
+    monthKey,
+    monthCovers: state.covers[monthKey] ?? {},
+    pastMemories: state.pastMemories,
+    stories: useStoriesStore.getState().stories,
+  };
+  try {
+    await writeCache(SNAPSHOT_KEY, snapshot);
+  } catch (error) {
+    console.warn('Failed to save profile snapshot', error);
+  }
+}
 
 export const useProfileDataStore = create<ProfileDataState>((set, get) => {
   const loadPast = async () => {
@@ -67,6 +107,22 @@ export const useProfileDataStore = create<ProfileDataState>((set, get) => {
     covers: {},
     pastMemories: null,
     pastSampleId: 0,
+
+    hydrateFromSnapshot: async () => {
+      const snapshot = await readCache<ProfileSnapshot>(SNAPSHOT_KEY);
+      if (!snapshot || get().dayCounts !== null) return;
+      set({
+        dayCounts: snapshot.dayCounts,
+        dayCountsYear: snapshot.dayCountsYear,
+        activeDates: new Set(snapshot.activeDates),
+        covers: { [snapshot.monthKey]: snapshot.monthCovers },
+        pastMemories: snapshot.pastMemories,
+        pastSampleId: get().pastSampleId + 1,
+      });
+      if (useStoriesStore.getState().stories.length === 0) {
+        useStoriesStore.setState({ stories: snapshot.stories, loading: false });
+      }
+    },
 
     refresh: () => {
       if (inFlight) return inFlight;
@@ -92,6 +148,7 @@ export const useProfileDataStore = create<ProfileDataState>((set, get) => {
           for (const result of results) {
             if (result.status === 'rejected') console.error('Failed to refresh profile data', result.reason);
           }
+          return saveSnapshot(monthKeyOf(now));
         })
         .finally(() => {
           inFlight = null;
@@ -119,13 +176,30 @@ export const useProfileDataStore = create<ProfileDataState>((set, get) => {
 });
 
 /**
- * Keeps the cache warm from the root layout: loads once the database is
- * ready, and again every time the journal changes.
+ * Keeps the cache warm from the root layout. On launch: the saved snapshot
+ * first, then a background refresh once startup has settled. After that, a
+ * refresh (after interactions) every time the journal changes.
  */
 export function useProfileDataSync(ready: boolean): void {
   const hydrationVersion = useJournalStore((state) => state.hydrationVersion);
+  const launched = useRef(false);
+
   useEffect(() => {
     if (!ready) return;
-    void useProfileDataStore.getState().refresh();
+    const store = useProfileDataStore.getState();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const first = !launched.current;
+    launched.current = true;
+
+    if (first) void store.hydrateFromSnapshot();
+    // Wait for an idle moment so the refresh never competes with a screen
+    // being drawn or animated.
+    const idle = requestIdleCallback(() => {
+      timer = setTimeout(() => void store.refresh(), first ? LAUNCH_REFRESH_DELAY_MS : 0);
+    });
+    return () => {
+      cancelIdleCallback(idle);
+      if (timer) clearTimeout(timer);
+    };
   }, [ready, hydrationVersion]);
 }

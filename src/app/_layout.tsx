@@ -82,6 +82,7 @@ import { AnalyticsSync } from "@/components/analytics-sync";
 import { useStartupPermissions } from "@/hooks/use-startup-permissions";
 import { usePhonePortraitLock } from "@/hooks/use-phone-portrait-lock";
 import { useProfileDataSync } from "@/hooks/use-profile-data";
+import { loadThumbnailIndex } from "@/hooks/use-video-thumbnail";
 import { MemoryActionsHost } from "@/components/memory-actions-host";
 import { CelebrationHost } from "@/components/celebration-host";
 
@@ -180,6 +181,8 @@ function RootLayoutNav() {
         // Recently Deleted keeps memories for 30 days; clear out the expired
         // ones in the background so startup never waits on file cleanup.
         purgeExpiredTrash().catch((err) => console.error('Failed to purge expired memories', err));
+        // Saved video thumbnails, so feeds and the calendar don't decode videos again.
+        loadThumbnailIndex().catch((err) => console.warn('Failed to load video thumbnails', err));
       })
       .catch((err) => {
         console.error("Initialization failed:", err);
