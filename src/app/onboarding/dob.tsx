@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { isValidDob, parseDob } from '@/utils/dob';
-import { goBack } from '@/utils/navigation';
+import { goBack, navigate } from '@/utils/navigation';
 
 /** Whole years since the date of birth. */
 function ageFrom(dob: string): number | null {
@@ -32,7 +32,7 @@ export default function OnboardingDobScreen() {
   // A deep link can land here without a name — send the user back to step one.
   const hasName = !!name?.trim();
   useEffect(() => {
-    if (!hasName) router.replace('/onboarding/name');
+    if (!hasName) navigate.replace('/onboarding/name');
   }, [hasName]);
 
   const complete = dob.replace(/\D/g, '').length === 8;
@@ -51,7 +51,7 @@ export default function OnboardingDobScreen() {
     // marked done on the next step.
     await updateSetting('name', name.trim());
     await updateSetting('dob', dob);
-    router.push('/onboarding/basics');
+    navigate.push('/onboarding/basics');
   };
 
   if (!hasName) return null;

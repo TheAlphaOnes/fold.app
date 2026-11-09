@@ -19,7 +19,7 @@ import { gallerySlides } from '@/components/memory-gallery/slides';
 import { ShareTray } from '@/components/share-tray';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
-import { goBack } from '@/utils/navigation';
+import { goBack, navigate } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
 
 /**
@@ -200,7 +200,7 @@ export default function MemoryDetailScreen() {
           <RoundButton
             icon={Pencil}
             accessibilityLabel="Edit memory"
-            onPress={() => router.push({ pathname: '/compose', params: { editId: id } })}
+            onPress={() => navigate.push({ pathname: '/compose', params: { editId: id } })}
           />
           <RoundButton
             icon={(composition?.storyIds?.length ?? 0) > 0 ? Book : BookPlus}
@@ -231,7 +231,7 @@ export default function MemoryDetailScreen() {
               style={({ pressed }) => [styles.locationBadge, { opacity: pressed ? 0.6 : 1 }]}
               onPress={() => {
                 if (composition.storyIds.length === 1) {
-                  router.push(`/stories/${composition.storyIds[0]}`);
+                  navigate.push(`/stories/${composition.storyIds[0]}`);
                 } else {
                   setIsStoryPickerVisible(true);
                 }

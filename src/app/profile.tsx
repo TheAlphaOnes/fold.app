@@ -22,6 +22,7 @@ import { CloseButton, RoundButton } from '@/components/round-button';
 import { TECalendar } from '@/components/te-calendar';
 import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
+import { navigate } from '@/utils/navigation';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <RoundButton icon={SettingsIcon} accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+          <RoundButton icon={SettingsIcon} accessibilityLabel="Settings" onPress={() => navigate.push('/settings')} />
           <CloseButton />
         </View>
       </View>
@@ -74,7 +75,7 @@ export default function ProfileScreen() {
           <View style={styles.portfolioHeader}>
             <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
           </View>
-          <TECalendar onSelect={(date) => router.push(`/time-machine?day=${toDayKey(date)}`)} />
+          <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
         </View>
 
         {settled && (

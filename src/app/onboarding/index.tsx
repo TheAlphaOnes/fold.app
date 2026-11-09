@@ -12,6 +12,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { CONTROLLER_ART } from '@/constants/ascii-art';
 import { track } from '@/services/analytics';
 import { riseIn } from '@/constants/motion';
+import { navigate } from '@/utils/navigation';
 
 export default function OnboardingStartScreen() {
   const theme = useTheme();
@@ -50,7 +51,7 @@ export default function OnboardingStartScreen() {
         <Animated.View entering={riseIn(600, 600, 12)} style={styles.ctaContainer}>
           <ActionLink 
             text="BEGIN" 
-            onPress={() => router.push('/onboarding/name')} 
+            onPress={() => navigate.push('/onboarding/name')} 
           />
         </Animated.View>
         

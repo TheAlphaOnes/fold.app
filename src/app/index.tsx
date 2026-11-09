@@ -52,6 +52,7 @@ import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separato
 import { TimelinePlaceholder } from '@/components/timeline-placeholder';
 import { buildTimelineRows, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
 import { haptic } from '@/services/haptics';
+import { navigate } from '@/utils/navigation';
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -152,7 +153,7 @@ export default function HomeScreen() {
           }
           if (media.length === 0) return;
           setPendingCameraMedia(media);
-          router.push('/compose');
+          navigate.push('/compose');
         })
         .catch((err) => {
           console.error('Failed to copy shared files', err);
@@ -165,7 +166,7 @@ export default function HomeScreen() {
     if (shareIntent.text || shareIntent.webUrl) {
       const sharedText = shareIntent.webUrl || shareIntent.text || '';
       resetShareIntent();
-      router.push({ pathname: '/compose', params: { sharedText } });
+      navigate.push({ pathname: '/compose', params: { sharedText } });
     }
   }, [hasShareIntent, shareIntent, error]);
 
@@ -186,7 +187,7 @@ export default function HomeScreen() {
 
   const handleAdd = () => {
     
-    router.push('/compose');
+    navigate.push('/compose');
   };
 
   const listRef = useRef<Animated.FlatList<TimelineRow>>(null);
@@ -368,7 +369,7 @@ export default function HomeScreen() {
       <AmbientBackdrop />
       <GrainBackground />
 
-      <EdgeTab slot={0} onPress={() => router.push('/profile')} accessibilityLabel="Profile">
+      <EdgeTab slot={0} onPress={() => navigate.push('/profile')} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
       </EdgeTab>
       <InkGain />

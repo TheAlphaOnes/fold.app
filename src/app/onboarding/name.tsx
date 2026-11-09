@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { CleanInput } from '@/components/clean-input';
 import { OnboardingFrame } from '@/components/onboarding/onboarding-frame';
 import { track } from '@/services/analytics';
+import { navigate } from '@/utils/navigation';
 
 export default function OnboardingNameScreen() {
   const [name, setName] = useState('');
@@ -14,7 +15,7 @@ export default function OnboardingNameScreen() {
     if (!isValid) return;
     Keyboard.dismiss();
     track('onboarding_name_entered', {});
-    router.push({ pathname: '/onboarding/dob', params: { name: name.trim() } });
+    navigate.push({ pathname: '/onboarding/dob', params: { name: name.trim() } });
   };
 
   return (

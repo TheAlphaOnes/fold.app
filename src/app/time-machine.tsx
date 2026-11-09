@@ -31,6 +31,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
 import { clampToToday, startOfDay, toDayKey } from '@/utils/format-date';
 import type { Composition } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 const EASE_OUT = Easing.bezier(0.19, 1, 0.22, 1);
 const CARD_GAP = 21;
@@ -170,7 +171,7 @@ export default function TimeMachineScreen() {
             </ThemedText>
             <Pressable
               onPress={() =>
-                router.push({
+                navigate.push({
                   pathname: '/compose',
                   params: { dateTimestamp: selected.getTime().toString() },
                 })
@@ -240,7 +241,7 @@ export default function TimeMachineScreen() {
       <RoundButton
         icon={Plus}
         onPress={() =>
-          router.push({
+          navigate.push({
             pathname: '/compose',
             params: { dateTimestamp: selected.getTime().toString() },
           })

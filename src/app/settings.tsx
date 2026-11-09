@@ -19,6 +19,7 @@ import { IntensitySlider } from '@/components/intensity-slider';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_CORE_ART } from '@/constants/ascii-art';
 import { formatDobInput, isValidDob } from '@/utils/dob';
+import { navigate } from '@/utils/navigation';
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -79,7 +80,7 @@ export default function SettingsScreen() {
                 Alert.alert("COULDN'T CLEAR", 'Your memories are still saved. Please try again.');
                 return;
               }
-              router.navigate('/');
+              navigate.navigate('/');
             }
           }
         ]
@@ -335,7 +336,7 @@ export default function SettingsScreen() {
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
             onPress={() => {
               haptic.tap();
-              router.push('/trash');
+              navigate.push('/trash');
             }}
             accessibilityRole="button"
             accessibilityLabel={`Recently deleted, ${trashCount} memories`}
@@ -358,7 +359,7 @@ export default function SettingsScreen() {
               haptic.press();
               await updateSetting('hasOnboarded', false);
               await resetGuide();
-              router.replace('/onboarding');
+              navigate.replace('/onboarding');
             }}
           >
             <View style={styles.settingRowLeft}>
@@ -374,7 +375,7 @@ export default function SettingsScreen() {
             onPress={async () => {
               haptic.press();
               await resetGuide();
-              router.push({ pathname: '/guide', params: { step: 'write' } });
+              navigate.push({ pathname: '/guide', params: { step: 'write' } });
             }}
           >
             <View style={styles.settingRowLeft}>
@@ -403,7 +404,7 @@ export default function SettingsScreen() {
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.push('/feedback' as any)}
+            onPress={() => navigate.push('/feedback' as any)}
           >
             <ThemedText style={[styles.settingText, { color: theme.text }]}>SUBMIT FEEDBACK</ThemedText>
           </Pressable>
@@ -411,7 +412,7 @@ export default function SettingsScreen() {
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.push('/faq' as any)}
+            onPress={() => navigate.push('/faq' as any)}
           >
             <ThemedText style={[styles.settingText, { color: theme.text }]}>FAQ & GESTURES</ThemedText>
           </Pressable>
@@ -419,7 +420,7 @@ export default function SettingsScreen() {
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.push('/privacy' as any)}
+            onPress={() => navigate.push('/privacy' as any)}
           >
             <ThemedText style={[styles.settingText, { color: theme.text }]}>PRIVACY POLICY</ThemedText>
           </Pressable>
@@ -427,7 +428,7 @@ export default function SettingsScreen() {
 
           <Pressable 
             style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.push('/legal' as any)}
+            onPress={() => navigate.push('/legal' as any)}
           >
             <ThemedText style={[styles.settingText, { color: theme.text }]}>LEGAL TERMS</ThemedText>
           </Pressable>

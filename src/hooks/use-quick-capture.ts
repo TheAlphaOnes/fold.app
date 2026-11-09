@@ -19,6 +19,7 @@ import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { useVoiceTake, type CaptureStartResult } from '@/hooks/use-voice-take';
 import type { MediaElement } from '@/types/journal';
 import { trackError } from '@/services/analytics';
+import { navigate } from '@/utils/navigation';
 
 export type { CaptureStartResult };
 export type PhotoCaptureResult = 'opened' | 'denied' | 'cancelled' | 'busy' | 'failed';
@@ -85,7 +86,7 @@ export function useQuickCapture() {
       const asset = result.assets[0];
       const dest = await persistCapture(asset.uri, 'camera', 'jpg');
       setPendingCameraMedia({ uri: dest, type: 'image', width: asset.width, height: asset.height });
-      router.push('/compose');
+      navigate.push('/compose');
       return 'opened';
     } catch (error) {
       console.error('Failed to launch camera', error);

@@ -12,11 +12,13 @@ import { Check } from 'lucide-react-native';
 import { AsciiArt } from '@/components/ascii-art';
 import { COFFEE_ART } from '@/constants/ascii-art';
 
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useRouter } from 'expo-router';
 import type { Story } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 // Match the Maya design system spring values used in ShareTray and StoryPicker
 const SPRING_IN = { damping: 22, stiffness: 280, mass: 0.8 };
@@ -67,7 +69,7 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
       if (navigateOnCreate) {
         // Wait for animation to finish before navigating
         setTimeout(() => {
-          router.push(`/stories/${newStory.id}`);
+          navigate.push(`/stories/${newStory.id}`);
         }, 200);
       }
     } catch (err) {
@@ -84,6 +86,9 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
   const trayStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }]
   }));
+
+  // A double tap on Create makes one story, not two.
+  const createOnce = useGuardedPress(handleCreate);
 
   if (!mounted) return null;
 
@@ -114,7 +119,7 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
             <ThemedText style={[styles.sectionLabel, { color: theme.textMuted }]}>NEW STORY</ThemedText>
             <View style={styles.headerActions}>
               <Pressable
-                onPress={handleCreate}
+                onPress={createOnce}
                 disabled={!title.trim()}
                 hitSlop={12}
                 style={({ pressed }) => [
@@ -145,7 +150,7 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
                 selectionColor={theme.accentWarm}
                 autoFocus
                 returnKeyType="done"
-                onSubmitEditing={handleCreate}
+                onSubmitEditing={createOnce}
               />
             </View>
             <View style={{ alignItems: 'center', marginTop: 24, opacity: 0.3 }}>

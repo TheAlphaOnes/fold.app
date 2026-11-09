@@ -7,6 +7,7 @@ import { useGuideProgress } from '@/hooks/use-guide-progress';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { EdgeTab } from '@/components/edge-tab';
 import { GuideTabHint } from '@/components/guide-tab-hint';
+import { navigate } from '@/utils/navigation';
 
 // --- Ring geometry (sized to sit inside the 44px EdgeTab like the profile icon) ---
 const RING_SIZE = 24;
@@ -39,7 +40,7 @@ export function FieldGuideTab() {
     <>
       <EdgeTab
         slot={1}
-        onPress={() => router.push('/guide')}
+        onPress={() => navigate.push('/guide')}
         accessibilityLabel={`Field guide, ${completedCount} of ${totalCount} complete`}
       >
         <GuideRing completed={completedCount} total={totalCount} />

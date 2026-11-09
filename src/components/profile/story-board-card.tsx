@@ -18,6 +18,7 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { pickTiles } from '@/utils/story-tiles';
+import { navigate } from '@/utils/navigation';
 
 export function StoryBoardCard() {
   const theme = useTheme();
@@ -33,7 +34,7 @@ export function StoryBoardCard() {
         style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
         onPress={() => {
           haptic.tap();
-          router.push('/stories');
+          navigate.push('/stories');
         }}
         accessibilityRole="button"
         accessibilityLabel="Story board"
@@ -52,7 +53,7 @@ export function StoryBoardCard() {
               key={`${tile.storyId}-${index}`}
               onPress={() => {
                 haptic.tap();
-                router.push(`/stories/${tile.storyId}`);
+                navigate.push(`/stories/${tile.storyId}`);
               }}
               accessibilityRole="button"
               accessibilityLabel={`Story ${tile.title}`}

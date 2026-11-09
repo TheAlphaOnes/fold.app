@@ -13,6 +13,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { isMomentNotification } from '@/services/reminders.service';
 import { noteReminderTap, track } from '@/services/analytics';
+import { navigate } from '@/utils/navigation';
 
 interface CaptureRequestState {
   photoRequested: boolean;
@@ -45,7 +46,7 @@ export function useMomentReminderTaps(): void {
     const nudge = data.nudge ?? 'unknown';
     track('reminder_opened', { moment: data.moment, nudge, tone: data.tone ?? 'plain' });
     noteReminderTap(nudge);
-    router.navigate('/');
+    navigate.navigate('/');
     useCaptureRequest.getState().requestPhoto();
   }, [response, hasOnboarded]);
 }

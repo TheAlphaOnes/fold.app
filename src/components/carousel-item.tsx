@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCanvasCard } from '@/components/memory-canvas-card';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 export interface CarouselItemProps {
   item: Composition;
@@ -57,7 +58,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   const navigateToDetail = () => {
     completeGuideStep('inspect');
     onOpen?.();
-    router.push(`/memory/${item.id}`);
+    navigate.push(`/memory/${item.id}`);
   };
 
   const openMenu = () => {

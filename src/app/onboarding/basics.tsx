@@ -30,7 +30,7 @@ import { useLatestMemory } from '@/hooks/use-latest-memory';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
-import { goBack } from '@/utils/navigation';
+import { goBack, navigate } from '@/utils/navigation';
 
 const SLIDE_IDS: GuideStepId[] = ['write', 'voice', 'capture'];
 const SLIDES = SLIDE_IDS.map((id) => GUIDE_STEPS.find((step) => step.id === id)!);
@@ -80,7 +80,7 @@ export default function OnboardingBasicsScreen() {
     clear(index);
     setFeedback({ text: DONE[gesture], ok: true });
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    advanceTimer.current = setTimeout(() => (isLast ? router.push('/onboarding/tour') : goTo(index + 1)), 1100);
+    advanceTimer.current = setTimeout(() => (isLast ? navigate.push('/onboarding/tour') : goTo(index + 1)), 1100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newestId]);
 
@@ -93,7 +93,7 @@ export default function OnboardingBasicsScreen() {
     }
     setFeedback(null);
     if (done === 'tap') {
-      router.push('/compose');
+      navigate.push('/compose');
     } else if (done === 'hold') {
       if ((await quickCapture.startRecording()) === 'denied') {
         clear(index);
@@ -108,7 +108,7 @@ export default function OnboardingBasicsScreen() {
   const onBack = () => (index === 0 ? goBack('/onboarding/dob') : goTo(index - 1));
   const onNext = () => {
     if (!canAdvance) return;
-    if (isLast) router.push('/onboarding/tour');
+    if (isLast) navigate.push('/onboarding/tour');
     else goTo(index + 1);
   };
 

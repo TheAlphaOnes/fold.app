@@ -14,6 +14,7 @@ import { CalendarDays, Image as ImageIcon, MapPin, Mic, Music, Smile, type Lucid
 import { ROUND_BUTTON_SIZE } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { riseIn } from '@/constants/motion';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
@@ -31,18 +32,21 @@ const ITEMS: { kind: AddKind; icon: LucideIcon; label: string }[] = [
 /** Row height, for the composer's layout budget. */
 export const ADD_ROW_HEIGHT = ROUND_BUTTON_SIZE;
 
-export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
+export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => unknown }) {
   const theme = useTheme();
+  // One guard for the row: a double tap (or a tap on another pill while a
+  // picker is opening) adds once.
+  const add = useGuardedPress((kind: AddKind) => {
+    haptic.tap();
+    return onAdd(kind);
+  });
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={styles.scroll}>
       {ITEMS.map(({ kind, icon: Icon, label }, i) => (
         // Pills arrive one after another, so the row settles rather than pops.
         <Animated.View key={kind} entering={riseIn(260, 80 + i * 40, 6)}>
           <Pressable
-            onPress={() => {
-              haptic.tap();
-              onAdd(kind);
-            }}
+            onPress={() => add(kind)}
             accessibilityRole="button"
             accessibilityLabel={`Add ${label.toLowerCase()}`}
             style={({ pressed }) => [
