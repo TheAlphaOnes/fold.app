@@ -1,8 +1,9 @@
 /**
  * Onboarding basics — three slides, one per gesture on the orange key
  * (the first chapter of the Field Guide), so everyone leaves onboarding
- * knowing how to capture. Swipe between slides or use BACK / NEXT; dots
- * show where you are.
+ * knowing how to capture. Each slide has to be done, not skipped: NEXT
+ * unlocks once its gesture has saved a memory (or the mic/camera is off),
+ * and there's no swiping ahead. BACK always works; dots show where you are.
  *
  * The key is the real key: tap opens the writing page, hold records a voice
  * note, swipe up opens the camera. When the memory is saved and you're
@@ -11,7 +12,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
@@ -45,6 +46,10 @@ export default function OnboardingBasicsScreen() {
   const scroller = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const isLast = index === SLIDES.length - 1;
+  // Slides whose gesture has been done (or can't be, with permission off).
+  const [cleared, setCleared] = useState<ReadonlySet<number>>(() => new Set());
+  const clear = (i: number) => setCleared((prev) => new Set(prev).add(i));
+  const canAdvance = cleared.has(index);
   const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
@@ -72,6 +77,7 @@ export default function OnboardingBasicsScreen() {
     baseline.current = newestId;
     const gesture = SLIDES[index].gesture as KeyGesture;
     haptic.success();
+    clear(index);
     setFeedback({ text: DONE[gesture], ok: true });
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     advanceTimer.current = setTimeout(() => (isLast ? router.push('/onboarding/tour') : goTo(index + 1)), 1100);
@@ -89,22 +95,21 @@ export default function OnboardingBasicsScreen() {
     if (done === 'tap') {
       router.push('/compose');
     } else if (done === 'hold') {
-      if ((await quickCapture.startRecording()) === 'denied') setFeedback({ text: DENIED.hold, ok: false });
+      if ((await quickCapture.startRecording()) === 'denied') {
+        clear(index);
+        setFeedback({ text: DENIED.hold, ok: false });
+      }
     } else if ((await quickCapture.capturePhoto()) === 'denied') {
+      clear(index);
       setFeedback({ text: DENIED['swipe-up'], ok: false });
     }
   };
 
   const onBack = () => (index === 0 ? goBack('/onboarding/dob') : goTo(index - 1));
-  const onNext = () => (isLast ? router.push('/onboarding/tour') : goTo(index + 1));
-
-  const onScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(event.nativeEvent.contentOffset.x / width);
-    if (next !== index) {
-      haptic.select();
-      setFeedback(null);
-      setIndex(next);
-    }
+  const onNext = () => {
+    if (!canAdvance) return;
+    if (isLast) router.push('/onboarding/tour');
+    else goTo(index + 1);
   };
 
   return (
@@ -119,8 +124,9 @@ export default function OnboardingBasicsScreen() {
         ref={scroller}
         horizontal
         pagingEnabled
+        // Slides move only with BACK / NEXT, so none can be swiped past.
+        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScrollEnd}
         style={styles.pager}
       >
         {SLIDES.map((slide, i) => (
@@ -173,7 +179,15 @@ export default function OnboardingBasicsScreen() {
           <ArrowLeft size={18} color={theme.textMuted} strokeWidth={1.75} />
           <ThemedText style={[styles.navText, { color: theme.textMuted }]}>BACK</ThemedText>
         </Pressable>
-        <Pressable onPress={onNext} hitSlop={12} accessibilityRole="button" accessibilityLabel={isLast ? 'Continue' : 'Next'} style={styles.navButton}>
+        <Pressable
+          onPress={onNext}
+          disabled={!canAdvance}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={isLast ? 'Continue' : 'Next'}
+          accessibilityState={{ disabled: !canAdvance }}
+          style={[styles.navButton, !canAdvance && styles.navLocked]}
+        >
           <ThemedText style={[styles.navText, { color: theme.text }]}>{isLast ? 'CONTINUE' : 'NEXT'}</ThemedText>
           <ArrowRight size={18} color={theme.text} strokeWidth={1.75} />
         </Pressable>
@@ -256,6 +270,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
   },
+  navLocked: { opacity: 0.3 },
   navText: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 13,
