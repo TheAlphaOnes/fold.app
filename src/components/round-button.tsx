@@ -26,12 +26,14 @@ interface RoundButtonProps {
   accessibilityLabel: string;
   /** Tints the icon, e.g. theme.destructive for a delete action. */
   iconColor?: string;
+  /** Filled in ink: a toggle that's on (e.g. the memory is in a story). */
+  active?: boolean;
   /** Positioning only (absolute placement, margins); never the button's look. */
   style?: StyleProp<ViewStyle>;
   hitSlop?: number;
 }
 
-export function RoundButton({ icon: Icon, onPress, accessibilityLabel, iconColor, style, hitSlop }: RoundButtonProps) {
+export function RoundButton({ icon: Icon, onPress, accessibilityLabel, iconColor, active = false, style, hitSlop }: RoundButtonProps) {
   const theme = useTheme();
   return (
     <Pressable
@@ -41,14 +43,18 @@ export function RoundButton({ icon: Icon, onPress, accessibilityLabel, iconColor
       }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={active ? { selected: true } : undefined}
       hitSlop={hitSlop}
       style={({ pressed }) => [
         styles.button,
-        { borderColor: theme.border, backgroundColor: theme.background, opacity: pressed ? 0.5 : 1 },
+        active
+          ? { borderColor: theme.text, backgroundColor: theme.text }
+          : { borderColor: theme.border, backgroundColor: theme.background },
+        { opacity: pressed ? 0.5 : 1 },
         style,
       ]}
     >
-      <Icon size={ICON_SIZE} color={iconColor ?? theme.text} />
+      <Icon size={ICON_SIZE} color={active ? theme.background : (iconColor ?? theme.text)} />
     </Pressable>
   );
 }

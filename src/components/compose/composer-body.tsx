@@ -5,8 +5,12 @@
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [shape · front · remove]           only while a sticker is selected
- *   [ ▦ TEMPLATE ⇅ ] [gap]             TemplatePicker (tap: next, hold: list)
- *   📷 🖼  [story chip]        SAVE
+ *   📷 🖼     [ ▦ TEMPLATE ⇅ ]     SAVE
+ *
+ * Laid out by priority: Save is the one filled action; adding media sits
+ * at the thumb; the template is a quiet style pill (tap: next, hold: list,
+ * gap inside the list). Filing into a story is optional, so it's a round
+ * toggle in the top bar with Text and Stickers.
  *
  * New memories open straight into writing (TextEditorSheet) on the
  * stripes, exactly like the old compose; the camera/gallery buttons above
@@ -55,8 +59,11 @@ import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 
 /** Reference card width that legacy font sizes were measured against. */
 const LEGACY_CARD_WIDTH = 348;
-const TOP_BAR = 56;
-const BOTTOM_AREA = 150;
+/** Bar heights excluding safe areas, shared by the layout and the writing spacers. */
+const TOP_BAR = 6 + ROUND_BUTTON_SIZE + 8;
+const BOTTOM_BAR = 12 + ROUND_BUTTON_SIZE + 8;
+/** Breathing room between the canvas and the bars. */
+const CANVAS_MARGIN = 24;
 const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'polaroid', 'stamp', 'tape'];
 
 const DEFAULT_TEXT: TextDraft = { text: '', font: DEFAULT_MEMORY_FONT, color: null, align: 'center', style: 'plain', size: 0.065 };
@@ -151,7 +158,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   // ─── Canvas size: the largest 9:16 that fits between the bars ─────────
   const canvas = fitCanvas({
     width: window.width - 32,
-    height: window.height - insets.top - insets.bottom - TOP_BAR - BOTTOM_AREA,
+    height: window.height - insets.top - insets.bottom - TOP_BAR - BOTTOM_BAR - CANVAS_MARGIN * 2,
   });
   const memory = {
     id: existing?.id ?? -1,
@@ -345,12 +352,18 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           <CloseButton accessibilityLabel="Close without saving" />
           <View style={styles.topRight}>
             {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
+            <RoundButton
+              icon={Book}
+              active={storyIds.length > 0}
+              accessibilityLabel={storyIds.length > 0 ? `In ${storyLabel.toLowerCase()}. Change stories` : 'Add to a story'}
+              onPress={() => setSheet('stories')}
+            />
             <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
             <RoundButton icon={Smile} accessibilityLabel="Add a sticker" onPress={() => setSheet('stickers')} />
           </View>
         </Animated.View>
       )}
-      {editing && <View style={{ height: insets.top + 6 + 44 + 8 }} />}
+      {editing && <View style={{ height: insets.top + TOP_BAR }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
         <CanvasEditor
@@ -376,6 +389,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           <View style={styles.templateList}>
             <TemplateList
               current={c.doc.template}
+              gap={c.doc.gap}
+              onGap={c.setGap}
               onPick={(template) => {
                 c.setTemplate(template);
                 setTemplatesOpen(false);
@@ -408,36 +423,17 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       </Animated.View>
 
       {!editing && (
-        <Animated.View entering={riseIn(340, 120, 12)} style={styles.templates}>
-          <TemplatePicker
-            current={c.doc.template}
-            gap={c.doc.gap}
-            open={templatesOpen}
-            onPick={c.setTemplate}
-            onGap={c.setGap}
-            onToggleList={() => setTemplatesOpen((o) => !o)}
-          />
-        </Animated.View>
-      )}
-
-      {!editing && (
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
           <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
           <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
-          <Pressable
-            onPress={() => {
-              haptic.tap();
-              setSheet('stories');
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={storyIds.length > 0 ? `Story: ${storyLabel}` : 'Add to a story'}
-            style={[styles.storyChip, storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }]}
-          >
-            <Book size={12} color={storyIds.length > 0 ? theme.background : theme.text} />
-            <ThemedText style={[styles.storyText, { color: storyIds.length > 0 ? theme.background : theme.text }]} numberOfLines={1}>
-              {storyLabel}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.middle}>
+            <TemplatePicker
+              current={c.doc.template}
+              open={templatesOpen}
+              onPick={c.setTemplate}
+              onToggleList={() => setTemplatesOpen((o) => !o)}
+            />
+          </View>
           <Pressable
             onPress={save}
             disabled={!hasContent || isSaving}
@@ -449,7 +445,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           </Pressable>
         </Animated.View>
       )}
-      {editing && <View style={{ height: BOTTOM_AREA - 50 + insets.bottom + 8 }} />}
+      {editing && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
 
       {editing && (
         <TextEditorSheet
@@ -544,13 +540,11 @@ const styles = StyleSheet.create({
   },
   selBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 36, justifyContent: 'center' },
   selText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.5 },
-  templates: { paddingTop: 10 },
   // Floats over the bottom of the canvas, right above the picker it opened from.
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
-  storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1 },
-  storyText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
-  save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 18, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
+  middle: { flex: 1, alignItems: 'center' },
+  save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
   saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
 });
