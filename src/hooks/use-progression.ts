@@ -152,7 +152,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     ) {
       caption = 'NEW INK RECORD';
     }
-    if (caption) useMoments.getState().celebrate(caption);
+    if (caption) useMoments.getState().celebrate(caption, caption.startsWith('DAY') ? 'streak' : 'ripple');
     void enableReminders();
   },
 
