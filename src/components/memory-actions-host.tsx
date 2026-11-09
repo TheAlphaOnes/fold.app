@@ -11,16 +11,21 @@ import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
 
+import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { MemoryActionsTray } from '@/components/memory-actions-tray';
 import { MemoryCard } from '@/components/memory-card';
 import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
 import { useSettingsStore } from '@/hooks/use-settings';
+import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { saveToGallery } from '@/services/media-save.service';
 import type { Composition } from '@/types/journal';
+
+/** The bird hangs, then flies off the top; capture once it's gone (700ms + 1000ms). */
+const FLIGHT_MS = 1750;
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -32,6 +37,8 @@ function subtitleFor(memory: Composition): string {
 
 export function MemoryActionsHost() {
   const { width } = useWindowDimensions();
+  const theme = useTheme();
+  const [flightKey, setFlightKey] = useState(0);
   const memory = useMemoryActions((state) => state.memory);
   const options = useMemoryActions((state) => state.options);
   const close = useMemoryActions((state) => state.close);
@@ -61,9 +68,11 @@ export function MemoryActionsHost() {
     const item = current;
     setTarget(item);
     setCapturing(true);
+    haptic.thud();
+    setFlightKey((key) => key + 1);
     try {
-      // Let the offscreen card render before capturing it.
-      await new Promise((resolve) => setTimeout(resolve, 80));
+      // The orange bird carries the card off first; capturing freezes JS, so wait it out.
+      await new Promise((resolve) => setTimeout(resolve, FLIGHT_MS));
       const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { dialogTitle: 'Share Memory Card', mimeType: 'image/png' });
@@ -126,6 +135,12 @@ export function MemoryActionsHost() {
         }}
       />
 
+      {flightKey > 0 && (
+        <View style={[StyleSheet.absoluteFill, styles.flight]} pointerEvents="none">
+          <LogoUploadFlight key={flightKey} color={theme.accentWarm} />
+        </View>
+      )}
+
       {/* Offscreen copy of the card, captured as the shared image. */}
       {capturing && target && (
         <View style={styles.offscreen} pointerEvents="none">
@@ -139,6 +154,11 @@ export function MemoryActionsHost() {
 }
 
 const styles = StyleSheet.create({
+  flight: {
+    zIndex: 9000,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   offscreen: {
     position: 'absolute',
     opacity: 0,

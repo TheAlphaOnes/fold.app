@@ -27,6 +27,7 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { captureRef } from 'react-native-view-shot';
 import { MemoryCard } from '@/components/memory-card';
 import { ShareTray } from '@/components/share-tray';
+import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { goBack } from '@/utils/navigation';
@@ -413,12 +414,16 @@ export default function MemoryDetailScreen() {
   const handleSaveMedia = (uri: string) => saveToGallery(uri);
 
   const hiddenCardRef = useRef<View>(null);
+  const [flightKey, setFlightKey] = useState(0);
 
   const captureAndShareCard = async () => {
     try {
       setIsShareMenuVisible(false);
-      // Small delay to ensure the offscreen card is rendered
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // The orange bird carries the card off (700ms hang + 1000ms flight);
+      // capturing freezes JS, so wait it out.
+      haptic.thud();
+      setFlightKey((key) => key + 1);
+      await new Promise(resolve => setTimeout(resolve, 1750));
       const uri = await captureRef(hiddenCardRef, {
         format: 'png',
         quality: 1,
@@ -655,6 +660,11 @@ export default function MemoryDetailScreen() {
           await toggleStoryId(composition.id, storyId);
         }}
       />
+      {flightKey > 0 && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 9000, justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
+          <LogoUploadFlight key={flightKey} color={theme.accentWarm} />
+        </View>
+      )}
       {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
     </View>
   );
