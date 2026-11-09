@@ -44,7 +44,7 @@ function docFor(template: TemplateId): CanvasDoc {
   const base = newDoc(media, template);
   // Stickers show every shape, so each one can be checked by eye.
   let i = 0;
-  const doc = { ...base, layers: base.layers.map((l) => (l.kind === 'media' ? { ...l, shape: SHAPES[i++ % SHAPES.length] } : l)) };
+  const doc = template === 'stickers' ? { ...base, layers: base.layers.map((l) => (l.kind === 'media' ? { ...l, shape: SHAPES[i++ % SHAPES.length] } : l)) } : base;
   const text: TextLayer = template === 'text' ? { ...TEXT, color: null, style: 'plain', y: 0.5, size: 0.08 } : TEXT;
   return { ...doc, layers: [...doc.layers, text, DATE] };
 }
