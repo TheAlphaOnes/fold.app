@@ -4,11 +4,12 @@
  * knowing how to capture. Swipe between slides or use BACK / NEXT; dots
  * show where you are.
  *
- * The key is drawn for demonstration only: a ghost finger performs each
- * gesture on it, and touching it does nothing.
+ * The key is live practice: a ghost finger shows the gesture, doing it on
+ * the key confirms and moves on, a wrong gesture says what to do instead.
+ * Nothing is captured; the journal is untouched.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +29,9 @@ import { goBack } from '@/utils/navigation';
 
 const SLIDE_IDS: GuideStepId[] = ['write', 'voice', 'capture'];
 const SLIDES = SLIDE_IDS.map((id) => GUIDE_STEPS.find((step) => step.id === id)!);
-const noop = () => {};
+type KeyGesture = 'tap' | 'hold' | 'swipe-up';
+const NAMES: Record<KeyGesture, string> = { tap: 'a tap', hold: 'a hold', 'swipe-up': 'a swipe' };
+const DONE: Record<KeyGesture, string> = { tap: 'nice. that opens a page.', hold: 'nice. that starts a voice note.', 'swipe-up': 'nice. that opens the camera.' };
 
 export default function OnboardingBasicsScreen() {
   const theme = useTheme();
@@ -37,9 +40,26 @@ export default function OnboardingBasicsScreen() {
   const scroller = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const isLast = index === SLIDES.length - 1;
+  const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
+
+  const tryGesture = (done: KeyGesture) => {
+    const expected = SLIDES[index].gesture as KeyGesture;
+    if (done === expected) {
+      haptic.success();
+      setFeedback({ text: DONE[done], ok: true });
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+      advanceTimer.current = setTimeout(() => (isLast ? router.push('/onboarding/tour') : goTo(index + 1)), 900);
+    } else {
+      haptic.select();
+      setFeedback({ text: `that was ${NAMES[done]}. try ${NAMES[expected]}.`, ok: false });
+    }
+  };
 
   const goTo = (next: number) => {
     haptic.select();
+    setFeedback(null);
     setIndex(next);
     scroller.current?.scrollTo({ x: next * width, animated: true });
   };
@@ -51,6 +71,7 @@ export default function OnboardingBasicsScreen() {
     const next = Math.round(event.nativeEvent.contentOffset.x / width);
     if (next !== index) {
       haptic.select();
+      setFeedback(null);
       setIndex(next);
     }
   };
@@ -79,11 +100,24 @@ export default function OnboardingBasicsScreen() {
             <ThemedText style={[styles.title, { color: theme.text }]}>{slide.title}</ThemedText>
             <ThemedText style={[styles.hint, { color: theme.textMuted }]}>{slide.hint}</ThemedText>
 
-            {/* The key, for show: the ghost finger plays this slide's gesture. */}
-            <View style={styles.demo} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {/* Live practice: the ghost finger shows it, the key takes it. */}
+            <View style={styles.feedbackSlot}>
+              {i === index && feedback && (
+                <Animated.View key={feedback.text} entering={fadeIn(180)}>
+                  <ThemedText style={[styles.feedback, { color: feedback.ok ? theme.accentWarm : theme.textMuted }]}>
+                    {feedback.text}
+                  </ThemedText>
+                </Animated.View>
+              )}
+            </View>
+            <View style={styles.demo}>
               <View>
-                <AddButton onPress={noop} />
-                <GestureHint gesture={slide.gesture} visible={i === index} style={StyleSheet.absoluteFill} />
+                <AddButton
+                  onPress={() => tryGesture('tap')}
+                  onHold={() => tryGesture('hold')}
+                  onSwipeUp={() => tryGesture('swipe-up')}
+                />
+                <GestureHint gesture={slide.gesture} visible={i === index && !feedback?.ok} style={StyleSheet.absoluteFill} />
               </View>
             </View>
           </View>
@@ -144,8 +178,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
+  feedbackSlot: {
+    height: 20,
+    marginTop: 28,
+    justifyContent: 'center',
+  },
+  feedback: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 12,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
   demo: {
-    marginTop: 72,
+    marginTop: 24,
     height: 200,
     width: '100%',
     alignItems: 'center',
