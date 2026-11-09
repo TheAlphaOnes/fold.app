@@ -40,14 +40,20 @@ function element(partial: Omit<MediaElement, 'id' | 'x_pos' | 'y_pos'>): MediaEl
 export function useComposeMedia(count: number) {
   const roomLeft = MAX_MEDIA_ELEMENTS - count;
 
-  const pickFromGallery = useCallback(async (): Promise<MediaElement[]> => {
-    if (roomLeft <= 0) {
+  /**
+   * Picks photos/videos, within the memory's media cap. `replacing` picks
+   * one to swap in for a photo already there: it frees that photo's slot,
+   * so a full memory can still change a photo.
+   */
+  const pickFromGallery = useCallback(async ({ replacing = false }: { replacing?: boolean } = {}): Promise<MediaElement[]> => {
+    const counted = replacing ? count - 1 : count;
+    if (MAX_MEDIA_ELEMENTS - counted <= 0) {
       alertElementCap();
       return [];
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], allowsMultipleSelection: true });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], allowsMultipleSelection: !replacing });
     if (result.canceled) return [];
-    const { accepted, capped } = sliceToElementCap(count, result.assets);
+    const { accepted, capped } = sliceToElementCap(counted, result.assets);
     if (capped) alertElementCap();
 
     const oversized: Record<MediaKind, number> = { image: 0, video: 0, audio: 0 };
@@ -65,7 +71,7 @@ export function useComposeMedia(count: number) {
     );
     for (const kind of ['image', 'video'] as MediaKind[]) if (oversized[kind] > 0) alertFileTooLarge(kind, oversized[kind]);
     return added.filter((m): m is MediaElement => m !== null);
-  }, [count, roomLeft]);
+  }, [count]);
 
   const captureWithCamera = useCallback(
     async (kind: 'image' | 'video'): Promise<MediaElement[]> => {
