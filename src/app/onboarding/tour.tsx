@@ -27,6 +27,7 @@ import { ThemedText } from '@/components/themed-text';
 import { GUIDE_MISSION_COUNT } from '@/constants/guide';
 import { EASE_IN_OUT, fadeIn } from '@/constants/motion';
 import { useSettingsStore } from '@/hooks/use-settings';
+import { useMoments } from '@/hooks/use-moments';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { track } from '@/services/analytics';
@@ -39,6 +40,7 @@ export default function OnboardingTourScreen() {
     haptic.success();
     await updateSetting('hasOnboarded', true);
     track('onboarding_completed', { age_range: getAgeRange(settings.dob), took_tour: takeTour });
+    useMoments.getState().celebrate(settings.name ? `WELCOME, ${settings.name.toUpperCase()}` : 'WELCOME');
     router.replace(takeTour ? '/guide' : '/');
   };
 
