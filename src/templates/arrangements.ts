@@ -3,10 +3,9 @@
  * with its own gentle motion when the canvas is live:
  *
  *   Ring    evenly round a circle      the ring turns; each photo stays upright
- *   Fan     a hand of cards            each card sways
+ *   Fan     a hand of big cards        it closes into a stack and fans back open
  *   Deck    a pile of prints           the top print swings out and tucks
  *                                      under, so every photo comes to the top
- *   Float   scattered loosely          each photo bobs on its own
  *
  * Spots are pure (normalised x/y, scale, rotation) so every arrangement is
  * tested and draws the same in the editor, the feed and the export.
@@ -14,19 +13,22 @@
  * render/arrangement-motion); the editor and exports stay still.
  */
 
-import { CANVAS_ASPECT } from '@/canvas/geometry';
-import type { ArrangedTemplateId, MediaSticker } from '@/canvas/types';
+import { CANVAS_ASPECT, STICKER_BASE_WIDTH } from '@/canvas/geometry';
+import type { ArrangedTemplateId, MediaSticker, StickerShape } from '@/canvas/types';
 
 export type Spot = Pick<MediaSticker, 'x' | 'y' | 'scale' | 'rotation'>;
 
 /** How an arrangement moves when live. `group` turns the whole shape; `item` moves each photo on its own. */
 export type ArrangementMotion =
   | { kind: 'group'; degreesPerSecond: number }
-  | { kind: 'item'; style: 'sway' | 'bob' }
+  /** The hand closes into a stack and fans back open, card after card. */
+  | { kind: 'fan' }
   | { kind: 'deck' };
 
 interface Arrangement {
   name: string;
+  /** Forces every photo into this sticker shape (Fan and Deck use uniform cards). */
+  shape?: StickerShape;
   spot: (index: number, count: number) => Spot;
   motion: ArrangementMotion;
 }
@@ -52,49 +54,41 @@ export function ringSpot(index: number, count: number): Spot {
   };
 }
 
-/** Spread in an arc from a point low on the card, each card turned along the arc. */
+/** A card's scale for a target width (fraction of the canvas width): cards are portrait prints. */
+const cardScale = (widthFraction: number) => widthFraction / STICKER_BASE_WIDTH.portrait;
+
+/**
+ * A hand of cards: big prints spread in an arc from a point below the
+ * middle, each turned along the arc; fewer cards spread less and are larger.
+ */
 export function fanSpot(index: number, count: number): Spot {
-  const spread = Math.min(80, 18 * Math.max(1, count - 1));
+  // Wide enough to read as a hand, narrow enough that the outer cards stay on the card.
+  const spread = Math.min(56, 14 * Math.max(1, count - 1));
   const degrees = count <= 1 ? 0 : -spread / 2 + (index / (count - 1)) * spread;
   const angle = (degrees * Math.PI) / 180;
-  const reach = 0.3;
+  const reach = 0.34;
   return {
     x: 0.5 + reach * Math.sin(angle),
-    y: 0.62 - vertical(reach) * Math.cos(angle),
-    scale: count <= 4 ? 1.15 : count <= 7 ? 1 : 0.85,
+    y: 0.5 + vertical(reach) * (1 - Math.cos(angle)) + 0.02,
+    scale: cardScale(count <= 3 ? 0.48 : count <= 6 ? 0.42 : 0.38),
     rotation: degrees,
   };
 }
 
-/** A messy pile in the middle: big prints, each nudged and turned a little differently. */
+/** A pile of big prints in the middle, each turned a little differently. */
 export function stackSpot(index: number): Spot {
   return {
-    x: 0.5 + wobble(index, 7) * 0.05,
-    y: 0.47 + wobble(index, 11) * 0.03,
-    scale: 1.45,
-    rotation: wobble(index, 13) * 11,
-  };
-}
-
-/** Scattered over a loose grid, leaving the lower third for words. */
-export function floatSpot(index: number, count: number): Spot {
-  const cols = count <= 4 ? 2 : 3;
-  const rows = Math.ceil(count / cols);
-  const col = index % cols;
-  const row = Math.floor(index / cols);
-  return {
-    x: (col + 0.5) / cols + wobble(index, 5) * 0.05,
-    y: 0.14 + ((row + 0.5) / rows) * 0.52 + wobble(index, 3) * 0.025,
-    scale: cols === 2 ? 1 : 0.8,
-    rotation: wobble(index, 9) * 8,
+    x: 0.5 + wobble(index, 7) * 0.025,
+    y: 0.47 + wobble(index, 11) * 0.012,
+    scale: cardScale(0.66),
+    rotation: wobble(index, 13) * 6,
   };
 }
 
 export const ARRANGEMENTS: Record<ArrangedTemplateId, Arrangement> = {
   ring: { name: 'Ring', spot: ringSpot, motion: { kind: 'group', degreesPerSecond: 4 } },
-  fan: { name: 'Fan', spot: fanSpot, motion: { kind: 'item', style: 'sway' } },
-  stack: { name: 'Deck', spot: (i) => stackSpot(i), motion: { kind: 'deck' } },
-  float: { name: 'Float', spot: floatSpot, motion: { kind: 'item', style: 'bob' } },
+  fan: { name: 'Fan', shape: 'card', spot: fanSpot, motion: { kind: 'fan' } },
+  stack: { name: 'Deck', shape: 'card', spot: (i) => stackSpot(i), motion: { kind: 'deck' } },
 };
 
 export const ARRANGED_IDS = Object.keys(ARRANGEMENTS) as ArrangedTemplateId[];
@@ -118,4 +112,4 @@ export function deckTop(count: number, step: number): number {
 }
 
 /** Retired template ids mapped to what replaced them, so saved memories still open. */
-export const TEMPLATE_ALIASES: Record<string, ArrangedTemplateId> = { spiral: 'ring' };
+export const TEMPLATE_ALIASES: Record<string, ArrangedTemplateId> = { spiral: 'ring', float: 'fan' };

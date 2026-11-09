@@ -5,7 +5,7 @@ const snap = (n: number) => Math.round(n * 3) / 3; // a 3x screen
 
 describe('cellRect', () => {
   it('neighbouring cells share an edge exactly, with no gap', () => {
-    for (const id of ['duo-stack', 'trio-strips', 'quad', 'six'] as const) {
+    for (const id of ['duo-stack', 'trio-strips', 'quad', 'six', 'feature', 'film'] as const) {
       const rects = gridLayout(id).cells.map((c) => cellRect(c, 361.7, 643.1, 0, snap));
       for (const a of rects)
         for (const b of rects) {

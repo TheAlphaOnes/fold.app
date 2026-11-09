@@ -1,7 +1,7 @@
 /**
  * CanvasBase — everything under the layers: the stripes, a colour, a
  * full-bleed photo/video (Story), or a grid of cells with its decor
- * (film strip, diary's striped page, polaroid frame).
+ * (diary's striped page, polaroid frame).
  */
 
 import React from 'react';
@@ -86,9 +86,9 @@ function GridBase({
   const theme = useTheme();
   const gap = GAP_FRACTION[doc.gap ?? 'none'] * width;
   // Gaps show the card colour; only decor grids (film, polaroid) set their own.
-  // Film keeps its black strip; the polaroid always sits on the striped card
-  // (older ones stored a cream backdrop); other grids' gaps are the card colour.
-  const background = layout.decor === 'polaroid' ? theme.backgroundElement : doc.background.kind === 'color' ? doc.background.color : theme.backgroundElement;
+  // Every grid sits on the card: older Film and Polaroid memories stored a
+  // black or cream backdrop, which is ignored now.
+  const background = theme.backgroundElement;
   const fills = new Map((doc.cells ?? []).map((c) => [c.cellId, c]));
 
   const frame = layout.decor === 'polaroid';
@@ -121,9 +121,9 @@ function GridBase({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents={renderers ? 'box-none' : 'none'}>
-      {layout.decor === 'film' && <FilmDecor width={width} height={height} />}
       {/* The diary's page under the photo is the app's own striped card. */}
-      {(layout.decor === 'diary' || layout.decor === 'polaroid') && <StripesSurface animated={false} />}
+      {/* Film's strip margins, the diary page and the polaroid sit on the striped card. */}
+      {(layout.decor === 'film' || layout.decor === 'diary' || layout.decor === 'polaroid') && <StripesSurface animated={false} />}
       {frame ? (
         <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-3deg' }] }]}>
           <View
@@ -146,25 +146,8 @@ function GridBase({
   );
 }
 
-/** Sprocket holes down both edges of a black film strip. */
-function FilmDecor({ width, height }: { width: number; height: number }) {
-  const hole = width * 0.045;
-  const count = Math.floor(height / (hole * 2.2));
-  const holes = Array.from({ length: count }, (_, i) => i * (height / count) + hole * 0.6);
-  return (
-    <>
-      {[width * 0.045, width - width * 0.045 - hole].map((left) =>
-        holes.map((top) => (
-          <View key={`${left}-${top}`} style={[styles.sprocket, { left, top, width: hole, height: hole * 1.3 }]} />
-        )),
-      )}
-    </>
-  );
-}
-
 const styles = StyleSheet.create({
   cell: { position: 'absolute', overflow: 'hidden' },
-  sprocket: { position: 'absolute', borderRadius: 3, backgroundColor: '#F4F1EA', opacity: 0.85 },
   polaroid: {
     position: 'absolute',
     backgroundColor: '#FFFFFF',

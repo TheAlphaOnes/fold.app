@@ -8,7 +8,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { CircleDashed, Clapperboard, GalleryHorizontalEnd, Image as ImageIcon, Layers, Layers2, Type as TypeIcon, Wind } from 'lucide-react-native';
+import { CircleDashed, Clapperboard, GalleryHorizontalEnd, Image as ImageIcon, Layers, Layers2, Type as TypeIcon } from 'lucide-react-native';
 
 import type { GapSize, TemplateId } from '@/canvas/types';
 import { CycleList, CyclePill, useThemedCyclePalette } from '@/components/compose/cycle-pill';
@@ -30,7 +30,6 @@ const ICONS = {
   ring: CircleDashed,
   fan: GalleryHorizontalEnd,
   stack: Layers2,
-  float: Wind,
 } as const;
 const TEMPLATE_IDS: readonly TemplateId[] = [...BASE_TEMPLATES, ...GRID_TEMPLATES].map((t) => t.id);
 const GAPS: readonly GapSize[] = ['none', 'thin', 'thick'];

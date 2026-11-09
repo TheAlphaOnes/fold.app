@@ -71,7 +71,7 @@ describe('gridForCount', () => {
     [2, 'duo-stack'],
     [3, 'trio-strips'],
     [4, 'quad'],
-    [5, 'six'],
+    [5, 'feature'],
     [6, 'six'],
     [7, 'six'],
     [8, 'six'],
@@ -81,5 +81,26 @@ describe('gridForCount', () => {
 
   it('always names a real layout', () => {
     for (let n = 0; n <= 8; n++) expect(GRID_LAYOUTS.some((l) => l.id === gridForCount(n))).toBe(true);
+  });
+});
+
+describe('film and feature', () => {
+  it('film is a five-frame strip beside two large photos, keeping the old frame ids', () => {
+    const cells = gridLayout('film').cells;
+    expect(cells).toHaveLength(7);
+    expect(cells.slice(0, 4).map((c) => c.id)).toEqual(['a', 'b', 'c', 'd']);
+    const strip = cells.slice(0, 5);
+    const right = cells.slice(5);
+    for (const c of strip) expect(c.x + c.w).toBeLessThanOrEqual(0.5);
+    for (const c of right) expect(c.h).toBeCloseTo(0.5);
+    for (let i = 1; i < 5; i++) expect(strip[i].y).toBeGreaterThan(strip[i - 1].y + strip[i - 1].h);
+  });
+
+  it('feature is one wide photo over four, filling the canvas', () => {
+    const cells = gridLayout('feature').cells;
+    expect(cells).toHaveLength(5);
+    expect(cells[0]).toMatchObject({ x: 0, y: 0, w: 1 });
+    const area = cells.reduce((sum, c) => sum + c.w * c.h, 0);
+    expect(area).toBeCloseTo(1);
   });
 });

@@ -12,7 +12,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
-import { DeckSwing, MotionGroup, MotionItem, Upright, useDeck } from '@/canvas/render/arrangement-motion';
+import { DeckCard, FanCard, MotionGroup, Upright, useDeck } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
   DateStickerView,
@@ -96,7 +96,7 @@ export function LayerContent({
 export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
-  // Arranged templates (Ring, Fan, Deck, Float) move gently while this is
+  // Arranged templates (Ring, Fan, Deck) move while this is
   // the live canvas in front; the editor and exports stay still.
   const motion = isArranged(doc.template) ? ARRANGEMENTS[doc.template].motion : null;
   const moving = !!motion && live && animated;
@@ -120,29 +120,29 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
         {shapeLayers.map((l) => anchored(l, <Upright>{content(l)}</Upright>))}
       </MotionGroup>
     );
-  } else if (motion?.kind === 'item') {
+  } else if (motion?.kind === 'fan') {
+    // The hand gathers to the middle of its cards and fans back out.
+    const n = Math.max(1, shapeLayers.length);
+    const stack = { x: width / 2, y: (shapeLayers.reduce((sum, l) => sum + l.y, 0) / n) * height };
     shape = shapeLayers.map((l, i) =>
       anchored(
         l,
-        <MotionItem motion={motion.style} index={i} unit={width} active={moving}>
+        <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving}>
           {content(l)}
-        </MotionItem>,
+        </FanCard>,
       ),
     );
   } else if (motion?.kind === 'deck') {
-    // Drawn back to front in the current flip order; the print in flight swings.
+    // Drawn back to front in the current flip order; each card eases to its
+    // depth, and the print in flight swings out and back.
     const n = shapeLayers.length;
-    const order = shapeLayers.map((l, i) => ({ l, i })).sort((a, b) => deckDepth(b.i, n, deck.step) - deckDepth(a.i, n, deck.step));
-    shape = order.map(({ l, i }) =>
+    const order = shapeLayers.map((l, i) => ({ l, i, depth: deckDepth(i, n, deck.step) })).sort((a, b) => b.depth - a.depth);
+    shape = order.map(({ l, i, depth }) =>
       anchored(
         l,
-        i === deck.swinging ? (
-          <DeckSwing swing={deck.swing} unit={width}>
-            {content(l)}
-          </DeckSwing>
-        ) : (
-          content(l)
-        ),
+        <DeckCard depth={depth} flying={i === deck.swinging} swing={deck.swing} side={deck.side} unit={width}>
+          {content(l)}
+        </DeckCard>,
       ),
     );
   }

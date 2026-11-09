@@ -19,11 +19,12 @@ export type GridLayoutId =
   | 'quad'
   | 'film'
   | 'six'
+  | 'feature'
   | 'diary'
   | 'polaroid';
 
 /** Templates that arrange photos in a shape (see templates/arrangements). 'stack' is shown as Deck. */
-export type ArrangedTemplateId = 'ring' | 'fan' | 'stack' | 'float';
+export type ArrangedTemplateId = 'ring' | 'fan' | 'stack';
 
 /** 'slideshow': every photo full-bleed in turn, cross-fading (photos live in `cells`, in order). */
 export type TemplateId = 'story' | 'text' | 'stickers' | 'slideshow' | ArrangedTemplateId | `grid:${GridLayoutId}`;
@@ -77,7 +78,8 @@ export interface TextLayer extends LayerBase {
   size: number;
 }
 
-export type StickerShape = 'rounded' | 'square' | 'circle' | 'polaroid' | 'stamp' | 'tape' | 'heart' | 'star' | 'arch';
+/** 'card': a portrait 3:4 print whatever the photo's shape (Fan and Deck use it, so the hand/pile is uniform). */
+export type StickerShape = 'rounded' | 'square' | 'circle' | 'polaroid' | 'stamp' | 'tape' | 'heart' | 'star' | 'arch' | 'card';
 
 export interface MediaSticker extends LayerBase {
   kind: 'media';

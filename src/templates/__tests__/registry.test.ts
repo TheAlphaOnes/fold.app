@@ -38,7 +38,7 @@ describe('suggestTemplate', () => {
     [2, 'grid:duo-stack'],
     [3, 'grid:trio-strips'],
     [4, 'grid:quad'],
-    [5, 'grid:six'],
+    [5, 'grid:feature'],
     [6, 'grid:six'],
   ])('suggests a grid for %i visual media', (n, expected) => {
     const media = Array.from({ length: n }, (_, i) => (i % 2 ? video(`m${i}`) : image(`m${i}`)));
@@ -122,7 +122,7 @@ describe('applyTemplate: grids', () => {
     expect(applyTemplate(emptyDoc(), 'grid:quad', []).gap).toBe('thin');
     expect(applyTemplate(emptyDoc(), 'grid:film', []).gap).toBe('none');
     expect(applyTemplate(emptyDoc(), 'grid:polaroid', []).background).toEqual({ kind: 'stripes' });
-    expect(applyTemplate(emptyDoc(), 'grid:film', []).background).toEqual({ kind: 'color', color: '#0B0B0B' });
+    expect(applyTemplate(emptyDoc(), 'grid:film', []).background).toEqual({ kind: 'stripes' });
     expect(applyTemplate(emptyDoc(), 'grid:quad', []).background).toEqual({ kind: 'stripes' });
   });
 

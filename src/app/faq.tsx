@@ -70,7 +70,7 @@ export default function FAQScreen() {
           <B>STICKERS</B> photos placed freely, in shapes like heart, star, polaroid, stamp or tape.{'\n'}
           <B>GRIDS</B> collages from two to six photos, including a film strip and a diary page.{'\n'}
           <B>SLIDESHOW</B> your photos full screen, one after another.{'\n'}
-          <B>RING, FAN, DECK, FLOAT</B> your photos arranged in a shape that moves: a turning ring, a swaying hand of cards, a pile that flips through, a gentle drift.{'\n'}
+          <B>RING, FAN, DECK</B> your photos arranged in a shape that moves: a turning ring, a hand of cards that fans open, a pile that flips through.{'\n'}
           Fold picks one as you add photos; change it any time.{'\n\n'}
           On the canvas, <B>DRAG</B> text or a sticker to move it, <B>PINCH</B> to resize, <B>TWIST</B> to rotate, and drop it on the bin to remove it. Pinch and drag a photo to frame it. In a grid, tap an empty spot to fill it, and hold one photo then tap another to swap them.
         </ThemedText>
