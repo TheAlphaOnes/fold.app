@@ -69,18 +69,19 @@ export function RecordingOverlay({
           white controls read over any card or photo underneath. */}
       <Animated.View entering={fadeIn(240)} style={[StyleSheet.absoluteFill, styles.dim]} pointerEvents="none" />
 
-      {/* The wheel sits dead centre; status and time hang just below it. */}
-      <View style={styles.center} pointerEvents="none">
-        <Animated.View entering={fadeIn(320, 60)} style={styles.wheel}>
+      {/* Wheel and time are one block, centred in the space above the
+          controls, so the screen balances instead of crowding the bottom. */}
+      <View style={[styles.center, { paddingTop: insets.top }]} pointerEvents="none">
+        <Animated.View entering={fadeIn(320, 60)}>
           <VinylRecord size={WHEEL} isRecording={!paused} />
-          <Animated.View entering={fadeIn(240, 180)} style={styles.readout}>
-            <ThemedText style={styles.hint}>{paused ? 'PAUSED' : 'RECORDING'}</ThemedText>
-            <ThemedText style={styles.timer}>{formatMillis(durationMillis)}</ThemedText>
-          </Animated.View>
+        </Animated.View>
+        <Animated.View entering={fadeIn(240, 180)} style={styles.readout}>
+          <ThemedText style={styles.hint}>{paused ? 'PAUSED' : 'RECORDING'}</ThemedText>
+          <ThemedText style={styles.timer}>{formatMillis(durationMillis)}</ThemedText>
         </Animated.View>
       </View>
 
-      <View style={[styles.controls, { bottom: insets.bottom + 40 }]}>
+      <View style={[styles.controls, { paddingBottom: insets.bottom + 40 }]}>
         <Animated.View entering={riseIn(260, 220, 10)}>
           <Control icon={X} label="DISCARD" onPress={confirmDiscard} />
         </Animated.View>
@@ -152,10 +153,8 @@ const styles = StyleSheet.create({
     elevation: 99999,
   },
   dim: { backgroundColor: '#000', opacity: Math.min(0.75, MOMENT_DIM_OPACITY + 0.2) },
-  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
-  wheel: { width: WHEEL, height: WHEEL },
-  // Hangs under the wheel without moving it off centre.
-  readout: { position: 'absolute', top: WHEEL + 28, left: 0, right: 0, alignItems: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  readout: { marginTop: 28, alignItems: 'center' },
   hint: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
@@ -170,9 +169,6 @@ const styles = StyleSheet.create({
     color: MOMENT_INK,
   },
   controls: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
