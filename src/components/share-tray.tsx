@@ -32,6 +32,7 @@ import { Image as ImageIcon, FileText, Download, type LucideIcon } from 'lucide-
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import { CloseButton } from '@/components/round-button';
 import { Type } from '@/constants/theme';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
@@ -74,13 +75,14 @@ interface ShareTileProps {
 const ShareTile = memo(function ShareTile({ icon: Icon, label, hint, primary, onPress }: ShareTileProps) {
   const theme = useTheme();
   const fg = primary ? theme.background : theme.text;
+  const press = useGuardedPress(() => {
+    haptic.tap();
+    onPress();
+  });
 
   return (
     <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress();
-      }}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${hint.toLowerCase()}`}
       style={({ pressed }) => [

@@ -24,6 +24,7 @@ import { VinylRecord } from '@/components/vinyl-record';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import { CloseButton } from '@/components/round-button';
+import { navigate } from '@/utils/navigation';
 
 interface StoryItem {
   id: string;
@@ -241,7 +242,7 @@ export function StoryViewer({ items, initialIndex, onClose }: StoryViewerProps) 
     onClose();
     // Delay routing slightly to let modal close animation start
     setTimeout(() => {
-      router.push(`/memory/${memoryId}`);
+      navigate.push(`/memory/${memoryId}`);
     }, 50);
   }, [onClose, router]);
 

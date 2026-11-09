@@ -13,6 +13,7 @@ import { ArrowUpToLine, FlipHorizontal2, ImagePlus, Shapes, Trash2, type LucideI
 import type { MediaSticker } from '@/canvas/types';
 import { ThemedText } from '@/components/themed-text';
 import { riseIn } from '@/constants/motion';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
@@ -30,18 +31,21 @@ interface ToolProps {
   label?: string;
   accessibilityLabel: string;
   destructive?: boolean;
-  onPress: () => void;
+  /** Meant to be tapped quickly in a row (cycling shapes): a shorter guard. */
+  repeatable?: boolean;
+  onPress: () => unknown;
 }
 
-function Tool({ icon: Icon, label, accessibilityLabel, destructive, onPress }: ToolProps) {
+function Tool({ icon: Icon, label, accessibilityLabel, destructive, repeatable, onPress }: ToolProps) {
   const theme = useTheme();
   const ink = destructive ? theme.destructive : theme.text;
+  const press = useGuardedPress(() => {
+    haptic.select();
+    return onPress();
+  }, repeatable ? 120 : undefined);
   return (
     <Pressable
-      onPress={() => {
-        haptic.select();
-        onPress();
-      }}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [styles.tool, { opacity: pressed ? 0.5 : 1 }]}
@@ -62,7 +66,7 @@ interface StickerToolsProps {
 export function StickerTools({ sticker, onCycleShape, onFront, onRemove }: StickerToolsProps) {
   return (
     <SelectionBar>
-      <Tool icon={Shapes} label={sticker.shape.toUpperCase()} accessibilityLabel="Change shape" onPress={onCycleShape} />
+      <Tool icon={Shapes} label={sticker.shape.toUpperCase()} accessibilityLabel="Change shape" repeatable onPress={onCycleShape} />
       <Tool icon={ArrowUpToLine} accessibilityLabel="Bring to front" onPress={onFront} />
       <Tool icon={Trash2} accessibilityLabel="Remove sticker" destructive onPress={onRemove} />
     </SelectionBar>
@@ -72,7 +76,7 @@ export function StickerTools({ sticker, onCycleShape, onFront, onRemove }: Stick
 interface FrameToolsProps {
   /** Grid cells can be mirrored; the full-bleed background can't. */
   canFlip: boolean;
-  onReplace: () => void;
+  onReplace: () => unknown;
   onFlip: () => void;
   onRemove: () => void;
 }

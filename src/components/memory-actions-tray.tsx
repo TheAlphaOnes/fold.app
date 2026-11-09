@@ -40,6 +40,7 @@ import {
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import { CloseButton } from '@/components/round-button';
 import { Type } from '@/constants/theme';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
@@ -158,12 +159,13 @@ export const MemoryActionsTray = memo(function MemoryActionsTray({
 function Tile({ icon: Icon, label, hint, primary, onPress }: { icon: LucideIcon; label: string; hint: string; primary?: boolean; onPress: () => void }) {
   const theme = useTheme();
   const fg = primary ? theme.background : theme.text;
+  const press = useGuardedPress(() => {
+    haptic.tap();
+    onPress();
+  });
   return (
     <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress();
-      }}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${hint.toLowerCase()}`}
       style={({ pressed }) => [
@@ -185,13 +187,14 @@ function Tile({ icon: Icon, label, hint, primary, onPress }: { icon: LucideIcon;
 function Row({ icon: Icon, label, onPress, destructive, first }: { icon: LucideIcon; label: string; onPress: () => void; destructive?: boolean; first: boolean }) {
   const theme = useTheme();
   const color = destructive ? theme.destructive : theme.text;
+  const press = useGuardedPress(() => {
+    if (destructive) haptic.warning();
+    else haptic.tap();
+    onPress();
+  });
   return (
     <Pressable
-      onPress={() => {
-        if (destructive) haptic.warning();
-        else haptic.tap();
-        onPress();
-      }}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [s.row, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: theme.border }, pressed && { opacity: 0.5 }]}

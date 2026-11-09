@@ -38,7 +38,7 @@ import { AsciiArt } from '@/components/ascii-art';
 import { ALBUM_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
 import { isGifMedia } from '@/utils/media-kind';
-import { goBack } from '@/utils/navigation';
+import { goBack, navigate } from '@/utils/navigation';
 import { getHighResArtwork } from '@/utils/media-attach';
 
 interface StoryItem {
@@ -552,7 +552,7 @@ export default function StoryDetailScreen() {
                 styles.ctaButton,
                 { borderColor: theme.border, backgroundColor: pressed ? theme.background : 'transparent' }
               ]}
-              onPress={() => router.push({ pathname: '/compose', params: { storyId: id } })}
+              onPress={() => navigate.push({ pathname: '/compose', params: { storyId: id } })}
             >
               <ThemedText style={[styles.ctaText, { color: theme.text }]}>
                 + ADD TO STORY

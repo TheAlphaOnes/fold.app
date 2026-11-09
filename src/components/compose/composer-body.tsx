@@ -48,6 +48,7 @@ import { useComposeMedia } from '@/hooks/use-compose-media';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettings } from '@/hooks/use-settings';
 import { useStoriesStore } from '@/hooks/use-stories';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { useVoiceTake } from '@/hooks/use-voice-take';
 import { trackError, type CaptureSource } from '@/services/analytics';
@@ -349,6 +350,14 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     }
   };
 
+  // Double taps act once: Save holds until the save has finished.
+  const saveOnce = useGuardedPress(() => save());
+  const openStories = useGuardedPress(() => {
+    haptic.tap();
+    setSheet('stories');
+  });
+
+
   const storyLabel =
     storyIds.length === 0
       ? 'ADD TO STORY'
@@ -370,10 +379,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
             {/* Optional filing: an outlined text CTA, never as loud as Save. */}
             <Pressable
-              onPress={() => {
-                haptic.tap();
-                setSheet('stories');
-              }}
+              onPress={openStories}
               accessibilityRole="button"
               accessibilityLabel={storyIds.length > 0 ? `In ${storyLabel.toLowerCase()}. Change stories` : 'Add to a story'}
               style={({ pressed }) => [styles.storyCta, { borderColor: storyIds.length > 0 ? theme.text : theme.border, opacity: pressed ? 0.5 : 1 }]}
@@ -465,7 +471,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             />
           </View>
           <Pressable
-            onPress={save}
+            onPress={saveOnce}
             disabled={!hasContent || isSaving}
             accessibilityRole="button"
             accessibilityLabel="Save memory"

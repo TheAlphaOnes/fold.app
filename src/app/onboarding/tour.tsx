@@ -31,7 +31,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { track } from '@/services/analytics';
 import { getAgeRange } from '@/utils/dob';
-import { goBack } from '@/utils/navigation';
+import { goBack, navigate } from '@/utils/navigation';
 
 export default function OnboardingTourScreen() {
   const finish = async (takeTour: boolean) => {
@@ -39,7 +39,7 @@ export default function OnboardingTourScreen() {
     haptic.success();
     await updateSetting('hasOnboarded', true);
     track('onboarding_completed', { age_range: getAgeRange(settings.dob), took_tour: takeTour });
-    router.replace(takeTour ? '/guide' : '/');
+    navigate.replace(takeTour ? '/guide' : '/');
   };
 
   return (

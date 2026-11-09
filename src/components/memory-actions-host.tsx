@@ -21,6 +21,7 @@ import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { saveToGallery } from '@/services/media-save.service';
 import type { Composition } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 /** The bird hangs, then flies off the top; capture once it's gone (700ms + 1000ms). */
 const FLIGHT_MS = 1750;
@@ -110,8 +111,8 @@ export function MemoryActionsHost() {
         canSave={!!firstMedia}
         onClose={close}
         onShare={shareCard}
-        onOpen={() => router.push(`/memory/${current.id}`)}
-        onEdit={() => router.push({ pathname: '/compose', params: { editId: String(current.id) } })}
+        onOpen={() => navigate.push(`/memory/${current.id}`)}
+        onEdit={() => navigate.push({ pathname: '/compose', params: { editId: String(current.id) } })}
         onAddToStory={() => {
           setTarget(current);
           setPickingStory(true);

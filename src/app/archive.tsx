@@ -24,6 +24,7 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 
 import { CarouselItem } from '@/components/carousel-item';
 import { CloseButton } from '@/components/round-button';
+import { navigate } from '@/utils/navigation';
 
 const CARD_GAP = 21;
 
@@ -103,7 +104,7 @@ export default function ArchiveScreen() {
             borderColor: theme.border
           }
         ]}
-        onPress={() => router.push({ pathname: '/compose', params: { dateTimestamp: targetDate.getTime().toString() } })}
+        onPress={() => navigate.push({ pathname: '/compose', params: { dateTimestamp: targetDate.getTime().toString() } })}
       >
         <Plus size={20} color={theme.text} />
       </Pressable>

@@ -13,6 +13,7 @@ import React from 'react';
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { X, type LucideIcon } from 'lucide-react-native';
 
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { goBack } from '@/utils/navigation';
@@ -33,12 +34,14 @@ interface RoundButtonProps {
 
 export function RoundButton({ icon: Icon, onPress, accessibilityLabel, iconColor, style, hitSlop }: RoundButtonProps) {
   const theme = useTheme();
+  // A double tap acts once (no two sheets, no double close).
+  const press = useGuardedPress(() => {
+    haptic.tap();
+    return onPress();
+  });
   return (
     <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress();
-      }}
+      onPress={press}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={hitSlop}

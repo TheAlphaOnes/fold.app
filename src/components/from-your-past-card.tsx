@@ -39,6 +39,7 @@ import { getHighResArtwork } from '@/utils/media-attach';
 import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 const VIEWPORT_HEIGHT = 380;
 const COLUMNS = 3;
@@ -116,7 +117,7 @@ function MemoryTile({ tile, width }: { tile: Tile; width: number }) {
     <Pressable
       onPress={() => {
         haptic.press();
-        router.push(`/memory/${memory.id}`);
+        navigate.push(`/memory/${memory.id}`);
       }}
       accessibilityRole="button"
       accessibilityLabel={`Open memory from ${shortDate(memory.createdAt)}`}

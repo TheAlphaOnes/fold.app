@@ -14,7 +14,6 @@ import {
   Stack,
   ThemeProvider,
   useSegments,
-  router,
 } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -204,11 +203,11 @@ function RootLayoutNav() {
       
       if (!settings.hasOnboarded && !isAllowedDuringOnboarding) {
         setTimeout(() => {
-          router.replace("/onboarding");
+          navigate.replace("/onboarding");
         }, 0);
       } else if (settings.hasOnboarded && inOnboarding) {
         setTimeout(() => {
-          router.replace("/");
+          navigate.replace("/");
         }, 0);
       }
     }
@@ -294,6 +293,7 @@ function RootLayoutNav() {
 }
 
 import { BiometricGate } from "@/components/biometric-gate";
+import { navigate } from '@/utils/navigation';
 
 export default function RootLayout() {
   return (

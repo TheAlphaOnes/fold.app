@@ -45,6 +45,7 @@ import { EASE_OUT, fadeIn } from '@/constants/motion';
 import { useProfileDataStore } from '@/hooks/use-profile-data';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
+import { navigate } from '@/utils/navigation';
 
 interface DayCell {
   date: string;
@@ -208,7 +209,7 @@ function YearStrip({
     const day = column?.[Math.floor(locationY / columnPitch)];
     if (!day || !day.inYear || day.isFuture) return;
     haptic.press();
-    router.push(`/time-machine?day=${day.date}`);
+    navigate.push(`/time-machine?day=${day.date}`);
   };
 
   const labels = monthStarts.map((ms, i) => {

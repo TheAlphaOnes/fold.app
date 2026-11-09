@@ -27,6 +27,7 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { useTheme } from '@/hooks/use-theme';
 import { searchStories, sortStories, type StorySort } from '@/utils/story-meta';
 import type { Story } from '@/types/journal';
+import { navigate } from '@/utils/navigation';
 
 const GUTTER = 16;
 const GAP = 12;
@@ -58,7 +59,7 @@ export default function StoryBoardScreen() {
   const visible = useMemo(() => sortStories(searchStories(stories, query), sort), [stories, query, sort]);
 
 
-  const openStory = useCallback((story: Story) => router.push(`/stories/${story.id}`), [router]);
+  const openStory = useCallback((story: Story) => navigate.push(`/stories/${story.id}`), [router]);
   const startCreating = () => setIsCreating(true);
 
 

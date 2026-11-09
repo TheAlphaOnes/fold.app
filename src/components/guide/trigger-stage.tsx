@@ -23,6 +23,7 @@ import { SPRING_BOUNCE, fadeIn, fadeOut } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import type { GuideStepId } from '@/constants/guide';
 import type { useQuickCapture } from '@/hooks/use-quick-capture';
+import { navigate } from '@/utils/navigation';
 
 type QuickCapture = ReturnType<typeof useQuickCapture>;
 type KeyGesture = 'tap' | 'hold' | 'swipe';
@@ -115,7 +116,7 @@ export function TriggerStage({
 
   const handleTap = () => {
     if (expected !== 'tap') return nudgeFor('tap');
-    router.push('/compose');
+    navigate.push('/compose');
   };
 
   const handleHoldStart = async () => {

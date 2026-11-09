@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 
 import { haptic } from '@/services/haptics';
+import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
@@ -207,6 +208,9 @@ export function StoryPicker(props: StoryPickerProps) {
     );
   };
 
+  // A double tap on Create makes one story, not two.
+  const createOnce = useGuardedPress(handleCreate);
+
   if (!mounted) return null;
 
   return (
@@ -241,7 +245,7 @@ export function StoryPicker(props: StoryPickerProps) {
                 <>
                   <RoundButton
                     icon={Check}
-                    onPress={handleCreate}
+                    onPress={createOnce}
                     accessibilityLabel="Create story"
                     iconColor={canCreate ? theme.text : theme.textMuted}
                     style={!canCreate && styles.disabled}
@@ -272,7 +276,7 @@ export function StoryPicker(props: StoryPickerProps) {
                 selectionColor={theme.accentWarm}
                 autoFocus
                 returnKeyType="done"
-                onSubmitEditing={handleCreate}
+                onSubmitEditing={createOnce}
               />
             </Animated.View>
           ) : (
