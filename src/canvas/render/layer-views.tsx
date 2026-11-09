@@ -163,11 +163,13 @@ export function AudioStickerView({
     <View style={styles.audio}>
       {disc}
       {media.metadata && (
-        <View style={[styles.audioLabel, { backgroundColor: theme.background, borderColor: theme.border, maxWidth: size * 1.4 }]}>
-          <Text style={[styles.audioTitle, { color: theme.text, fontSize: size * 0.085 }]} numberOfLines={1}>
+        // Plain title and artist, no box: a soft halo in the card colour keeps
+        // them legible over a photo without drawing a shape around them.
+        <View style={[styles.audioLabel, { maxWidth: size * 1.4 }]}>
+          <Text style={[styles.audioTitle, { color: theme.text, fontSize: size * 0.085, textShadowColor: theme.background }]} numberOfLines={1}>
             {media.metadata.title}
           </Text>
-          <Text style={[styles.audioArtist, { color: theme.textMuted, fontSize: size * 0.07 }]} numberOfLines={1}>
+          <Text style={[styles.audioArtist, { color: theme.textMuted, fontSize: size * 0.07, textShadowColor: theme.background }]} numberOfLines={1}>
             {media.metadata.artist}
           </Text>
         </View>
@@ -244,9 +246,9 @@ const styles = StyleSheet.create({
   },
   tape: { position: 'absolute', backgroundColor: '#F2E6B8CC', transform: [{ rotate: '-4deg' }] },
   audio: { alignItems: 'center', gap: 8 },
-  audioLabel: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' },
-  audioTitle: { fontFamily: 'JetBrainsMono-Bold' },
-  audioArtist: { fontFamily: 'JetBrainsMono-Medium' },
+  audioLabel: { alignItems: 'center', gap: 2 },
+  audioTitle: { fontFamily: 'JetBrainsMono-Bold', textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } },
+  audioArtist: { fontFamily: 'JetBrainsMono-Medium', textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } },
   pill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 999 },
   pillText: { fontFamily: 'JetBrainsMono-Bold', letterSpacing: 1.5, color: '#111111' },
   dateStamp: { backgroundColor: '#111111', alignItems: 'center' },

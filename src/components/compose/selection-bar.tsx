@@ -1,6 +1,6 @@
 /**
  * The tools bar that floats at the bottom of the canvas for whatever is
- * selected: a photo sticker (shape, straighten, front, remove) or a photo
+ * selected: a photo sticker (shape, front, remove) or a photo
  * in the base (replace, flip, remove). Presentational only; the composer
  * owns the actions.
  */
@@ -8,7 +8,7 @@
 import React from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { ArrowUpToLine, FlipHorizontal2, ImagePlus, RotateCcw, Shapes, Trash2, type LucideIcon } from 'lucide-react-native';
+import { ArrowUpToLine, FlipHorizontal2, ImagePlus, Shapes, Trash2, type LucideIcon } from 'lucide-react-native';
 
 import type { MediaSticker } from '@/canvas/types';
 import { ThemedText } from '@/components/themed-text';
@@ -55,18 +55,14 @@ function Tool({ icon: Icon, label, accessibilityLabel, destructive, onPress }: T
 interface StickerToolsProps {
   sticker: MediaSticker;
   onCycleShape: () => void;
-  onToggleStraight: () => void;
   onFront: () => void;
   onRemove: () => void;
 }
 
-export function StickerTools({ sticker, onCycleShape, onToggleStraight, onFront, onRemove }: StickerToolsProps) {
-  const straight = sticker.rotation % 360 === 0;
+export function StickerTools({ sticker, onCycleShape, onFront, onRemove }: StickerToolsProps) {
   return (
     <SelectionBar>
       <Tool icon={Shapes} label={sticker.shape.toUpperCase()} accessibilityLabel="Change shape" onPress={onCycleShape} />
-      {/* Twisting snaps to straight; this is the one-tap version, and back. */}
-      <Tool icon={RotateCcw} label={straight ? 'TILT' : 'STRAIGHT'} accessibilityLabel={straight ? 'Tilt' : 'Straighten'} onPress={onToggleStraight} />
       <Tool icon={ArrowUpToLine} accessibilityLabel="Bring to front" onPress={onFront} />
       <Tool icon={Trash2} accessibilityLabel="Remove sticker" destructive onPress={onRemove} />
     </SelectionBar>

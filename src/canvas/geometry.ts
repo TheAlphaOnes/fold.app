@@ -57,6 +57,37 @@ export function snapRotation(degrees: number): { rotation: number; snapped: bool
   return { rotation: snapped ? nearest : degrees, snapped };
 }
 
+export interface TwistCandidate {
+  id: string;
+  x: number;
+  y: number;
+}
+
+/** How near (fraction of canvas width) two fingers must be to a layer to turn it. */
+export const TWIST_REACH = 0.3;
+
+/**
+ * Which layer a two-finger twist turns: the selected one, wherever the
+ * fingers are; otherwise the layer nearest the fingers' midpoint, if any
+ * is within reach (else none, and the photo under the fingers is framed).
+ * `focal` is normalised; distance is measured in canvas widths.
+ */
+export function pickTwistTarget(layers: readonly TwistCandidate[], selectedId: string | null, focal: { x: number; y: number }, aspect: number): string | null {
+  'worklet';
+  if (selectedId && layers.some((l) => l.id === selectedId)) return selectedId;
+  let best: string | null = null;
+  let bestDistance = TWIST_REACH;
+  for (const l of layers) {
+    // y is a fraction of height; scale it into widths so distance is round.
+    const d = Math.hypot(l.x - focal.x, (l.y - focal.y) / aspect);
+    if (d < bestDistance) {
+      best = l.id;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
 /** Short random id for layers and media. */
 export function newId(): string {
   return Math.random().toString(36).slice(2, 9);
