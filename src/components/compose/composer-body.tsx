@@ -5,7 +5,7 @@
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [shape · front · remove]           only while a sticker is selected
- *   Story Text Stickers | ▦ ▦ ▦ …      TemplateStrip
+ *   [ ▦ TEMPLATE ⇅ ] [gap]             TemplatePicker (tap: next, hold: list)
  *   📷 🖼  [story chip]        SAVE
  *
  * New memories open straight into writing (TextEditorSheet) on the
@@ -27,7 +27,7 @@ import { fitCanvas, newId } from '@/canvas/geometry';
 import type { CanvasDoc, Layer, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { StickerSheet, type StickerKind } from '@/components/compose/sticker-sheet';
-import { TemplateStrip } from '@/components/compose/template-strip';
+import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import { TextEditorSheet, type TextDraft } from '@/components/compose/text-editor-sheet';
 import { GifPicker } from '@/components/gif-picker';
 import { GrainBackground } from '@/components/grain-background';
@@ -130,6 +130,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     latest.current = c;
   });
   const [openedAt] = useState(() => createdAt ?? Date.now());
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const [storyIds, setStoryIds] = useState<number[]>(existing?.storyIds ?? (storyId ? [storyId] : []));
   const [location, setLocation] = useState<{ name?: string; lat?: number; lng?: number }>(
@@ -371,7 +372,18 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             else if (c.doc.template === 'text' && textLayers.length === 0) setEditing({ id: newId(), isNew: true });
           }}
         />
-        {selected && selected.kind === 'media' && (
+        {templatesOpen && (
+          <View style={styles.templateList}>
+            <TemplateList
+              current={c.doc.template}
+              onPick={(template) => {
+                c.setTemplate(template);
+                setTemplatesOpen(false);
+              }}
+            />
+          </View>
+        )}
+        {!templatesOpen && selected && selected.kind === 'media' && (
           <Animated.View
             entering={riseIn(200, 0, 6)}
             style={[styles.selectionBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
@@ -397,7 +409,14 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
       {!editing && (
         <Animated.View entering={riseIn(340, 120, 12)} style={styles.templates}>
-          <TemplateStrip current={c.doc.template} gap={c.doc.gap} onPick={c.setTemplate} onGap={c.setGap} />
+          <TemplatePicker
+            current={c.doc.template}
+            gap={c.doc.gap}
+            open={templatesOpen}
+            onPick={c.setTemplate}
+            onGap={c.setGap}
+            onToggleList={() => setTemplatesOpen((o) => !o)}
+          />
         </Animated.View>
       )}
 
@@ -526,6 +545,8 @@ const styles = StyleSheet.create({
   selBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 36, justifyContent: 'center' },
   selText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.5 },
   templates: { paddingTop: 10 },
+  // Floats over the bottom of the canvas, right above the picker it opened from.
+  templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
   storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1 },

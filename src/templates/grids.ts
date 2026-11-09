@@ -3,7 +3,7 @@
  * canvas units (0–1). Adding a layout means adding an entry here.
  *
  * Decor is drawn by the grid renderer: the film strip's sprocket holes and
- * date stamp, the diary's ruled page, the polaroid's frame and tilt.
+ * date stamp, the diary's striped page, the polaroid's frame and tilt.
  */
 
 import type { GridLayoutId } from '@/canvas/types';
