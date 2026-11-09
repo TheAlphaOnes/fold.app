@@ -1,16 +1,13 @@
-import React, { memo, useRef, useState } from 'react';
-import { View, useWindowDimensions, StyleSheet } from 'react-native';
+import React, { memo } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { haptic } from '@/services/haptics';
-import * as Sharing from 'expo-sharing';
-import { captureRef } from 'react-native-view-shot';
-import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
-import { useTheme } from '@/hooks/use-theme';
+import { useMemoryActions } from '@/hooks/use-memory-actions';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCard } from '@/components/memory-card';
-import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export interface CarouselItemProps {
@@ -22,16 +19,12 @@ export interface CarouselItemProps {
   updatePositions: (id: number, media: MediaElement[]) => void;
   /** Fired when a double tap opens the memory. */
   onOpen?: () => void;
-  /** Fired after the share sheet closes for a successfully captured card. */
+  /** Fired after the card is shared from the hold menu. */
   onShared?: () => void;
 }
 
 export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, updatePositions, onOpen, onShared }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
-  const hiddenCardRef = useRef<View>(null);
-  const [scanKey, setScanKey] = useState(0);
-  const { width } = useWindowDimensions();
-  const theme = useTheme();
   const completeGuideStep = useSettingsStore((s) => s.completeGuideStep);
   
   const animatedStyle = useAnimatedStyle(() => {
@@ -61,36 +54,9 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     router.push(`/memory/${item.id}`);
   };
 
-  const [isSharing, setIsSharing] = useState(false);
-
-  const triggerShareFeedback = () => {
+  const openMenu = () => {
     haptic.thud();
-    setScanKey(prev => prev + 1);
-  };
-
-  const captureAndShareCard = async () => {
-    setIsSharing(true);
-    completeGuideStep('share');
-    try {
-      // Wait to let the flight animation completely finish before freezing JS thread (700ms delay + 1000ms duration)
-      await new Promise(resolve => setTimeout(resolve, 1750));
-      const uri = await captureRef(hiddenCardRef, {
-        format: 'png',
-        quality: 1,
-      });
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(uri, {
-          dialogTitle: 'Share Memory Card',
-          mimeType: 'image/png',
-        });
-        onShared?.();
-      }
-    } catch (e) {
-      console.error('Failed to capture memory card:', e);
-    } finally {
-      setIsSharing(false);
-    }
+    useMemoryActions.getState().open(item, { cardHeight, onShared });
   };
 
   const doubleTap = Gesture.Tap()
@@ -112,8 +78,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     .minDuration(500)
     .onStart(() => {
       pressedScale.value = withTiming(0.96, { duration: 150 });
-      runOnJS(triggerShareFeedback)();
-      runOnJS(captureAndShareCard)();
+      runOnJS(openMenu)();
     })
     .onEnd(() => {
       pressedScale.value = withTiming(1, { duration: 150 });
@@ -126,28 +91,9 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
 
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
-      {/* Hidden card for capturing as image */}
-      {isSharing && (
-        <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
-          <View 
-            ref={hiddenCardRef} 
-            collapsable={false} 
-            style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
-          >
-            <MemoryCard 
-              item={item} 
-              height={cardHeight} 
-              onUpdatePositions={() => {}} 
-              isExporting={true}
-            />
-          </View>
-        </View>
-      )}
-
       <GestureDetector gesture={composed}>
         <Animated.View style={[animatedStyle, { width: '100%' }]}>
           <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
-          {scanKey > 0 && <LogoUploadFlight key={`scan-${scanKey}`} color={theme.text} />}
         </Animated.View>
       </GestureDetector>
     </View>

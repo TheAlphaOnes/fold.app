@@ -116,8 +116,8 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     chapter: 'revisit',
     stage: 'memory',
     gesture: 'long-press',
-    title: 'HOLD TO SHARE',
-    hint: 'hold a memory to print a card.',
+    title: 'HOLD FOR OPTIONS',
+    hint: 'hold a memory, then tap share.',
     success: 'SHARED',
   },
   {

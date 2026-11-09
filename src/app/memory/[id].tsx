@@ -22,9 +22,6 @@ import { useAudioFocus } from '@/hooks/use-audio-focus';
 import { CloseButton, RoundButton } from '@/components/round-button';
 import * as Sharing from 'expo-sharing';
 import { haptic } from '@/services/haptics';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as MediaLibrary from 'expo-media-library/legacy';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { captureRef } from 'react-native-view-shot';
@@ -33,6 +30,7 @@ import { ShareTray } from '@/components/share-tray';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { goBack } from '@/utils/navigation';
+import { saveToGallery } from '@/services/media-save.service';
 
 function StoryPickerThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
   const isVideo = media.type === 'video';
@@ -412,52 +410,7 @@ export default function MemoryDetailScreen() {
     goBack();
   };
 
-  const handleSaveMedia = async (uri: string) => {
-    try {
-      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-      
-      if (isExpoGo && Platform.OS === 'android') {
-        Alert.alert(
-          'Expo Go Limitation',
-          'Direct saving to gallery is disabled in Expo Go on Android due to strict permission rules. It WILL work silently with one tap in your final built app.\n\nFor now, we will open the Share sheet so you can tap "Save to device".',
-          [
-            { 
-              text: 'OK', 
-              onPress: async () => {
-                const isAvailable = await Sharing.isAvailableAsync();
-                if (isAvailable) await Sharing.shareAsync(uri);
-              } 
-            }
-          ]
-        );
-        return;
-      }
-
-      // For iOS Expo Go, and built apps on both platforms, do the proper native save.
-      // Save-only access: Fold never reads the gallery, so it never asks to.
-      const { status } = await MediaLibrary.requestPermissionsAsync(true);
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow Fold to access your gallery to save media.');
-        return;
-      }
-      
-      // Check if file exists first (old memories might have used temp URIs that got cleared)
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        Alert.alert(
-          'File Unavailable',
-          'The original high-resolution file is no longer available on this device. This can happen with older memories where the temporary file was cleared by the OS.'
-        );
-        return;
-      }
-
-      await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('Saved', 'Saved to your gallery.');
-    } catch (e) {
-      console.error('Save failed:', e);
-      Alert.alert('Error', 'Failed to save media.');
-    }
-  };
+  const handleSaveMedia = (uri: string) => saveToGallery(uri);
 
   const hiddenCardRef = useRef<View>(null);
 
