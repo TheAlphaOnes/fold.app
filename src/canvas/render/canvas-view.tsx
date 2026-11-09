@@ -12,6 +12,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
+import { MotionGroup, MotionItem } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
   DateStickerView,
@@ -19,6 +20,7 @@ import {
   MediaStickerView,
   TextLayerView,
 } from '@/canvas/render/layer-views';
+import { ARRANGEMENTS, isArranged } from '@/templates/arrangements';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export interface CanvasViewProps {
@@ -94,14 +96,39 @@ export function LayerContent({
 export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
+  // Arranged templates (Ring, Spiral, Fan, Stack, Float) move gently while
+  // this is the live canvas in front; editor and exports stay still.
+  const motion = isArranged(doc.template) ? ARRANGEMENTS[doc.template].motion : null;
+  const moving = !!motion && live && animated;
+  const inShape = (layer: Layer) => !!motion && layer.kind === 'media' && !!layer.auto;
+  const shapeLayers = doc.layers.filter(inShape);
+
+  const drawLayer = (layer: Layer, index: number) => (
+    <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
+      {motion?.kind === 'item' && inShape(layer) ? (
+        <MotionItem motion={motion.style} index={index} unit={width} active={moving}>
+          <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />
+        </MotionItem>
+      ) : (
+        <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />
+      )}
+    </LayerAnchor>
+  );
+
   return (
     <View style={[styles.canvas, { width, height }]}>
       <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} muted={muted} animated={animated} />
-      {doc.layers.map((layer) => (
-        <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
-          <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />
-        </LayerAnchor>
-      ))}
+      {motion?.kind === 'group' ? (
+        <>
+          {/* The shape turns as one, under the words and stickers. */}
+          <MotionGroup degreesPerSecond={motion.degreesPerSecond} active={moving}>
+            {shapeLayers.map(drawLayer)}
+          </MotionGroup>
+          {doc.layers.filter((l) => !inShape(l)).map((l) => drawLayer(l, 0))}
+        </>
+      ) : (
+        doc.layers.map((layer) => drawLayer(layer, shapeLayers.indexOf(layer)))
+      )}
     </View>
   );
 });

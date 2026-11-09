@@ -5,7 +5,8 @@
  */
 
 import { NO_CROP, type CanvasDoc, type CellFill, type GridLayoutId, type Layer, type MediaSticker, type TemplateId } from '@/canvas/types';
-import { CANVAS_ASPECT, SAFE_ZONE, newId } from '@/canvas/geometry';
+import { SAFE_ZONE, newId } from '@/canvas/geometry';
+import { ARRANGED_IDS, ARRANGEMENTS, isArranged } from '@/templates/arrangements';
 import { GRID_LAYOUTS, gridForCount, gridLayout } from '@/templates/grids';
 import type { MediaElement } from '@/types/journal';
 
@@ -19,7 +20,7 @@ export const BASE_TEMPLATES: readonly TemplateInfo[] = [
   { id: 'story', name: 'Canvas' },
   { id: 'text', name: 'Text' },
   { id: 'stickers', name: 'Stickers' },
-  { id: 'ring', name: 'Ring' },
+  ...ARRANGED_IDS.map((id) => ({ id, name: ARRANGEMENTS[id].name })),
 ];
 
 export const GRID_TEMPLATES: readonly TemplateInfo[] = GRID_LAYOUTS.map((g) => ({
@@ -179,18 +180,18 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
     return { version: 1, template, background: { kind: 'stripes' }, layers: [...existing, ...added, ...kept] };
   }
 
-  if (template === 'ring') {
-    // Every photo goes round the ring, re-spaced evenly whenever the count
+  if (isArranged(template)) {
+    // Every photo takes its place in the shape, re-laid whenever the count
     // changes; a photo already there keeps its sticker (id, shape).
     const existing = new Map(
       doc.layers.filter((l): l is MediaSticker => l.kind === 'media' && !!l.auto && ids.has(l.mediaId)).map((l) => [l.mediaId, l]),
     );
-    const ring = candidates.map((m, i) => {
-      const spot = ringSpot(i, candidates.length);
+    const arranged = candidates.map((m, i) => {
+      const spot = ARRANGEMENTS[template].spot(i, candidates.length);
       const prior = existing.get(m.id);
       return { ...(prior ?? (scatterSticker(m.id, i) as MediaSticker)), ...spot, auto: true };
     });
-    return { version: 1, template, background: { kind: 'stripes' }, layers: [...ring, ...kept] };
+    return { version: 1, template, background: { kind: 'stripes' }, layers: [...arranged, ...kept] };
   }
 
   // Grids: keep each cell's photo (by cell id) while it's still a candidate; fill empties in order.
@@ -231,27 +232,6 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
 /** A fresh canvas for new media, before the user has designed anything. */
 export function newDoc(media: MediaElement[], template: TemplateId = suggestTemplate(media)): CanvasDoc {
   return applyTemplate({ version: 1, template, background: { kind: 'stripes' }, layers: [] }, template, media);
-}
-
-/** Ring radius, as a fraction of the canvas width. */
-export const RING_RADIUS = 0.34;
-
-/**
- * Where photo `index` of `count` sits on the Ring template: evenly round a
- * circle centred on the canvas, starting at the top and going clockwise,
- * smaller as the ring fills, each with a slight alternating tilt.
- */
-export function ringSpot(index: number, count: number): Pick<MediaSticker, 'x' | 'y' | 'scale' | 'rotation'> {
-  const angle = -Math.PI / 2 + (index / Math.max(1, count)) * Math.PI * 2;
-  // Neighbours just overlap (like the story wheel) and the middle stays open.
-  const scale = count <= 4 ? 1.1 : count <= 6 ? 0.95 : count <= 9 ? 0.8 : 0.7;
-  return {
-    x: 0.5 + RING_RADIUS * Math.cos(angle),
-    // y is a fraction of the 9:16 height, so the radius shrinks by the aspect to stay round.
-    y: 0.5 + RING_RADIUS * CANVAS_ASPECT * Math.sin(angle),
-    scale,
-    rotation: index % 2 === 0 ? -4 : 4,
-  };
 }
 
 /** A loose, tidy scatter for photo stickers added one after another. */

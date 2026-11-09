@@ -22,7 +22,10 @@ export type GridLayoutId =
   | 'diary'
   | 'polaroid';
 
-export type TemplateId = 'story' | 'text' | 'stickers' | 'ring' | `grid:${GridLayoutId}`;
+/** Templates that arrange photos in a shape (see templates/arrangements). */
+export type ArrangedTemplateId = 'ring' | 'spiral' | 'fan' | 'stack' | 'float';
+
+export type TemplateId = 'story' | 'text' | 'stickers' | ArrangedTemplateId | `grid:${GridLayoutId}`;
 
 /** Pan/zoom of media inside its frame. x/y: offset as a fraction of the frame; scale ≥ 1. */
 export interface Crop {
