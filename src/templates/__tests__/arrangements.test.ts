@@ -115,3 +115,15 @@ describe('slideshow', () => {
     expect(open('float')).toBe('fan');
   });
 });
+
+describe('retired Diary', () => {
+  it('opens as a Canvas with its photo full-bleed and its words kept', async () => {
+    const { canvasOf } = await import('@/templates/legacy');
+    const text = { id: 't', kind: 'text', text: 'hi', font: 'x', color: null, align: 'center', style: 'plain', size: 0.05, x: 0.5, y: 0.8, scale: 1, rotation: 0 } as const;
+    const layout = { version: 1, template: 'grid:diary', background: { kind: 'stripes' }, cells: [{ cellId: 'a', mediaId: 'p0', crop: { x: 0.1, y: 0, scale: 1.2 } }], layers: [text] } as unknown as CanvasDoc;
+    const doc = canvasOf({ layout, mediaElements: [] } as never, { width: 300, height: 500 });
+    expect(doc.template).toBe('story');
+    expect(doc.background).toEqual({ kind: 'media', mediaId: 'p0', crop: { x: 0.1, y: 0, scale: 1.2 } });
+    expect(doc.layers).toEqual([text]);
+  });
+});

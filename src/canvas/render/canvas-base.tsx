@@ -1,7 +1,7 @@
 /**
  * CanvasBase — everything under the layers: the stripes, a colour, a
  * full-bleed photo/video (Story), or a grid of cells with its decor
- * (diary's striped page, polaroid frame).
+ * (film strip margins, polaroid frame).
  */
 
 import React from 'react';
@@ -121,9 +121,8 @@ function GridBase({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents={renderers ? 'box-none' : 'none'}>
-      {/* The diary's page under the photo is the app's own striped card. */}
-      {/* Film's strip margins, the diary page and the polaroid sit on the striped card. */}
-      {(layout.decor === 'film' || layout.decor === 'diary' || layout.decor === 'polaroid') && <StripesSurface animated={false} />}
+      {/* Film's strip margins and the polaroid sit on the striped card. */}
+      {(layout.decor === 'film' || layout.decor === 'polaroid') && <StripesSurface animated={false} />}
       {frame ? (
         <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-3deg' }] }]}>
           <View

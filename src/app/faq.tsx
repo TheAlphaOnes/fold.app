@@ -68,7 +68,7 @@ export default function FAQScreen() {
           <B>CANVAS</B> one photo or video, edge to edge.{'\n'}
           <B>TEXT</B> your words on the stripes.{'\n'}
           <B>STICKERS</B> photos placed freely, in shapes like heart, star, polaroid, stamp or tape.{'\n'}
-          <B>GRIDS</B> collages from two to six photos, including a film strip and a diary page.{'\n'}
+          <B>GRIDS</B> collages from two to seven photos, including a film strip and a polaroid.{'\n'}
           <B>SLIDESHOW</B> your photos full screen, one after another.{'\n'}
           <B>RING, FAN, DECK</B> your photos arranged in a shape that moves: a turning ring, a hand of cards that fans open, a pile that flips through.{'\n'}
           Fold picks one as you add photos; change it any time.{'\n\n'}
