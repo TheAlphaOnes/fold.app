@@ -1,131 +1,98 @@
 /**
  * CanvasStage — CANVAS chapter (drag · pinch).
  *
- * A sample canvas built from the bundled guide images. It is labelled as a
- * sample on the card itself and is never written to the journal. The ghost
- * finger tracks the first sticker and steps aside once the user touches it.
+ * The real composer canvas with a sample memory (two photo stickers and a
+ * note) built from the bundled guide images. It is labelled as a sample and
+ * never written to the journal. The ghost finger tracks the first sticker
+ * and steps aside once the user touches the canvas.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image as RNImage, StyleSheet, View } from 'react-native';
 
-import { MemoryCard } from '@/components/memory-card';
+import { CanvasEditor } from '@/canvas/edit/canvas-editor';
+import { fitCanvas } from '@/canvas/geometry';
+import type { CanvasDoc, Layer } from '@/canvas/types';
 import { GestureHint } from '@/components/guide/gesture-hint';
-import { useFullCardSize } from '@/components/guide/fitted-memory-card';
 import type { GuideStageProps } from '@/components/guide/types';
-import type { Composition, MediaElement } from '@/types/journal';
+import type { MediaElement } from '@/types/journal';
 
-const SAMPLE_ID = -1;
-const CARD_GUTTER = 21;
 const STAGE_PADDING = 16;
-/** Sticker frames match DraggableSticker: portrait 90x120, landscape 120x90. */
-const PORTRAIT = { width: 90, height: 120 };
-const LANDSCAPE = { width: 120, height: 90 };
-const MOVE_THRESHOLD = 15;
-const SCALE_THRESHOLD = 0.15;
 
 function sampleUri(source: number): string {
   return RNImage.resolveAssetSource(source)?.uri ?? '';
 }
 
-function buildSampleStickers(cardWidth: number, cardHeight: number): MediaElement[] {
-  return [
-    {
-      id: 'guide-sample-1',
-      uri: sampleUri(require('../../../assets/images/guide-sample-1.jpg')),
-      type: 'image',
-      x_pos: 24,
-      y_pos: 28,
-      scale: 1,
-      width: PORTRAIT.width,
-      height: PORTRAIT.height,
-    },
-    {
-      id: 'guide-sample-2',
-      uri: sampleUri(require('../../../assets/images/guide-sample-2.jpg')),
-      type: 'image',
-      x_pos: Math.max(24, cardWidth - LANDSCAPE.width - 28),
-      y_pos: Math.max(160, cardHeight - LANDSCAPE.height - 80),
-      scale: 1,
-      width: LANDSCAPE.width,
-      height: LANDSCAPE.height,
-    },
-  ];
-}
+/** Normalised distance that counts as a drag, and scale change that counts as a pinch. */
+const MOVE_THRESHOLD = 0.04;
+const SCALE_THRESHOLD = 0.15;
+
+const SAMPLE_MEDIA: MediaElement[] = [
+  { id: 'guide-sample-1', uri: sampleUri(require('../../../assets/images/guide-sample-1.jpg')), type: 'image', x_pos: 0, y_pos: 0, width: 3, height: 4 },
+  { id: 'guide-sample-2', uri: sampleUri(require('../../../assets/images/guide-sample-2.jpg')), type: 'image', x_pos: 0, y_pos: 0, width: 4, height: 3 },
+];
+
+const SAMPLE_DOC: CanvasDoc = {
+  version: 1,
+  template: 'stickers',
+  background: { kind: 'stripes' },
+  layers: [
+    { id: 'note', kind: 'text', text: 'a sample canvas.\nnothing here is saved.', font: 'JetBrainsMono-Regular', color: null, align: 'center', style: 'plain', size: 0.045, x: 0.5, y: 0.5, scale: 1, rotation: 0 },
+    { id: 's1', kind: 'media', mediaId: 'guide-sample-1', shape: 'rounded', x: 0.3, y: 0.24, scale: 1, rotation: -5 },
+    { id: 's2', kind: 'media', mediaId: 'guide-sample-2', shape: 'polaroid', x: 0.68, y: 0.74, scale: 1, rotation: 4 },
+  ],
+};
 
 export function CanvasStage({ step, status, area, onSuccess }: GuideStageProps) {
-  const full = useFullCardSize();
-  const cardHeight = Math.max(280, Math.min(full.height, area.height - STAGE_PADDING * 2));
+  const size = fitCanvas({ width: area.width - STAGE_PADDING * 2, height: area.height - STAGE_PADDING * 2 });
   const isActive = status === 'active';
-
-  const initialStickers = useMemo(
-    () => buildSampleStickers(full.width, cardHeight),
-    [full.width, cardHeight],
-  );
-  const [stickers, setStickers] = useState<MediaElement[]>(initialStickers);
-  // The step the user last touched the canvas in; the hint steps aside for it.
+  const [doc, setDoc] = useState<CanvasDoc>(SAMPLE_DOC);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [touchedStep, setTouchedStep] = useState<string | null>(null);
   const touched = touchedStep === step.id;
-  // The label replaces the timestamp, but the card still needs a valid date.
   const [createdAt] = useState(() => Date.now());
 
-  // Each step measures against where things stood when it began, so a drag
-  // made during "pinch" (or a pinch during "drag") never counts.
-  const baseline = useRef<MediaElement[]>(stickers);
-  useEffect(() => {
-    baseline.current = stickers;
-    // Only re-snapshot when the step changes, not on every sticker update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step.id]);
+  // Each step measures from where the stickers stood when it began, so a
+  // drag made during "pinch" (or a pinch during "drag") never counts.
+  const [baseline, setBaseline] = useState<{ step: string; layers: Layer[] }>({ step: step.id, layers: doc.layers });
+  if (baseline.step !== step.id) setBaseline({ step: step.id, layers: doc.layers });
 
-  const sample: Composition = useMemo(() => ({
-    id: SAMPLE_ID,
-    textContent: 'a sample canvas.\nnothing here is saved.',
-    mediaElements: stickers,
-    createdAt,
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 16,
-    storyIds: [],
-  }), [stickers, createdAt]);
-
-  const handleUpdate = useCallback((_id: number, next: MediaElement[]) => {
-    setStickers(next);
+  const onLayerChange = (id: string, patch: Partial<Layer>) => {
+    setDoc((d) => ({ ...d, layers: d.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) }));
     setTouchedStep(step.id);
     if (!isActive) return;
-
-    const before = new Map(baseline.current.map((media) => [media.id, media]));
-    const achieved = next.some((media) => {
-      const start = before.get(media.id);
-      if (!start) return false;
-      if (step.id === 'drag') {
-        return Math.hypot(media.x_pos - start.x_pos, media.y_pos - start.y_pos) > MOVE_THRESHOLD;
-      }
-      return Math.abs((media.scale ?? 1) - (start.scale ?? 1)) >= SCALE_THRESHOLD;
-    });
-    if (achieved) onSuccess();
-  }, [isActive, step.id, onSuccess]);
-
-  // Anchor the ghost finger on the first sticker's live position and size.
-  const target = stickers[0];
-  const targetFrame = target.width && target.height && target.width > target.height ? LANDSCAPE : PORTRAIT;
-  const targetScale = target.scale ?? 1;
-  const hintBox = {
-    left: target.x_pos + (targetFrame.width * (1 - targetScale)) / 2,
-    top: target.y_pos + (targetFrame.height * (1 - targetScale)) / 2,
-    width: targetFrame.width * targetScale,
-    height: targetFrame.height * targetScale,
+    const start = baseline.layers.find((l) => l.id === id);
+    if (!start || start.kind !== 'media') return;
+    const moved = Math.hypot((patch.x ?? start.x) - start.x, (patch.y ?? start.y) - start.y) > MOVE_THRESHOLD;
+    const resized = Math.abs((patch.scale ?? start.scale) - start.scale) >= SCALE_THRESHOLD;
+    if ((step.id === 'drag' && moved) || (step.id === 'pinch' && resized)) onSuccess();
   };
+
+  const memory = useMemo(() => ({ id: -1, createdAt, location: undefined }), [createdAt]);
+  const target = doc.layers.find((l) => l.id === 's1')!;
+  const hint = { left: target.x * size.width - 45, top: target.y * size.height - 60, width: 90, height: 120 };
 
   return (
     <View style={styles.container}>
-      <View style={[styles.card, { height: cardHeight }]}>
-        <MemoryCard
-          item={sample}
-          height={cardHeight}
-          onUpdatePositions={handleUpdate}
-          label="SAMPLE  ·  NOT SAVED"
+      <View style={{ width: size.width, height: size.height }}>
+        <CanvasEditor
+          doc={doc}
+          media={SAMPLE_MEDIA}
+          memory={memory}
+          width={size.width}
+          height={size.height}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onLayerChange={onLayerChange}
+          // The sample keeps everything: nothing to delete or edit here.
+          onLayerDelete={() => {}}
+          onEditText={() => {}}
+          onCrop={() => {}}
+          onFillCell={() => {}}
+          onSwapCells={() => {}}
+          onBackgroundTap={() => setSelectedId(null)}
         />
-        <View style={[styles.hintBox, hintBox]} pointerEvents="none">
+        <View style={[styles.hintBox, hint]} pointerEvents="none">
           <GestureHint gesture={step.gesture} visible={isActive && !touched} />
         </View>
       </View>
@@ -134,14 +101,6 @@ export function CanvasStage({ step, status, area, onSuccess }: GuideStageProps) 
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  card: {
-    marginHorizontal: CARD_GUTTER,
-  },
-  hintBox: {
-    position: 'absolute',
-  },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hintBox: { position: 'absolute' },
 });

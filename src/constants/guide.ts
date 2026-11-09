@@ -126,8 +126,8 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
     chapter: 'canvas',
     stage: 'canvas',
     gesture: 'drag',
-    title: 'HOLD, THEN DRAG',
-    hint: 'hold a sticker, then move it.',
+    title: 'DRAG TO MOVE',
+    hint: 'drag a sticker anywhere.',
     success: 'MOVED',
   },
   {

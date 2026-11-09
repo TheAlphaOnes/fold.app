@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';

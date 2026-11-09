@@ -8,7 +8,6 @@ import {
   getCompositionById,
   createComposition, 
   updateComposition as dbUpdateComposition,
-  updateMediaPositions,
   toggleCompositionStoryId,
   trashComposition,
   trashAllCompositions,
@@ -17,7 +16,7 @@ import {
   type CreateCompositionInput,
   type UpdateCompositionInput
 } from '@/db/journal-repository';
-import type { Composition, MediaElement } from '@/types/journal';
+import type { Composition } from '@/types/journal';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import { useStoriesStore } from '@/hooks/use-stories';
 import { useProgressionStore } from '@/hooks/use-progression';
@@ -64,7 +63,6 @@ interface JournalState {
   /** `source` is where the memory came from, for analytics. */
   addComposition: (input: CreateCompositionInput, source: CaptureSource) => Promise<void>;
   updateComposition: (input: UpdateCompositionInput) => Promise<Composition | null>;
-  updatePositions: (id: number, newMediaElements: MediaElement[]) => Promise<void>;
   toggleStoryId: (id: number, storyId: number) => Promise<void>;
   removeComposition: (id: number) => Promise<void>;
   removeAllCompositions: () => Promise<void>;
@@ -305,42 +303,6 @@ export const useJournalStore = create<JournalState>((set, get) => ({
     return updated;
   },
 
-  updatePositions: async (id: number, newMediaElements: MediaElement[]) => {
-    const patch = (comp: Composition) =>
-      comp.id === id ? { ...comp, mediaElements: newMediaElements } : comp;
-
-    const hydratedById = { ...get().hydratedById };
-    if (hydratedById[id]) {
-      hydratedById[id] = { ...hydratedById[id], mediaElements: newMediaElements };
-    }
-
-    set((state) => ({
-      compositions: state.compositions.map(patch),
-      allCompositions: state.allCompositions.map(patch),
-      hydratedById,
-    }));
-    try {
-      await updateMediaPositions({ id, mediaElements: newMediaElements });
-    } catch (err) {
-      // The UI was patched optimistically; re-read the stored row so the
-      // interface reflects the database rather than a write that never landed.
-      console.error('Failed to persist sticker positions, reverting to stored state', err);
-      try {
-        const stored = await getCompositionById(id);
-        if (stored) {
-          const revertedHydratedById = { ...get().hydratedById };
-          if (revertedHydratedById[id]) revertedHydratedById[id] = stored;
-          set((state) => ({
-            compositions: state.compositions.map((c) => (c.id === id ? stored : c)),
-            allCompositions: state.allCompositions.map((c) => (c.id === id ? stored : c)),
-            hydratedById: revertedHydratedById,
-          }));
-        }
-      } catch (revertErr) {
-        console.error('Failed to revert sticker positions after write failure', revertErr);
-      }
-    }
-  },
 
   toggleStoryId: async (id: number, storyId: number) => {
     const nextStoryIds = (storyIds: number[]) => {

@@ -16,7 +16,6 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { AmbientBackdrop } from '@/components/ambient-backdrop';
 import { AddButton } from '@/components/add-button';

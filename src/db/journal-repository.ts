@@ -57,11 +57,6 @@ export interface UpdateCompositionInput {
   layout?: CanvasDoc;
 }
 
-export interface UpdateMediaPositionsInput {
-  id: number;
-  mediaElements: MediaElement[];
-}
-
 export function rowToComposition(row: CompositionRow): Composition {
   let mediaElements: MediaElement[] = [];
   try {
@@ -428,15 +423,6 @@ export async function updateComposition(input: UpdateCompositionInput): Promise<
   return getCompositionById(input.id);
 }
 
-export async function updateMediaPositions(input: UpdateMediaPositionsInput): Promise<void> {
-  const db = await getDatabase();
-  const mediaJson = JSON.stringify(input.mediaElements);
-  await db.runAsync(
-    'UPDATE compositions SET media_elements = ? WHERE id = ?',
-    mediaJson,
-    input.id
-  );
-}
 
 export async function toggleCompositionStoryId(id: number, storyId: number): Promise<boolean> {
   const db = await getDatabase();

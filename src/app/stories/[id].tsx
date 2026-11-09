@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
 import { CarouselItem } from '@/components/carousel-item';
-import { MemoryCard } from '@/components/memory-card'; // fallback if needed
 import { FlatList } from 'react-native';
 import Animated, { 
   useSharedValue, 
