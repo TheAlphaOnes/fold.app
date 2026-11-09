@@ -7,9 +7,10 @@
 import React from 'react';
 import { PixelRatio, StyleSheet, View } from 'react-native';
 
-import { DiagonalStripes } from '@/components/diagonal-stripes';
 import type { CanvasDoc, Crop } from '@/canvas/types';
 import { MediaFill } from '@/canvas/render/media-fill';
+import { StripesSurface } from '@/canvas/render/stripes-surface';
+import { SlideshowBase } from '@/canvas/render/slideshow-base';
 import { GAP_FRACTION, cellRect, gridLayout, type GridLayout } from '@/templates/grids';
 import { gridIdOf } from '@/templates/registry';
 import { useTheme } from '@/hooks/use-theme';
@@ -35,19 +36,12 @@ interface CanvasBaseProps {
   renderers?: FrameRenderers;
 }
 
-/** Fold's card surface: the diagonal stripes on the card colour. */
-function StripesSurface({ animated }: { animated: boolean }) {
-  const theme = useTheme();
-  const isDark = theme.background !== '#FFFFFF';
-  return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
-      <DiagonalStripes color={isDark ? theme.border : '#D0D0D0'} opacity={isDark ? 0.12 : 0.5} animated={animated} />
-    </View>
-  );
-}
-
 export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers }: CanvasBaseProps) {
   const bg = doc.background;
+
+  if (doc.template === 'slideshow') {
+    return <SlideshowBase doc={doc} media={media} width={width} height={height} playing={playing && animated} muted={muted} renderers={renderers} />;
+  }
 
   const grid = gridIdOf(doc.template);
   if (grid) {
@@ -92,7 +86,9 @@ function GridBase({
   const theme = useTheme();
   const gap = GAP_FRACTION[doc.gap ?? 'none'] * width;
   // Gaps show the card colour; only decor grids (film, polaroid) set their own.
-  const background = doc.background.kind === 'color' ? doc.background.color : theme.backgroundElement;
+  // Film keeps its black strip; the polaroid always sits on the striped card
+  // (older ones stored a cream backdrop); other grids' gaps are the card colour.
+  const background = layout.decor === 'polaroid' ? theme.backgroundElement : doc.background.kind === 'color' ? doc.background.color : theme.backgroundElement;
   const fills = new Map((doc.cells ?? []).map((c) => [c.cellId, c]));
 
   const frame = layout.decor === 'polaroid';
@@ -127,7 +123,7 @@ function GridBase({
     <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents={renderers ? 'box-none' : 'none'}>
       {layout.decor === 'film' && <FilmDecor width={width} height={height} />}
       {/* The diary's page under the photo is the app's own striped card. */}
-      {layout.decor === 'diary' && <StripesSurface animated={false} />}
+      {(layout.decor === 'diary' || layout.decor === 'polaroid') && <StripesSurface animated={false} />}
       {frame ? (
         <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-3deg' }] }]}>
           <View

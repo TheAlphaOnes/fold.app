@@ -32,6 +32,7 @@ import { fitCanvas, newId } from '@/canvas/geometry';
 import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
+import { isArranged } from '@/templates/arrangements';
 import { FrameTools, StickerTools } from '@/components/compose/selection-bar';
 import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import { TextEditorSheet, type TextDraft } from '@/components/compose/text-editor-sheet';
@@ -226,8 +227,10 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     switch (kind) {
       case 'photo': {
         const added = await media.pickFromGallery();
-        // Each gets its own spot, not the same one.
-        added.forEach((m, i) => addSticker(m, i));
+        // In a shape or a slideshow, a photo joins it; elsewhere it's a sticker
+        // (each in its own spot, not the same one).
+        if (isArranged(c.doc.template) || c.doc.template === 'slideshow') c.addMedia(added);
+        else added.forEach((m, i) => addSticker(m, i));
         return;
       }
       case 'gif':

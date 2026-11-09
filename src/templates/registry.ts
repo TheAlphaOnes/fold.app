@@ -20,6 +20,7 @@ export const BASE_TEMPLATES: readonly TemplateInfo[] = [
   { id: 'story', name: 'Canvas' },
   { id: 'text', name: 'Text' },
   { id: 'stickers', name: 'Stickers' },
+  { id: 'slideshow', name: 'Slideshow' },
   ...ARRANGED_IDS.map((id) => ({ id, name: ARRANGEMENTS[id].name })),
 ];
 
@@ -181,17 +182,29 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
   }
 
   if (isArranged(template)) {
-    // Every photo takes its place in the shape, re-laid whenever the count
-    // changes; a photo already there keeps its sticker (id, shape).
+    // The shape is the whole point, so every photo is part of it, including
+    // ones that were placed as stickers (they keep their id and shape).
+    // Re-laid whenever the count changes. GIFs stay loose stickers.
+    const photos = visualMedia(media);
+    const photoIds = new Set(photos.map((m) => m.id));
     const existing = new Map(
-      doc.layers.filter((l): l is MediaSticker => l.kind === 'media' && !!l.auto && ids.has(l.mediaId)).map((l) => [l.mediaId, l]),
+      doc.layers.filter((l): l is MediaSticker => l.kind === 'media' && photoIds.has(l.mediaId)).map((l) => [l.mediaId, l]),
     );
-    const arranged = candidates.map((m, i) => {
-      const spot = ARRANGEMENTS[template].spot(i, candidates.length);
+    const arranged = photos.map((m, i) => {
+      const spot = ARRANGEMENTS[template].spot(i, photos.length);
       const prior = existing.get(m.id);
       return { ...(prior ?? (scatterSticker(m.id, i) as MediaSticker)), ...spot, auto: true };
     });
-    return { version: 1, template, background: { kind: 'stripes' }, layers: [...arranged, ...kept] };
+    const others = doc.layers.filter((l) => !(l.kind === 'media' && (l.auto || photoIds.has(l.mediaId))));
+    return { version: 1, template, background: { kind: 'stripes' }, layers: [...arranged, ...others] };
+  }
+
+  if (template === 'slideshow') {
+    // Each photo is a slide, in order; a photo keeps its framing from before.
+    const prior = new Map((doc.cells ?? []).filter((c) => c.mediaId).map((c) => [c.mediaId!, c]));
+    if (doc.background.kind === 'media') prior.set(doc.background.mediaId, { cellId: '', mediaId: doc.background.mediaId, crop: doc.background.crop });
+    const cells: CellFill[] = candidates.map((m, i) => ({ cellId: `slide-${i}`, mediaId: m.id, crop: prior.get(m.id)?.crop ?? NO_CROP, mirrored: prior.get(m.id)?.mirrored }));
+    return { version: 1, template, background: { kind: 'stripes' }, cells, layers: kept };
   }
 
   // Grids: keep each cell's photo (by cell id) while it's still a candidate; fill empties in order.
@@ -215,14 +228,9 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
   return {
     version: 1,
     template,
-    // Film is a black strip and the polaroid sits on paper; every other grid
-    // is on the card, so its gaps read as the card's own colour.
-    background:
-      layout.decor === 'film'
-        ? { kind: 'color', color: '#0B0B0B' }
-        : layout.decor === 'polaroid'
-          ? { kind: 'color', color: '#E9E4DA' }
-          : { kind: 'stripes' },
+    // Film is a black strip; every other grid (the polaroid too) is on the
+    // card, so gaps and margins read as the card itself.
+    background: layout.decor === 'film' ? { kind: 'color', color: '#0B0B0B' } : { kind: 'stripes' },
     cells,
     gap: doc.gap ?? (layout.decor ? 'none' : 'thin'),
     layers: kept,

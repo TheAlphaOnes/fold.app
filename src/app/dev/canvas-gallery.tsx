@@ -74,7 +74,8 @@ export default function CanvasGallery() {
                 <CanvasView doc={doc} memory={memory} width={w} height={feedH} animated={false} />
               </View>
               <View style={[styles.card, { borderColor: theme.border }]}>
-                <CanvasView doc={doc} memory={memory} width={w} height={storyH} animated={false} />
+                {/* Live, so template motion (Ring, Deck, Slideshow…) can be checked here. */}
+                <CanvasView doc={doc} memory={memory} width={w} height={storyH} live />
               </View>
             </View>
           </View>

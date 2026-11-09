@@ -12,7 +12,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
-import { MotionGroup, MotionItem } from '@/canvas/render/arrangement-motion';
+import { DeckSwing, MotionGroup, MotionItem, Upright, useDeck } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
   DateStickerView,
@@ -20,7 +20,7 @@ import {
   MediaStickerView,
   TextLayerView,
 } from '@/canvas/render/layer-views';
-import { ARRANGEMENTS, isArranged } from '@/templates/arrangements';
+import { ARRANGEMENTS, deckDepth, isArranged } from '@/templates/arrangements';
 import type { Composition, MediaElement } from '@/types/journal';
 
 export interface CanvasViewProps {
@@ -96,38 +96,68 @@ export function LayerContent({
 export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
-  // Arranged templates (Ring, Spiral, Fan, Stack, Float) move gently while
-  // this is the live canvas in front; editor and exports stay still.
+  // Arranged templates (Ring, Fan, Deck, Float) move gently while this is
+  // the live canvas in front; the editor and exports stay still.
   const motion = isArranged(doc.template) ? ARRANGEMENTS[doc.template].motion : null;
   const moving = !!motion && live && animated;
   const inShape = (layer: Layer) => !!motion && layer.kind === 'media' && !!layer.auto;
   const shapeLayers = doc.layers.filter(inShape);
+  const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck');
 
-  const drawLayer = (layer: Layer, index: number) => (
+  const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />;
+  const anchored = (layer: Layer, children: React.ReactNode) => (
     <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
-      {motion?.kind === 'item' && inShape(layer) ? (
-        <MotionItem motion={motion.style} index={index} unit={width} active={moving}>
-          <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />
-        </MotionItem>
-      ) : (
-        <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />
-      )}
+      {children}
     </LayerAnchor>
   );
+  const loose = doc.layers.filter((l) => !inShape(l)).map((l) => anchored(l, content(l)));
+
+  let shape: React.ReactNode = null;
+  if (motion?.kind === 'group') {
+    // The shape turns as one; each photo turns back so it stays level.
+    shape = (
+      <MotionGroup degreesPerSecond={motion.degreesPerSecond} active={moving}>
+        {shapeLayers.map((l) => anchored(l, <Upright>{content(l)}</Upright>))}
+      </MotionGroup>
+    );
+  } else if (motion?.kind === 'item') {
+    shape = shapeLayers.map((l, i) =>
+      anchored(
+        l,
+        <MotionItem motion={motion.style} index={i} unit={width} active={moving}>
+          {content(l)}
+        </MotionItem>,
+      ),
+    );
+  } else if (motion?.kind === 'deck') {
+    // Drawn back to front in the current flip order; the print in flight swings.
+    const n = shapeLayers.length;
+    const order = shapeLayers.map((l, i) => ({ l, i })).sort((a, b) => deckDepth(b.i, n, deck.step) - deckDepth(a.i, n, deck.step));
+    shape = order.map(({ l, i }) =>
+      anchored(
+        l,
+        i === deck.swinging ? (
+          <DeckSwing swing={deck.swing} unit={width}>
+            {content(l)}
+          </DeckSwing>
+        ) : (
+          content(l)
+        ),
+      ),
+    );
+  }
 
   return (
     <View style={[styles.canvas, { width, height }]}>
       <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} muted={muted} animated={animated} />
-      {motion?.kind === 'group' ? (
+      {motion ? (
         <>
-          {/* The shape turns as one, under the words and stickers. */}
-          <MotionGroup degreesPerSecond={motion.degreesPerSecond} active={moving}>
-            {shapeLayers.map(drawLayer)}
-          </MotionGroup>
-          {doc.layers.filter((l) => !inShape(l)).map((l) => drawLayer(l, 0))}
+          {/* The shape sits under the words and other stickers. */}
+          {shape}
+          {loose}
         </>
       ) : (
-        doc.layers.map((layer) => drawLayer(layer, shapeLayers.indexOf(layer)))
+        doc.layers.map((l) => anchored(l, content(l)))
       )}
     </View>
   );
