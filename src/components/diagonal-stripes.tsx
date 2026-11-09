@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 
@@ -20,7 +20,10 @@ export function DiagonalStripes({
   opacity = 0.15,
   animated = false,
 }: DiagonalStripesProps) {
-  const patternId = `cardStripes-${color.replace('#', '')}-${opacity}`;
+  // SVG ids resolve globally in react-native-svg: two stripe views sharing
+  // an id draw with whichever pattern registered first (clipped to that
+  // view's size). Every instance gets its own.
+  const patternId = `stripes-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   return (
     <View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents="none">

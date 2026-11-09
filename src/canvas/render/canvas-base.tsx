@@ -1,7 +1,7 @@
 /**
  * CanvasBase — everything under the layers: the stripes, a colour, a
  * full-bleed photo/video (Story), or a grid of cells with its decor
- * (film strip, diary page, polaroid frame).
+ * (film strip, diary's striped page, polaroid frame).
  */
 
 import React from 'react';
@@ -35,9 +35,18 @@ interface CanvasBaseProps {
   renderers?: FrameRenderers;
 }
 
-export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers }: CanvasBaseProps) {
+/** Fold's card surface: the diagonal stripes on the card colour. */
+function StripesSurface({ animated }: { animated: boolean }) {
   const theme = useTheme();
   const isDark = theme.background !== '#FFFFFF';
+  return (
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
+      <DiagonalStripes color={isDark ? theme.border : '#D0D0D0'} opacity={isDark ? 0.12 : 0.5} animated={animated} />
+    </View>
+  );
+}
+
+export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers }: CanvasBaseProps) {
   const bg = doc.background;
 
   const grid = gridIdOf(doc.template);
@@ -60,11 +69,7 @@ export function CanvasBase({ doc, media, width, height, playing, muted = true, a
     return <View style={[StyleSheet.absoluteFill, { backgroundColor: bg.color }]} />;
   }
 
-  return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.backgroundElement }]} pointerEvents="none">
-      <DiagonalStripes color={isDark ? theme.border : '#D0D0D0'} opacity={isDark ? 0.12 : 0.5} animated={animated} />
-    </View>
-  );
+  return <StripesSurface animated={animated} />;
 }
 
 function GridBase({
@@ -122,7 +127,8 @@ function GridBase({
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents={renderers ? 'box-none' : 'none'}>
       {layout.decor === 'film' && <FilmDecor width={width} height={height} />}
-      {layout.decor === 'diary' && <DiaryDecor width={width} height={height} />}
+      {/* The diary's page under the photo is the app's own striped card. */}
+      {layout.decor === 'diary' && <StripesSurface animated={false} />}
       {frame ? (
         <View style={[StyleSheet.absoluteFill, { transform: [{ rotate: '-3deg' }] }]}>
           <View
@@ -161,24 +167,9 @@ function FilmDecor({ width, height }: { width: number; height: number }) {
   );
 }
 
-/** A ruled page under the photo. */
-function DiaryDecor({ width, height }: { width: number; height: number }) {
-  const top = height * 0.6;
-  const line = height * 0.05;
-  const lines = Math.floor((height - top) / line);
-  return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F4F1EA' }]}>
-      {Array.from({ length: lines }, (_, i) => (
-        <View key={i} style={[styles.rule, { top: top + (i + 1) * line, left: width * 0.08, right: width * 0.08 }]} />
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   cell: { position: 'absolute', overflow: 'hidden' },
   sprocket: { position: 'absolute', borderRadius: 3, backgroundColor: '#F4F1EA', opacity: 0.85 },
-  rule: { position: 'absolute', height: StyleSheet.hairlineWidth, backgroundColor: '#C9C2B4' },
   polaroid: {
     position: 'absolute',
     backgroundColor: '#FFFFFF',
