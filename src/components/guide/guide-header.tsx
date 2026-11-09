@@ -1,21 +1,22 @@
 /**
- * GuideHeader — close and mission progress.
+ * GuideHeader — close, mission progress, back / forward.
  *
  * Progress is shown as one tick per mission (the same 7 the home edge-tab
  * ring counts), grouped by chapter. A tick fills from the left when its
  * mission completes, and half-fills when one of a two-step mission's steps
  * is done. Ticks double as navigation.
  *
- * Back and skip live beside the step title (GuidePrompt).
+ * Back and forward arrows sit top right: back a step, skip ahead.
  */
 
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, interpolateColor } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { CloseButton } from '@/components/round-button';
+import { CloseButton, RoundButton } from '@/components/round-button';
 import { useTheme } from '@/hooks/use-theme';
 import { EASE_OUT } from '@/constants/motion';
 import { GUIDE_CHAPTERS, type GuideMissionId } from '@/constants/guide';
@@ -81,9 +82,13 @@ interface GuideHeaderProps {
   missionState: (mission: GuideMissionId) => MissionState;
   onSelectMission: (mission: GuideMissionId) => void;
   onClose: () => void;
+  /** Back one step; dimmed on the first. */
+  onPrev?: () => void;
+  /** Skip ahead; dimmed when there's nothing to skip. */
+  onNext?: () => void;
 }
 
-export function GuideHeader({ currentMission, missionState, onSelectMission, onClose }: GuideHeaderProps) {
+export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onPrev, onNext }: GuideHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -108,8 +113,20 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
           ))}
         </View>
 
-        {/* Balances the close button so the ticks stay centred. */}
-        <View style={styles.balance} />
+        <View style={styles.arrows}>
+          <RoundButton
+            icon={ChevronLeft}
+            onPress={onPrev ?? (() => {})}
+            accessibilityLabel="Previous step"
+            style={[styles.arrow, !onPrev && styles.arrowOff]}
+          />
+          <RoundButton
+            icon={ChevronRight}
+            onPress={onNext ?? (() => {})}
+            accessibilityLabel="Next step"
+            style={[styles.arrow, !onNext && styles.arrowOff]}
+          />
+        </View>
       </View>
 
     </View>
@@ -128,8 +145,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  balance: {
-    width: 44,
+  arrows: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  arrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  arrowOff: {
+    opacity: 0.3,
   },
   ticks: {
     flex: 1,

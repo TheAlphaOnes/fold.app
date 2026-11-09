@@ -130,6 +130,8 @@ export default function FieldGuideScreen() {
         missionState={flow.missionState}
         onSelectMission={flow.goToMission}
         onClose={leave}
+        onPrev={flow.stepIndex > 0 ? flow.back : undefined}
+        onNext={flow.isComplete ? undefined : flow.skip}
       />
 
       {flow.isComplete ? (
@@ -141,8 +143,6 @@ export default function FieldGuideScreen() {
               step={step}
               status={status}
               nudge={nudge}
-              onPrev={flow.stepIndex > 0 ? flow.back : undefined}
-              onNext={flow.skip}
             />
           )}
           <View style={styles.stage} onLayout={onStageLayout}>
