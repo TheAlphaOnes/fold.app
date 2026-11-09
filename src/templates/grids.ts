@@ -2,8 +2,8 @@
  * Grid (collage) layouts as data. Each cell is a rectangle in normalised
  * canvas units (0–1). Adding a layout means adding an entry here.
  *
- * Decor is drawn by the grid renderer: the film strip's sprocket holes and
- * date stamp, the diary's striped page, the polaroid's frame and tilt.
+ * Decor is drawn by the grid renderer: the striped card under the film
+ * strip and the diary, the polaroid's frame and tilt.
  */
 
 import type { GridLayoutId } from '@/canvas/types';
@@ -29,9 +29,22 @@ export interface GridLayout {
 
 const cell = (id: string, x: number, y: number, w: number, h: number): GridCell => ({ id, x, y, w, h });
 
-/** Film strip: four frames down a black band, sprocket margins at the sides. */
-const FILM_MARGIN = 0.14;
-const FILM_FRAME = (1 - 0.06 - 0.03 * 3) / 4;
+/**
+ * Film: a strip of five frames down the left, inset by a margin on both
+ * sides so the card shows round them like a film strip's border, beside
+ * two large photos stacked on the right.
+ * Frame ids a–d match the old four-frame strip, so saved photos stay put.
+ */
+export const FILM = {
+  /** Width of the strip, including both sprocket margins. */
+  strip: 0.46,
+  /** The strip's side margin, where the card shows through. */
+  margin: 0.035,
+  frames: 5,
+  /** Space between frames along the strip (fraction of height). */
+  spacing: 0.016,
+} as const;
+const FILM_FRAME_H = (1 - FILM.spacing * (FILM.frames + 1)) / FILM.frames;
 
 export const GRID_LAYOUTS: readonly GridLayout[] = [
   { id: 'duo-stack', name: 'Halves', cells: [cell('a', 0, 0, 1, 0.5), cell('b', 0, 0.5, 1, 0.5)], textAnchor: { x: 0.5, y: 0.5 } },
@@ -64,10 +77,27 @@ export const GRID_LAYOUTS: readonly GridLayout[] = [
     id: 'film',
     name: 'Film',
     decor: 'film',
-    cells: [0, 1, 2, 3].map((i) =>
-      cell(String.fromCharCode(97 + i), FILM_MARGIN, 0.03 + i * (FILM_FRAME + 0.03), 1 - FILM_MARGIN * 2, FILM_FRAME),
-    ),
-    textAnchor: { x: 0.5, y: 0.5 },
+    cells: [
+      ...Array.from({ length: FILM.frames }, (_, i) =>
+        cell(String.fromCharCode(97 + i), FILM.margin, FILM.spacing + i * (FILM_FRAME_H + FILM.spacing), FILM.strip - FILM.margin * 2, FILM_FRAME_H),
+      ),
+      cell('f', FILM.strip, 0, 1 - FILM.strip, 0.5),
+      cell('g', FILM.strip, 0.5, 1 - FILM.strip, 0.5),
+    ],
+    textAnchor: { x: 1 - (1 - FILM.strip) / 2, y: 0.5 },
+  },
+  {
+    // One wide photo on top, four beneath in two rows.
+    id: 'feature',
+    name: 'Feature',
+    cells: [
+      cell('a', 0, 0, 1, 0.42),
+      cell('b', 0, 0.42, 0.5, 0.29),
+      cell('c', 0.5, 0.42, 0.5, 0.29),
+      cell('d', 0, 0.71, 0.5, 0.29),
+      cell('e', 0.5, 0.71, 0.5, 0.29),
+    ],
+    textAnchor: { x: 0.5, y: 0.42 },
   },
   {
     id: 'six',
@@ -103,6 +133,7 @@ export function gridForCount(count: number): GridLayoutId {
   if (count <= 2) return 'duo-stack';
   if (count === 3) return 'trio-strips';
   if (count === 4) return 'quad';
+  if (count === 5) return 'feature';
   return 'six';
 }
 

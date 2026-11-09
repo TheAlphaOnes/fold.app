@@ -45,11 +45,21 @@ describe('arranged templates', () => {
     for (let i = 0; i < 10; i++) expect(Math.abs(stackSpot(i).x - 0.5)).toBeLessThanOrEqual(0.05);
   });
 
-  it('ring turns as a whole, deck flips, fan and float move each photo', () => {
+  it('ring turns as a whole, deck flips, fan opens and closes', () => {
     expect(ARRANGEMENTS.ring.motion.kind).toBe('group');
     expect(ARRANGEMENTS.stack.motion.kind).toBe('deck');
-    expect(ARRANGEMENTS.fan.motion.kind).toBe('item');
-    expect(ARRANGEMENTS.float.motion.kind).toBe('item');
+    expect(ARRANGEMENTS.fan.motion.kind).toBe('fan');
+  });
+
+  it('fan and deck use big uniform cards, sized to the canvas', async () => {
+    const { STICKER_BASE_WIDTH } = await import('@/canvas/geometry');
+    for (const id of ['fan', 'stack'] as const) {
+      const doc = applyTemplate(blank, id, photos(5));
+      const cards = doc.layers.filter((l): l is MediaSticker => l.kind === 'media');
+      expect(cards.every((c) => c.shape === 'card')).toBe(true);
+      // At least ~40% of the canvas width each: a hand / pile, not thumbnails.
+      for (const c of cards) expect(c.scale * STICKER_BASE_WIDTH.portrait).toBeGreaterThanOrEqual(0.38);
+    }
   });
 
   it('a photo placed as a sticker joins the shape', () => {
@@ -98,9 +108,10 @@ describe('slideshow', () => {
     expect(doc.cells?.[0].crop).toEqual({ x: 0.1, y: 0, scale: 1.4 });
   });
 
-  it('a retired Spiral opens as a Ring', async () => {
+  it('retired templates open as what replaced them', async () => {
     const { canvasOf } = await import('@/templates/legacy');
-    const layout = { ...blank, template: 'spiral' } as unknown as CanvasDoc;
-    expect(canvasOf({ layout, mediaElements: [] } as never, { width: 300, height: 500 }).template).toBe('ring');
+    const open = (template: string) => canvasOf({ layout: { ...blank, template } as unknown as CanvasDoc, mediaElements: [] } as never, { width: 300, height: 500 }).template;
+    expect(open('spiral')).toBe('ring');
+    expect(open('float')).toBe('fan');
   });
 });

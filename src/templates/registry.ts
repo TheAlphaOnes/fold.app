@@ -193,7 +193,8 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
     const arranged = photos.map((m, i) => {
       const spot = ARRANGEMENTS[template].spot(i, photos.length);
       const prior = existing.get(m.id);
-      return { ...(prior ?? (scatterSticker(m.id, i) as MediaSticker)), ...spot, auto: true };
+      const shape = ARRANGEMENTS[template].shape;
+      return { ...(prior ?? (scatterSticker(m.id, i) as MediaSticker)), ...spot, ...(shape ? { shape } : {}), auto: true };
     });
     const others = doc.layers.filter((l) => !(l.kind === 'media' && (l.auto || photoIds.has(l.mediaId))));
     return { version: 1, template, background: { kind: 'stripes' }, layers: [...arranged, ...others] };
@@ -228,9 +229,8 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
   return {
     version: 1,
     template,
-    // Film is a black strip; every other grid (the polaroid too) is on the
-    // card, so gaps and margins read as the card itself.
-    background: layout.decor === 'film' ? { kind: 'color', color: '#0B0B0B' } : { kind: 'stripes' },
+    // Every grid is on the card, so gaps and margins read as the card itself.
+    background: { kind: 'stripes' },
     cells,
     gap: doc.gap ?? (layout.decor ? 'none' : 'thin'),
     layers: kept,

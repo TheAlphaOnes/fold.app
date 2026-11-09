@@ -13,6 +13,7 @@ import Svg, { ClipPath, Defs, G, Image as SvgImage, Path } from 'react-native-sv
 import { MusicDisc } from '@/components/stories/music-disc';
 import { VinylRecord } from '@/components/vinyl-record';
 import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
+import { STICKER_BASE_WIDTH } from '@/canvas/geometry';
 import { stampOutline } from '@/canvas/render/stamp-outline';
 import { cutHeight, cutPath, isCutShape, type CutShape } from '@/canvas/render/sticker-paths';
 import { useMemoryAudio } from '@/canvas/render/use-memory-audio';
@@ -23,7 +24,6 @@ import { getHighResArtwork } from '@/utils/media-attach';
 import { memoryTextMetrics } from '@/utils/memory-text';
 
 /** Widths old 90/120pt stickers had on a 348pt card, as fractions of canvas width. */
-const STICKER_W = { portrait: 90 / 348, landscape: 120 / 348 } as const;
 const AUDIO_DISC = 0.3;
 /** Text wraps inside this share of the canvas width. */
 const TEXT_MAX_WIDTH = 0.84;
@@ -56,7 +56,7 @@ export function TextLayerView({ layer, width }: { layer: TextLayer; width: numbe
 
 function stickerSize(media: MediaElement, width: number, scale: number) {
   const landscape = media.width && media.height ? media.width > media.height : false;
-  const w = (landscape ? STICKER_W.landscape : STICKER_W.portrait) * width * scale;
+  const w = (landscape ? STICKER_BASE_WIDTH.landscape : STICKER_BASE_WIDTH.portrait) * width * scale;
   const h = landscape ? w * 0.75 : w * (4 / 3);
   return { w, h };
 }
@@ -66,6 +66,11 @@ export function MediaStickerView({ layer, media, width }: { layer: MediaSticker;
   const uri = media.type === 'video' ? thumb : media.uri;
   let { w, h } = stickerSize(media, width, layer.scale);
   if (layer.shape === 'circle' || layer.shape === 'stamp') h = w;
+  // A card is always a portrait print, so a fan or pile of them is uniform.
+  if (layer.shape === 'card') {
+    w = STICKER_BASE_WIDTH.portrait * width * layer.scale;
+    h = w * (4 / 3);
+  }
   if (isCutShape(layer.shape)) return <CutSticker shape={layer.shape} uri={uri} w={w} h={cutHeight(layer.shape, w)} />;
 
   const image = uri ? (
@@ -104,6 +109,15 @@ function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number;
       <View>
         <View style={[styles.photoShadow, { width: w, height: h, overflow: 'hidden' }]}>{children}</View>
         <View style={[styles.tape, { width: w * 0.42, height: w * 0.12, top: -w * 0.05, left: w * 0.29 }]} />
+      </View>
+    );
+  }
+  if (shape === 'card') {
+    // A print: a thin white border so cards read apart where they overlap.
+    const border = Math.max(2, w * 0.03);
+    return (
+      <View style={[styles.photoShadow, { width: w, height: h, borderRadius: w * 0.07, borderWidth: border, borderColor: '#FFFFFF', overflow: 'hidden' }]}>
+        {children}
       </View>
     );
   }

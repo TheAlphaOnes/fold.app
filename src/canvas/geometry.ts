@@ -88,6 +88,9 @@ export function pickTwistTarget(layers: readonly TwistCandidate[], selectedId: s
   return best;
 }
 
+/** A photo sticker's width at scale 1, as a fraction of the canvas width (portrait / landscape photos). */
+export const STICKER_BASE_WIDTH = { portrait: 90 / 348, landscape: 120 / 348 } as const;
+
 /** Short random id for layers and media. */
 export function newId(): string {
   return Math.random().toString(36).slice(2, 9);
