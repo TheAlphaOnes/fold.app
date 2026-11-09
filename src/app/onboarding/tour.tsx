@@ -54,7 +54,6 @@ export default function OnboardingTourScreen() {
       step={4}
       title="QUICK TOUR?"
       subtitle={'TWO MINUTES, ON YOUR\nOWN MEMORIES.'}
-      footnote={'Skip it now? The guide waits\non the home screen, right edge.'}
       onBack={() => goBack('/onboarding/basics')}
       cta={{ text: 'TAKE THE TOUR', onPress: () => void finish(true) }}
       secondary={{ text: 'I’ll explore myself', onPress: () => void finish(false) }}
@@ -65,7 +64,7 @@ export default function OnboardingTourScreen() {
           <Animated.View
             key={lesson.verb}
             entering={riseIn(320, 420 + i * 90, 8)}
-            style={[styles.lesson, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+            style={styles.lesson}
           >
             <ThemedText style={[styles.lessonVerb, { color: theme.accentWarm }]}>{lesson.verb}</ThemedText>
             <ThemedText style={[styles.lessonWhat, { color: theme.text }]}>{lesson.what}</ThemedText>
@@ -196,17 +195,13 @@ const styles = StyleSheet.create({
   lessons: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 10,
+    gap: 20,
     marginTop: 28,
   },
   lesson: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
   },
   lessonVerb: {
     fontFamily: 'JetBrainsMono-Bold',
