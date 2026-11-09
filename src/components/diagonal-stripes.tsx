@@ -1,61 +1,22 @@
-import React, { useId } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
+
+import { Hatch } from '@/components/hatch';
 
 interface DiagonalStripesProps {
   /** Stroke color for the lines */
   color?: string;
   /** Opacity of the entire overlay (0–1) */
   opacity?: number;
-  /** Whether to animate the stripes drifting (deprecated, kept for compat) */
+  /** Deprecated: the stripes are static. Kept so callers needn't change. */
   animated?: boolean;
 }
 
-/**
- * Repeating diagonal hatching texture.
- * Rendered as a completely static overlay for maximum performance and stability.
- */
-export function DiagonalStripes({
-  color = '#863800',
-  opacity = 0.15,
-  animated = false,
-}: DiagonalStripesProps) {
-  // SVG ids resolve globally in react-native-svg: two stripe views sharing
-  // an id draw with whichever pattern registered first (clipped to that
-  // view's size). Every instance gets its own.
-  const patternId = `stripes-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
-
+/** Fold's diagonal hatching: "\" lines every 8pt, edge to edge at any size. */
+export function DiagonalStripes({ color = '#863800', opacity = 0.15 }: DiagonalStripesProps) {
   return (
     <View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents="none">
-      <Svg key={patternId} width="100%" height="100%">
-        <Defs>
-          <Pattern
-            id={patternId}
-            x="0"
-            y="0"
-            width="8"
-            height="8"
-            patternUnits="userSpaceOnUse"
-          >
-            {/* 
-              Using a pre-calculated 45-degree path instead of a rotated <Line> 
-              fixes aliasing / stitching artifacts on iOS CoreGraphics.
-              Direction is \ (top-left to bottom-right)
-            */}
-            <Path
-              d="
-                M-2,-2 L10,10
-                M6,-2 L10,2
-                M-2,6 L2,10
-              "
-              stroke={color}
-              strokeWidth="1.5"
-              strokeLinecap="square"
-            />
-          </Pattern>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${patternId})`} />
-      </Svg>
+      <Hatch color={color} strokeWidth={1.5} period={8} />
     </View>
   );
 }

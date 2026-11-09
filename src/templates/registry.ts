@@ -43,11 +43,14 @@ export function visualMedia(media: MediaElement[]): MediaElement[] {
   return media.filter((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
 }
 
-/** Template that suits a number of photos (plan D5). Pass the base candidates. */
+/**
+ * Template that suits a number of photos (plan D5). Pass the base candidates.
+ * Canvas is the default: with no photo it's the striped card, and the first
+ * photo fills it edge to edge.
+ */
 export function suggestTemplate(media: MediaElement[]): TemplateId {
   const visual = visualMedia(media).length;
-  if (visual === 0) return 'text';
-  if (visual === 1) return 'story';
+  if (visual <= 1) return 'story';
   return `grid:${gridForCount(visual)}`;
 }
 
@@ -57,6 +60,67 @@ export function baseMediaIds(doc: CanvasDoc): Set<string> {
   if (doc.background.kind === 'media') ids.add(doc.background.mediaId);
   for (const c of doc.cells ?? []) if (c.mediaId) ids.add(c.mediaId);
   return ids;
+}
+
+/** Every media id the canvas draws: its base and every sticker (photo, song, voice). */
+export function shownMediaIds(doc: CanvasDoc): Set<string> {
+  const ids = baseMediaIds(doc);
+  for (const l of doc.layers) if ('mediaId' in l) ids.add(l.mediaId);
+  return ids;
+}
+
+/** A photo frame in the base: the full-bleed background, or a grid cell by id. */
+export type FrameTarget = 'background' | (string & {});
+
+export interface CanvasState {
+  doc: CanvasDoc;
+  media: MediaElement[];
+}
+
+/** Drops media the doc no longer shows (it was only ever in the removed spot). */
+function dropUnshown(doc: CanvasDoc, media: MediaElement[], candidates: (string | undefined)[]): MediaElement[] {
+  const shown = shownMediaIds(doc);
+  const gone = new Set(candidates.filter((id): id is string => !!id && !shown.has(id)));
+  return gone.size === 0 ? media : media.filter((m) => !gone.has(m.id));
+}
+
+/** The media a frame shows, if any. */
+export function frameMediaId(doc: CanvasDoc, target: FrameTarget): string | undefined {
+  if (target === 'background') return doc.background.kind === 'media' ? doc.background.mediaId : undefined;
+  return (doc.cells ?? []).find((c) => c.cellId === target)?.mediaId;
+}
+
+/**
+ * Empties a frame: a grid cell goes back to its "+" and the full-bleed
+ * background back to the stripes. The photo leaves the memory unless
+ * something else on the canvas still shows it.
+ */
+export function clearFrame(state: CanvasState, target: FrameTarget): CanvasState {
+  const old = frameMediaId(state.doc, target);
+  if (!old) return state;
+  const doc: CanvasDoc =
+    target === 'background'
+      ? { ...state.doc, background: { kind: 'stripes' } }
+      : { ...state.doc, cells: (state.doc.cells ?? []).map((c) => (c.cellId === target ? { cellId: c.cellId, crop: NO_CROP } : c)) };
+  return { doc, media: dropUnshown(doc, state.media, [old]) };
+}
+
+/** Puts new media into a frame, replacing (and dropping, if unshown) what was there. */
+export function fillFrame(state: CanvasState, target: FrameTarget, added: MediaElement): CanvasState {
+  const old = frameMediaId(state.doc, target);
+  const doc: CanvasDoc =
+    target === 'background'
+      ? { ...state.doc, background: { kind: 'media', mediaId: added.id, crop: NO_CROP } }
+      : { ...state.doc, cells: (state.doc.cells ?? []).map((c) => (c.cellId === target ? { cellId: c.cellId, mediaId: added.id, crop: NO_CROP } : c)) };
+  return { doc, media: dropUnshown(doc, [...state.media, added], [old]) };
+}
+
+/** Removes a layer; a sticker's media goes with it unless still shown elsewhere. */
+export function removeLayerFrom(state: CanvasState, id: string): CanvasState {
+  const layer = state.doc.layers.find((l) => l.id === id);
+  if (!layer) return state;
+  const doc = { ...state.doc, layers: state.doc.layers.filter((l) => l.id !== id) };
+  return { doc, media: dropUnshown(doc, state.media, ['mediaId' in layer ? layer.mediaId : undefined]) };
 }
 
 /** Media shown by photo stickers the user placed (not the Stickers template's own). */
@@ -169,10 +233,15 @@ export function scatterSticker(mediaId: string, index: number): Layer {
   return { id: newId(), kind: 'media', mediaId, shape: 'rounded', x: spot.x, y: spot.y, scale: 1, rotation: tilt };
 }
 
-/** Where new text goes on a template by default. */
-export function defaultTextSpot(template: TemplateId): { x: number; y: number } {
-  const grid = gridIdOf(template);
+/** The doc is a blank card: nothing behind the text but the stripes. */
+export function isBlankCard(doc: CanvasDoc): boolean {
+  return (doc.template === 'story' || doc.template === 'text') && doc.background.kind !== 'media';
+}
+
+/** Where new text goes by default: a caption over a full-bleed photo, a grid's anchor, else centred. */
+export function defaultTextSpot(doc: Pick<CanvasDoc, 'template' | 'background'>): { x: number; y: number } {
+  const grid = gridIdOf(doc.template);
   if (grid) return gridLayout(grid).textAnchor;
-  if (template === 'story') return { x: 0.5, y: 1 - SAFE_ZONE.bottom - 0.08 };
+  if (doc.template === 'story' && doc.background.kind === 'media') return { x: 0.5, y: 1 - SAFE_ZONE.bottom - 0.08 };
   return { x: 0.5, y: 0.5 };
 }

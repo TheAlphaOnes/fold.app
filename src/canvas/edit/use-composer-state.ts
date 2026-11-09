@@ -4,7 +4,7 @@
  * through one of these actions so undo and template switching stay correct.
  *
  * Template choice: until the user picks one, adding media re-suggests the
- * template (no media → Text, 1 → Story, 2–6 → a grid). Once they pick,
+ * template (0 or 1 photo → Canvas, 2–6 → a grid). Once they pick,
  * their choice sticks, unless new photos wouldn't fit it (a photo added to
  * Text, a second one to Story, a full grid): then it moves to a template
  * that shows everything, so nothing is ever added invisibly.
@@ -13,7 +13,17 @@
 import { useCallback, useRef, useState } from 'react';
 
 import type { CanvasDoc, Crop, Layer, TemplateId } from '@/canvas/types';
-import { applyTemplate, baseCandidates, newDoc, placesAll, suggestTemplate } from '@/templates/registry';
+import {
+  applyTemplate,
+  baseCandidates,
+  clearFrame,
+  fillFrame,
+  newDoc,
+  placesAll,
+  removeLayerFrom,
+  suggestTemplate,
+  type FrameTarget,
+} from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
 
 const UNDO_LIMIT = 30;
@@ -27,7 +37,17 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
   // The present state and what undo returns to, kept together so they change as one.
   const [timeline, setTimeline] = useState<{ present: ComposerState; past: ComposerState[] }>({ present: initial, past: [] });
   const state = timeline.present;
+  // One thing is selected at a time: a layer, or a photo frame in the base.
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedFrame, setSelectedFrame] = useState<FrameTarget | null>(null);
+  const select = useCallback((id: string | null) => {
+    setSelectedId(id);
+    setSelectedFrame(null);
+  }, []);
+  const selectFrame = useCallback((target: FrameTarget | null) => {
+    setSelectedFrame(target);
+    setSelectedId(null);
+  }, []);
   const chosen = useRef(templateChosen);
 
   /** Applies a change and remembers the previous state for undo. */
@@ -77,9 +97,9 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
   const addLayer = useCallback(
     (layer: Layer, media?: MediaElement) => {
       commit((s) => ({ media: media ? [...s.media, media] : s.media, doc: { ...s.doc, layers: [...s.doc.layers, layer] } }));
-      setSelectedId(layer.id);
+      select(layer.id);
     },
-    [commit],
+    [commit, select],
   );
 
   const updateLayer = useCallback(
@@ -96,22 +116,10 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
 
   const removeLayer = useCallback(
     (id: string) => {
-      commit((s) => {
-        const layer = s.doc.layers.find((l) => l.id === id);
-        if (!layer) return s;
-        // A sticker owns its media: removing it removes the photo/song too,
-        // unless something else on the canvas still shows it. (Otherwise the
-        // Stickers template would bring a deleted photo straight back.)
-        const mediaId = 'mediaId' in layer ? layer.mediaId : null;
-        const layers = s.doc.layers.filter((l) => l.id !== id);
-        const stillUsed =
-          mediaId !== null &&
-          (layers.some((l) => 'mediaId' in l && l.mediaId === mediaId) ||
-            (s.doc.background.kind === 'media' && s.doc.background.mediaId === mediaId) ||
-            (s.doc.cells ?? []).some((c) => c.mediaId === mediaId));
-        const media = mediaId && !stillUsed ? s.media.filter((m) => m.id !== mediaId) : s.media;
-        return { media, doc: { ...s.doc, layers } };
-      });
+      // A sticker owns its media: removing it removes the photo/song too,
+      // unless something else still shows it (otherwise the Stickers
+      // template would bring a deleted photo straight back).
+      commit((s) => removeLayerFrom(s, id));
       setSelectedId(null);
     },
     [commit],
@@ -166,13 +174,19 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
     [commit],
   );
 
-  /** Puts new media into one grid cell (tap on an empty cell). */
-  const fillCell = useCallback(
-    (cellId: string, added: MediaElement) => {
-      commit((s) => ({
-        media: [...s.media, added],
-        doc: { ...s.doc, cells: (s.doc.cells ?? []).map((c) => (c.cellId === cellId ? { ...c, mediaId: added.id, crop: { x: 0, y: 0, scale: 1 } } : c)) },
-      }));
+  /** Puts new media into a frame: an empty cell's "+", or Replace on a selected photo. */
+  const fillFrameWith = useCallback(
+    (target: FrameTarget, added: MediaElement) => {
+      commit((s) => fillFrame(s, target, added));
+    },
+    [commit],
+  );
+
+  /** Empties a frame (Remove on a selected photo); undo brings it back. */
+  const clearFrameAt = useCallback(
+    (target: FrameTarget) => {
+      commit((s) => clearFrame(s, target));
+      setSelectedFrame(null);
     },
     [commit],
   );
@@ -200,7 +214,9 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
   return {
     ...state,
     selectedId,
-    select: setSelectedId,
+    select,
+    selectedFrame,
+    selectFrame,
     canUndo: timeline.past.length > 0,
     undo,
     addMedia,
@@ -211,7 +227,8 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
     bringToFront,
     setCrop,
     swapCells,
-    fillCell,
+    fillFrame: fillFrameWith,
+    clearFrame: clearFrameAt,
     mirrorCell,
     setGap,
     replaceMedia,
