@@ -266,7 +266,7 @@ src/components/compose/*   toolbar, template switcher, text editor sheet, sticke
 - **Field Guide**: CANVAS chapter (drag/pinch on the timeline) is replaced
   by a COMPOSER chapter: add text (Aa), move/resize a layer, switch to a
   grid. Missions and progress counts updated; existing progress migrated.
-- **Onboarding basics**: tap → composer pick state; copy unchanged.
+- **Onboarding basics**: tap → the composer (opens ready to write); copy unchanged.
 - **FAQ**: rewrite the canvas section.
 - **Share extension**: N shared photos → composer with D5's template.
 - **Analytics**: `memory_created` gets `template`; new events for template
