@@ -419,7 +419,7 @@ export default function MemoryDetailScreen() {
   const captureAndShareCard = async () => {
     try {
       setIsShareMenuVisible(false);
-      // The orange bird carries the card off (700ms hang + 1000ms flight);
+      // The bird carries the card off (700ms hang + 1000ms flight);
       // capturing freezes JS, so wait it out.
       haptic.thud();
       setFlightKey((key) => key + 1);
@@ -662,7 +662,7 @@ export default function MemoryDetailScreen() {
       />
       {flightKey > 0 && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 9000, justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} color={theme.accentWarm} />
+          <LogoUploadFlight key={flightKey} color={theme.text} />
         </View>
       )}
       {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}

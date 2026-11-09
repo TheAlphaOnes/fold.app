@@ -71,7 +71,7 @@ export function MemoryActionsHost() {
     haptic.thud();
     setFlightKey((key) => key + 1);
     try {
-      // The orange bird carries the card off first; capturing freezes JS, so wait it out.
+      // The bird carries the card off first; capturing freezes JS, so wait it out.
       await new Promise((resolve) => setTimeout(resolve, FLIGHT_MS));
       const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
       if (await Sharing.isAvailableAsync()) {
@@ -137,7 +137,7 @@ export function MemoryActionsHost() {
 
       {flightKey > 0 && (
         <View style={[StyleSheet.absoluteFill, styles.flight]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} color={theme.accentWarm} />
+          <LogoUploadFlight key={flightKey} color={theme.text} />
         </View>
       )}
 
