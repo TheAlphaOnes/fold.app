@@ -37,7 +37,12 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
   const x = useSharedValue(crop.x);
   const y = useSharedValue(crop.y);
   const scale = useSharedValue(crop.scale);
-  const start = useSharedValue({ x: crop.x, y: crop.y, scale: crop.scale });
+  // Pan and pinch keep separate starting points: a pinch joining mid-pan
+  // must not move the pan's origin (the image would jump).
+  const panStart = useSharedValue({ x: crop.x, y: crop.y });
+  const pinchStart = useSharedValue(crop.scale);
+  // Fingers' gestures in progress; the crop is committed once, when all end.
+  const running = useSharedValue(0);
 
   useEffect(() => {
     x.set(crop.x);
@@ -45,9 +50,10 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
     scale.set(crop.scale);
   }, [crop, x, y, scale]);
 
-  const commit = () => {
+  const end = () => {
     'worklet';
-    runOnJS(onCrop)({ x: x.get(), y: y.get(), scale: scale.get() });
+    running.set(Math.max(0, running.get() - 1));
+    if (running.get() === 0) runOnJS(onCrop)({ x: x.get(), y: y.get(), scale: scale.get() });
   };
 
   // The farthest the image may slide either way at the current zoom.
@@ -59,27 +65,29 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
   const pan = Gesture.Pan()
     .averageTouches(true)
     .onStart(() => {
-      start.set({ x: x.get(), y: y.get(), scale: scale.get() });
+      running.set(running.get() + 1);
+      panStart.set({ x: x.get(), y: y.get() });
     })
     .onUpdate((e) => {
       const b = bound(scale.get());
-      x.set(clamp(start.get().x + e.translationX / width, -b, b));
-      y.set(clamp(start.get().y + e.translationY / height, -b, b));
+      x.set(clamp(panStart.get().x + e.translationX / width, -b, b));
+      y.set(clamp(panStart.get().y + e.translationY / height, -b, b));
     })
-    .onEnd(commit);
+    .onEnd(end);
 
   const pinch = Gesture.Pinch()
     .onStart(() => {
-      start.set({ x: x.get(), y: y.get(), scale: scale.get() });
+      running.set(running.get() + 1);
+      pinchStart.set(scale.get());
     })
     .onUpdate((e) => {
-      const s = clamp(start.get().scale * e.scale, 1, MAX_ZOOM);
+      const s = clamp(pinchStart.get() * e.scale, 1, MAX_ZOOM);
       scale.set(s);
       const b = bound(s);
       x.set(clamp(x.get(), -b, b));
       y.set(clamp(y.get(), -b, b));
     })
-    .onEnd(commit);
+    .onEnd(end);
 
   const tap = Gesture.Tap().onEnd(() => {
     if (onTap) runOnJS(onTap)();

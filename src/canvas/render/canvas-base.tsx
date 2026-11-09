@@ -29,12 +29,13 @@ interface CanvasBaseProps {
   width: number;
   height: number;
   playing: boolean;
+  muted?: boolean;
   /** Animate the stripes (off for exports and thumbnails). */
   animated: boolean;
   renderers?: FrameRenderers;
 }
 
-export function CanvasBase({ doc, media, width, height, playing, animated, renderers }: CanvasBaseProps) {
+export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers }: CanvasBaseProps) {
   const theme = useTheme();
   const isDark = theme.background !== '#FFFFFF';
   const bg = doc.background;
@@ -50,7 +51,7 @@ export function CanvasBase({ doc, media, width, height, playing, animated, rende
       return renderers ? (
         <>{renderers.frame('background', m, bg.crop, width, height)}</>
       ) : (
-        <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={false} />
+        <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={muted} />
       );
     }
   }

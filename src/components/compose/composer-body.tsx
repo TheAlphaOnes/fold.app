@@ -47,7 +47,7 @@ import { useVoiceTake } from '@/hooks/use-voice-take';
 import { trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { canvasOf } from '@/templates/legacy';
-import { defaultTextSpot, scatterSticker } from '@/templates/registry';
+import { baseMediaIds, defaultTextSpot, scatterSticker } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
 import { alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
 import { goBack } from '@/utils/navigation';
@@ -130,7 +130,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   );
   const [sheet, setSheet] = useState<'stickers' | 'music' | 'gif' | 'stories' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const pendingSongs = useRef(new Map<string, Promise<unknown>>());
+  // Song downloads by media id: the local file, or null if it failed.
+  const pendingSongs = useRef(new Map<string, Promise<{ uri: string; artwork: string } | null>>());
 
   const media = useComposeMedia(c.media.length);
   const take = useVoiceTake();
@@ -183,16 +184,17 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     await action();
   };
 
-  const addSticker = (m: MediaElement) => {
+  const addSticker = (m: MediaElement, offset = 0) => {
     const count = c.doc.layers.filter((l) => l.kind === 'media').length;
-    c.addLayer(scatterSticker(m.id, count), m);
+    c.addLayer(scatterSticker(m.id, count + offset), m);
   };
 
   const onPickSticker = async (kind: StickerKind) => {
     switch (kind) {
       case 'photo': {
         const added = await media.pickFromGallery();
-        added.forEach(addSticker);
+        // Each gets its own spot, not the same one.
+        added.forEach((m, i) => addSticker(m, i));
         return;
       }
       case 'gif':
@@ -257,9 +259,22 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     if (!hasContent || isSaving) return;
     setIsSaving(true);
     try {
-      // Songs still downloading finish first, so only local files are saved.
-      await Promise.all(pendingSongs.current.values());
-      const { doc, media: mediaList } = latest.current;
+      // Songs still downloading finish first, and their local files are
+      // patched in here, so a memory never stores a remote preview URL.
+      const songs = await Promise.all([...pendingSongs.current].map(async ([id, job]) => [id, await job] as const));
+      let { doc, media: mediaList } = latest.current;
+      for (const [id, files] of songs) {
+        if (files) {
+          mediaList = mediaList.map((m) => (m.id === id && m.metadata ? { ...m, uri: files.uri, metadata: { ...m.metadata, artwork: files.artwork } } : m));
+        } else {
+          mediaList = mediaList.filter((m) => m.id !== id);
+          doc = { ...doc, layers: doc.layers.filter((l) => !('mediaId' in l && l.mediaId === id)) };
+        }
+      }
+      // What you see is what's kept: media nothing on the canvas shows isn't saved.
+      const shown = new Set<string>(baseMediaIds(doc));
+      for (const l of doc.layers) if ('mediaId' in l) shown.add(l.mediaId);
+      mediaList = mediaList.filter((m) => shown.has(m.id));
       const texts = doc.layers.filter((l): l is TextLayer => l.kind === 'text');
       const first = texts[0];
       const body = texts.map((t) => t.text.trim()).filter(Boolean).join('\n');
@@ -392,16 +407,18 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         onSelect={(track) => {
           setSheet(null);
           const { media: song, local } = media.songFrom(track);
-          c.addLayer({ id: newId(), kind: 'audio', mediaId: song.id, x: 0.5, y: 0.42, scale: 1.3, rotation: 0 }, song);
+          const layerId = newId();
+          c.addLayer({ id: layerId, kind: 'audio', mediaId: song.id, x: 0.5, y: 0.42, scale: 1.3, rotation: 0 }, song);
           const job = local.then((files) => {
             if (files) {
               c.replaceMedia(song.id, { uri: files.uri, metadata: { ...song.metadata!, artwork: files.artwork } });
             } else {
+              c.removeLayer(layerId);
               Alert.alert("COULDN'T ADD SONG", 'Check your connection and try choosing it again.');
             }
+            return files;
           });
           pendingSongs.current.set(song.id, job);
-          void job.finally(() => pendingSongs.current.delete(song.id));
         }}
       />
 

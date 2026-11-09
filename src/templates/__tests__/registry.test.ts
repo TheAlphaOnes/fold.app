@@ -3,6 +3,8 @@ import { NO_CROP, type CanvasDoc, type Layer, type TemplateId } from '@/canvas/t
 import { SAFE_ZONE } from '@/canvas/geometry';
 import { gridLayout } from '@/templates/grids';
 import {
+  baseCandidates,
+  placesAll,
   applyTemplate,
   defaultTextSpot,
   gridIdOf,
@@ -98,7 +100,7 @@ describe('applyTemplate: grids', () => {
     expect(doc.cells?.map((c) => c.mediaId)).toEqual(['a', 'b']);
   });
 
-  it('preserves an existing crop and mirroring for the same media', () => {
+  it("keeps each cell's photo, crop and mirroring, and fills only empty cells", () => {
     const crop = { x: 0.2, y: -0.1, scale: 1.6 };
     const prev: CanvasDoc = {
       ...emptyDoc(),
@@ -108,11 +110,12 @@ describe('applyTemplate: grids', () => {
         { cellId: 'b', mediaId: 'two', crop, mirrored: true },
       ],
     };
-    // 'two' moves from cell b to cell a.
+    // Media order changed and a photo was added: cells a and b stay put.
     const doc = applyTemplate(prev, 'grid:quad', [image('two'), image('one'), image('new')]);
-    expect(doc.cells?.[0]).toMatchObject({ cellId: 'a', mediaId: 'two', crop, mirrored: true });
-    expect(doc.cells?.[1]).toMatchObject({ mediaId: 'one', crop: NO_CROP });
+    expect(doc.cells?.[0]).toMatchObject({ cellId: 'a', mediaId: 'one', crop: NO_CROP });
+    expect(doc.cells?.[1]).toMatchObject({ cellId: 'b', mediaId: 'two', crop, mirrored: true });
     expect(doc.cells?.[2]).toMatchObject({ mediaId: 'new', crop: NO_CROP });
+    expect(doc.cells?.[3]?.mediaId).toBeUndefined();
   });
 
   it('sets background and gap from decor', () => {
@@ -213,5 +216,42 @@ describe('defaultTextSpot', () => {
   it('centres text and stickers', () => {
     expect(defaultTextSpot('text')).toEqual({ x: 0.5, y: 0.5 });
     expect(defaultTextSpot('stickers')).toEqual({ x: 0.5, y: 0.5 });
+  });
+});
+
+
+describe('photo placement rules', () => {
+  const userSticker = (mediaId: string): Layer => ({ id: `s-${mediaId}`, kind: 'media', mediaId, shape: 'rounded', x: 0.5, y: 0.5, scale: 1, rotation: 0 });
+
+  it("doesn't reuse a user's photo sticker as base media", () => {
+    const doc = { ...emptyDoc(), layers: [userSticker('st')] };
+    expect(baseCandidates(doc, [image('st'), image('bg')]).map((m) => m.id)).toEqual(['bg']);
+    const story = applyTemplate(doc, 'story', [image('st'), image('bg')]);
+    expect(story.background).toMatchObject({ kind: 'media', mediaId: 'bg' });
+    expect(story.layers.some((l) => l.kind === 'media' && l.mediaId === 'st')).toBe(true);
+  });
+
+  it("hands the Stickers template's own stickers back to the base when leaving it", () => {
+    const media = [image('a'), image('b')];
+    const stickers = applyTemplate(emptyDoc(), 'stickers', media);
+    expect(stickers.layers.filter((l) => l.kind === 'media' && l.auto)).toHaveLength(2);
+    const grid = applyTemplate(stickers, 'grid:duo-stack', media);
+    expect(grid.cells?.map((c) => c.mediaId)).toEqual(['a', 'b']);
+    expect(grid.layers.some((l) => l.kind === 'media')).toBe(false);
+  });
+
+  it('keeps the Story background and its framing while that photo is still there', () => {
+    const crop = { x: 0.1, y: 0, scale: 1.4 };
+    const prev: CanvasDoc = { ...emptyDoc(), template: 'story', background: { kind: 'media', mediaId: 'b', crop } };
+    const doc = applyTemplate(prev, 'story', [image('a'), image('b')]);
+    expect(doc.background).toEqual({ kind: 'media', mediaId: 'b', crop });
+  });
+
+  it('placesAll is false when a template has no room for a photo', () => {
+    const media = [image('a'), image('b')];
+    expect(placesAll(applyTemplate(emptyDoc(), 'text', media), media)).toBe(false);
+    expect(placesAll(applyTemplate(emptyDoc(), 'story', media), media)).toBe(false);
+    expect(placesAll(applyTemplate(emptyDoc(), 'grid:duo-stack', media), media)).toBe(true);
+    expect(placesAll(applyTemplate(emptyDoc(), 'stickers', media), media)).toBe(true);
   });
 });

@@ -5,13 +5,15 @@
  *
  * Template choice: until the user picks one, adding media re-suggests the
  * template (no media → Text, 1 → Story, 2–6 → a grid). Once they pick,
- * their choice sticks.
+ * their choice sticks, unless new photos wouldn't fit it (a photo added to
+ * Text, a second one to Story, a full grid): then it moves to a template
+ * that shows everything, so nothing is ever added invisibly.
  */
 
 import { useCallback, useRef, useState } from 'react';
 
 import type { CanvasDoc, Crop, Layer, TemplateId } from '@/canvas/types';
-import { applyTemplate, newDoc, suggestTemplate } from '@/templates/registry';
+import { applyTemplate, baseCandidates, newDoc, placesAll, suggestTemplate } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
 
 const UNDO_LIMIT = 30;
@@ -41,9 +43,13 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
     setTimeline(({ present, past }) => (past.length === 0 ? { present, past } : { present: past[past.length - 1], past: past.slice(0, -1) }));
   }, []);
 
-  /** Updates the present without an undo step (e.g. a song's file arriving). */
+  /**
+   * Applies a change everywhere, history included, without an undo step:
+   * a song's downloaded file must replace its preview URL in every state
+   * undo could return to.
+   */
   const setState = useCallback((change: (s: ComposerState) => ComposerState) => {
-    setTimeline(({ present, past }) => ({ present: change(present), past }));
+    setTimeline(({ present, past }) => ({ present: change(present), past: past.map(change) }));
   }, []);
 
   const addMedia = useCallback(
@@ -51,8 +57,10 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
       if (added.length === 0) return;
       commit((s) => {
         const media = [...s.media, ...added];
-        const template = chosen.current ? s.doc.template : suggestTemplate(media);
-        return { media, doc: applyTemplate(s.doc, template, media) };
+        const suggested = () => suggestTemplate(baseCandidates(s.doc, media));
+        let doc = applyTemplate(s.doc, chosen.current ? s.doc.template : suggested(), media);
+        if (!placesAll(doc, media)) doc = applyTemplate(doc, suggested(), media);
+        return { media, doc };
       });
     },
     [commit],
@@ -76,10 +84,12 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
 
   const updateLayer = useCallback(
     (id: string, patch: Partial<Layer>) => {
-      commit((s) => ({
-        ...s,
-        doc: { ...s.doc, layers: s.doc.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) },
-      }));
+      commit((s) => {
+        const layer = s.doc.layers.find((l) => l.id === id);
+        // Several gestures can end together with the same values: one undo step, not three.
+        if (!layer || (Object.keys(patch) as (keyof Layer)[]).every((k) => layer[k] === patch[k])) return s;
+        return { ...s, doc: { ...s.doc, layers: s.doc.layers.map((l) => (l.id === id ? ({ ...l, ...patch } as Layer) : l)) } };
+      });
     },
     [commit],
   );
@@ -89,8 +99,9 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
       commit((s) => {
         const layer = s.doc.layers.find((l) => l.id === id);
         if (!layer) return s;
-        // A song/voice/photo sticker owns its media; drop the file reference too
-        // unless something else still shows it.
+        // A sticker owns its media: removing it removes the photo/song too,
+        // unless something else on the canvas still shows it. (Otherwise the
+        // Stickers template would bring a deleted photo straight back.)
         const mediaId = 'mediaId' in layer ? layer.mediaId : null;
         const layers = s.doc.layers.filter((l) => l.id !== id);
         const stillUsed =
@@ -98,7 +109,7 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
           (layers.some((l) => 'mediaId' in l && l.mediaId === mediaId) ||
             (s.doc.background.kind === 'media' && s.doc.background.mediaId === mediaId) ||
             (s.doc.cells ?? []).some((c) => c.mediaId === mediaId));
-        const media = mediaId && !stillUsed && layer.kind !== 'media' ? s.media.filter((m) => m.id !== mediaId) : s.media;
+        const media = mediaId && !stillUsed ? s.media.filter((m) => m.id !== mediaId) : s.media;
         return { media, doc: { ...s.doc, layers } };
       });
       setSelectedId(null);
@@ -121,10 +132,13 @@ export function useComposerState(initial: ComposerState, templateChosen: boolean
   const setCrop = useCallback(
     (target: 'background' | string, crop: Crop) => {
       commit((s) => {
+        const same = (a: Crop) => a.x === crop.x && a.y === crop.y && a.scale === crop.scale;
         if (target === 'background') {
-          if (s.doc.background.kind !== 'media') return s;
+          if (s.doc.background.kind !== 'media' || same(s.doc.background.crop)) return s;
           return { ...s, doc: { ...s.doc, background: { ...s.doc.background, crop } } };
         }
+        const cell = (s.doc.cells ?? []).find((c) => c.cellId === target);
+        if (!cell || same(cell.crop)) return s;
         return { ...s, doc: { ...s.doc, cells: (s.doc.cells ?? []).map((c) => (c.cellId === target ? { ...c, crop } : c)) } };
       });
     },

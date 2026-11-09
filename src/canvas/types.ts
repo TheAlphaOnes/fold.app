@@ -79,6 +79,12 @@ export interface MediaSticker extends LayerBase {
   kind: 'media';
   mediaId: string;
   shape: StickerShape;
+  /**
+   * Placed by the Stickers template itself (every photo becomes a sticker
+   * there). Leaving that template hands these photos back to the base;
+   * stickers the user added from the sticker sheet stay put.
+   */
+  auto?: boolean;
 }
 
 /** A song or voice note, drawn as a disc you can tap to play. */

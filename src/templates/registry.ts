@@ -4,7 +4,7 @@
  * sticker; only the base (background, cells) is rebuilt.
  */
 
-import { NO_CROP, type CanvasDoc, type GridLayoutId, type Layer, type TemplateId } from '@/canvas/types';
+import { NO_CROP, type CanvasDoc, type CellFill, type GridLayoutId, type Layer, type MediaSticker, type TemplateId } from '@/canvas/types';
 import { SAFE_ZONE, newId } from '@/canvas/geometry';
 import { GRID_LAYOUTS, gridForCount, gridLayout } from '@/templates/grids';
 import type { MediaElement } from '@/types/journal';
@@ -42,7 +42,7 @@ export function visualMedia(media: MediaElement[]): MediaElement[] {
   return media.filter((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
 }
 
-/** Template that suits what's been added (plan D5). */
+/** Template that suits a number of photos (plan D5). Pass the base candidates. */
 export function suggestTemplate(media: MediaElement[]): TemplateId {
   const visual = visualMedia(media).length;
   if (visual === 0) return 'text';
@@ -58,60 +58,86 @@ export function baseMediaIds(doc: CanvasDoc): Set<string> {
   return ids;
 }
 
+/** Media shown by photo stickers the user placed (not the Stickers template's own). */
+function userStickerIds(doc: CanvasDoc): Set<string> {
+  return new Set(doc.layers.filter((l): l is MediaSticker => l.kind === 'media' && !l.auto).map((l) => l.mediaId));
+}
+
+/** Photos/videos the base (background, cells, template stickers) may use: not GIFs, not user stickers. */
+export function baseCandidates(doc: CanvasDoc, media: MediaElement[]): MediaElement[] {
+  const stickers = userStickerIds(doc);
+  return visualMedia(media).filter((m) => !stickers.has(m.id));
+}
+
+/** Every visual media is on the canvas somewhere (base or a sticker). */
+export function placesAll(doc: CanvasDoc, media: MediaElement[]): boolean {
+  const shown = baseMediaIds(doc);
+  for (const l of doc.layers) if (l.kind === 'media') shown.add(l.mediaId);
+  return visualMedia(media).every((m) => shown.has(m.id));
+}
+
 /**
- * Rebuilds `doc` for `template`, keeping its layers. Visual media not shown
- * by the new base stays reachable: in Stickers it becomes photo stickers;
- * elsewhere unplaced media simply waits (it's still in mediaElements and
- * comes back when switching to a template with room for it).
+ * Rebuilds `doc` for `template`, keeping its text, audio, place and date
+ * layers and the user's own photo stickers. The base keeps what it can:
+ * the Story background (and its framing) if that photo is still a
+ * candidate, each grid cell's photo and crop, filling only empty cells.
  */
 export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: MediaElement[]): CanvasDoc {
-  const visual = visualMedia(media);
-  // Keep non-photo layers; photo stickers are rebuilt for Stickers below.
-  const keptLayers: Layer[] = doc.layers.filter((l) => l.kind !== 'media' || template !== 'stickers');
+  const candidates = baseCandidates(doc, media);
+  const ids = new Set(candidates.map((m) => m.id));
+  // The Stickers template's own photo stickers are rebuilt or dropped below.
+  const kept: Layer[] = doc.layers.filter((l) => !(l.kind === 'media' && l.auto));
 
   if (template === 'story') {
-    const first = visual[0];
+    const current = doc.background.kind === 'media' && ids.has(doc.background.mediaId) ? doc.background : null;
+    const first = candidates[0];
     return {
       version: 1,
       template,
-      background: first ? { kind: 'media', mediaId: first.id, crop: NO_CROP } : { kind: 'stripes' },
-      layers: keptLayers,
+      background: current ?? (first ? { kind: 'media', mediaId: first.id, crop: NO_CROP } : { kind: 'stripes' }),
+      layers: kept,
     };
   }
 
   if (template === 'text') {
-    return { version: 1, template, background: { kind: 'stripes' }, layers: keptLayers };
+    return { version: 1, template, background: { kind: 'stripes' }, layers: kept };
   }
 
   if (template === 'stickers') {
-    const already = new Set(doc.layers.filter((l) => l.kind === 'media').map((l) => (l as { mediaId: string }).mediaId));
-    const stickers: Layer[] = doc.layers.filter((l) => l.kind === 'media');
-    visual
-      .filter((m) => !already.has(m.id))
-      .forEach((m, i) => stickers.push(scatterSticker(m.id, stickers.length + i)));
-    return {
-      version: 1,
-      template,
-      background: { kind: 'stripes' },
-      layers: [...stickers, ...keptLayers.filter((l) => l.kind !== 'media')],
-    };
+    // Keep the template's existing stickers where they are; add the rest.
+    const existing = doc.layers.filter((l): l is MediaSticker => l.kind === 'media' && !!l.auto && ids.has(l.mediaId));
+    const placed = new Set(existing.map((l) => l.mediaId));
+    const added = candidates
+      .filter((m) => !placed.has(m.id))
+      .map((m, i) => ({ ...(scatterSticker(m.id, existing.length + i) as MediaSticker), auto: true }));
+    return { version: 1, template, background: { kind: 'stripes' }, layers: [...existing, ...added, ...kept] };
   }
 
-  // Grids: fill cells in order, keeping each photo's crop where it was already placed.
+  // Grids: keep each cell's photo (by cell id) while it's still a candidate; fill empties in order.
   const layout = gridLayout(gridIdOf(template)!);
-  const previous = new Map((doc.cells ?? []).filter((c) => c.mediaId).map((c) => [c.mediaId!, c]));
-  const cells = layout.cells.map((cell, i) => {
-    const m = visual[i];
-    const before = m ? previous.get(m.id) : undefined;
-    return { cellId: cell.id, mediaId: m?.id, crop: before?.crop ?? NO_CROP, mirrored: before?.mirrored };
+  const before = new Map((doc.cells ?? []).map((c) => [c.cellId, c]));
+  const keptCells = layout.cells.map((cell) => {
+    const prev = before.get(cell.id);
+    return prev?.mediaId && ids.has(prev.mediaId) ? prev : null;
+  });
+  const used = new Set(keptCells.filter(Boolean).map((c) => c!.mediaId!));
+  // A photo that was the Story background brings its framing along into a cell.
+  const priorCrop = new Map<string, CellFill>();
+  for (const c of doc.cells ?? []) if (c.mediaId) priorCrop.set(c.mediaId, c);
+  const queue = candidates.filter((m) => !used.has(m.id));
+  const cells: CellFill[] = layout.cells.map((cell, i) => {
+    if (keptCells[i]) return { ...keptCells[i]!, cellId: cell.id };
+    const m = queue.shift();
+    const prior = m ? priorCrop.get(m.id) : undefined;
+    return { cellId: cell.id, mediaId: m?.id, crop: prior?.crop ?? NO_CROP, mirrored: prior?.mirrored };
   });
   return {
     version: 1,
     template,
-    background: { kind: 'color', color: layout.decor === 'film' ? '#0B0B0B' : layout.decor === 'polaroid' ? '#E9E4DA' : '#0B0B0B' },
+    background: { kind: 'color', color: layout.decor === 'polaroid' ? '#E9E4DA' : '#0B0B0B' },
     cells,
     gap: doc.gap ?? (layout.decor ? 'none' : 'thin'),
-    layers: keptLayers,
+    layers: kept,
   };
 }
 

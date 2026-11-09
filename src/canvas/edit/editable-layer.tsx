@@ -47,8 +47,13 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
   // Pinch acts as a live multiplier on the committed scale; reset after commit.
   const pinchScale = useSharedValue(1);
   const rotation = useSharedValue(layer.rotation);
-  const start = useSharedValue({ x: layer.x, y: layer.y, rotation: layer.rotation });
-  // This layer is the one being dragged (the drag signals are shared by all layers).
+  // Each gesture keeps its own starting point, so one joining mid-way
+  // (a twist after a drag began) never re-counts what another already did.
+  const panStart = useSharedValue({ x: layer.x, y: layer.y });
+  const rotateStart = useSharedValue(layer.rotation);
+  // Gestures in progress on this layer; it commits once, when all have ended.
+  const running = useSharedValue(0);
+  // This layer is being dragged (the drag signals are shared by all layers).
   const active = useSharedValue(false);
 
   useEffect(() => {
@@ -58,8 +63,15 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
     pinchScale.set(1);
   }, [layer.x, layer.y, layer.rotation, layer.scale, x, y, rotation, pinchScale]);
 
-  const finish = () => {
+  const begin = () => {
     'worklet';
+    running.set(running.get() + 1);
+  };
+
+  const end = () => {
+    'worklet';
+    running.set(Math.max(0, running.get() - 1));
+    if (running.get() > 0) return;
     const deleting = active.get() && signals.overTrash.get();
     active.set(false);
     signals.dragging.set(false);
@@ -70,19 +82,24 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
       runOnJS(onDelete)();
       return;
     }
-    runOnJS(onChange)({ x: x.get(), y: y.get(), scale: clamp(layer.scale * pinchScale.get(), 0.25, 6), rotation: rotation.get() });
+    const scale = clamp(layer.scale * pinchScale.get(), 0.25, 6);
+    // Show exactly the committed size now; if the clamp left the scale
+    // unchanged no re-render resets it, so it must not stay stretched.
+    pinchScale.set(scale / layer.scale);
+    runOnJS(onChange)({ x: x.get(), y: y.get(), scale, rotation: rotation.get() });
   };
 
   const pan = Gesture.Pan()
     .averageTouches(true)
     .onStart(() => {
-      start.set({ x: x.get(), y: y.get(), rotation: rotation.get() });
+      begin();
+      panStart.set({ x: x.get(), y: y.get() });
       active.set(true);
       signals.dragging.set(true);
       runOnJS(onDragStart)();
     })
     .onUpdate((e) => {
-      const raw = { x: start.get().x + e.translationX / width, y: start.get().y + e.translationY / height };
+      const raw = { x: panStart.get().x + e.translationX / width, y: panStart.get().y + e.translationY / height };
       const snapped = snapToCentre(clamp(raw.x, 0, 1), clamp(raw.y, 0, 1.05));
       x.set(snapped.x);
       y.set(snapped.y);
@@ -90,22 +107,24 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
       signals.snapY.set(snapped.snappedY);
       signals.overTrash.set(raw.y > TRASH_ZONE.y && Math.abs(raw.x - 0.5) < TRASH_ZONE.halfWidth);
     })
-    .onEnd(finish);
+    .onEnd(end);
 
   const pinch = Gesture.Pinch()
+    .onStart(begin)
     .onUpdate((e) => {
       pinchScale.set(e.scale);
     })
-    .onEnd(finish);
+    .onEnd(end);
 
   const rotate = Gesture.Rotation()
     .onStart(() => {
-      start.set({ ...start.get(), rotation: rotation.get() });
+      begin();
+      rotateStart.set(rotation.get());
     })
     .onUpdate((e) => {
-      rotation.set(start.get().rotation + (e.rotation * 180) / Math.PI);
+      rotation.set(rotateStart.get() + (e.rotation * 180) / Math.PI);
     })
-    .onEnd(finish);
+    .onEnd(end);
 
   const tap = Gesture.Tap().onEnd(() => {
     runOnJS(onTap)();

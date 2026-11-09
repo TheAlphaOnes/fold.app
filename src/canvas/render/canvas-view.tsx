@@ -30,6 +30,8 @@ export interface CanvasViewProps {
   live?: boolean;
   /** Animate the stripes background. */
   animated?: boolean;
+  /** Playing videos are silent (the feed); the memory screen plays them with sound. */
+  muted?: boolean;
 }
 
 /**
@@ -89,12 +91,12 @@ export function LayerContent({
   }
 }
 
-export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true }: CanvasViewProps) {
+export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
   return (
     <View style={[styles.canvas, { width, height }]}>
-      <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} animated={animated} />
+      <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} muted={muted} animated={animated} />
       {doc.layers.map((layer) => (
         <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
           <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />

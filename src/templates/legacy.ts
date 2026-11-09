@@ -58,7 +58,7 @@ function stickerFrom(m: MediaElement, card: LegacyCard): Layer {
   };
   return m.type === 'audio'
     ? { ...base, kind: 'audio', mediaId: m.id }
-    : { ...base, kind: 'media', mediaId: m.id, shape: 'rounded' };
+    : { ...base, kind: 'media', mediaId: m.id, shape: 'rounded', auto: true };
 }
 
 export function legacyCanvas(memory: Composition, card: LegacyCard): CanvasDoc {

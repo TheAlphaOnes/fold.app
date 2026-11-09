@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { haptic } from '@/services/haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
@@ -26,8 +26,11 @@ export interface CarouselItemProps {
 export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, onOpen, onShared }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
   const { width } = useWindowDimensions();
-  // The card in focus plays its video and may auto-play its song.
-  const live = useJournalStore((s) => s.activeCompositionId === item.id);
+  // The card in focus plays its video and may auto-play its song, and only
+  // while its screen is in front (not under an open memory or compose).
+  const isActive = useJournalStore((s) => s.activeCompositionId === item.id);
+  const isFocused = useIsFocused();
+  const live = isActive && isFocused;
   const completeGuideStep = useSettingsStore((s) => s.completeGuideStep);
   
   const animatedStyle = useAnimatedStyle(() => {

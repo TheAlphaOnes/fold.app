@@ -29,6 +29,7 @@ export function useMemoryAudio(uri: string | null, compositionId: number, enable
     isFocused && (pathname === '/' || pathname.startsWith('/time-machine') || pathname.startsWith('/memory'));
 
   const hasAutoPlayed = useRef(false);
+  const wasActive = useRef(false);
   const hasTracked = useRef(false);
   const claimAudio = useAudioFocus(() => player.pause());
 
@@ -47,6 +48,8 @@ export function useMemoryAudio(uri: string | null, compositionId: number, enable
   useEffect(() => {
     if (!enabled) return;
     const active = activeCompositionId === compositionId && isPlayableScreen;
+    const becameInactive = wasActive.current && !active;
+    wasActive.current = active;
     if (active) {
       if (isAppVisible && autoPlayMusic && !hasAutoPlayed.current && !isPlaying && isLoaded) {
         hasAutoPlayed.current = true;
@@ -58,7 +61,9 @@ export function useMemoryAudio(uri: string | null, compositionId: number, enable
       }
     } else {
       hasAutoPlayed.current = false;
-      if (isPlaying) player.pause();
+      // Only stop when this memory stops being the one in focus; a play the
+      // user started on purpose is left alone otherwise.
+      if (becameInactive && isPlaying) player.pause();
     }
   }, [enabled, activeCompositionId, compositionId, isPlayableScreen, isAppVisible, autoPlayMusic, isPlaying, isLoaded, player, play]);
 

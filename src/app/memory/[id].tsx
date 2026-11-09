@@ -15,6 +15,7 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { CanvasView } from '@/canvas/render/canvas-view';
 import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
 import { useCanvasOf } from '@/canvas/use-canvas-of';
+import { fitCanvas } from '@/canvas/geometry';
 import { ShareTray } from '@/components/share-tray';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
@@ -59,9 +60,13 @@ export default function MemoryDetailScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      if (Number.isFinite(numericId)) {
-        ensureComposition(numericId);
-      }
+      if (!Number.isFinite(numericId)) return;
+      ensureComposition(numericId);
+      // This memory is the one playing while it's open (its song, its
+      // video); the card behind it falls quiet. Restored on the way out.
+      const { activeCompositionId: previous, setActiveCompositionId } = useJournalStore.getState();
+      setActiveCompositionId(numericId);
+      return () => useJournalStore.getState().setActiveCompositionId(previous);
     }, [numericId, ensureComposition])
   );
 
@@ -108,6 +113,8 @@ export default function MemoryDetailScreen() {
   const hiddenCardRef = useRef<View>(null);
   const [flightKey, setFlightKey] = useState(0);
   const doc = useCanvasOf(composition);
+  // The canvas keeps its 9:16 shape (as designed and exported), as wide as the screen allows.
+  const fullCanvas = fitCanvas({ width, height });
   // The photo/video "Save" and "Original" act on: the memory's main visual.
   const primaryMedia = composition?.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
 
@@ -179,7 +186,11 @@ export default function MemoryDetailScreen() {
       <ExportCanvas ref={hiddenCardRef} memory={composition} />
 
       {/* The memory itself: its canvas, full screen, playing. */}
-      {doc && <CanvasView doc={doc} memory={composition} width={width} height={height} live />}
+      {doc && (
+        <View style={[styles.stage, { paddingTop: Math.max(0, (height - fullCanvas.height) / 2) }]}>
+          <CanvasView doc={doc} memory={composition} width={fullCanvas.width} height={fullCanvas.height} live muted={false} />
+        </View>
+      )}
 
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>
@@ -284,6 +295,14 @@ export default function MemoryDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  stage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
   },
   textSlideContent: {
     fontFamily: 'JetBrainsMono-Regular',
