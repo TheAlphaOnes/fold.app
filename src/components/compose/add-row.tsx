@@ -1,14 +1,13 @@
 /**
  * AddRow — the things you can add to a canvas, laid out in the open under
  * the top bar so they're seen and reached in one tap instead of behind a
- * sheet. Two rows of three equal rectangular pills (icon beside its label)
- * lined up with the top bar's edges: six in one row would crush the
- * labels on a phone, three per row leaves each room to breathe.
- * Nothing scrolls or clips at any width.
+ * sheet. One row of rectangular pills (icon beside its label), each at its
+ * natural width so no label is squeezed; the row scrolls sideways and
+ * starts in line with the top bar's close button.
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { CalendarDays, Image as ImageIcon, MapPin, Mic, Music, Smile, type LucideIcon } from 'lucide-react-native';
 
@@ -29,20 +28,16 @@ const ITEMS: { kind: AddKind; icon: LucideIcon; label: string }[] = [
   { kind: 'date', icon: CalendarDays, label: 'Date' },
 ];
 
-const PILL_HEIGHT = ROUND_BUTTON_SIZE;
-const ROW_GAP = 8;
-const PER_ROW = 3;
-
-/** Height of the whole block, for the composer's layout budget. */
-export const ADD_ROW_HEIGHT = PILL_HEIGHT * 2 + ROW_GAP;
+/** Row height, for the composer's layout budget. */
+export const ADD_ROW_HEIGHT = ROUND_BUTTON_SIZE;
 
 export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
   const theme = useTheme();
   return (
-    <View style={styles.grid}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={styles.scroll}>
       {ITEMS.map(({ kind, icon: Icon, label }, i) => (
         // Pills arrive one after another, so the row settles rather than pops.
-        <Animated.View key={kind} entering={riseIn(260, 80 + i * 40, 6)} style={styles.slot}>
+        <Animated.View key={kind} entering={riseIn(260, 80 + i * 40, 6)}>
           <Pressable
             onPress={() => {
               haptic.tap();
@@ -62,24 +57,23 @@ export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
           </Pressable>
         </Animated.View>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  // Same side margin as the top bar, so the pills line up under its buttons.
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: ROW_GAP },
-  // A third of the row, less its share of the two gaps between columns.
-  slot: { flexBasis: `${100 / PER_ROW - 3}%`, flexGrow: 1 },
+  scroll: { flexGrow: 0 },
+  // Same side margin as the top bar, so the first pill lines up under close.
+  row: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   tile: {
-    height: PILL_HEIGHT,
+    height: ADD_ROW_HEIGHT,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
 });
