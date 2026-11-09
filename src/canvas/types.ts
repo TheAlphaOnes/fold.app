@@ -22,10 +22,11 @@ export type GridLayoutId =
   | 'diary'
   | 'polaroid';
 
-/** Templates that arrange photos in a shape (see templates/arrangements). */
-export type ArrangedTemplateId = 'ring' | 'spiral' | 'fan' | 'stack' | 'float';
+/** Templates that arrange photos in a shape (see templates/arrangements). 'stack' is shown as Deck. */
+export type ArrangedTemplateId = 'ring' | 'fan' | 'stack' | 'float';
 
-export type TemplateId = 'story' | 'text' | 'stickers' | ArrangedTemplateId | `grid:${GridLayoutId}`;
+/** 'slideshow': every photo full-bleed in turn, cross-fading (photos live in `cells`, in order). */
+export type TemplateId = 'story' | 'text' | 'stickers' | 'slideshow' | ArrangedTemplateId | `grid:${GridLayoutId}`;
 
 /** Pan/zoom of media inside its frame. x/y: offset as a fraction of the frame; scale ≥ 1. */
 export interface Crop {

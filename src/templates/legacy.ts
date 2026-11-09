@@ -14,6 +14,7 @@
 
 import { NO_CROP, type CanvasDoc, type Layer } from '@/canvas/types';
 import type { Composition, MediaElement } from '@/types/journal';
+import { TEMPLATE_ALIASES } from '@/templates/arrangements';
 import { stickerFrame } from '@/utils/sticker-layout';
 
 /** The card size old pixel positions were laid out against. */
@@ -98,5 +99,9 @@ export function legacyCanvas(memory: Composition, card: LegacyCard): CanvasDoc {
 
 /** Every memory's canvas: saved, or built from its old fields. */
 export function canvasOf(memory: Composition, card: LegacyCard): CanvasDoc {
-  return memory.layout ?? legacyCanvas(memory, card);
+  const layout = memory.layout;
+  if (!layout) return legacyCanvas(memory, card);
+  // A template that was retired opens as the one that replaced it.
+  const alias = TEMPLATE_ALIASES[layout.template as string];
+  return alias ? { ...layout, template: alias } : layout;
 }

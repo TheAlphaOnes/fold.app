@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CanvasDoc, MediaSticker } from '@/canvas/types';
-import { ARRANGED_IDS, ARRANGEMENTS, fanSpot, spiralSpot, stackSpot } from '@/templates/arrangements';
+import { ARRANGED_IDS, ARRANGEMENTS, deckDepth, deckTop, fanSpot, stackSpot } from '@/templates/arrangements';
 import { BASE_TEMPLATES, applyTemplate } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
 
@@ -34,13 +34,6 @@ describe('arranged templates', () => {
     for (const id of ARRANGED_IDS) expect(ARRANGEMENTS[id].spot(2, 5)).toEqual(ARRANGEMENTS[id].spot(2, 5));
   });
 
-  it('spiral starts in the middle and moves outward, shrinking', () => {
-    const first = spiralSpot(0, 8);
-    const last = spiralSpot(7, 8);
-    expect(Math.hypot(first.x - 0.5, first.y - 0.5)).toBeLessThan(Math.hypot(last.x - 0.5, last.y - 0.5));
-    expect(last.scale).toBeLessThan(first.scale);
-  });
-
   it('fan is symmetric about the middle', () => {
     const a = fanSpot(0, 5);
     const b = fanSpot(4, 5);
@@ -52,10 +45,62 @@ describe('arranged templates', () => {
     for (let i = 0; i < 10; i++) expect(Math.abs(stackSpot(i).x - 0.5)).toBeLessThanOrEqual(0.05);
   });
 
-  it('ring and spiral turn as a whole; fan, stack and float move each photo', () => {
+  it('ring turns as a whole, deck flips, fan and float move each photo', () => {
     expect(ARRANGEMENTS.ring.motion.kind).toBe('group');
-    expect(ARRANGEMENTS.spiral.motion.kind).toBe('group');
+    expect(ARRANGEMENTS.stack.motion.kind).toBe('deck');
     expect(ARRANGEMENTS.fan.motion.kind).toBe('item');
     expect(ARRANGEMENTS.float.motion.kind).toBe('item');
+  });
+
+  it('a photo placed as a sticker joins the shape', () => {
+    const base = applyTemplate(blank, 'story', []);
+    const withSticker: CanvasDoc = { ...base, layers: [{ id: 's', kind: 'media', mediaId: 'p0', shape: 'heart', x: 0.1, y: 0.1, scale: 1, rotation: 0 }] };
+    const doc = applyTemplate(withSticker, 'ring', photos(3));
+    const stickers = doc.layers.filter((l): l is MediaSticker => l.kind === 'media');
+    expect(stickers).toHaveLength(3);
+    const adopted = stickers.find((l) => l.mediaId === 'p0')!;
+    expect(adopted.id).toBe('s');
+    expect(adopted.shape).toBe('heart');
+    expect(adopted.auto).toBe(true);
+  });
+});
+
+describe('deck', () => {
+  it('starts with the last card on top', () => {
+    expect(deckTop(4, 0)).toBe(3);
+    expect(deckDepth(3, 4, 0)).toBe(0);
+    expect(deckDepth(0, 4, 0)).toBe(3);
+  });
+
+  it('each flip sends the top card to the back and lifts the rest', () => {
+    expect(deckTop(4, 1)).toBe(2);
+    expect(deckDepth(3, 4, 1)).toBe(3);
+    expect(deckDepth(2, 4, 1)).toBe(0);
+  });
+
+  it('comes back round after a full pass, every card having been on top', () => {
+    const tops = Array.from({ length: 4 }, (_, s) => deckTop(4, s));
+    expect([...tops].sort()).toEqual([0, 1, 2, 3]);
+    expect(deckTop(4, 4)).toBe(deckTop(4, 0));
+  });
+});
+
+describe('slideshow', () => {
+  it('makes every photo a slide, in order, on the striped card', () => {
+    const doc = applyTemplate(blank, 'slideshow', photos(3));
+    expect(doc.cells?.map((c) => c.mediaId)).toEqual(['p0', 'p1', 'p2']);
+    expect(doc.background).toEqual({ kind: 'stripes' });
+  });
+
+  it('keeps a photo framing from the Canvas background', () => {
+    const story = { ...applyTemplate(blank, 'story', photos(1)), background: { kind: 'media' as const, mediaId: 'p0', crop: { x: 0.1, y: 0, scale: 1.4 } } };
+    const doc = applyTemplate(story, 'slideshow', photos(1));
+    expect(doc.cells?.[0].crop).toEqual({ x: 0.1, y: 0, scale: 1.4 });
+  });
+
+  it('a retired Spiral opens as a Ring', async () => {
+    const { canvasOf } = await import('@/templates/legacy');
+    const layout = { ...blank, template: 'spiral' } as unknown as CanvasDoc;
+    expect(canvasOf({ layout, mediaElements: [] } as never, { width: 300, height: 500 }).template).toBe('ring');
   });
 });

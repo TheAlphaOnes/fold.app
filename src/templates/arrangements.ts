@@ -2,11 +2,11 @@
  * Arranged templates — photos placed as stickers in a shape, each shape
  * with its own gentle motion when the canvas is live:
  *
- *   Ring    evenly round a circle            the ring turns slowly
- *   Spiral  curling out from the middle      turns slowly the other way
- *   Fan     spread like a hand of cards      each card sways
- *   Stack   a messy pile of prints           the pile breathes
- *   Float   scattered loosely                each photo bobs on its own
+ *   Ring    evenly round a circle      the ring turns; each photo stays upright
+ *   Fan     a hand of cards            each card sways
+ *   Deck    a pile of prints           the top print swings out and tucks
+ *                                      under, so every photo comes to the top
+ *   Float   scattered loosely          each photo bobs on its own
  *
  * Spots are pure (normalised x/y, scale, rotation) so every arrangement is
  * tested and draws the same in the editor, the feed and the export.
@@ -22,7 +22,8 @@ export type Spot = Pick<MediaSticker, 'x' | 'y' | 'scale' | 'rotation'>;
 /** How an arrangement moves when live. `group` turns the whole shape; `item` moves each photo on its own. */
 export type ArrangementMotion =
   | { kind: 'group'; degreesPerSecond: number }
-  | { kind: 'item'; style: 'sway' | 'breathe' | 'bob' };
+  | { kind: 'item'; style: 'sway' | 'bob' }
+  | { kind: 'deck' };
 
 interface Arrangement {
   name: string;
@@ -48,19 +49,6 @@ export function ringSpot(index: number, count: number): Spot {
     y: 0.5 + vertical(RING_RADIUS) * Math.sin(angle),
     scale,
     rotation: index % 2 === 0 ? -4 : 4,
-  };
-}
-
-/** From the middle outward over about one and a half turns, photos shrinking as they go. */
-export function spiralSpot(index: number, count: number): Spot {
-  const t = count <= 1 ? 0 : index / (count - 1);
-  const angle = -Math.PI / 2 + t * Math.PI * 3;
-  const radius = 0.06 + t * 0.32;
-  return {
-    x: 0.5 + radius * Math.cos(angle),
-    y: 0.5 + vertical(radius) * Math.sin(angle),
-    scale: 1.05 - t * 0.4,
-    rotation: (angle * 180) / Math.PI / 12,
   };
 }
 
@@ -104,9 +92,8 @@ export function floatSpot(index: number, count: number): Spot {
 
 export const ARRANGEMENTS: Record<ArrangedTemplateId, Arrangement> = {
   ring: { name: 'Ring', spot: ringSpot, motion: { kind: 'group', degreesPerSecond: 4 } },
-  spiral: { name: 'Spiral', spot: spiralSpot, motion: { kind: 'group', degreesPerSecond: -3 } },
   fan: { name: 'Fan', spot: fanSpot, motion: { kind: 'item', style: 'sway' } },
-  stack: { name: 'Stack', spot: (i) => stackSpot(i), motion: { kind: 'item', style: 'breathe' } },
+  stack: { name: 'Deck', spot: (i) => stackSpot(i), motion: { kind: 'deck' } },
   float: { name: 'Float', spot: floatSpot, motion: { kind: 'item', style: 'bob' } },
 };
 
@@ -115,3 +102,20 @@ export const ARRANGED_IDS = Object.keys(ARRANGEMENTS) as ArrangedTemplateId[];
 export function isArranged(template: string): template is ArrangedTemplateId {
   return template in ARRANGEMENTS;
 }
+
+/**
+ * Deck order after `step` flips: which card is on top, and each card's
+ * depth (0 = top). Card i is drawn i-th, so the last one starts on top;
+ * each flip sends the top card to the back and lifts the rest by one.
+ */
+export function deckDepth(index: number, count: number, step: number): number {
+  const startDepth = count - 1 - index;
+  return (((startDepth - step) % count) + count) % count;
+}
+
+export function deckTop(count: number, step: number): number {
+  return count - 1 - (((step % count) + count) % count);
+}
+
+/** Retired template ids mapped to what replaced them, so saved memories still open. */
+export const TEMPLATE_ALIASES: Record<string, ArrangedTemplateId> = { spiral: 'ring' };
