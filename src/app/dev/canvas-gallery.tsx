@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CanvasView } from '@/canvas/render/canvas-view';
 import { CANVAS_ASPECT } from '@/canvas/geometry';
-import type { CanvasDoc, Layer, TemplateId, TextLayer } from '@/canvas/types';
+import type { CanvasDoc, Layer, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { useTheme } from '@/hooks/use-theme';
 import { BASE_TEMPLATES, GRID_TEMPLATES, newDoc } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
@@ -31,12 +31,20 @@ const MEDIA: MediaElement[] = Array.from({ length: 6 }, (_, i) => ({
   height: i % 2 ? 3 : 4,
 }));
 
+/** Fixed once, so render stays pure. */
+const SAMPLE_DATE = Date.now();
+
+const SHAPES: StickerShape[] = ['heart', 'star', 'arch', 'stamp', 'circle', 'polaroid'];
+
 const TEXT: TextLayer = { id: 't', kind: 'text', text: 'a good day.', font: 'JetBrainsMono-Medium', color: '#FFFFFF', align: 'center', style: 'highlight', size: 0.06, x: 0.5, y: 0.82, scale: 1, rotation: 0 };
 const DATE: Layer = { id: 'd', kind: 'date', style: 'stamp', x: 0.8, y: 0.14, scale: 1, rotation: 6 };
 
 function docFor(template: TemplateId): CanvasDoc {
   const media = template === 'text' ? [] : template === 'story' ? MEDIA.slice(0, 1) : MEDIA;
-  const doc = newDoc(media, template);
+  const base = newDoc(media, template);
+  // Stickers show every shape, so each one can be checked by eye.
+  let i = 0;
+  const doc = { ...base, layers: base.layers.map((l) => (l.kind === 'media' ? { ...l, shape: SHAPES[i++ % SHAPES.length] } : l)) };
   const text: TextLayer = template === 'text' ? { ...TEXT, color: null, style: 'plain', y: 0.5, size: 0.08 } : TEXT;
   return { ...doc, layers: [...doc.layers, text, DATE] };
 }
@@ -52,7 +60,7 @@ export default function CanvasGallery() {
   const w = (width - 48) / 2;
   const feedH = Math.min(width * 1.618, height * 0.78) * (w / (width - 42));
   const storyH = w / CANVAS_ASPECT;
-  const memory = { id: -1, mediaElements: MEDIA, createdAt: Date.now(), location: { latitude: 0, longitude: 0, name: 'Pune' } };
+  const memory = { id: -1, mediaElements: MEDIA, createdAt: SAMPLE_DATE, location: { latitude: 0, longitude: 0, name: 'Pune' } };
 
   return (
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>

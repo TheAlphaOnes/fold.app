@@ -46,6 +46,17 @@ export function snapToCentre(x: number, y: number): SnapResult {
   return { x: snappedX ? 0.5 : x, y: snappedY ? 0.5 : y, snappedX, snappedY };
 }
 
+/** Degrees from straight (0/90/180/270) within which a twist snaps level. */
+export const ROTATION_SNAP = 4;
+
+/** A twist near a right angle settles exactly on it, so straight is easy to hit. */
+export function snapRotation(degrees: number): { rotation: number; snapped: boolean } {
+  'worklet';
+  const nearest = Math.round(degrees / 90) * 90;
+  const snapped = Math.abs(degrees - nearest) < ROTATION_SNAP;
+  return { rotation: snapped ? nearest : degrees, snapped };
+}
+
 /** Short random id for layers and media. */
 export function newId(): string {
   return Math.random().toString(36).slice(2, 9);

@@ -13,7 +13,8 @@ import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
-import { clamp, snapToCentre } from '@/canvas/geometry';
+import { clamp, snapRotation, snapToCentre } from '@/canvas/geometry';
+import { haptic } from '@/services/haptics';
 import type { Layer } from '@/canvas/types';
 import { anchorBox } from '@/canvas/render/canvas-view';
 
@@ -51,6 +52,8 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
   // (a twist after a drag began) never re-counts what another already did.
   const panStart = useSharedValue({ x: layer.x, y: layer.y });
   const rotateStart = useSharedValue(layer.rotation);
+  // Whether the twist is resting on straight, so the tick plays once on arrival.
+  const level = useSharedValue(false);
   // Gestures in progress on this layer; it commits once, when all have ended.
   const running = useSharedValue(0);
   // This layer is being dragged (the drag signals are shared by all layers).
@@ -120,9 +123,13 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
     .onStart(() => {
       begin();
       rotateStart.set(rotation.get());
+      level.set(false);
     })
     .onUpdate((e) => {
-      rotation.set(rotateStart.get() + (e.rotation * 180) / Math.PI);
+      const next = snapRotation(rotateStart.get() + (e.rotation * 180) / Math.PI);
+      rotation.set(next.rotation);
+      if (next.snapped && !level.get()) runOnJS(haptic.select)();
+      level.set(next.snapped);
     })
     .onEnd(end);
 

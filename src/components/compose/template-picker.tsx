@@ -46,7 +46,7 @@ interface TemplatePickerProps {
   onToggleList: () => void;
 }
 
-/** Hugs its content: a style choice, never as loud as Save. */
+/** Fills the space it's given at a fixed width, so it never resizes as names change. */
 export function TemplatePicker({ current, open, onPick, onToggleList }: TemplatePickerProps) {
   const palette = useThemedCyclePalette();
   return (
@@ -143,7 +143,7 @@ function GridGlyph({ layout, color }: { layout: GridLayout; color: string }) {
 }
 
 const styles = StyleSheet.create({
-  pill: { paddingHorizontal: 14, minWidth: 128 },
+  pill: { flex: 1, paddingHorizontal: 14 },
   label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.5 },
   panel: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
   // The list sits inside the panel, which draws the frame.

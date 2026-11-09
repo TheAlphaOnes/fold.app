@@ -123,6 +123,7 @@ describe('applyTemplate: grids', () => {
     expect(applyTemplate(emptyDoc(), 'grid:film', []).gap).toBe('none');
     expect(applyTemplate(emptyDoc(), 'grid:polaroid', []).background).toEqual({ kind: 'color', color: '#E9E4DA' });
     expect(applyTemplate(emptyDoc(), 'grid:film', []).background).toEqual({ kind: 'color', color: '#0B0B0B' });
+    expect(applyTemplate(emptyDoc(), 'grid:quad', []).background).toEqual({ kind: 'stripes' });
   });
 
   it('keeps an existing gap choice', () => {

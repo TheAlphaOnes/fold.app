@@ -73,7 +73,7 @@ export interface TextLayer extends LayerBase {
   size: number;
 }
 
-export type StickerShape = 'rounded' | 'square' | 'circle' | 'polaroid' | 'stamp' | 'tape';
+export type StickerShape = 'rounded' | 'square' | 'circle' | 'polaroid' | 'stamp' | 'tape' | 'heart' | 'star' | 'arch';
 
 export interface MediaSticker extends LayerBase {
   kind: 'media';
