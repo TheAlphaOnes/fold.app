@@ -1,6 +1,6 @@
 # Plan: Fold becomes media-first, story-style, with templates
 
-Status: **draft for review**, written 2026-11-09 on branch `dev`.
+Status: **approved with owner answers (2026-11-09)**, branch `dev`.
 Research behind it: `research/01-stories-editors.md` (how Instagram / WhatsApp
 editors work) and `research/02-codebase.md` (what we have).
 
@@ -40,13 +40,14 @@ composer for everything.
 | # | Decision | Recommendation |
 |---|---|---|
 | D1 | Canvas shape | ✅ **Fixed 9:16** for every template (export = 1080×1920, shares straight to IG/WhatsApp stories). |
-| D2 | Home feed | ✅ Each card *is* the canvas, full width minus a small gutter, **9:16, no stripes/padding**, rounded corners kept. Card gets taller than today (≈1.78 vs 1.62 ratio); the snap-scroll stays. |
+| D2 | Home feed | ⏳ Owner unsure. Each card *is* the canvas (no padding around media), rounded corners kept, snap-scroll stays. **Shape decided by eye in P1**: the renderer is size-independent, so P1 shows the same memories as today's card shape (≈1:1.62, canvas fitted) and as 9:16, side by side. |
 | D3 | Memory screen | ✅ **Full-screen canvas**, story-viewer style: video plays, audio plays, top bar as today (close, edit, story, share, save, delete). The slide pager goes away. |
 | D4 | Dragging in the timeline | ✅ **Removed.** Everything moves in the composer only. |
 | D5 | Default template | ✅ Chosen from what you add: 1 photo/video → **Story**; 2–6 photos → the matching **Grid**; nothing → **Text**. Switchable at any time in the composer. |
-| D6 | Composer entry | ✅ **Media first**: tap the key → composer opens on a "pick" state (camera · gallery · text · voice), not on an empty text page. Hold (voice) and swipe-up (camera) stay as shortcuts. |
+| D6 | Composer entry | ✅ Owner: **no separate pick step**. Tap the key → one creative composer that opens ready to go: the stripes canvas with a blinking cursor (write right away), a recent-photos strip to add media in one tap, the template switcher and tools, all blended into one calm screen. Hold (voice) and swipe-up (camera) stay as shortcuts. |
 | D7 | Existing memories | ✅ Migrate in place: text-only → **Text**, 1 media + text → **Story**, multi-media → **Stickers** (positions converted to normalised coordinates). |
 | D8 | Draw tool | ⏳ Later (not v1). |
+| D11 | Diagonal stripes | ✅ Owner: **keep, they're iconic**. Default background of Text and Stickers templates and of the empty composer canvas; available as a background option everywhere. |
 | D9 | Video in grids | ✅ Allowed (muted, loops in its cell; first video's audio plays in the viewer). |
 | D10 | Max media | ✅ Keep 12 overall; grids cap at their cell count. |
 
@@ -148,14 +149,15 @@ All 9:16. Diagrams are rough; cells are rectangles in normalised units.
 ```
 
 ### 5.2 Text (today's compose, kept)
-Full-screen text on a **colour or gradient** (tap the colour circle to cycle,
-like IG Create / WhatsApp text status). Fonts, size, ink palette and the
-writing feel of the current compose screen are kept as-is.
+Owner: **looks like today's text memory card**: the animated diagonal
+stripes background, our fonts, size and ink palette, the writing feel of the
+current compose screen. No gradients.
 
 ### 5.3 Stickers (today's canvas)
-Background colour/gradient (or the stripes as an option), photos as stickers
-placed freely, with **shapes**: rounded, square, circle, polaroid (white
-frame, caption space), stamp (perforated edge), tape (washi-tape corners).
+Background: the **diagonal stripes** (default) or a colour. Photos as
+stickers placed freely, with **shapes**: rounded, square, circle, polaroid
+(white frame, caption space), **stamp** (perforated postage-stamp edge,
+owner confirmed), tape (washi-tape corners).
 
 ### 5.4 Grids (collages)
 Shared behaviours (from Instagram Layout): tap an empty cell to fill it;
@@ -182,12 +184,20 @@ layout = adding an entry.
 
 ## 6. The composer (one screen, `src/app/compose.tsx` rebuilt)
 
-### 6.1 Flow
-1. **Pick** (when opened empty): big tiles **Camera · Gallery · Text ·
-   Voice**, plus recent photos row. Shortcuts skip this: swipe-up opens the
-   camera, the share sheet arrives with its photos, hold records voice.
-2. **Design**: the 9:16 canvas fills the screen. Template chosen by D5.
-3. **Done**: bottom bar: **Story chip** (file into a story) · **Save**.
+### 6.1 Flow (one screen, no steps)
+Owner: a single creative composition screen where everything blends in and
+nothing feels like a mode change.
+- **Opens ready**: the stripes canvas with a blinking cursor (Text template),
+  so typing starts immediately, exactly like today's compose.
+- **Recent photos strip** along the bottom (plus camera and full-gallery
+  buttons at its start): tap a photo and the canvas becomes a Story with it;
+  tap more and it moves to the matching Grid (D5). Everything animates in
+  place; the screen never changes.
+- **Template switcher** sits above the strip; tools (Aa, stickers, music,
+  location, more) sit top right.
+- **Done**: story chip · Save, bottom right.
+- Shortcuts still skip ahead: swipe-up opens the camera and lands here with
+  the photo; the share sheet lands here with its photos; hold records voice.
 
 ### 6.2 Layout of the design state (IG-style)
 ```
@@ -298,13 +308,12 @@ src/components/compose/*   toolbar, template switcher, text editor sheet, sticke
 | Scope creep | Draw, filters, effects explicitly out of v1 |
 | Big-bang release | Phases merge behind a feature flag (`settings.canvasV2`) until P2 is complete; P1+P2 ship together |
 
-## 12. Questions for the owner
+## 12. Owner answers (2026-11-09)
 
-1. D2: OK for feed cards to become 9:16 (a bit taller than today)?
-2. D6: Is the "pick" state (Camera · Gallery · Text · Voice) right, or should
-   a tap open the gallery straight away like Instagram?
-3. Text template backgrounds: our ink colours only, or also gradients?
-4. Grids: any layouts you specifically want added or dropped from §5.4?
-5. Sticker shapes: are rounded, circle, polaroid, stamp, tape the right set?
-6. Should the stripes pattern survive anywhere (e.g. as a Text/Stickers
-   background option), or go completely?
+1. Feed card shape: unsure → decide by eye in P1 (D2).
+2. Composer: one creative composition screen, everything blended, no
+   separate pick step (D6, §6.1).
+3. Text template: like today's text memory card (stripes, ink, fonts) (§5.2).
+4. Grids: yes, as in §5.4 (incl. the 4-media grid).
+5. Sticker shapes: the set in §5.3, stamp included.
+6. Stripes: keep, they're iconic (D11).
