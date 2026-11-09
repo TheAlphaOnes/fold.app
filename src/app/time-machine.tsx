@@ -54,7 +54,6 @@ export default function TimeMachineScreen() {
     clampToToday(parseDayParam(Array.isArray(day) ? day[0] : day)),
   ).current;
   const { days, selected, select, entries, litDates, loading, refresh } = useDayLog(bootDate);
-  const updatePositions = useJournalStore((state) => state.updatePositions);
   const setActiveCompositionId = useJournalStore((state) => state.setActiveCompositionId);
   const lastDeletedId = useJournalStore((state) => state.lastDeletedId);
   const listRef = useRef<Animated.FlatList<Composition>>(null);
@@ -202,7 +201,6 @@ export default function TimeMachineScreen() {
                 snapInterval={snapInterval}
                 cardHeight={cardHeight}
                 scrollY={scrollY}
-                updatePositions={updatePositions}
               />
             )}
             showsVerticalScrollIndicator={false}

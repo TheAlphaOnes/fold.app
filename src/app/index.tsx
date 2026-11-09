@@ -66,7 +66,6 @@ export default function HomeScreen() {
     refresh,
     loadTimeline,
     hydrateAround,
-    updatePositions,
     setTargetDate,
     setActiveCompositionId,
   } = useJournalStore();
@@ -360,10 +359,9 @@ export default function HomeScreen() {
         snapInterval={snapInterval}
         cardHeight={cardHeight}
         scrollY={scrollY}
-        updatePositions={updatePositions}
       />
     );
-  }, [snapInterval, cardHeight, scrollY, updatePositions]);
+  }, [snapInterval, cardHeight, scrollY]);
 
   return (
     // Clean background
