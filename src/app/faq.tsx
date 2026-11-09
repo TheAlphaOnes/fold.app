@@ -49,9 +49,9 @@ export default function FAQScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ThemedText style={heading}>1. Creating memories</ThemedText>
         <ThemedText style={text}>
-          <B>TAP</B> the orange key to write a memory.{'\n'}
-          <B>HOLD</B> the orange key to start a voice note. You can let go; <B>TAP</B> anywhere to stop and save it.{'\n'}
-          <B>SWIPE UP</B> on the orange key to take a photo, then add words to it.{'\n'}
+          <B>TAP</B> the orange key to make a memory. Start writing, or add photos with the camera and gallery buttons.{'\n'}
+          <B>HOLD</B> the orange key to record a voice note. Pause, discard or save it from the recording screen.{'\n'}
+          <B>SWIPE UP</B> on the orange key to take a photo straight away.{'\n'}
           You can also share text or photos into Fold from other apps.
         </ThemedText>
 
@@ -59,16 +59,27 @@ export default function FAQScreen() {
         <ThemedText style={text}>
           <B>DOUBLE TAP</B> a memory on your timeline to open it full screen.{'\n'}
           <B>HOLD</B> a memory for its menu: share it as an image, open, edit, add it to a story, save to photos or delete.{'\n'}
-          On a memory's canvas, <B>HOLD, THEN DRAG</B> a sticker to move it and <B>PINCH</B> to resize it.
+          To change a memory, choose <B>EDIT</B>: it opens in the same screen you made it in.
         </ThemedText>
 
-        <ThemedText style={heading}>3. Stories</ThemedText>
+        <ThemedText style={heading}>3. Templates & the canvas</ThemedText>
+        <ThemedText style={text}>
+          Every memory is a full-screen canvas, like a story. Pick how it looks from the row under the canvas:{'\n'}
+          <B>STORY</B> one photo or video, edge to edge.{'\n'}
+          <B>TEXT</B> your words on the stripes.{'\n'}
+          <B>STICKERS</B> photos placed freely, in shapes like polaroid, stamp or tape.{'\n'}
+          <B>GRIDS</B> collages from two to six photos, including a film strip and a diary page.{'\n'}
+          Fold picks one as you add photos; tap another any time.{'\n\n'}
+          On the canvas, <B>DRAG</B> text or a sticker to move it, <B>PINCH</B> to resize, <B>TWIST</B> to rotate, and drop it on the bin to remove it. Pinch and drag a photo to frame it. In a grid, tap an empty spot to fill it, and hold one photo then tap another to swap them.
+        </ThemedText>
+
+        <ThemedText style={heading}>4. Stories</ThemedText>
         <ThemedText style={text}>
           Stories are chapters, like "Japan Trip 2026". Start one from your Profile, then file memories into it from the
           book icon on any memory, or hold a memory and tap Add to story. A memory can belong to more than one story.
         </ThemedText>
 
-        <ThemedText style={heading}>4. Continuum: streak & ink</ThemedText>
+        <ThemedText style={heading}>5. Continuum: streak & ink</ThemedText>
         <ThemedText style={text}>
           The Continuum card on your Profile shows two numbers.{'\n\n'}
           <B>DAYS</B> is your streak: the days in a row you have saved at least one memory. "best" is your longest run.
@@ -80,7 +91,7 @@ export default function FAQScreen() {
           every month, and your best month stays as your <B>record</B>. Deleting a memory takes its ink back.
         </ThemedText>
 
-        <ThemedText style={heading}>5. Reminders</ThemedText>
+        <ThemedText style={heading}>6. Reminders</ThemedText>
         <ThemedText style={text}>
           Fold sends three gentle reminders a day to snap what you are doing: {REMINDER_WINDOWS}. Each lands at a
           different time every day. If you have already captured that part of the day, its reminder is skipped. Tap
@@ -88,32 +99,32 @@ export default function FAQScreen() {
           To turn reminders off, switch off notifications for Fold in your phone's Settings.
         </ThemedText>
 
-        <ThemedText style={heading}>6. Timeline modes</ThemedText>
+        <ThemedText style={heading}>7. Timeline modes</ThemedText>
         <ThemedText style={text}>
           In Settings, switch between Yearly, Monthly or Infinite to change how your memories are grouped on the home
           screen.
         </ThemedText>
 
-        <ThemedText style={heading}>7. Field Guide</ThemedText>
+        <ThemedText style={heading}>8. Field Guide</ThemedText>
         <ThemedText style={text}>
           The Field Guide tab on the home screen walks you through every gesture with short missions. Restart it any
           time from Settings → Restart Field Guide.
         </ThemedText>
 
-        <ThemedText style={heading}>8. Deleted something by mistake?</ThemedText>
+        <ThemedText style={heading}>9. Deleted something by mistake?</ThemedText>
         <ThemedText style={text}>
           Deleted memories wait in Settings → Recently Deleted for 30 days. Restore them from there before they are
           gone for good.
         </ThemedText>
 
-        <ThemedText style={heading}>9. Not getting reminders or haptics?</ThemedText>
+        <ThemedText style={heading}>10. Not getting reminders or haptics?</ThemedText>
         <ThemedText style={text}>
           For reminders, make sure notifications are allowed for Fold in your phone's Settings. For haptics, Settings →
           Testing → <B>TEST HAPTICS</B> plays a long buzz and then each pattern, and names anything on your phone that
           blocks vibration, like Battery Saver.
         </ThemedText>
 
-        <ThemedText style={heading}>10. Data & privacy</ThemedText>
+        <ThemedText style={heading}>11. Data & privacy</ThemedText>
         <ThemedText style={text}>
           Your memories live only on this device and never leave it unless you share them. Use your phone's backup to
           keep them safe.{'\n\n'}
