@@ -1,12 +1,10 @@
 /**
  * CelebrationHost — mounted once at the root; plays the current moment
- * (useMoments): the screen dims, a white ripple spreads (or the streak's
- * ticks rise), and a short
+ * (useMoments): the screen dims, then a white sparkle (new memory), ripple
+ * or the streak's ticks, and a short
  * caption rises under it when there is one ("DAY 05", "RESTORED"). Same dim
  * as the share bird, so every small moment in Fold looks alike.
- *
- * Saving or changing a memory (useJournalStore.justAddedId) celebrates
- * automatically.
+
  */
 
 import React, { useEffect } from 'react';
@@ -14,12 +12,12 @@ import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { usePathname } from 'expo-router';
 
+import { CelebrationBurst } from '@/components/celebration-burst';
 import { MomentRipple } from '@/components/moment-ripple';
 import { MomentStreak } from '@/components/moment-streak';
 import { MOMENT_INK, MomentDim } from '@/components/moment-dim';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn, riseIn } from '@/constants/motion';
-import { useJournalStore } from '@/hooks/use-journal';
 import { useMoments } from '@/hooks/use-moments';
 
 /**
@@ -33,7 +31,7 @@ const DIM_HOLD_MS = 1150;
 /** Whole moment, start to clear. */
 const TOTAL_MS = LEAD_MS + 240 + DIM_HOLD_MS + 380;
 /** Caption sits below the effect: past the ripple's rings, or under the ticks. */
-const CAPTION_OFFSET = { ripple: 132, streak: 56 } as const;
+const CAPTION_OFFSET = { sparkle: 56, ripple: 132, streak: 56 } as const;
 
 export function CelebrationHost() {
   const moment = useMoments((state) => state.moment);
@@ -42,17 +40,6 @@ export function CelebrationHost() {
   // screen underneath; the lead below covers the slide-out.
   const pathname = usePathname();
   const waiting = pathname.startsWith('/compose');
-
-  useEffect(
-    () =>
-      useJournalStore.subscribe((state, previous) => {
-        if (state.justAddedId === null || state.justAddedId === previous.justAddedId) return;
-        useMoments.getState().celebrate();
-        // Consumed: the next save or change can play it again.
-        state.setJustAddedId(null);
-      }),
-    [],
-  );
 
   const active = moment && !waiting ? moment.id : null;
   useEffect(() => {
@@ -70,6 +57,8 @@ export function CelebrationHost() {
         <View style={styles.streak}>
           <MomentStreak delayMs={BURST_DELAY_MS} />
         </View>
+      ) : moment.kind === 'sparkle' ? (
+        <CelebrationBurst color={MOMENT_INK} delayMs={BURST_DELAY_MS} />
       ) : (
         <MomentRipple delayMs={BURST_DELAY_MS} />
       )}

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useMoments } from '@/hooks/use-moments';
 import { 
   getAllCompositions, 
   getOnThisDayCompositions,
@@ -271,6 +272,8 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   addComposition: async (input: CreateCompositionInput, source: CaptureSource) => {
     const newComp = await createComposition(input);
     set({ justAddedId: newComp.id });
+    // A new memory is the one moment that sparkles.
+    useMoments.getState().celebrate(undefined, 'sparkle');
     trackMemoryCreated(input, newComp.createdAt, source);
     // Not awaited: scoring must never hold up the save.
     void useProgressionStore.getState().recordCapture();
@@ -289,13 +292,12 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       hydratedById[input.id] = updated;
     }
 
+    useMoments.getState().celebrate();
     set((state) => ({
       hydratedById,
       compositions: state.compositions.map((c) => (c.id === input.id ? updated : c)),
       allCompositions: state.allCompositions.map((c) => (c.id === input.id ? updated : c)),
       hydrationVersion: state.hydrationVersion + 1,
-      // The edited card sparkles, like a new one does.
-      justAddedId: input.id,
     }));
 
     await get().refresh();

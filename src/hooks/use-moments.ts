@@ -1,9 +1,9 @@
 /**
- * Moments — the small celebrations (dim + a white ripple or streak ticks,
- * optional caption) that CelebrationHost plays over the whole screen.
+ * Moments — the small celebrations (dim + a white sparkle, ripple or
+ * streak ticks, optional caption) that CelebrationHost plays over the whole screen.
  *
- * celebrate() calls that land together merge into one moment: a save
- * ripples, and if the same save also grows the streak, it becomes the
+ * celebrate() calls that land together merge into one moment: a new
+ * memory sparkles, and if the same save also grows the streak, it becomes the
  * streak moment with "DAY 05" instead of starting a second one.
  */
 
@@ -12,8 +12,14 @@ import { create } from 'zustand';
 /** Calls within this window share one moment. */
 const MERGE_MS = 900;
 
-/** ripple: saves, edits, restores, new stories. streak: the streak grew. */
-export type MomentKind = 'ripple' | 'streak';
+/**
+ * sparkle: a new memory, and only that. ripple: everything else (edits,
+ * shares, restores, new stories). streak: the streak grew.
+ */
+export type MomentKind = 'sparkle' | 'ripple' | 'streak';
+
+/** When calls merge, the more specific kind wins. */
+const RANK: Record<MomentKind, number> = { ripple: 0, sparkle: 1, streak: 2 };
 
 export interface Moment {
   id: number;
@@ -35,7 +41,7 @@ export const useMoments = create<MomentsState>((set, get) => ({
     const current = get().moment;
     if (current && now - current.startedAt < MERGE_MS) {
       // The later, more specific call wins: a caption, a streak.
-      set({ moment: { ...current, caption: caption ?? current.caption, kind: kind === 'streak' ? 'streak' : current.kind } });
+      set({ moment: { ...current, caption: caption ?? current.caption, kind: RANK[kind] > RANK[current.kind] ? kind : current.kind } });
       return;
     }
     set({ moment: { id: now, startedAt: now, kind, caption: caption ?? null } });
