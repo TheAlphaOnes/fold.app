@@ -6,7 +6,7 @@
  * mission completes, and half-fills when one of a two-step mission's steps
  * is done. Ticks double as navigation.
  *
- * Under the ticks, a plain BACK · STEP n OF N · SKIP row, so moving between
+ * Under the ticks, a plain BACK · SKIP row, so moving between
  * steps never depends on finding the right tick.
  */
 
@@ -87,11 +87,9 @@ interface GuideHeaderProps {
   onSkip?: () => void;
   /** Hidden on the first step. */
   onBack?: () => void;
-  stepNumber: number;
-  totalSteps: number;
 }
 
-export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onSkip, onBack, stepNumber, totalSteps }: GuideHeaderProps) {
+export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onSkip, onBack }: GuideHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -122,9 +120,6 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
 
       <View style={styles.navRow}>
         <NavButton label="BACK" side="left" onPress={onBack} accessibilityLabel="Previous step" />
-        <ThemedText style={[styles.counter, { color: theme.textMuted }]}>
-          STEP {String(stepNumber).padStart(2, '0')} OF {String(totalSteps).padStart(2, '0')}
-        </ThemedText>
         <NavButton label="SKIP" side="right" onPress={onSkip} accessibilityLabel="Skip this step" />
       </View>
     </View>
@@ -144,12 +139,13 @@ function NavButton({ label, side, onPress, accessibilityLabel }: { label: string
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [
         styles.navButton,
-        { borderColor: theme.border, opacity: pressed ? 0.5 : 1 },
+        side === 'right' && styles.navButtonRight,
+        { opacity: pressed ? 0.5 : 1 },
       ]}
     >
-      {side === 'left' && <Icon size={14} color={theme.text} strokeWidth={2} />}
-      <ThemedText style={[styles.navText, { color: theme.text }]}>{label}</ThemedText>
-      {side === 'right' && <Icon size={14} color={theme.text} strokeWidth={2} />}
+      {side === 'left' && <Icon size={14} color={theme.textMuted} strokeWidth={2} />}
+      <ThemedText style={[styles.navText, { color: theme.textMuted }]}>{label}</ThemedText>
+      {side === 'right' && <Icon size={14} color={theme.textMuted} strokeWidth={2} />}
     </Pressable>
   );
 }
@@ -175,26 +171,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   navButton: {
-    minWidth: 84,
-    height: 34,
+    minWidth: 72,
+    height: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    gap: 4,
+  },
+  navButtonRight: {
+    justifyContent: 'flex-end',
   },
   navText: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     lineHeight: 14,
-    letterSpacing: 2,
-  },
-  counter: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
     letterSpacing: 2,
   },
   ticks: {

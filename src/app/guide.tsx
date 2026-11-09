@@ -26,7 +26,7 @@ import { TagStage } from '@/components/guide/tag-stage';
 import { InkStage } from '@/components/guide/ink-stage';
 import { RemindersStage } from '@/components/guide/reminders-stage';
 import type { GuideStageProps, StageArea } from '@/components/guide/types';
-import { GUIDE_STEPS, isGuideStepId } from '@/constants/guide';
+import { isGuideStepId } from '@/constants/guide';
 import { fadeOut, riseIn } from '@/constants/motion';
 import { useGuideFlow } from '@/hooks/use-guide-flow';
 import { useLatestMemory } from '@/hooks/use-latest-memory';
@@ -132,8 +132,6 @@ export default function FieldGuideScreen() {
         onClose={leave}
         onSkip={flow.isComplete ? undefined : flow.skip}
         onBack={flow.stepIndex > 0 ? flow.back : undefined}
-        stepNumber={Math.min(flow.stepIndex + 1, GUIDE_STEPS.length)}
-        totalSteps={GUIDE_STEPS.length}
       />
 
       {flow.isComplete ? (
