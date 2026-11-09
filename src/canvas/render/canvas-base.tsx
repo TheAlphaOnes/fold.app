@@ -5,12 +5,12 @@
  */
 
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PixelRatio, StyleSheet, View } from 'react-native';
 
 import { DiagonalStripes } from '@/components/diagonal-stripes';
 import type { CanvasDoc, Crop } from '@/canvas/types';
 import { MediaFill } from '@/canvas/render/media-fill';
-import { GAP_FRACTION, gridLayout, type GridLayout } from '@/templates/grids';
+import { GAP_FRACTION, cellRect, gridLayout, type GridLayout } from '@/templates/grids';
 import { gridIdOf } from '@/templates/registry';
 import { useTheme } from '@/hooks/use-theme';
 import type { MediaElement } from '@/types/journal';
@@ -91,7 +91,8 @@ function GridBase({
 }) {
   const theme = useTheme();
   const gap = GAP_FRACTION[doc.gap ?? 'none'] * width;
-  const background = doc.background.kind === 'color' ? doc.background.color : '#0B0B0B';
+  // Gaps show the card colour; only decor grids (film, polaroid) set their own.
+  const background = doc.background.kind === 'color' ? doc.background.color : theme.backgroundElement;
   const fills = new Map((doc.cells ?? []).map((c) => [c.cellId, c]));
 
   const frame = layout.decor === 'polaroid';
@@ -100,12 +101,9 @@ function GridBase({
       {layout.cells.map((cell) => {
         const fill = fills.get(cell.id);
         const m = fill?.mediaId ? media.get(fill.mediaId) : undefined;
-        const left = cell.x * width + gap / 2;
-        const top = cell.y * height + gap / 2;
-        const w = cell.w * width - gap;
-        const h = cell.h * height - gap;
+        const { left, top, width: w, height: h } = cellRect(cell, width, height, gap, PixelRatio.roundToNearestPixel);
         return (
-          <View key={cell.id} style={[styles.cell, { left, top, width: w, height: h, backgroundColor: theme.backgroundElement }]}>
+          <View key={cell.id} style={[styles.cell, { left, top, width: w, height: h }]}>
             {m ? (
               renderers ? (
                 renderers.frame(cell.id, m, fill!.crop, w, h, fill!.mirrored)
@@ -114,7 +112,8 @@ function GridBase({
               )
             ) : (
               <>
-                <DiagonalStripes color={theme.border} opacity={0.35} />
+                {/* An empty cell is the same striped card as an empty canvas. */}
+                <StripesSurface animated={false} />
                 {renderers?.emptyCell?.(cell.id, w, h)}
               </>
             )}

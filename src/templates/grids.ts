@@ -108,3 +108,25 @@ export function gridForCount(count: number): GridLayoutId {
 
 /** Gap between cells as a fraction of canvas width. */
 export const GAP_FRACTION = { none: 0, thin: 0.008, thick: 0.022 } as const;
+
+export interface CellRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * A cell's box on a canvas of the given size. Edges are snapped to device
+ * pixels from the cell's start and end (not start + size), so neighbours
+ * share the exact same edge and no hairline seam opens between them.
+ * `snap` is PixelRatio.roundToNearestPixel in the app.
+ */
+export function cellRect(cell: GridCell, width: number, height: number, gap: number, snap: (n: number) => number = (n) => n): CellRect {
+  const half = gap / 2;
+  const left = snap(cell.x * width + half);
+  const top = snap(cell.y * height + half);
+  const right = snap((cell.x + cell.w) * width - half);
+  const bottom = snap((cell.y + cell.h) * height - half);
+  return { left, top, width: right - left, height: bottom - top };
+}

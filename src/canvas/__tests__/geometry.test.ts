@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CANVAS_ASPECT, EXPORT_SIZE, SNAP_DISTANCE, clamp, fitCanvas, newId, snapToCentre } from '@/canvas/geometry';
+import { CANVAS_ASPECT, EXPORT_SIZE, SNAP_DISTANCE, clamp, fitCanvas, newId, snapRotation, snapToCentre } from '@/canvas/geometry';
 
 describe('constants', () => {
   it('is a 9:16 canvas and the export matches', () => {
@@ -84,5 +84,18 @@ describe('newId', () => {
   it('is practically unique', () => {
     const ids = new Set(Array.from({ length: 2000 }, newId));
     expect(ids.size).toBeGreaterThan(1990);
+  });
+});
+
+describe('snapRotation', () => {
+  it('settles a near-straight twist exactly on straight', () => {
+    expect(snapRotation(2.5)).toEqual({ rotation: 0, snapped: true });
+    expect(snapRotation(-3)).toEqual({ rotation: -0, snapped: true });
+    expect(snapRotation(88)).toEqual({ rotation: 90, snapped: true });
+  });
+
+  it('leaves a deliberate angle alone', () => {
+    expect(snapRotation(12)).toEqual({ rotation: 12, snapped: false });
+    expect(snapRotation(-45)).toEqual({ rotation: -45, snapped: false });
   });
 });

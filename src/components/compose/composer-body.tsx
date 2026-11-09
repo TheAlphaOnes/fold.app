@@ -23,7 +23,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { ArrowUpToLine, Book, Camera, Image as ImageIcon, Shapes, Smile, Trash2, Type as TypeIcon, Undo2 } from 'lucide-react-native';
+import { ArrowUpToLine, Book, Camera, RotateCcw, Image as ImageIcon, Shapes, Smile, Trash2, Type as TypeIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
@@ -64,7 +64,7 @@ const TOP_BAR = 6 + ROUND_BUTTON_SIZE + 8;
 const BOTTOM_BAR = 12 + ROUND_BUTTON_SIZE + 8;
 /** Breathing room between the canvas and the bars. */
 const CANVAS_MARGIN = 24;
-const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'polaroid', 'stamp', 'tape'];
+const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'heart', 'star', 'arch', 'polaroid', 'stamp', 'tape'];
 
 const DEFAULT_TEXT: TextDraft = { text: '', font: DEFAULT_MEMORY_FONT, color: null, align: 'center', style: 'plain', size: 0.065 };
 
@@ -416,6 +416,19 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
               <Shapes size={16} color={theme.text} />
               <ThemedText style={[styles.selText, { color: theme.text }]}>{(selected as MediaSticker).shape.toUpperCase()}</ThemedText>
             </Pressable>
+            {/* Twisting snaps to straight; this is the one-tap version, and back. */}
+            <Pressable
+              onPress={() => {
+                haptic.select();
+                c.updateLayer(selected.id, { rotation: selected.rotation % 360 === 0 ? -6 : 0 } as Partial<Layer>);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={selected.rotation % 360 === 0 ? 'Tilt' : 'Straighten'}
+              style={styles.selBtn}
+            >
+              <RotateCcw size={16} color={theme.text} />
+              <ThemedText style={[styles.selText, { color: theme.text }]}>{selected.rotation % 360 === 0 ? 'TILT' : 'STRAIGHT'}</ThemedText>
+            </Pressable>
             <Pressable
               onPress={() => c.bringToFront(selected.id)}
               accessibilityRole="button"
@@ -553,7 +566,7 @@ const styles = StyleSheet.create({
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
-  middle: { flex: 1, alignItems: 'center' },
+  middle: { flex: 1, flexDirection: 'row' },
   storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },

@@ -135,7 +135,14 @@ export function applyTemplate(doc: CanvasDoc, template: TemplateId, media: Media
   return {
     version: 1,
     template,
-    background: { kind: 'color', color: layout.decor === 'polaroid' ? '#E9E4DA' : '#0B0B0B' },
+    // Film is a black strip and the polaroid sits on paper; every other grid
+    // is on the card, so its gaps read as the card's own colour.
+    background:
+      layout.decor === 'film'
+        ? { kind: 'color', color: '#0B0B0B' }
+        : layout.decor === 'polaroid'
+          ? { kind: 'color', color: '#E9E4DA' }
+          : { kind: 'stripes' },
     cells,
     gap: doc.gap ?? (layout.decor ? 'none' : 'thin'),
     layers: kept,

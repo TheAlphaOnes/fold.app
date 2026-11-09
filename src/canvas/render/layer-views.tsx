@@ -4,16 +4,17 @@
  * worries about its own size and shape.
  */
 
-import React from 'react';
+import React, { useId } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MapPin } from 'lucide-react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { ClipPath, Defs, G, Image as SvgImage, Path } from 'react-native-svg';
 
 import { MusicDisc } from '@/components/stories/music-disc';
 import { VinylRecord } from '@/components/vinyl-record';
 import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
 import { stampOutline } from '@/canvas/render/stamp-outline';
+import { cutHeight, cutPath, isCutShape, type CutShape } from '@/canvas/render/sticker-paths';
 import { useMemoryAudio } from '@/canvas/render/use-memory-audio';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
@@ -65,6 +66,7 @@ export function MediaStickerView({ layer, media, width }: { layer: MediaSticker;
   const uri = media.type === 'video' ? thumb : media.uri;
   let { w, h } = stickerSize(media, width, layer.scale);
   if (layer.shape === 'circle' || layer.shape === 'stamp') h = w;
+  if (isCutShape(layer.shape)) return <CutSticker shape={layer.shape} uri={uri} w={w} h={cutHeight(layer.shape, w)} />;
 
   const image = uri ? (
     <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
@@ -91,7 +93,7 @@ function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number;
         {/* The paper is a real shape with its perforations cut out, so
             whatever is behind shows through the holes on any background. */}
         <Svg width={outerW} height={outerH} style={StyleSheet.absoluteFill}>
-          <Path d={stampOutline(outerW, outerH, pad * 0.42, 9)} fill="#FAF7F0" stroke="#00000026" strokeWidth={StyleSheet.hairlineWidth * 2} />
+          <Path d={stampOutline(outerW, outerH, pad * 0.42, 9)} fill="#FAF7F0" stroke="#00000059" strokeWidth={1} />
         </Svg>
         <View style={{ width: w, height: h, overflow: 'hidden' }}>{children}</View>
       </View>
@@ -107,6 +109,33 @@ function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number;
   }
   const radius = shape === 'circle' ? w / 2 : shape === 'square' ? 2 : w * 0.1;
   return <View style={[styles.photoShadow, { width: w, height: h, borderRadius: radius, overflow: 'hidden' }]}>{children}</View>;
+}
+
+/**
+ * A photo cut to a shape (heart, star, arch) with a white die-cut border,
+ * like a printed sticker. The photo is an SVG image under a clip path, so
+ * the cut is exact and survives the export capture.
+ */
+function CutSticker({ shape, uri, w, h }: { shape: CutShape; uri: string | null | undefined; w: number; h: number }) {
+  const clipId = `cut-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const border = Math.max(3, w * 0.04);
+  const d = cutPath(shape, w, h);
+  return (
+    <View style={[styles.cutShadow, { width: w + border * 2, height: h + border * 2 }]}>
+      <Svg width={w + border * 2} height={h + border * 2}>
+        <Defs>
+          <ClipPath id={clipId}>
+            <Path d={d} />
+          </ClipPath>
+        </Defs>
+        <G transform={`translate(${border} ${border})`}>
+          {/* The border: the outline stroked wide in white, behind the photo. */}
+          <Path d={d} fill="#FFFFFF" stroke="#FFFFFF" strokeWidth={border * 2} strokeLinejoin="round" />
+          {uri ? <SvgImage href={{ uri }} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${clipId})`} /> : null}
+        </G>
+      </Svg>
+    </View>
+  );
 }
 
 // ─── Songs and voice notes ──────────────────────────────────────────────
@@ -190,6 +219,8 @@ export function DateStickerView({ layer, createdAt, width }: { layer: DateSticke
 }
 
 const styles = StyleSheet.create({
+  // No fill: the shadow follows the cut outline drawn inside.
+  cutShadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6 },
   photoShadow: {
     backgroundColor: '#1A1A1A',
     shadowColor: '#000',
