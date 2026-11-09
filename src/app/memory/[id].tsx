@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions, Pressable, Alert, Share, Platform, Linking } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect, useIsFocused } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';

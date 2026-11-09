@@ -22,7 +22,7 @@ import { AddButton } from '@/components/add-button';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
-import { router, useFocusEffect, Redirect } from 'expo-router';
+import { useFocusEffect, Redirect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { User, Book } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';

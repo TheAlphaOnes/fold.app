@@ -8,7 +8,7 @@
 
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+
 import { Image } from 'expo-image';
 import { Book, ChevronRight } from 'lucide-react-native';
 

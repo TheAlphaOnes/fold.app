@@ -7,7 +7,7 @@
 
 import React, { useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+
 import * as Sharing from 'expo-sharing';
 
 import { LogoUploadFlight } from '@/components/logo-upload-flight';

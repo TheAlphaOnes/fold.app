@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import { router } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Keyframe } from 'react-native-reanimated';
 import { haptic } from '@/services/haptics';

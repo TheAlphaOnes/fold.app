@@ -27,7 +27,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { router } from 'expo-router';
+
 import Animated, {
   Easing,
   useAnimatedStyle,

@@ -8,7 +8,7 @@
 
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,

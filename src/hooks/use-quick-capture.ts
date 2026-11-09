@@ -10,7 +10,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 

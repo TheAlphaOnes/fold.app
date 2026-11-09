@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Keyboard, StyleSheet, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import Animated from 'react-native-reanimated';
 
 import { DobField } from '@/components/onboarding/dob-field';

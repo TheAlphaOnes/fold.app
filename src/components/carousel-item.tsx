@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
-import { router, useIsFocused } from 'expo-router';
+import { useIsFocused } from 'expo-router';
 import { haptic } from '@/services/haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';

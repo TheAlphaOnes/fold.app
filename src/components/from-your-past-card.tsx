@@ -15,7 +15,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+
 import Animated, {
   Easing,
   cancelAnimation,
@@ -38,7 +38,8 @@ import { haptic } from '@/services/haptics';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { isGifMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
-import type { Composition } from '@/types/journal';
+import type { Composition, MediaElement } from '@/types/journal';
+import { dealColumns, wallPieces } from '@/utils/past-wall';
 import { navigate } from '@/utils/navigation';
 
 const VIEWPORT_HEIGHT = 380;
@@ -55,6 +56,8 @@ const ASPECTS = [0.75, 1, 1.3, 0.85, 1.15];
 interface Tile {
   key: string;
   memory: Composition;
+  /** The photo/video this tile shows (a memory can give several tiles). */
+  media?: MediaElement;
   height: number;
 }
 
@@ -63,8 +66,7 @@ function visualOf(memory: Composition) {
 }
 
 /** Natural aspect when known, otherwise a stable pseudo-random one per memory. */
-function tileHeight(memory: Composition, width: number): number {
-  const visual = visualOf(memory);
+function tileHeight(memory: Composition, visual: MediaElement | undefined, width: number): number {
   if (visual?.width && visual?.height) {
     const aspect = Math.min(1.6, Math.max(0.65, visual.width / visual.height));
     return Math.round(width / aspect);
@@ -74,23 +76,19 @@ function tileHeight(memory: Composition, width: number): number {
 }
 
 /**
- * Deal memories round-robin into columns, then repeat each column's list
- * until one cycle is taller than the viewport — the loop needs that much
- * content to never show a gap.
+ * Every photo becomes a tile, dealt into columns (see utils/past-wall),
+ * then each column's list repeats whole until one cycle is taller than the
+ * viewport, so the loop never shows a gap.
  */
 function buildColumns(memories: Composition[], width: number): { tiles: Tile[]; cycle: number }[] {
-  const dealt: Composition[][] = Array.from({ length: COLUMNS }, () => []);
-  memories.forEach((memory, index) => dealt[index % COLUMNS].push(memory));
-
-  return dealt.map((column, c) => {
-    const source = column.length > 0 ? column : memories;
+  return dealColumns(wallPieces(memories), COLUMNS).map((column, c) => {
     const tiles: Tile[] = [];
     let cycle = 0;
     let round = 0;
-    while (source.length > 0 && cycle < VIEWPORT_HEIGHT + 120) {
-      for (const memory of source) {
-        const height = tileHeight(memory, width);
-        tiles.push({ key: `${c}-${round}-${memory.id}`, memory, height });
+    while (column.length > 0 && cycle < VIEWPORT_HEIGHT + 120) {
+      for (const { memory, media } of column) {
+        const height = tileHeight(memory, media, width);
+        tiles.push({ key: `${c}-${round}-${memory.id}-${media?.id ?? 'face'}`, memory, media, height });
         cycle += height + GAP;
       }
       round += 1;
@@ -108,7 +106,7 @@ function shortDate(timestamp: number): string {
 function MemoryTile({ tile, width }: { tile: Tile; width: number }) {
   const theme = useTheme();
   const { memory } = tile;
-  const visual = visualOf(memory);
+  const visual = tile.media ?? visualOf(memory);
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
   const audio = memory.mediaElements.find((m) => m.type === 'audio');
   const image = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : getHighResArtwork(audio?.metadata?.artwork);

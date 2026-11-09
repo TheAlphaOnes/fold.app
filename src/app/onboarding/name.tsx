@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Keyboard } from 'react-native';
-import { router } from 'expo-router';
 
 import { CleanInput } from '@/components/clean-input';
 import { OnboardingFrame } from '@/components/onboarding/onboarding-frame';
