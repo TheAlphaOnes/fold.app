@@ -8,12 +8,20 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DiagonalStripes } from '@/components/diagonal-stripes';
-import type { CanvasDoc } from '@/canvas/types';
+import type { CanvasDoc, Crop } from '@/canvas/types';
 import { MediaFill } from '@/canvas/render/media-fill';
 import { GAP_FRACTION, gridLayout, type GridLayout } from '@/templates/grids';
 import { gridIdOf } from '@/templates/registry';
 import { useTheme } from '@/hooks/use-theme';
 import type { MediaElement } from '@/types/journal';
+
+/** Lets the composer draw editable frames in place of the static ones. */
+export interface FrameRenderers {
+  /** A photo/video frame: the Story background ('background') or a grid cell (its id). */
+  frame: (target: string, media: MediaElement, crop: Crop, width: number, height: number, mirrored?: boolean) => React.ReactNode;
+  /** An empty grid cell. */
+  emptyCell?: (cellId: string, width: number, height: number) => React.ReactNode;
+}
 
 interface CanvasBaseProps {
   doc: CanvasDoc;
@@ -23,22 +31,27 @@ interface CanvasBaseProps {
   playing: boolean;
   /** Animate the stripes (off for exports and thumbnails). */
   animated: boolean;
+  renderers?: FrameRenderers;
 }
 
-export function CanvasBase({ doc, media, width, height, playing, animated }: CanvasBaseProps) {
+export function CanvasBase({ doc, media, width, height, playing, animated, renderers }: CanvasBaseProps) {
   const theme = useTheme();
   const isDark = theme.background !== '#FFFFFF';
   const bg = doc.background;
 
   const grid = gridIdOf(doc.template);
   if (grid) {
-    return <GridBase doc={doc} layout={gridLayout(grid)} media={media} width={width} height={height} playing={playing} />;
+    return <GridBase doc={doc} layout={gridLayout(grid)} media={media} width={width} height={height} playing={playing} renderers={renderers} />;
   }
 
   if (bg.kind === 'media') {
     const m = media.get(bg.mediaId);
     if (m) {
-      return <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={false} />;
+      return renderers ? (
+        <>{renderers.frame('background', m, bg.crop, width, height)}</>
+      ) : (
+        <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={false} />
+      );
     }
   }
 
@@ -60,6 +73,7 @@ function GridBase({
   width,
   height,
   playing,
+  renderers,
 }: {
   doc: CanvasDoc;
   layout: GridLayout;
@@ -67,6 +81,7 @@ function GridBase({
   width: number;
   height: number;
   playing: boolean;
+  renderers?: FrameRenderers;
 }) {
   const theme = useTheme();
   const gap = GAP_FRACTION[doc.gap ?? 'none'] * width;
@@ -86,9 +101,16 @@ function GridBase({
         return (
           <View key={cell.id} style={[styles.cell, { left, top, width: w, height: h, backgroundColor: theme.backgroundElement }]}>
             {m ? (
-              <MediaFill media={m} crop={fill!.crop} width={w} height={h} mirrored={fill!.mirrored} playing={playing} />
+              renderers ? (
+                renderers.frame(cell.id, m, fill!.crop, w, h, fill!.mirrored)
+              ) : (
+                <MediaFill media={m} crop={fill!.crop} width={w} height={h} mirrored={fill!.mirrored} playing={playing} />
+              )
             ) : (
-              <DiagonalStripes color={theme.border} opacity={0.35} />
+              <>
+                <DiagonalStripes color={theme.border} opacity={0.35} />
+                {renderers?.emptyCell?.(cell.id, w, h)}
+              </>
             )}
           </View>
         );
@@ -97,7 +119,7 @@ function GridBase({
   );
 
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: background }]} pointerEvents={renderers ? 'box-none' : 'none'}>
       {layout.decor === 'film' && <FilmDecor width={width} height={height} />}
       {layout.decor === 'diary' && <DiaryDecor width={width} height={height} />}
       {frame ? (
