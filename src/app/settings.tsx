@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass, Vibrate } from 'lucide-react-native';
+import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -10,7 +10,6 @@ import { haptic } from '@/services/haptics';
 import { useTheme, type ThemeMode } from '@/hooks/use-theme';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
-import { useDeviceTests } from '@/hooks/use-device-tests';
 import { countTrashed } from '@/db/journal-repository';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
@@ -26,7 +25,6 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { compositions, removeAllCompositions } = useJournalStore();
   const { settings, updateSetting, resetGuide } = useSettingsStore();
-  const deviceTests = useDeviceTests();
   // Live readout while the glow slider moves; null once the value is saved.
   const [glowDraft, setGlowDraft] = useState<number | null>(null);
   const glowPreview = glowDraft ?? settings.backdropIntensity;
@@ -242,9 +240,6 @@ export default function SettingsScreen() {
               }}
               accessibilityLabel="Photo glow behind the timeline"
             />
-            <ThemedText style={[styles.settingSubtext, styles.sliderHint, { color: theme.textSecondary }]}>
-              how much each photo tints the timeline
-            </ThemedText>
           </View>
 
           <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
@@ -401,31 +396,6 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>TESTING</ThemedText>
-          <View style={[styles.divider, { backgroundColor: theme.text }]} />
-
-          <Pressable
-            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={deviceTests.testHaptics}
-            accessibilityRole="button"
-            accessibilityLabel="Test haptics"
-            accessibilityHint="Plays a long buzz, then each feedback pattern"
-          >
-            <View style={styles.rowTextBlock}>
-              <View style={styles.settingRowLeft}>
-                <Vibrate size={16} color={theme.text} />
-                <ThemedText style={[styles.settingText, { color: theme.text }]}>TEST HAPTICS</ThemedText>
-              </View>
-              {deviceTests.hapticStatus && (
-                <ThemedText style={[styles.settingSubtext, styles.testStatus, { color: theme.textSecondary }]}>
-                  {deviceTests.hapticStatus}
-                </ThemedText>
-              )}
-            </View>
-          </Pressable>
-        </View>
-
         {/* About & Support Section */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>ABOUT & SUPPORT</ThemedText>
@@ -544,9 +514,6 @@ const styles = StyleSheet.create({
   sliderValue: {
     fontVariant: ['tabular-nums'],
   },
-  sliderHint: {
-    marginTop: 10,
-  },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -563,13 +530,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  rowTextBlock: {
-    flexShrink: 1,
-  },
-  testStatus: {
-    // Lines up under the title, past the 16px icon and its 12px gap.
-    marginLeft: 28,
   },
   settingText: {
     fontFamily: 'JetBrainsMono-Regular',
