@@ -127,3 +127,11 @@ describe('retired Diary', () => {
     expect(doc.layers).toEqual([text]);
   });
 });
+
+describe('isAnimatedTemplate', () => {
+  it('is true for moving templates, including retired ids that map to one', async () => {
+    const { isAnimatedTemplate } = await import('@/templates/arrangements');
+    for (const t of ['ring', 'fan', 'stack', 'slideshow', 'spiral', 'float']) expect(isAnimatedTemplate(t)).toBe(true);
+    for (const t of ['story', 'text', 'stickers', 'grid:quad', undefined]) expect(isAnimatedTemplate(t)).toBe(false);
+  });
+});

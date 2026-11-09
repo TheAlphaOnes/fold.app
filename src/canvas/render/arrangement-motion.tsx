@@ -11,6 +11,10 @@
  *                         sides) and tucks under; the rest step up a place,
  *                         each easing into its new depth.
  *
+ * A tap on the live card (`nudge`) plays each one's touch response: the
+ * ring spins with a burst, the fan closes and springs open, the deck
+ * flips the next print right away.
+ *
  * Runs only while `active` (the live card in front) and never with Reduce
  * Motion on; when it stops, everything eases home to the still layout.
  */
@@ -36,12 +40,34 @@ const SETTLE_MS = 400;
 
 // ─── Ring ───────────────────────────────────────────────────────────────
 
-/** The group's current angle, for Upright to undo. */
-const GroupAngle = createContext<SharedValue<number> | null>(null);
+/** The group's current angle (steady turn + tap spins), for Upright to undo. */
+const GroupAngle = createContext<{ angle: SharedValue<number>; spin: SharedValue<number> } | null>(null);
 
-export function MotionGroup({ degreesPerSecond, active, children }: { degreesPerSecond: number; active: boolean; children: React.ReactNode }) {
+/** How far a tap spins the ring, and how long it takes to slow back to its steady turn. */
+const RING_SPIN_DEGREES = 140;
+const RING_SPIN_MS = 1100;
+
+interface MotionGroupProps {
+  degreesPerSecond: number;
+  active: boolean;
+  /** Bumped by a tap: the ring spins with a burst, then settles back. */
+  nudge?: number;
+  children: React.ReactNode;
+}
+
+export function MotionGroup({ degreesPerSecond, active, nudge = 0, children }: MotionGroupProps) {
   const reduced = useReducedMotion();
   const angle = useSharedValue(0);
+  // Extra turn from taps, on top of the steady one; it only ever adds up.
+  const spin = useSharedValue(0);
+  const lastNudge = useRef(nudge);
+
+  useEffect(() => {
+    if (nudge === lastNudge.current) return;
+    lastNudge.current = nudge;
+    if (!active || reduced) return;
+    spin.set(withTiming(spin.get() + Math.sign(degreesPerSecond || 1) * RING_SPIN_DEGREES, { duration: RING_SPIN_MS, easing: Easing.out(Easing.cubic) }));
+  }, [nudge, active, reduced, degreesPerSecond, spin]);
 
   useEffect(() => {
     if (!active || reduced || degreesPerSecond === 0) {
@@ -55,9 +81,9 @@ export function MotionGroup({ degreesPerSecond, active, children }: { degreesPer
     return () => cancelAnimation(angle);
   }, [active, reduced, degreesPerSecond, angle]);
 
-  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${angle.get()}deg` }] }));
+  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${angle.get() + spin.get()}deg` }] }));
   return (
-    <GroupAngle.Provider value={angle}>
+    <GroupAngle.Provider value={{ angle, spin }}>
       <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="box-none">
         {children}
       </Animated.View>
@@ -67,8 +93,8 @@ export function MotionGroup({ degreesPerSecond, active, children }: { degreesPer
 
 /** Inside a MotionGroup: turns its content back by the group's angle, so it stays level while orbiting. */
 export function Upright({ children }: { children: React.ReactNode }) {
-  const angle = useContext(GroupAngle);
-  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${-(angle?.get() ?? 0)}deg` }] }));
+  const group = useContext(GroupAngle);
+  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${-((group?.angle.get() ?? 0) + (group?.spin.get() ?? 0))}deg` }] }));
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 
@@ -89,13 +115,16 @@ interface FanCardProps {
   /** The card's own turn in the fan (degrees); it straightens as the hand closes. */
   rotation: number;
   active: boolean;
+  /** Bumped by a tap: the hand closes and springs open right away. */
+  nudge?: number;
   children: React.ReactNode;
 }
 
-export function FanCard({ index, at, stack, rotation, active, children }: FanCardProps) {
+export function FanCard({ index, at, stack, rotation, active, nudge = 0, children }: FanCardProps) {
   const reduced = useReducedMotion();
   // 1 = fanned open (the still layout), 0 = gathered into one stack.
   const open = useSharedValue(1);
+  const lastNudge = useRef(nudge);
 
   useEffect(() => {
     if (!active || reduced) {
@@ -103,13 +132,15 @@ export function FanCard({ index, at, stack, rotation, active, children }: FanCar
       open.set(withTiming(1, { duration: SETTLE_MS }));
       return;
     }
-    const cycle = withSequence(
-      withDelay(FAN_OPEN_HOLD_MS, withTiming(0, { duration: FAN_CLOSE_MS, easing: Easing.inOut(Easing.cubic) })),
-      withDelay(FAN_CLOSED_HOLD_MS, withTiming(1, { duration: FAN_OPEN_MS, easing: Easing.out(Easing.back(1.6)) })),
-    );
-    open.set(withDelay(index * FAN_STAGGER_MS, withRepeat(cycle, -1)));
+    const close = withTiming(0, { duration: FAN_CLOSE_MS, easing: Easing.inOut(Easing.cubic) });
+    const reopen = withDelay(FAN_CLOSED_HOLD_MS, withTiming(1, { duration: FAN_OPEN_MS, easing: Easing.out(Easing.back(1.6)) }));
+    const cycle = withSequence(withDelay(FAN_OPEN_HOLD_MS, close), reopen);
+    // A tap closes the hand now (each card a beat behind), then the cycle carries on.
+    const tapped = nudge !== lastNudge.current;
+    lastNudge.current = nudge;
+    open.set(withDelay(index * FAN_STAGGER_MS, tapped ? withSequence(close, reopen, withRepeat(cycle, -1)) : withRepeat(cycle, -1)));
     return () => cancelAnimation(open);
-  }, [active, reduced, index, open]);
+  }, [active, reduced, index, open, nudge]);
 
   // The layer is already turned by `rotation`, so the way to the stack is
   // expressed in its own turned frame.
@@ -139,7 +170,7 @@ const DECK_SETTLE_MS = 460;
  * under the rest. `swinging` is the card in flight, `swing` its 0…1
  * progress and `side` which way it leaves (alternates every flip).
  */
-export function useDeck(count: number, active: boolean) {
+export function useDeck(count: number, active: boolean, nudge = 0) {
   const reduced = useReducedMotion();
   const [step, setStep] = useState(0);
   const [swinging, setSwinging] = useState(-1);
@@ -149,6 +180,7 @@ export function useDeck(count: number, active: boolean) {
   const stepRef = useRef(0);
   const swing = useSharedValue(0);
   const running = active && !reduced && count > 1;
+  const lastNudge = useRef(nudge);
 
   useEffect(() => {
     if (!running) {
@@ -173,12 +205,15 @@ export function useDeck(count: number, active: boolean) {
         later(DECK_BACK_MS + DECK_HOLD_MS, flip);
       });
     };
-    later(DECK_HOLD_MS, flip);
+    // A tap flips the next print now; otherwise wait out the hold.
+    const tapped = nudge !== lastNudge.current;
+    lastNudge.current = nudge;
+    later(tapped ? 0 : DECK_HOLD_MS, flip);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [running, count, swing]);
+  }, [running, count, swing, nudge]);
 
   return { step, swinging, swing, side };
 }
