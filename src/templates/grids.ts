@@ -3,7 +3,7 @@
  * canvas units (0–1). Adding a layout means adding an entry here.
  *
  * Decor is drawn by the grid renderer: the striped card under the film
- * strip and the diary, the polaroid's frame and tilt.
+ * strip, the polaroid's frame and tilt.
  */
 
 import type { GridLayoutId } from '@/canvas/types';
@@ -16,7 +16,7 @@ export interface GridCell {
   h: number;
 }
 
-export type GridDecor = 'film' | 'diary' | 'polaroid';
+export type GridDecor = 'film' | 'polaroid';
 
 export interface GridLayout {
   id: GridLayoutId;
@@ -106,13 +106,6 @@ export const GRID_LAYOUTS: readonly GridLayout[] = [
       [0, 1].map((col) => cell(`${row}${col}`, col * 0.5, row / 3, 0.5, 1 / 3)),
     ),
     textAnchor: { x: 0.5, y: 0.5 },
-  },
-  {
-    id: 'diary',
-    name: 'Diary',
-    decor: 'diary',
-    cells: [cell('a', 0, 0, 1, 0.58)],
-    textAnchor: { x: 0.5, y: 0.78 },
   },
   {
     id: 'polaroid',

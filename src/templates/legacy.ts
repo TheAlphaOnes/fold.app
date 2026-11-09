@@ -101,6 +101,17 @@ export function legacyCanvas(memory: Composition, card: LegacyCard): CanvasDoc {
 export function canvasOf(memory: Composition, card: LegacyCard): CanvasDoc {
   const layout = memory.layout;
   if (!layout) return legacyCanvas(memory, card);
+  // Diary (retired): one photo above the words. It opens as a Canvas with
+  // that photo full-bleed, keeping its framing and every layer.
+  if ((layout.template as string) === 'grid:diary') {
+    const photo = layout.cells?.find((c) => c.mediaId);
+    return {
+      version: 1,
+      template: 'story',
+      background: photo?.mediaId ? { kind: 'media', mediaId: photo.mediaId, crop: photo.crop } : { kind: 'stripes' },
+      layers: layout.layers,
+    };
+  }
   // A template that was retired opens as the one that replaced it.
   const alias = TEMPLATE_ALIASES[layout.template as string];
   return alias ? { ...layout, template: alias } : layout;

@@ -20,7 +20,6 @@ export type GridLayoutId =
   | 'film'
   | 'six'
   | 'feature'
-  | 'diary'
   | 'polaroid';
 
 /** Templates that arrange photos in a shape (see templates/arrangements). 'stack' is shown as Deck. */
