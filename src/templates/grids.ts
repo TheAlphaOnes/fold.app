@@ -44,7 +44,8 @@ export const FILM = {
   /** Space between frames along the strip (fraction of height). */
   spacing: 0.016,
 } as const;
-const FILM_FRAME_H = (1 - FILM.spacing * (FILM.frames + 1)) / FILM.frames;
+// The first and last frames meet the canvas edges; the spacing is only between frames.
+const FILM_FRAME_H = (1 - FILM.spacing * (FILM.frames - 1)) / FILM.frames;
 
 export const GRID_LAYOUTS: readonly GridLayout[] = [
   { id: 'duo-stack', name: 'Halves', cells: [cell('a', 0, 0, 1, 0.5), cell('b', 0, 0.5, 1, 0.5)], textAnchor: { x: 0.5, y: 0.5 } },
@@ -79,7 +80,7 @@ export const GRID_LAYOUTS: readonly GridLayout[] = [
     decor: 'film',
     cells: [
       ...Array.from({ length: FILM.frames }, (_, i) =>
-        cell(String.fromCharCode(97 + i), FILM.margin, FILM.spacing + i * (FILM_FRAME_H + FILM.spacing), FILM.strip - FILM.margin * 2, FILM_FRAME_H),
+        cell(String.fromCharCode(97 + i), FILM.margin, i * (FILM_FRAME_H + FILM.spacing), FILM.strip - FILM.margin * 2, FILM_FRAME_H),
       ),
       cell('f', FILM.strip, 0, 1 - FILM.strip, 0.5),
       cell('g', FILM.strip, 0.5, 1 - FILM.strip, 0.5),

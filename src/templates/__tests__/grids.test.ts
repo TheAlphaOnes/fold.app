@@ -94,6 +94,8 @@ describe('film and feature', () => {
     for (const c of strip) expect(c.x + c.w).toBeLessThanOrEqual(0.5);
     for (const c of right) expect(c.h).toBeCloseTo(0.5);
     for (let i = 1; i < 5; i++) expect(strip[i].y).toBeGreaterThan(strip[i - 1].y + strip[i - 1].h);
+    expect(strip[0].y).toBe(0);
+    expect(strip[4].y + strip[4].h).toBeCloseTo(1);
   });
 
   it('feature is one wide photo over four, filling the canvas', () => {
