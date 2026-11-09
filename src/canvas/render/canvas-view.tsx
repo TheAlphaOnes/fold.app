@@ -34,6 +34,8 @@ export interface CanvasViewProps {
   animated?: boolean;
   /** Playing videos are silent (the feed); the memory screen plays them with sound. */
   muted?: boolean;
+  /** Bumped by a tap on the live card: the template plays its touch response (next photo, spin, fan). */
+  nudge?: number;
 }
 
 /**
@@ -93,7 +95,7 @@ export function LayerContent({
   }
 }
 
-export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true }: CanvasViewProps) {
+export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true, nudge = 0 }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
   // Arranged templates (Ring, Fan, Deck) move while this is
@@ -102,7 +104,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   const moving = !!motion && live && animated;
   const inShape = (layer: Layer) => !!motion && layer.kind === 'media' && !!layer.auto;
   const shapeLayers = doc.layers.filter(inShape);
-  const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck');
+  const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck', nudge);
 
   const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />;
   const anchored = (layer: Layer, children: React.ReactNode) => (
@@ -116,7 +118,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   if (motion?.kind === 'group') {
     // The shape turns as one; each photo turns back so it stays level.
     shape = (
-      <MotionGroup degreesPerSecond={motion.degreesPerSecond} active={moving}>
+      <MotionGroup degreesPerSecond={motion.degreesPerSecond} active={moving} nudge={nudge}>
         {shapeLayers.map((l) => anchored(l, <Upright>{content(l)}</Upright>))}
       </MotionGroup>
     );
@@ -127,7 +129,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
     shape = shapeLayers.map((l, i) =>
       anchored(
         l,
-        <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving}>
+        <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving} nudge={nudge}>
           {content(l)}
         </FanCard>,
       ),
@@ -149,7 +151,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
 
   return (
     <View style={[styles.canvas, { width, height }]}>
-      <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} muted={muted} animated={animated} />
+      <CanvasBase doc={doc} media={media} width={width} height={height} playing={live} muted={muted} animated={animated} nudge={nudge} />
       {motion ? (
         <>
           {/* The shape sits under the words and other stickers. */}

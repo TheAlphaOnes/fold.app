@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import { haptic } from '@/services/haptics';
@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCanvasCard } from '@/components/memory-canvas-card';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
+import { isAnimatedTemplate } from '@/templates/arrangements';
 import { navigate } from '@/utils/navigation';
 
 export interface CarouselItemProps {
@@ -94,13 +95,28 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
       pressedScale.value = withTiming(1, { duration: 150 });
     });
 
-  const composed = Gesture.Exclusive(doubleTap, longPress);
+  // A single tap plays with an animated template (next photo, spin, fan);
+  // it waits out a double tap, which still opens the memory.
+  const [nudge, setNudge] = useState(0);
+  const animated = live && isAnimatedTemplate(item.layout?.template);
+  const playWithCard = () => {
+    haptic.select();
+    setNudge((n) => n + 1);
+  };
+  const singleTap = Gesture.Tap()
+    .enabled(animated)
+    .maxDuration(250)
+    .onEnd((_e, success) => {
+      if (success) runOnJS(playWithCard)();
+    });
+
+  const composed = Gesture.Exclusive(doubleTap, longPress, singleTap);
 
   return (
     <View style={[styles.carouselItem, { height: snapInterval }]}>
       <GestureDetector gesture={composed}>
         <Animated.View style={[animatedStyle, { width: '100%' }]}>
-          <MemoryCanvasCard item={item} width={width - 42} height={cardHeight} live={live} />
+          <MemoryCanvasCard item={item} width={width - 42} height={cardHeight} live={live} nudge={nudge} />
         </Animated.View>
       </GestureDetector>
     </View>

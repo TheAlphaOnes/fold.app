@@ -30,18 +30,22 @@ interface SlideshowBaseProps {
   playing: boolean;
   muted?: boolean;
   renderers?: FrameRenderers;
+  /** Each tap skips to the next slide (and restarts its hold). */
+  nudge?: number;
 }
 
-export function SlideshowBase({ doc, media, width, height, playing, muted = true, renderers }: SlideshowBaseProps) {
+export function SlideshowBase({ doc, media, width, height, playing, muted = true, renderers, nudge = 0 }: SlideshowBaseProps) {
   const slides = (doc.cells ?? []).filter((c): c is CellFill & { mediaId: string } => !!c.mediaId && media.has(c.mediaId));
-  const [index, setIndex] = useState(0);
+  const [ticks, setTicks] = useState(0);
+  // A tap moves one slide on; the timer restarts so the new slide gets its full hold.
+  const index = ticks + nudge;
   const cycling = playing && !renderers && slides.length > 1;
 
   useEffect(() => {
     if (!cycling) return;
-    const timer = setInterval(() => setIndex((i) => i + 1), SLIDE_MS);
+    const timer = setInterval(() => setTicks((t) => t + 1), SLIDE_MS);
     return () => clearInterval(timer);
-  }, [cycling]);
+  }, [cycling, nudge]);
 
   if (slides.length === 0) return <StripesSurface />;
 

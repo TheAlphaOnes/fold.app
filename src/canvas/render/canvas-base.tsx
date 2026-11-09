@@ -31,16 +31,18 @@ interface CanvasBaseProps {
   height: number;
   playing: boolean;
   muted?: boolean;
+  /** A tap on the live card (Slideshow skips ahead). */
+  nudge?: number;
   /** Animate the stripes (off for exports and thumbnails). */
   animated: boolean;
   renderers?: FrameRenderers;
 }
 
-export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers }: CanvasBaseProps) {
+export function CanvasBase({ doc, media, width, height, playing, muted = true, animated, renderers, nudge = 0 }: CanvasBaseProps) {
   const bg = doc.background;
 
   if (doc.template === 'slideshow') {
-    return <SlideshowBase doc={doc} media={media} width={width} height={height} playing={playing && animated} muted={muted} renderers={renderers} />;
+    return <SlideshowBase doc={doc} media={media} width={width} height={height} playing={playing && animated} muted={muted} renderers={renderers} nudge={nudge} />;
   }
 
   const grid = gridIdOf(doc.template);

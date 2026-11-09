@@ -111,5 +111,12 @@ export function deckTop(count: number, step: number): number {
   return count - 1 - (((step % count) + count) % count);
 }
 
+/** Templates that move on the live card and answer a tap (arranged shapes and Slideshow). */
+export function isAnimatedTemplate(template: string | undefined): boolean {
+  if (!template) return false;
+  const id: string = TEMPLATE_ALIASES[template] ?? template;
+  return id === 'slideshow' || isArranged(id);
+}
+
 /** Retired template ids mapped to what replaced them, so saved memories still open. */
 export const TEMPLATE_ALIASES: Record<string, ArrangedTemplateId> = { spiral: 'ring', float: 'fan' };

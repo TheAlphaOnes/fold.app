@@ -23,6 +23,8 @@ interface MemoryCanvasCardProps {
   height: number;
   /** Video plays and audio may auto-play: the card in focus. */
   live?: boolean;
+  /** Bumped by a tap on the card: animated templates play their touch response. */
+  nudge?: number;
   /** Replaces the time row (the guide's sample canvas). */
   label?: string;
 }
@@ -38,7 +40,7 @@ export function formatCardTime(createdAt: number): string {
   return d.getFullYear() === now.getFullYear() ? `${day} • ${time}` : `${day}, ${d.getFullYear()} • ${time}`;
 }
 
-export const MemoryCanvasCard = memo(function MemoryCanvasCard({ item, width, height, live = false, label }: MemoryCanvasCardProps) {
+export const MemoryCanvasCard = memo(function MemoryCanvasCard({ item, width, height, live = false, label, nudge = 0 }: MemoryCanvasCardProps) {
   const theme = useTheme();
   const doc = useCanvasOf(item);
   const story = useStoriesStore((s) => s.stories.find((st) => item.storyIds?.includes(st.id)));
@@ -50,7 +52,7 @@ export const MemoryCanvasCard = memo(function MemoryCanvasCard({ item, width, he
 
   return (
     <View style={[styles.card, { width, height, borderColor: theme.border, backgroundColor: theme.backgroundElement }]}>
-      <CanvasView doc={doc} memory={item} width={width} height={height} live={live} />
+      <CanvasView doc={doc} memory={item} width={width} height={height} live={live} nudge={nudge} />
 
       <View style={styles.footer} pointerEvents="none">
         {onMedia && (
