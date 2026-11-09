@@ -103,11 +103,22 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     }
     const pending = consumePendingCameraMedia();
     const source: CaptureSource = pending.length > 0 ? 'camera' : sharedText ? 'share_extension' : 'compose';
-    const media: MediaElement[] = pending.map((p) => ({ id: newId(), uri: p.uri, type: p.type, x_pos: 0, y_pos: 0, width: p.width, height: p.height }));
+    const media: MediaElement[] = pending.map((p) => ({
+      id: newId(),
+      uri: p.uri,
+      type: p.type,
+      x_pos: 0,
+      y_pos: 0,
+      width: p.width,
+      height: p.height,
+    }));
     const state = initialComposerState(media);
     if (sharedText?.trim()) {
       const spot = defaultTextSpot(state.doc.template);
-      state.doc = { ...state.doc, layers: [...state.doc.layers, { id: newId(), kind: 'text', ...DEFAULT_TEXT, text: sharedText.trim(), ...spot, scale: 1, rotation: 0 }] };
+      state.doc = {
+        ...state.doc,
+        layers: [...state.doc.layers, { id: newId(), kind: 'text', ...DEFAULT_TEXT, text: sharedText.trim(), ...spot, scale: 1, rotation: 0 }],
+      };
     }
     return { state, chosen: false, source };
   });
@@ -141,7 +152,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     width: window.width - 32,
     height: window.height - insets.top - insets.bottom - TOP_BAR - BOTTOM_AREA,
   });
-  const memory = { id: existing?.id ?? -1, createdAt: openedAt, location: location.name ? { latitude: location.lat ?? 0, longitude: location.lng ?? 0, name: location.name } : undefined };
+  const memory = {
+    id: existing?.id ?? -1,
+    createdAt: openedAt,
+    location: location.name ? { latitude: location.lat ?? 0, longitude: location.lng ?? 0, name: location.name } : undefined,
+  };
 
   // ─── Location (auto-tag setting, and the Place sticker) ───────────────
   useEffect(() => {
@@ -265,7 +280,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       let { doc, media: mediaList } = latest.current;
       for (const [id, files] of songs) {
         if (files) {
-          mediaList = mediaList.map((m) => (m.id === id && m.metadata ? { ...m, uri: files.uri, metadata: { ...m.metadata, artwork: files.artwork } } : m));
+          mediaList = mediaList.map((m) =>
+            m.id === id && m.metadata ? { ...m, uri: files.uri, metadata: { ...m.metadata, artwork: files.artwork } } : m,
+          );
         } else {
           mediaList = mediaList.filter((m) => m.id !== id);
           doc = { ...doc, layers: doc.layers.filter((l) => !('mediaId' in l && l.mediaId === id)) };
@@ -277,7 +294,10 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       mediaList = mediaList.filter((m) => shown.has(m.id));
       const texts = doc.layers.filter((l): l is TextLayer => l.kind === 'text');
       const first = texts[0];
-      const body = texts.map((t) => t.text.trim()).filter(Boolean).join('\n');
+      const body = texts
+        .map((t) => t.text.trim())
+        .filter(Boolean)
+        .join('\n');
       const fields = {
         textContent: body,
         mediaElements: mediaList,
@@ -306,20 +326,30 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   };
 
   const storyLabel =
-    storyIds.length === 0 ? 'ADD TO STORY' : storyIds.length === 1 ? (stories.find((s) => s.id === storyIds[0])?.title.toUpperCase() ?? 'STORY') : `${storyIds.length} STORIES`;
+    storyIds.length === 0
+      ? 'ADD TO STORY'
+      : storyIds.length === 1
+        ? (stories.find((s) => s.id === storyIds[0])?.title.toUpperCase() ?? 'STORY')
+        : `${storyIds.length} STORIES`;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <GrainBackground />
 
-      <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-        <CloseButton accessibilityLabel="Close without saving" />
-        <View style={styles.topRight}>
-          {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
-          <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
-          <RoundButton icon={Smile} accessibilityLabel="Add a sticker" onPress={() => setSheet('stickers')} />
-        </View>
-      </Animated.View>
+      {/* While writing, the text editor owns the screen: the composer's own
+          controls aren't drawn, so nothing doubles up under it. They rise
+          back in when writing ends. */}
+      {!editing && (
+        <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
+          <CloseButton accessibilityLabel="Close without saving" />
+          <View style={styles.topRight}>
+            {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
+            <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
+            <RoundButton icon={Smile} accessibilityLabel="Add a sticker" onPress={() => setSheet('stickers')} />
+          </View>
+        </Animated.View>
+      )}
+      {editing && <View style={{ height: insets.top + 6 + 44 + 8 }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
         <CanvasEditor
@@ -342,12 +372,20 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           }}
         />
         {selected && selected.kind === 'media' && (
-          <Animated.View entering={riseIn(200, 0, 6)} style={[styles.selectionBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+          <Animated.View
+            entering={riseIn(200, 0, 6)}
+            style={[styles.selectionBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
+          >
             <Pressable onPress={cycleShape} accessibilityRole="button" accessibilityLabel="Change shape" style={styles.selBtn}>
               <Shapes size={16} color={theme.text} />
               <ThemedText style={[styles.selText, { color: theme.text }]}>{(selected as MediaSticker).shape.toUpperCase()}</ThemedText>
             </Pressable>
-            <Pressable onPress={() => c.bringToFront(selected.id)} accessibilityRole="button" accessibilityLabel="Bring to front" style={styles.selBtn}>
+            <Pressable
+              onPress={() => c.bringToFront(selected.id)}
+              accessibilityRole="button"
+              accessibilityLabel="Bring to front"
+              style={styles.selBtn}
+            >
               <ArrowUpToLine size={16} color={theme.text} />
             </Pressable>
             <Pressable onPress={() => c.removeLayer(selected.id)} accessibilityRole="button" accessibilityLabel="Remove" style={styles.selBtn}>
@@ -357,41 +395,57 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         )}
       </Animated.View>
 
-      <Animated.View entering={riseIn(340, 120, 12)} style={styles.templates}>
-        <TemplateStrip current={c.doc.template} gap={c.doc.gap} onPick={c.setTemplate} onGap={c.setGap} />
-      </Animated.View>
+      {!editing && (
+        <Animated.View entering={riseIn(340, 120, 12)} style={styles.templates}>
+          <TemplateStrip current={c.doc.template} gap={c.doc.gap} onPick={c.setTemplate} onGap={c.setGap} />
+        </Animated.View>
+      )}
 
-      <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
-        <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
-        <Pressable
-          onPress={() => {
-            haptic.tap();
-            setSheet('stories');
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={storyIds.length > 0 ? `Story: ${storyLabel}` : 'Add to a story'}
-          style={[styles.storyChip, storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }]}
-        >
-          <Book size={13} color={storyIds.length > 0 ? theme.background : theme.text} />
-          <ThemedText style={[styles.storyText, { color: storyIds.length > 0 ? theme.background : theme.text }]} numberOfLines={1}>
-            {storyLabel}
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={save}
-          disabled={!hasContent || isSaving}
-          accessibilityRole="button"
-          accessibilityLabel="Save memory"
-          style={({ pressed }) => [styles.save, { backgroundColor: theme.text, opacity: !hasContent || isSaving ? 0.35 : pressed ? 0.7 : 1 }]}
-        >
-          <ThemedText style={[styles.saveText, { color: theme.background }]}>{isSaving ? '…' : 'SAVE'}</ThemedText>
-        </Pressable>
-      </Animated.View>
+      {!editing && (
+        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
+          <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
+          <Pressable
+            onPress={() => {
+              haptic.tap();
+              setSheet('stories');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={storyIds.length > 0 ? `Story: ${storyLabel}` : 'Add to a story'}
+            style={[styles.storyChip, storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }]}
+          >
+            <Book size={13} color={storyIds.length > 0 ? theme.background : theme.text} />
+            <ThemedText style={[styles.storyText, { color: storyIds.length > 0 ? theme.background : theme.text }]} numberOfLines={1}>
+              {storyLabel}
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={save}
+            disabled={!hasContent || isSaving}
+            accessibilityRole="button"
+            accessibilityLabel="Save memory"
+            style={({ pressed }) => [styles.save, { backgroundColor: theme.text, opacity: !hasContent || isSaving ? 0.35 : pressed ? 0.7 : 1 }]}
+          >
+            <ThemedText style={[styles.saveText, { color: theme.background }]}>{isSaving ? '…' : 'SAVE'}</ThemedText>
+          </Pressable>
+        </Animated.View>
+      )}
+      {editing && <View style={{ height: BOTTOM_AREA - 50 + Math.max(insets.bottom, 12) }} />}
 
       {editing && (
         <TextEditorSheet
-          initial={editingLayer ? { text: editingLayer.text, font: editingLayer.font, color: editingLayer.color, align: editingLayer.align, style: editingLayer.style, size: editingLayer.size } : DEFAULT_TEXT}
+          initial={
+            editingLayer
+              ? {
+                  text: editingLayer.text,
+                  font: editingLayer.font,
+                  color: editingLayer.color,
+                  align: editingLayer.align,
+                  style: editingLayer.style,
+                  size: editingLayer.size,
+                }
+              : DEFAULT_TEXT
+          }
           canvasWidth={canvas.width}
           onDone={finishText}
           onCamera={fromWriting(addFromCamera)}
