@@ -1,26 +1,30 @@
 /**
  * Template controls for the composer, on CyclePill / CycleList: the current
  * template (icon or grid diagram, plus its name); tap steps to the next,
- * hold opens every template to pick directly. While a grid is active a gap
- * control sits beside the pill.
+ * hold opens every template to pick directly. The grid gap is a template
+ * setting, so it lives at the top of the list while a grid is active.
  */
 
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Grid2x2, Image as ImageIcon, Layers, Type as TypeIcon } from 'lucide-react-native';
+import Animated from 'react-native-reanimated';
+import { Image as ImageIcon, Layers, Type as TypeIcon } from 'lucide-react-native';
 
 import type { GapSize, TemplateId } from '@/canvas/types';
 import { CycleList, CyclePill, useThemedCyclePalette } from '@/components/compose/cycle-pill';
+import { fadeIn } from '@/constants/motion';
+import { ROUND_BUTTON_SIZE } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { GRID_LAYOUTS, type GridLayout } from '@/templates/grids';
 import { BASE_TEMPLATES, GRID_TEMPLATES, gridIdOf, isGrid, templateName } from '@/templates/registry';
 
-const HEIGHT = 36;
+// Shares the bottom row with the round buttons, so it matches their height.
+const HEIGHT = ROUND_BUTTON_SIZE;
 const ICONS = { story: ImageIcon, text: TypeIcon, stickers: Layers } as const;
 const TEMPLATE_IDS: readonly TemplateId[] = [...BASE_TEMPLATES, ...GRID_TEMPLATES].map((t) => t.id);
-const GAP_NEXT: Record<GapSize, GapSize> = { none: 'thin', thin: 'thick', thick: 'none' };
+const GAPS: readonly GapSize[] = ['none', 'thin', 'thick'];
 
 function renderTemplate(id: TemplateId, ink: string) {
   const layout = isGrid(id) ? GRID_LAYOUTS.find((g) => g.id === gridIdOf(id)) : undefined;
@@ -37,52 +41,81 @@ function renderTemplate(id: TemplateId, ink: string) {
 
 interface TemplatePickerProps {
   current: TemplateId;
-  gap?: GapSize;
   open: boolean;
   onPick: (template: TemplateId) => void;
-  onGap: (gap: GapSize) => void;
   onToggleList: () => void;
 }
 
-export function TemplatePicker({ current, gap = 'none', open, onPick, onGap, onToggleList }: TemplatePickerProps) {
+/** Hugs its content: a style choice, never as loud as Save. */
+export function TemplatePicker({ current, open, onPick, onToggleList }: TemplatePickerProps) {
+  const palette = useThemedCyclePalette();
+  return (
+    <CyclePill
+      items={TEMPLATE_IDS}
+      value={current}
+      onChange={onPick}
+      open={open}
+      onToggleList={onToggleList}
+      renderItem={renderTemplate}
+      nameOf={templateName}
+      kind="Template"
+      palette={palette}
+      height={HEIGHT}
+      style={styles.pill}
+    />
+  );
+}
+
+interface TemplateListProps {
+  current: TemplateId;
+  gap?: GapSize;
+  onPick: (template: TemplateId) => void;
+  onGap: (gap: GapSize) => void;
+}
+
+export function TemplateList({ current, gap = 'none', onPick, onGap }: TemplateListProps) {
   const theme = useTheme();
   const palette = useThemedCyclePalette();
   return (
-    <View style={styles.row}>
-      <CyclePill
+    <View style={[styles.panel, { backgroundColor: palette.listFill, borderColor: palette.border }]}>
+      {isGrid(current) && (
+        <Animated.View entering={fadeIn(160)} style={[styles.gapRow, { borderBottomColor: theme.border }]} accessibilityRole="radiogroup" accessibilityLabel="Gap between photos">
+          <ThemedText style={[styles.label, { color: theme.textMuted }]}>GAP</ThemedText>
+          <View style={styles.gapOptions}>
+            {GAPS.map((g) => {
+              const selected = g === gap;
+              return (
+                <Pressable
+                  key={g}
+                  onPress={() => {
+                    haptic.select();
+                    onGap(g);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Gap ${g}`}
+                  accessibilityState={{ selected }}
+                  style={[styles.gapOption, selected ? { backgroundColor: theme.text } : { borderColor: theme.border, borderWidth: 1 }]}
+                >
+                  <ThemedText style={[styles.label, { color: selected ? theme.background : theme.text }]}>{g.toUpperCase()}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+      )}
+      <CycleList
         items={TEMPLATE_IDS}
         value={current}
-        onChange={onPick}
-        open={open}
-        onToggleList={onToggleList}
+        onPick={onPick}
         renderItem={renderTemplate}
         nameOf={templateName}
         kind="Template"
         palette={palette}
-        height={HEIGHT}
-        style={styles.pill}
+        maxHeight={isGrid(current) ? 236 : 280}
+        style={styles.list}
       />
-      {isGrid(current) && (
-        <Pressable
-          onPress={() => {
-            haptic.select();
-            onGap(GAP_NEXT[gap]);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Gap ${gap}`}
-          style={[styles.gap, { borderColor: theme.border }]}
-        >
-          <Grid2x2 size={14} color={theme.text} />
-          <ThemedText style={[styles.label, { color: theme.text }]}>{gap.toUpperCase()}</ThemedText>
-        </Pressable>
-      )}
     </View>
   );
-}
-
-export function TemplateList({ current, onPick }: { current: TemplateId; onPick: (template: TemplateId) => void }) {
-  const palette = useThemedCyclePalette();
-  return <CycleList items={TEMPLATE_IDS} value={current} onPick={onPick} renderItem={renderTemplate} nameOf={templateName} kind="Template" palette={palette} />;
 }
 
 /** A 10×18 (9:16) drawing of a layout's cells. */
@@ -110,8 +143,12 @@ function GridGlyph({ layout, color }: { layout: GridLayout; color: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24 },
-  pill: { flex: 1 },
+  pill: { paddingHorizontal: 14, minWidth: 128 },
   label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.5 },
-  gap: { height: HEIGHT, borderRadius: HEIGHT / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14 },
+  panel: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+  // The list sits inside the panel, which draws the frame.
+  list: { borderWidth: 0, borderRadius: 0 },
+  gapRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  gapOptions: { flexDirection: 'row', gap: 6 },
+  gapOption: { height: 28, paddingHorizontal: 12, borderRadius: 14, justifyContent: 'center' },
 });

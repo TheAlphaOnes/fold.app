@@ -8,10 +8,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MapPin } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { MusicDisc } from '@/components/stories/music-disc';
 import { VinylRecord } from '@/components/vinyl-record';
 import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
+import { stampOutline } from '@/canvas/render/stamp-outline';
 import { useMemoryAudio } from '@/canvas/render/use-memory-audio';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
@@ -72,7 +74,6 @@ export function MediaStickerView({ layer, media, width }: { layer: MediaSticker;
 }
 
 function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number; h: number; children: React.ReactNode }) {
-  const theme = useTheme();
   if (shape === 'polaroid') {
     const pad = w * 0.06;
     return (
@@ -83,20 +84,16 @@ function ShapeFrame({ shape, w, h, children }: { shape: StickerShape; w: number;
   }
   if (shape === 'stamp') {
     const pad = w * 0.07;
-    const dots = 9;
+    const outerW = w + pad * 2;
+    const outerH = h + pad * 2;
     return (
-      <View style={[styles.stamp, { padding: pad }]}>
+      <View style={[styles.stamp, { width: outerW, height: outerH, padding: pad }]}>
+        {/* The paper is a real shape with its perforations cut out, so
+            whatever is behind shows through the holes on any background. */}
+        <Svg width={outerW} height={outerH} style={StyleSheet.absoluteFill}>
+          <Path d={stampOutline(outerW, outerH, pad * 0.42, 9)} fill="#FAF7F0" stroke="#00000026" strokeWidth={StyleSheet.hairlineWidth * 2} />
+        </Svg>
         <View style={{ width: w, height: h, overflow: 'hidden' }}>{children}</View>
-        {/* Perforations: punched dots along each edge. */}
-        {(['top', 'bottom', 'left', 'right'] as const).map((edge) =>
-          Array.from({ length: dots }, (_, i) => {
-            const t = ((i + 0.5) / dots) * (w + pad * 2);
-            const r = pad * 0.42;
-            const pos =
-              edge === 'top' ? { top: -r, left: t - r } : edge === 'bottom' ? { bottom: -r, left: t - r } : edge === 'left' ? { left: -r, top: t - r } : { right: -r, top: t - r };
-            return <View key={`${edge}${i}`} style={[styles.perforation, pos, { width: r * 2, height: r * 2, borderRadius: r, backgroundColor: theme.backgroundElement }]} />;
-          }),
-        )}
       </View>
     );
   }
@@ -207,8 +204,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
   },
-  stamp: { backgroundColor: '#FAF7F0' },
-  perforation: { position: 'absolute' },
+  // No background: the shadow follows the perforated paper drawn inside.
+  stamp: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
   tape: { position: 'absolute', backgroundColor: '#F2E6B8CC', transform: [{ rotate: '-4deg' }] },
   audio: { alignItems: 'center', gap: 8 },
   audioLabel: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, alignItems: 'center' },

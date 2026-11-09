@@ -170,7 +170,7 @@ export function CycleList<T extends string>({ items, value, onPick, renderItem, 
 
 const styles = StyleSheet.create({
   pill: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 16, gap: 8 },
-  current: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  current: { flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   list: { borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
   listContent: { padding: 6, gap: 2 },
   row: { minHeight: 44, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
