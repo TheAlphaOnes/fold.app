@@ -6,14 +6,13 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Alert, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { captureRef } from 'react-native-view-shot';
 
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { MemoryActionsTray } from '@/components/memory-actions-tray';
-import { MemoryCard } from '@/components/memory-card';
+import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
 import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
@@ -35,7 +34,6 @@ function subtitleFor(memory: Composition): string {
 }
 
 export function MemoryActionsHost() {
-  const { width } = useWindowDimensions();
   const [flightKey, setFlightKey] = useState(0);
   const memory = useMemoryActions((state) => state.memory);
   const options = useMemoryActions((state) => state.options);
@@ -59,7 +57,6 @@ export function MemoryActionsHost() {
   if (!current) return null;
 
   const firstMedia = current.mediaElements.find((m) => m.type === 'image' || m.type === 'video');
-  const cardHeight = options?.cardHeight ?? 560;
   const onShared = options?.onShared;
 
   const shareCard = async () => {
@@ -71,7 +68,7 @@ export function MemoryActionsHost() {
     try {
       // The bird carries the card off first; capturing freezes JS, so wait it out.
       await new Promise((resolve) => setTimeout(resolve, FLIGHT_MS));
-      const uri = await captureRef(cardRef, { format: 'png', quality: 1 });
+      const uri = await captureExport(cardRef);
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { dialogTitle: 'Share Memory Card', mimeType: 'image/png' });
         completeGuideStep('share');
@@ -143,11 +140,7 @@ export function MemoryActionsHost() {
 
       {/* Offscreen copy of the card, captured as the shared image. */}
       {capturing && target && (
-        <View style={styles.offscreen} pointerEvents="none">
-          <View ref={cardRef} collapsable={false} style={{ width: width - 42, height: cardHeight }}>
-            <MemoryCard item={target} height={cardHeight} onUpdatePositions={() => {}} isExporting />
-          </View>
-        </View>
+        <ExportCanvas ref={cardRef} memory={target} />
       )}
     </>
   );
@@ -158,10 +151,5 @@ const styles = StyleSheet.create({
     zIndex: 9000,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  offscreen: {
-    position: 'absolute',
-    opacity: 0,
-    zIndex: -100,
   },
 });

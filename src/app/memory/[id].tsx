@@ -1,330 +1,30 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, useWindowDimensions, Pressable, ScrollView, Alert, Share, Platform, Linking } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, useWindowDimensions, Pressable, Alert, Share, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
-
-import type { Composition, MediaElement } from '@/types/journal';
-import { useTheme } from '@/hooks/use-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Play, Pause, Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
-import { Image } from 'expo-image';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { VinylRecord } from '@/components/vinyl-record';
-import { StoryPicker } from '@/components/story-picker';
-import { DoubleDiagonalStripes } from '@/components/double-diagonal-stripes';
-import { formatMillis } from '@/utils/format-date';
-import { memoryTextMetrics } from '@/utils/memory-text';
-import { getHighResArtwork } from '@/utils/media-attach';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, withTiming, interpolate, Extrapolation } from 'react-native-reanimated';
-import { ageInDays, track } from '@/services/analytics';
-import { useAudioFocus } from '@/hooks/use-audio-focus';
-import { CloseButton, RoundButton } from '@/components/round-button';
+import { Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
+
+import { useTheme } from '@/hooks/use-theme';
+import { StoryPicker } from '@/components/story-picker';
+import { ageInDays, track } from '@/services/analytics';
+import { CloseButton, RoundButton } from '@/components/round-button';
 import { haptic } from '@/services/haptics';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { captureRef } from 'react-native-view-shot';
-import { MemoryCard } from '@/components/memory-card';
+import { CanvasView } from '@/canvas/render/canvas-view';
+import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
+import { useCanvasOf } from '@/canvas/use-canvas-of';
 import { ShareTray } from '@/components/share-tray';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
-import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { goBack } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
 
-function StoryPickerThumbnail({ media, style }: { media: { uri: string; type: string }; style: any }) {
-  const isVideo = media.type === 'video';
-  const videoThumb = useVideoThumbnail(isVideo ? media.uri : undefined);
-  const sourceUri = isVideo && videoThumb ? videoThumb : media.uri;
-
-  return (
-    <Image 
-      source={{ uri: sourceUri }} 
-      style={style} 
-      contentFit="cover"
-    />
-  );
-}
-
-// --- Types ---
-type SlideData =
-  | { type: 'text'; text: string; id: string; fontFamily?: string; fontSize?: number; textColor?: string }
-  | { type: 'media'; media: MediaElement; id: string };
-
-// --- Components ---
-
-function TextSlide({ text, width, fontFamily, fontSize, textColor }: { text: string; width: number; fontFamily?: string; fontSize?: number; textColor?: string }) {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <ScrollView 
-      style={{ width, flex: 1 }} 
-      contentContainerStyle={{ 
-        paddingTop: insets.top + 80, 
-        paddingBottom: insets.bottom + 40,
-        paddingHorizontal: 32,
-        flexGrow: 1,
-        justifyContent: 'center',
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[
-        styles.textSlideContent, 
-        { 
-          color: textColor ?? theme.text,
-          fontFamily: fontFamily || 'JetBrainsMono-Regular',
-          ...memoryTextMetrics(fontFamily, fontSize || 24),
-          textAlign: 'center'
-        }
-      ]}>
-        {text}
-      </Text>
-    </ScrollView>
-  );
-}
-
-function VideoSlide({ media, width, height, isActive }: { media: MediaElement; width: number; height: number; isActive: boolean }) {
-  const player = useVideoPlayer(media.uri, (p) => {
-    p.loop = true;
-  });
-  const claimAudio = useAudioFocus(() => player.pause());
-
-  useEffect(() => {
-    if (isActive) {
-      claimAudio();
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [isActive, player, claimAudio]);
-
-  const handlePressIn = () => {
-    if (isActive) player.pause();
-  };
-
-  const handlePressOut = () => {
-    if (!isActive) return;
-    claimAudio();
-    player.play();
-  };
-
-  return (
-    <Pressable 
-      style={{ width, height, justifyContent: 'center', alignItems: 'center' }}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
-      <VideoView 
-        player={player} 
-        style={StyleSheet.absoluteFill} 
-        contentFit="contain" 
-        nativeControls={false}
-      />
-
-    </Pressable>
-  );
-}
-
-function AudioSlide({ media, width, height, isActive }: { media: MediaElement; width: number; height: number; isActive: boolean }) {
-  const player = useAudioPlayer(media.uri);
-  const status = useAudioPlayerStatus(player);
-  const [isPausedByUser, setIsPausedByUser] = React.useState(false);
-  const theme = useTheme();
-  // Guard: only attempt play when player has fully loaded the source
-  const isLoaded = status.isLoaded;
-
-  // Keep track of the scrub state
-  const isScrubbing = useSharedValue(false);
-  const scrubStartPos = useSharedValue(0);
-  
-  // Track visual rotation offset
-  const scrubRotationOffset = useSharedValue(0);
-  const scrubStartRotation = useSharedValue(0);
-  const previousAngle = useSharedValue(0);
-  const totalAngleDiff = useSharedValue(0);
-
-  useEffect(() => {
-    player.loop = true;
-  }, [player]);
-
-  const claimAudio = useAudioFocus(() => player.pause());
-
-  useEffect(() => {
-    if (!isLoaded) return; // Wait for player to be ready
-    if (isActive && !isPausedByUser) {
-      try {
-        claimAudio();
-        player.play();
-      } catch (e) {}
-    } else {
-      try { player.pause(); } catch (e) {}
-    }
-  }, [isActive, isLoaded, player, isPausedByUser, claimAudio]);
-
-  const seekTo = (seconds: number) => {
-    try { player.seekTo(seconds); } catch (e) {}
-  };
-
-
-  const panGesture = Gesture.Pan()
-    .onStart((e) => {
-      runOnJS(setIsPausedByUser)(true);
-      isScrubbing.value = true;
-      scrubStartPos.value = status.currentTime; // status.currentTime is in seconds
-      scrubStartRotation.value = scrubRotationOffset.value;
-      
-      // Calculate initial angle relative to the center of the 320x320 VinylRecord
-      previousAngle.value = Math.atan2(e.y - 160, e.x - 160);
-      totalAngleDiff.value = 0;
-    })
-    .onUpdate((e) => {
-      const currentAngle = Math.atan2(e.y - 160, e.x - 160);
-      let diff = currentAngle - previousAngle.value;
-      
-      // Handle the wrap-around at -PI and PI
-      if (diff > Math.PI) diff -= 2 * Math.PI;
-      if (diff < -Math.PI) diff += 2 * Math.PI;
-      
-      totalAngleDiff.value += diff;
-      previousAngle.value = currentAngle;
-
-      // Convert radians to degrees
-      const degrees = totalAngleDiff.value * (180 / Math.PI);
-      
-      // Rotate the vinyl visually
-      scrubRotationOffset.value = scrubStartRotation.value + degrees;
-
-      // 20 degrees = 1 second of audio (360 degrees = 18 seconds)
-      const deltaSeconds = degrees / 20;
-      const targetSeconds = scrubStartPos.value + deltaSeconds;
-      const clamped = Math.max(0, Math.min(targetSeconds, status.duration));
-      
-      // Throttle seeking slightly by running on JS (already async)
-      runOnJS(seekTo)(clamped);
-    })
-    .onEnd(() => {
-      isScrubbing.value = false;
-      runOnJS(setIsPausedByUser)(false);
-    });
-
-  const isActuallyPlaying = isActive && !isPausedByUser;
-
-  return (
-    <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-      <Animated.View style={{ alignItems: 'center' }}>
-        <GestureDetector gesture={panGesture}>
-          <View>
-            <VinylRecord 
-              size={320} 
-              isRecording={false} 
-              isPlaying={isActuallyPlaying} 
-              scrubOffset={scrubRotationOffset}
-              imageUrl={getHighResArtwork(media.metadata?.artwork)} 
-            />
-          </View>
-        </GestureDetector>
-        {media.metadata ? (
-          <View style={{ alignItems: 'center', marginTop: 40, paddingHorizontal: 32 }}>
-            <Text style={{ color: theme.text, fontSize: 22, fontWeight: '700', textAlign: 'center' }}>
-              {media.metadata.title}
-            </Text>
-            <Text style={{ color: theme.textMuted, fontSize: 16, fontWeight: '500', marginTop: 6, textAlign: 'center' }}>
-              {media.metadata.artist}
-            </Text>
-          </View>
-        ) : null}
-        <Text style={{ color: theme.textMuted, marginTop: media.metadata ? 32 : 24, fontSize: 14, fontWeight: '500', letterSpacing: 1 }}>
-          {formatMillis(status.currentTime * 1000)} / {formatMillis(status.duration * 1000)}
-        </Text>
-      </Animated.View>
-    </View>
-  );
-}
-
-function MediaSlide({ media, width, height, isActive }: { media: MediaElement; width: number; height: number; isActive: boolean }) {
-  const insets = useSafeAreaInsets();
-  
-  const scale = useSharedValue(1);
-  const savedScale = useSharedValue(1);
-  
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
-
-  // Track zoom state in JS so we can toggle the pan gesture's enabled prop.
-  // Pan is only active when zoomed in — this lets FlatList receive horizontal
-  // swipe events at 1x scale so the user can still paginate between slides.
-  const [isZoomed, setIsZoomed] = React.useState(false);
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((e) => {
-      scale.value = Math.max(1, savedScale.value * e.scale);
-    })
-    .onEnd(() => {
-      if (scale.value <= 1.05) {
-        // Snap back to unzoomed — reset everything and unlock FlatList swipe
-        scale.value = withTiming(1, { duration: 150 });
-        savedScale.value = 1;
-        translateX.value = withTiming(0, { duration: 150 });
-        translateY.value = withTiming(0, { duration: 150 });
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-        runOnJS(setIsZoomed)(false);
-      } else {
-        savedScale.value = scale.value;
-        runOnJS(setIsZoomed)(true);
-      }
-    });
-
-  const panGesture = Gesture.Pan()
-    // Only capture pan events when zoomed in — at 1x the FlatList handles swiping
-    .enabled(isZoomed)
-    .onUpdate((e) => {
-      translateX.value = savedTranslateX.value + e.translationX;
-      translateY.value = savedTranslateY.value + e.translationY;
-    })
-    .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
-    });
-
-  const composed = Gesture.Simultaneous(pinchGesture, panGesture);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value }
-    ],
-    flex: 1,
-  }));
-
-  if (media.type === 'video') {
-    return <VideoSlide media={media} width={width} height={height} isActive={isActive} />;
-  }
-  if (media.type === 'audio') {
-    return <AudioSlide media={media} width={width} height={height} isActive={isActive} />;
-  }
-
-  return (
-    <View style={{ width, height, paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}>
-      <GestureDetector gesture={composed}>
-        <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-          <Image 
-            source={{ uri: media.uri }} 
-            style={{ flex: 1 }} 
-            contentFit="contain" 
-          />
-        </Animated.View>
-      </GestureDetector>
-    </View>
-  );
-}
-
-// --- Main Screen ---
-
+/**
+ * A memory, full screen: its canvas edge to edge, playing (video and
+ * audio), with close, edit, story, share, save and delete on top.
+ */
 export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -368,17 +68,9 @@ export default function MemoryDetailScreen() {
   const theme = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
   const [isStoryPickerVisible, setIsStoryPickerVisible] = useState(false);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
-
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
   const { removeComposition, toggleStoryId } = useJournalStore();
   const { stories } = useStoriesStore();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -415,6 +107,9 @@ export default function MemoryDetailScreen() {
 
   const hiddenCardRef = useRef<View>(null);
   const [flightKey, setFlightKey] = useState(0);
+  const doc = useCanvasOf(composition);
+  // The photo/video "Save" and "Original" act on: the memory's main visual.
+  const primaryMedia = composition?.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
 
   const captureAndShareCard = async () => {
     try {
@@ -424,10 +119,7 @@ export default function MemoryDetailScreen() {
       haptic.thud();
       setFlightKey((key) => key + 1);
       await new Promise(resolve => setTimeout(resolve, 1750));
-      const uri = await captureRef(hiddenCardRef, {
-        format: 'png',
-        quality: 1,
-      });
+      const uri = await captureExport(hiddenCardRef);
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
         await Sharing.shareAsync(uri, {
@@ -442,20 +134,18 @@ export default function MemoryDetailScreen() {
     }
   };
 
-  const shareRawContent = async (slidesList: SlideData[]) => {
+  const shareRawContent = async () => {
     try {
       setIsShareMenuVisible(false);
-      const current = slidesList[currentIndex];
-      if (current.type === 'media') {
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(current.media.uri);
+      if (primaryMedia) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(primaryMedia.uri);
           track('memory_shared', { method: 'raw_media' });
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
         }
-      } else if (current.type === 'text') {
-        await Share.share({ message: current.text });
+      } else if (composition?.textContent.trim()) {
+        await Share.share({ message: composition.textContent });
         track('memory_shared', { method: 'raw_text' });
       }
     } catch (e) {
@@ -472,39 +162,6 @@ export default function MemoryDetailScreen() {
     );
   }
 
-  // Construct Slides
-  const slides: SlideData[] = [];
-  
-  const hasText = !!composition.textContent.trim();
-  const hasMedia = composition.mediaElements.length > 0;
-
-  if (hasText) {
-    slides.push({ 
-      type: 'text', 
-      text: composition.textContent, 
-      id: 'text-slide',
-      fontFamily: composition.fontFamily,
-      fontSize: composition.fontSize,
-      textColor: composition.textColor,
-    });
-  }
-
-  if (hasMedia) {
-    composition.mediaElements.forEach((m) => {
-      slides.push({ type: 'media', media: m, id: `media-${m.id}` });
-    });
-  }
-
-  const renderItem = ({ item, index }: { item: SlideData, index: number }) => {
-    const isActive = index === currentIndex;
-    if (item.type === 'text') {
-      return <TextSlide text={item.text} width={width} fontFamily={item.fontFamily} fontSize={item.fontSize} textColor={item.textColor} />;
-    }
-    return <MediaSlide media={item.media} width={width} height={height} isActive={isActive} />;
-  };
-
-  const cardHeight = Math.min(width * 1.618, height * 0.78);
-
   const handleOpenLocation = () => {
     const loc = composition.location;
     if (!loc) return;
@@ -518,33 +175,11 @@ export default function MemoryDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Hidden card for capturing as image */}
-      <View style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', zIndex: -100, width, height: cardHeight }}>
-        <View 
-          ref={hiddenCardRef} 
-          collapsable={false} 
-          style={{ width: width - 42, height: cardHeight, alignSelf: 'center', justifyContent: 'center' }}
-        >
-          <MemoryCard 
-            item={composition} 
-            height={cardHeight} 
-            onUpdatePositions={async () => {}} 
-            isExporting={true}
-          />
-        </View>
-      </View>
+      {/* Offscreen 1080×1920 copy, captured when sharing as a card. */}
+      <ExportCanvas ref={hiddenCardRef} memory={composition} />
 
-      <FlatList
-        data={slides}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        bounces={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-      />
+      {/* The memory itself: its canvas, full screen, playing. */}
+      {doc && <CanvasView doc={doc} memory={composition} width={width} height={height} live />}
 
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>
@@ -564,12 +199,8 @@ export default function MemoryDetailScreen() {
             onPress={() => setIsStoryPickerVisible(true)}
           />
           <RoundButton icon={ShareIcon} accessibilityLabel="Share memory" onPress={() => setIsShareMenuVisible(true)} />
-          {slides[currentIndex]?.type === 'media' && (
-            <RoundButton
-              icon={Download}
-              accessibilityLabel="Save to photos"
-              onPress={() => handleSaveMedia((slides[currentIndex] as Extract<SlideData, { type: 'media' }>).media.uri)}
-            />
+          {primaryMedia && (
+            <RoundButton icon={Download} accessibilityLabel="Save to photos" onPress={() => handleSaveMedia(primaryMedia.uri)} />
           )}
           <RoundButton
             icon={Trash2}
@@ -619,35 +250,15 @@ export default function MemoryDetailScreen() {
           )}
         </View>
         
-        {slides.length > 1 && (
-          <View style={styles.indicatorContainer}>
-            {slides.map((_, index) => {
-              const isActive = index === currentIndex;
-              return (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.bead, 
-                    isActive ? styles.beadActive : styles.beadInactive,
-                    { 
-                      backgroundColor: isActive ? theme.accent : 'transparent',
-                      borderColor: isActive ? theme.accent : theme.text 
-                    }
-                  ]} 
-                />
-              );
-            })}
-          </View>
-        )}
       </View>
 
       {/* Share Tray */}
       <ShareTray
         visible={isShareMenuVisible}
-        currentSlideIsMedia={slides[currentIndex]?.type === 'media'}
+        currentSlideIsMedia={!!primaryMedia}
         onClose={() => setIsShareMenuVisible(false)}
         onExportCanvas={captureAndShareCard}
-        onShareOriginal={() => shareRawContent(slides)}
+        onShareOriginal={shareRawContent}
       />
 
       <StoryPicker
