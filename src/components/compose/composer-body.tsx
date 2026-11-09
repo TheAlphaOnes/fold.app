@@ -13,9 +13,9 @@
  * gap inside the list). Filing into a story is optional, so it's an
  * outlined text CTA in the top bar.
  *
- * New memories open straight into writing (TextEditorSheet) on the
- * stripes, exactly like the old compose; the camera/gallery buttons above
- * the keyboard turn it into a photo memory without leaving the page.
+ * New memories open on the blank canvas, not in the keyboard: a quiet
+ * "tap to write" hint sits in the middle until something is added, and
+ * Aa or a tap on the card opens writing (TextEditorSheet).
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -147,10 +147,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   const [location, setLocation] = useState<{ name?: string; lat?: number; lng?: number }>(
     existing?.location ? { name: existing.location.name, lat: existing.location.latitude, lng: existing.location.longitude } : {},
   );
-  // New and empty: open straight into writing, like the old compose.
-  const [editing, setEditing] = useState<Editing>(() =>
-    !existing && start.state.media.length === 0 && !sharedText?.trim() ? { id: newId(), isNew: true } : null,
-  );
+  // Writing opens on request (Aa, or a tap on the blank card), never by itself.
+  const [editing, setEditing] = useState<Editing>(null);
   const [sheet, setSheet] = useState<'music' | 'gif' | 'stories' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Song downloads by media id: the local file, or null if it failed.
@@ -402,6 +400,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             else if (isBlankCard(c.doc) && textLayers.length === 0) setEditing({ id: newId(), isNew: true });
           }}
         />
+        {!editing && isBlankCard(c.doc) && c.doc.layers.length === 0 && (
+          <Animated.View entering={fadeIn(300, 260)} style={styles.writeHint} pointerEvents="none">
+            <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>tap to write</ThemedText>
+          </Animated.View>
+        )}
         {templatesOpen && (
           <View style={styles.templateList}>
             <TemplateList
@@ -544,6 +547,8 @@ const styles = StyleSheet.create({
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
   middle: { flex: 1, flexDirection: 'row' },
   addArea: { height: ADD_AREA },
+  writeHint: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
   storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
