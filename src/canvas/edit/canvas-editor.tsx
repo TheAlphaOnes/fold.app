@@ -9,6 +9,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Plus, Trash2 } from 'lucide-react-native';
 
@@ -16,6 +17,7 @@ import { CanvasBase, type FrameRenderers } from '@/canvas/render/canvas-base';
 import { LayerContent } from '@/canvas/render/canvas-view';
 import { EditableFrame } from '@/canvas/edit/editable-frame';
 import { EditableLayer, type DragSignals } from '@/canvas/edit/editable-layer';
+import { useTwist } from '@/canvas/edit/use-twist';
 import type { CanvasDoc, Crop, Layer } from '@/canvas/types';
 import { haptic } from '@/services/haptics';
 import type { Composition, MediaElement } from '@/types/journal';
@@ -116,6 +118,16 @@ export function CanvasEditor(props: CanvasEditorProps) {
     ),
   };
 
+  // Two fingers anywhere turn and resize the selected (or nearest) layer.
+  const twist = useTwist({
+    layers: doc.layers,
+    selectedId,
+    width,
+    height,
+    onSelect,
+    onCommit: (id, patch) => props.onLayerChange(id, patch),
+  });
+
   const guideX = useAnimatedStyle(() => ({ opacity: withTiming(signals.dragging.value && signals.snapX.value ? 1 : 0, { duration: 120 }) }));
   const guideY = useAnimatedStyle(() => ({ opacity: withTiming(signals.dragging.value && signals.snapY.value ? 1 : 0, { duration: 120 }) }));
   const trash = useAnimatedStyle(() => ({
@@ -125,7 +137,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
   }));
 
   return (
-    <View style={[styles.canvas, { width, height }]}>
+    <GestureDetector gesture={twist.gesture}>
+    <View style={[styles.canvas, { width, height }]} collapsable={false}>
       {/* Taps that reach the bare canvas deselect / start typing. */}
       <Pressable style={StyleSheet.absoluteFill} onPress={props.onBackgroundTap} accessible={false} />
       <CanvasBase doc={doc} media={mediaMap} width={width} height={height} playing={false} animated renderers={renderers} />
@@ -138,8 +151,9 @@ export function CanvasEditor(props: CanvasEditorProps) {
           height={height}
           selected={selectedId === layer.id}
           signals={signals}
+          twist={twist.signals}
           onDragStart={() => onSelect(layer.id)}
-          onChange={(patch) => props.onLayerChange(layer.id, patch)}
+          onMove={(patch) => props.onLayerChange(layer.id, patch)}
           onDelete={() => {
             haptic.warning();
             props.onLayerDelete(layer.id);
@@ -160,6 +174,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
         <Trash2 size={22} color="#FFFFFF" />
       </Animated.View>
     </View>
+    </GestureDetector>
   );
 }
 

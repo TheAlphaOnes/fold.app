@@ -61,13 +61,20 @@ import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 
 /** Reference card width that legacy font sizes were measured against. */
 const LEGACY_CARD_WIDTH = 348;
+/**
+ * One spacing rhythm for the whole screen: every stacked element is SPACE
+ * apart vertically (top bar, add row, canvas, bottom bar) and every
+ * control GAP apart horizontally, all inset EDGE from the screen sides.
+ */
+const SPACE = 12;
+const GAP = 8;
+const EDGE = 16;
 /** Bar heights excluding safe areas, shared by the layout and the writing spacers. */
-const TOP_BAR = 6 + ROUND_BUTTON_SIZE + 8;
-/** The add row under the top bar, with space below it. */
-const ADD_AREA = ADD_ROW_HEIGHT + 8;
-const BOTTOM_BAR = 12 + ROUND_BUTTON_SIZE + 8;
-/** Breathing room between the canvas and the bars. */
-const CANVAS_MARGIN = 24;
+const TOP_BAR = 6 + ROUND_BUTTON_SIZE + SPACE;
+const ADD_AREA = ADD_ROW_HEIGHT;
+const BOTTOM_BAR = SPACE + ROUND_BUTTON_SIZE + 8;
+/** Between the canvas and the add row above / the bottom bar below. */
+const CANVAS_MARGIN = SPACE;
 const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'heart', 'star', 'arch', 'polaroid', 'stamp', 'tape'];
 
 const DEFAULT_TEXT: TextDraft = { text: '', font: DEFAULT_MEMORY_FONT, color: null, align: 'center', style: 'plain', size: 0.065 };
@@ -422,7 +429,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           <StickerTools
             sticker={selected}
             onCycleShape={cycleShape}
-            onToggleStraight={() => c.updateLayer(selected.id, { rotation: selected.rotation % 360 === 0 ? -6 : 0 })}
             onFront={() => c.bringToFront(selected.id)}
             onRemove={() => c.removeLayer(selected.id)}
           />
@@ -538,13 +544,13 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  topBar: { height: undefined, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
-  topRight: { flexDirection: 'row', gap: 10 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: EDGE, paddingBottom: SPACE },
+  topRight: { flexDirection: 'row', gap: GAP },
   canvasSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // Floats over the bottom of the canvas, right above the picker it opened from.
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE, paddingTop: SPACE },
   middle: { flex: 1, flexDirection: 'row' },
   addArea: { height: ADD_AREA },
   writeHint: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },

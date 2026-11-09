@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CANVAS_ASPECT, EXPORT_SIZE, SNAP_DISTANCE, clamp, fitCanvas, newId, snapRotation, snapToCentre } from '@/canvas/geometry';
+import { CANVAS_ASPECT, EXPORT_SIZE, SNAP_DISTANCE, clamp, fitCanvas, newId, pickTwistTarget, snapRotation, snapToCentre } from '@/canvas/geometry';
 
 describe('constants', () => {
   it('is a 9:16 canvas and the export matches', () => {
@@ -97,5 +97,30 @@ describe('snapRotation', () => {
   it('leaves a deliberate angle alone', () => {
     expect(snapRotation(12)).toEqual({ rotation: 12, snapped: false });
     expect(snapRotation(-45)).toEqual({ rotation: -45, snapped: false });
+  });
+});
+
+describe('pickTwistTarget', () => {
+  const layers = [
+    { id: 'a', x: 0.2, y: 0.2 },
+    { id: 'b', x: 0.8, y: 0.8 },
+  ];
+  const aspect = 9 / 16;
+
+  it('always turns the selected layer, wherever the fingers are', () => {
+    expect(pickTwistTarget(layers, 'b', { x: 0.2, y: 0.2 }, aspect)).toBe('b');
+  });
+
+  it('otherwise turns the layer nearest the fingers', () => {
+    expect(pickTwistTarget(layers, null, { x: 0.25, y: 0.22 }, aspect)).toBe('a');
+    expect(pickTwistTarget(layers, null, { x: 0.75, y: 0.75 }, aspect)).toBe('b');
+  });
+
+  it('turns nothing when no layer is within reach (the photo gets framed instead)', () => {
+    expect(pickTwistTarget(layers, null, { x: 0.5, y: 0.5 }, aspect)).toBeNull();
+  });
+
+  it('ignores a stale selection', () => {
+    expect(pickTwistTarget(layers, 'gone', { x: 0.21, y: 0.2 }, aspect)).toBe('a');
   });
 });
