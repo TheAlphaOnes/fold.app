@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { MemoryCard } from '@/components/memory-card';
 import { GrainBackground } from '@/components/grain-background';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
@@ -39,7 +38,7 @@ export default function ArchiveScreen() {
     return isNaN(parsedTs) ? new Date() : new Date(parsedTs);
   }, [ts]);
 
-  const { compositions, loading, setTargetDate, refresh, updatePositions } = useJournalStore();
+  const { compositions, loading, setTargetDate, refresh } = useJournalStore();
   
   // When targetDate changes (from month view picker), update the store
   useEffect(() => {
@@ -85,7 +84,6 @@ export default function ArchiveScreen() {
       snapInterval={snapInterval}
       cardHeight={cardHeight}
       scrollY={scrollY}
-      updatePositions={updatePositions}
     />
   );
 

@@ -75,7 +75,8 @@
     "eslint-config-expo": "~57.0.1",
     "expo-cloudflared": "^4.2.1",
     "sharp": "^0.35.3",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "3.2.4"
   },
   "scripts": {
     "start": "expo start",
@@ -83,7 +84,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "vitest run"
   },
   "pnpm": {
     "overrides": {

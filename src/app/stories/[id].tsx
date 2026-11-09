@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash2, Play, ImageOff, List, CircleDashed } from 'lucide-react-native';
 import { CarouselItem } from '@/components/carousel-item';
-import { MemoryCard } from '@/components/memory-card'; // fallback if needed
 import { FlatList } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -30,7 +29,6 @@ import { ThemedText } from '@/components/themed-text';
 import { GrainBackground } from '@/components/grain-background';
 import { HeaderIconButton, ScreenHeader } from '@/components/screen-header';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { useJournalStore } from '@/hooks/use-journal';
 import { VinylRecord } from '@/components/vinyl-record';
 import { MusicDisc } from '@/components/stories/music-disc';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
@@ -332,10 +330,6 @@ export default function StoryDetailScreen() {
     [activeStoryMemories],
   );
 
-  const handleUpdatePositions = useCallback((id: number, media: any) => {
-    useJournalStore.getState().updatePositions(id, media);
-  }, []);
-
   const renderListItem = useCallback(
     ({ item, index }: { item: Composition; index: number }) => (
       <CarouselItem
@@ -344,10 +338,9 @@ export default function StoryDetailScreen() {
         snapInterval={snapInterval}
         cardHeight={cardHeight}
         scrollY={listScrollY}
-        updatePositions={handleUpdatePositions}
       />
     ),
-    [snapInterval, cardHeight, listScrollY, handleUpdatePositions],
+    [snapInterval, cardHeight, listScrollY],
   );
 
   // 2D Ring math constants

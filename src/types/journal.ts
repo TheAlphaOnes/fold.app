@@ -1,3 +1,5 @@
+import type { CanvasDoc } from '@/canvas/types';
+
 export interface MediaElement {
   id: string; // Unique ID for this media in the array
   uri: string;
@@ -35,6 +37,7 @@ export interface CompositionRow {
   location_coords?: string; // JSON string of LocationData
   story_ids?: string; // Comma-separated string from GROUP_CONCAT
   story_id?: number; // Legacy column
+  layout?: string; // JSON CanvasDoc; null for memories made before templates
 }
 
 export interface Composition {
@@ -50,6 +53,8 @@ export interface Composition {
   deletedAt?: number;
   location?: LocationData;
   storyIds: number[];
+  /** The designed canvas. Absent on memories made before templates: see canvasOf(). */
+  layout?: CanvasDoc;
 }
 
 export interface StoryRow {

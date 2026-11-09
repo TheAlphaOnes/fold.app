@@ -1,12 +1,11 @@
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { MemoryCard } from '@/components/memory-card';
+import { MemoryCanvasCard } from '@/components/memory-canvas-card';
 import type { StageArea } from '@/components/guide/types';
 import type { Composition } from '@/types/journal';
 
 const CARD_INSET = 42; // MemoryCard derives its width from the window minus this gutter.
-const noop = () => {};
 
 /** The card's resting size on the home feed, so previews keep the real aspect. */
 export function useFullCardSize() {
@@ -46,7 +45,7 @@ export function FittedMemoryCard({ memory, area, maxScale = 1 }: FittedMemoryCar
           },
         ]}
       >
-        <MemoryCard item={memory} height={full.height} onUpdatePositions={noop} />
+        <MemoryCanvasCard item={memory} width={full.width} height={full.height} />
       </View>
     </View>
   );

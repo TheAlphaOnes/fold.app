@@ -19,7 +19,7 @@ import { toDayKey } from '@/utils/format-date';
 
 type ShapeInput = Pick<
   CreateCompositionInput,
-  'textContent' | 'mediaElements' | 'fontFamily' | 'textColor' | 'locationName' | 'storyIds'
+  'textContent' | 'mediaElements' | 'fontFamily' | 'textColor' | 'locationName' | 'storyIds' | 'layout'
 >;
 
 function countMedia(media: MediaElement[]) {
@@ -46,6 +46,8 @@ export function memoryShape(input: ShapeInput): MemoryShape {
     story_count: input.storyIds?.length ?? 0,
     font_family: input.fontFamily,
     has_custom_color: Boolean(input.textColor),
+    template: input.layout?.template ?? 'legacy',
+    layer_count: input.layout?.layers.length ?? 0,
   };
 }
 

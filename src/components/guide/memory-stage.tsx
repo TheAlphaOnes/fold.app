@@ -17,7 +17,6 @@ import { GestureHint } from '@/components/guide/gesture-hint';
 import { GuideEmptyNote } from '@/components/guide/guide-empty-note';
 import { useFullCardSize } from '@/components/guide/fitted-memory-card';
 import type { GuideStageProps, LatestMemory } from '@/components/guide/types';
-import { useJournalStore } from '@/hooks/use-journal';
 
 const STAGE_PADDING = 16;
 
@@ -27,7 +26,6 @@ interface MemoryStageProps extends GuideStageProps {
 
 export function MemoryStage({ step, status, area, latest, onSuccess, onGoToStep }: MemoryStageProps) {
   const full = useFullCardSize();
-  const updatePositions = useJournalStore((state) => state.updatePositions);
   // CarouselItem scales with feed scroll; a single resting card sits at offset 0.
   const restingScroll = useSharedValue(0);
   const isActive = status === 'active';
@@ -81,7 +79,6 @@ export function MemoryStage({ step, status, area, latest, onSuccess, onGoToStep 
           snapInterval={cardHeight}
           cardHeight={cardHeight}
           scrollY={restingScroll}
-          updatePositions={updatePositions}
           onOpen={handleOpen}
           onShared={handleShared}
         />

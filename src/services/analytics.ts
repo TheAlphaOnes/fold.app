@@ -56,6 +56,10 @@ export interface MemoryShape {
   story_count: number;
   font_family: string;
   has_custom_color: boolean;
+  /** Canvas template ('story', 'text', 'stickers', 'grid:…'); 'legacy' before templates. */
+  template: string;
+  /** Text layers, stickers, songs etc. placed on the canvas. */
+  layer_count: number;
 }
 
 export interface AnalyticsEvents {

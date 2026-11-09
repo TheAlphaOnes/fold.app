@@ -1,14 +1,15 @@
 import React, { memo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
+import { router, useIsFocused } from 'expo-router';
 import { haptic } from '@/services/haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 import { useMemoryActions } from '@/hooks/use-memory-actions';
 import { useSettingsStore } from '@/hooks/use-settings';
-import { MemoryCard } from '@/components/memory-card';
-import type { Composition, MediaElement } from '@/types/journal';
+import { MemoryCanvasCard } from '@/components/memory-canvas-card';
+import { useJournalStore } from '@/hooks/use-journal';
+import type { Composition } from '@/types/journal';
 
 export interface CarouselItemProps {
   item: Composition;
@@ -16,15 +17,20 @@ export interface CarouselItemProps {
   cardHeight: number;
   itemOffset: number;
   scrollY: SharedValue<number>;
-  updatePositions: (id: number, media: MediaElement[]) => void;
   /** Fired when a double tap opens the memory. */
   onOpen?: () => void;
   /** Fired after the card is shared from the hold menu. */
   onShared?: () => void;
 }
 
-export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, updatePositions, onOpen, onShared }: CarouselItemProps) {
+export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapInterval, cardHeight, scrollY, onOpen, onShared }: CarouselItemProps) {
   const pressedScale = useSharedValue(1);
+  const { width } = useWindowDimensions();
+  // The card in focus plays its video and may auto-play its song, and only
+  // while its screen is in front (not under an open memory or compose).
+  const isActive = useJournalStore((s) => s.activeCompositionId === item.id);
+  const isFocused = useIsFocused();
+  const live = isActive && isFocused;
   const completeGuideStep = useSettingsStore((s) => s.completeGuideStep);
   
   const animatedStyle = useAnimatedStyle(() => {
@@ -93,7 +99,7 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
     <View style={[styles.carouselItem, { height: snapInterval }]}>
       <GestureDetector gesture={composed}>
         <Animated.View style={[animatedStyle, { width: '100%' }]}>
-          <MemoryCard item={item} height={cardHeight} onUpdatePositions={updatePositions} />
+          <MemoryCanvasCard item={item} width={width - 42} height={cardHeight} live={live} />
         </Animated.View>
       </GestureDetector>
     </View>

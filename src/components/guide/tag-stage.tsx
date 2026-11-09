@@ -21,7 +21,6 @@ import { GuideEmptyNote } from '@/components/guide/guide-empty-note';
 import { useFullCardSize } from '@/components/guide/fitted-memory-card';
 import type { GuideStageProps, LatestMemory } from '@/components/guide/types';
 import { riseIn } from '@/constants/motion';
-import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
 
 const LEGEND_HEIGHT = 64;
@@ -56,7 +55,6 @@ interface TagStageProps extends GuideStageProps {
 export function TagStage({ step, status, area, latest, onSuccess, onNudge, onGoToStep }: TagStageProps) {
   const theme = useTheme();
   const full = useFullCardSize();
-  const updatePositions = useJournalStore((state) => state.updatePositions);
   const restingScroll = useSharedValue(0);
   const isActive = status === 'active';
   const memory = latest.memory;
@@ -138,7 +136,6 @@ export function TagStage({ step, status, area, latest, onSuccess, onNudge, onGoT
           snapInterval={cardHeight}
           cardHeight={cardHeight}
           scrollY={restingScroll}
-          updatePositions={updatePositions}
           onOpen={handleOpen}
         />
         <GestureHint gesture={step.gesture} visible={isActive && !opened} />
