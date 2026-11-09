@@ -18,7 +18,6 @@ import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
 import { useSettingsStore } from '@/hooks/use-settings';
-import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { saveToGallery } from '@/services/media-save.service';
@@ -37,7 +36,6 @@ function subtitleFor(memory: Composition): string {
 
 export function MemoryActionsHost() {
   const { width } = useWindowDimensions();
-  const theme = useTheme();
   const [flightKey, setFlightKey] = useState(0);
   const memory = useMemoryActions((state) => state.memory);
   const options = useMemoryActions((state) => state.options);
@@ -137,7 +135,7 @@ export function MemoryActionsHost() {
 
       {flightKey > 0 && (
         <View style={[StyleSheet.absoluteFill, styles.flight]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} color={theme.text} surface={theme.background} border={theme.border} />
+          <LogoUploadFlight key={flightKey} />
         </View>
       )}
 

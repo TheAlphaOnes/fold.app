@@ -12,21 +12,21 @@ import Animated, {
 import { Logo } from './logo';
 
 /** Scrim behind the flight; black in both themes so the badge and streaks always stand out. */
-const SCRIM_OPACITY = 0.38;
-const BADGE = 84;
+const SCRIM_OPACITY = 0.5;
+/** The bird and its streaks: white on the dim, with a soft glow. */
+const INK = '#FFFFFF';
 
 const DATA_PARTICLES = 8;
 
 /**
  * LogoUploadFlight — the bird that carries a shared card away.
  *
- * It flies on its own surface so it reads over any photo or the list:
- * the screen dims briefly, and the bird sits in a round badge of the page
- * colour with a hairline border and shadow. Three clocks: the dim settles
- * first, the badge scales in and hangs, then it accelerates off the top
- * trailing white streaks while the dim clears.
+ * It reads over any photo or the list because the screen dims briefly and
+ * the bird flies in white with a soft glow, the same in both themes. Three
+ * clocks: the dim settles first, the bird scales in and hangs, then it
+ * accelerates off the top trailing streaks while the dim clears.
  */
-export function LogoUploadFlight({ color, surface, border }: { color: string; surface: string; border: string }) {
+export function LogoUploadFlight() {
   const scrim = useSharedValue(0);
   const flightY = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -71,13 +71,13 @@ export function LogoUploadFlight({ color, surface, border }: { color: string; su
     <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]} />
 
-      <Animated.View style={[styles.badge, { backgroundColor: surface, borderColor: border }, logoStyle]}>
-        <Logo size={44} color={color} />
+      <Animated.View style={[styles.bird, logoStyle]}>
+        <Logo size={72} color={INK} />
       </Animated.View>
 
-      {/* Streaks trailing the badge, white on the dim in either theme. */}
+      {/* Streaks trailing the bird. */}
       {Array.from({ length: DATA_PARTICLES }).map((_, i) => {
-        return <DataParticle key={i} index={i} color="#FFFFFF" />;
+        return <DataParticle key={i} index={i} color={INK} />;
       })}
     </View>
   );
@@ -139,17 +139,10 @@ const styles = StyleSheet.create({
   scrim: {
     backgroundColor: '#000',
   },
-  badge: {
-    width: BADGE,
-    height: BADGE,
-    borderRadius: BADGE / 2,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
+  bird: {
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
   },
 });
