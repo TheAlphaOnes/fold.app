@@ -58,14 +58,14 @@ export default function FAQScreen() {
         <ThemedText style={heading}>2. Viewing & interacting</ThemedText>
         <ThemedText style={text}>
           <B>DOUBLE TAP</B> a memory on your timeline to open it full screen.{'\n'}
-          <B>HOLD</B> a memory to share it as an image.{'\n'}
+          <B>HOLD</B> a memory for its menu: share it as an image, open, edit, add it to a story, save to photos or delete.{'\n'}
           On a memory's canvas, <B>HOLD, THEN DRAG</B> a sticker to move it and <B>PINCH</B> to resize it.
         </ThemedText>
 
         <ThemedText style={heading}>3. Stories</ThemedText>
         <ThemedText style={text}>
           Stories are chapters, like "Japan Trip 2026". Start one from your Profile, then file memories into it from the
-          book icon on any memory. A memory can belong to more than one story.
+          book icon on any memory, or hold a memory and tap Add to story. A memory can belong to more than one story.
         </ThemedText>
 
         <ThemedText style={heading}>4. Continuum: streak & ink</ThemedText>

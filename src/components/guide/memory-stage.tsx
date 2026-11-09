@@ -2,9 +2,9 @@
  * MemoryStage — REVISIT chapter (open · share).
  *
  * Renders the user's own newest memory through the same CarouselItem the home
- * feed uses, so the double tap and the hold-to-print are the real gestures
+ * feed uses, so the double tap and the hold menu are the real gestures
  * with the real outcomes. "Open" counts once the user returns from the
- * memory; "share" counts once the share sheet closes.
+ * memory; "share" counts once the card is shared from the hold menu.
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
