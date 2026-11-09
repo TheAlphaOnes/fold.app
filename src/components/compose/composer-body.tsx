@@ -55,7 +55,7 @@ import { haptic } from '@/services/haptics';
 import { canvasOf } from '@/templates/legacy';
 import { defaultTextSpot, frameMediaId, isBlankCard, scatterSticker, shownMediaIds } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
-import { alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
+import { alertElementCap, alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
 import { goBack } from '@/utils/navigation';
 import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 
@@ -237,9 +237,17 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           alertMusicLimit();
           return;
         }
+        if (media.roomLeft <= 0) {
+          alertElementCap();
+          return;
+        }
         setSheet('music');
         return;
       case 'voice':
+        if (media.roomLeft <= 0) {
+          alertElementCap();
+          return;
+        }
         haptic.tap();
         await take.start();
         return;
@@ -271,7 +279,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
   /** Fills an empty cell, or replaces the selected photo, from the gallery. */
   const fillFrame = async (target: string) => {
-    const [first] = await media.pickFromGallery();
+    // A photo already there gives up its slot, so even a full memory can swap one.
+    const [first] = await media.pickFromGallery({ replacing: !!frameMediaId(c.doc, target) });
     if (first) c.fillFrame(target, first);
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions, Pressable, Alert, Share, Platform, Linking } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share as ShareIcon, Download, Trash2, MapPin, Book, BookPlus, Pencil } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
@@ -12,10 +12,10 @@ import { CloseButton, RoundButton } from '@/components/round-button';
 import { haptic } from '@/services/haptics';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { CanvasView } from '@/canvas/render/canvas-view';
 import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
-import { useCanvasOf } from '@/canvas/use-canvas-of';
-import { fitCanvas } from '@/canvas/geometry';
+import { MemoryGallery } from '@/components/memory-gallery/memory-gallery';
+import { SlideBeads } from '@/components/memory-gallery/slide-beads';
+import { gallerySlides } from '@/components/memory-gallery/slides';
 import { ShareTray } from '@/components/share-tray';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
@@ -23,8 +23,10 @@ import { goBack } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
 
 /**
- * A memory, full screen: its canvas edge to edge, playing (video and
- * audio), with close, edit, story, share, save and delete on top.
+ * A memory, opened as a gallery: swipe through its words, photos, videos
+ * and songs one page at a time, with close, edit, story, share, save and
+ * delete on top. Save and Share Original act on the page showing; Share
+ * as card exports the designed 9:16 canvas.
  */
 export default function MemoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,6 +77,8 @@ export default function MemoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const [isShareMenuVisible, setIsShareMenuVisible] = useState(false);
   const [isStoryPickerVisible, setIsStoryPickerVisible] = useState(false);
+  const [page, setPage] = useState(0);
+  const focused = useIsFocused();
 
   const { removeComposition, toggleStoryId } = useJournalStore();
   const { stories } = useStoriesStore();
@@ -112,11 +116,10 @@ export default function MemoryDetailScreen() {
 
   const hiddenCardRef = useRef<View>(null);
   const [flightKey, setFlightKey] = useState(0);
-  const doc = useCanvasOf(composition);
-  // The canvas keeps its 9:16 shape (as designed and exported), as wide as the screen allows.
-  const fullCanvas = fitCanvas({ width, height });
-  // The photo/video "Save" and "Original" act on: the memory's main visual.
-  const primaryMedia = composition?.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
+  const slides = composition ? gallerySlides(composition) : [];
+  const current = slides[Math.min(page, Math.max(0, slides.length - 1))];
+  // Save and Share Original act on the page showing.
+  const currentMedia = current?.type === 'media' ? current.media : undefined;
 
   const captureAndShareCard = async () => {
     try {
@@ -144,9 +147,9 @@ export default function MemoryDetailScreen() {
   const shareRawContent = async () => {
     try {
       setIsShareMenuVisible(false);
-      if (primaryMedia) {
+      if (currentMedia) {
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(primaryMedia.uri);
+          await Sharing.shareAsync(currentMedia.uri);
           track('memory_shared', { method: 'raw_media' });
         } else {
           Alert.alert('Error', 'Sharing is not available on this device.');
@@ -185,12 +188,7 @@ export default function MemoryDetailScreen() {
       {/* Offscreen 1080×1920 copy, captured when sharing as a card. */}
       <ExportCanvas ref={hiddenCardRef} memory={composition} />
 
-      {/* The memory itself: its canvas, full screen, playing. */}
-      {doc && (
-        <View style={[styles.stage, { paddingTop: Math.max(0, (height - fullCanvas.height) / 2) }]}>
-          <CanvasView doc={doc} memory={composition} width={fullCanvas.width} height={fullCanvas.height} live muted={false} />
-        </View>
-      )}
+      <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={setPage} />
 
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>
@@ -210,8 +208,8 @@ export default function MemoryDetailScreen() {
             onPress={() => setIsStoryPickerVisible(true)}
           />
           <RoundButton icon={ShareIcon} accessibilityLabel="Share memory" onPress={() => setIsShareMenuVisible(true)} />
-          {primaryMedia && (
-            <RoundButton icon={Download} accessibilityLabel="Save to photos" onPress={() => handleSaveMedia(primaryMedia.uri)} />
+          {currentMedia && currentMedia.type !== 'audio' && (
+            <RoundButton icon={Download} accessibilityLabel="Save to photos" onPress={() => handleSaveMedia(currentMedia.uri)} />
           )}
           <RoundButton
             icon={Trash2}
@@ -260,13 +258,13 @@ export default function MemoryDetailScreen() {
             </Pressable>
           )}
         </View>
-        
+        <SlideBeads count={slides.length} index={page} />
       </View>
 
       {/* Share Tray */}
       <ShareTray
         visible={isShareMenuVisible}
-        currentSlideIsMedia={!!primaryMedia}
+        currentSlideIsMedia={!!currentMedia}
         onClose={() => setIsShareMenuVisible(false)}
         onExportCanvas={captureAndShareCard}
         onShareOriginal={shareRawContent}
@@ -295,19 +293,6 @@ export default function MemoryDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  stage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-  },
-  textSlideContent: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 24,
-    lineHeight: 38,
   },
   topActionBar: {
     position: 'absolute',
@@ -345,25 +330,5 @@ const styles = StyleSheet.create({
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     letterSpacing: 1,
-  },
-  indicatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    height: 16, // Fixed height to align properly with text
-    justifyContent: 'center',
-  },
-  bead: {
-    height: 4,
-    borderWidth: 1,
-    borderRadius: 2,
-  },
-  beadActive: {
-    width: 16, // Sleeker dash
-  },
-  beadInactive: {
-    width: 4, // Small square
-    opacity: 0.4,
   },
 });
