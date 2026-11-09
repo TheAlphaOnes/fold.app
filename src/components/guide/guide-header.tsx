@@ -1,18 +1,16 @@
 /**
- * GuideHeader — close, mission progress, skip.
+ * GuideHeader — close and mission progress.
  *
  * Progress is shown as one tick per mission (the same 7 the home edge-tab
  * ring counts), grouped by chapter. A tick fills from the left when its
  * mission completes, and half-fills when one of a two-step mission's steps
  * is done. Ticks double as navigation.
  *
- * Under the ticks, a plain BACK · SKIP row, so moving between
- * steps never depends on finding the right tick.
+ * Back and skip live beside the step title (GuidePrompt).
  */
 
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, interpolateColor } from 'react-native-reanimated';
 
@@ -83,13 +81,9 @@ interface GuideHeaderProps {
   missionState: (mission: GuideMissionId) => MissionState;
   onSelectMission: (mission: GuideMissionId) => void;
   onClose: () => void;
-  /** Hidden on the completion screen, where there is nothing left to skip. */
-  onSkip?: () => void;
-  /** Hidden on the first step. */
-  onBack?: () => void;
 }
 
-export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onSkip, onBack }: GuideHeaderProps) {
+export function GuideHeader({ currentMission, missionState, onSelectMission, onClose }: GuideHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -118,35 +112,7 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
         <View style={styles.balance} />
       </View>
 
-      <View style={styles.navRow}>
-        <NavButton label="BACK" side="left" onPress={onBack} accessibilityLabel="Previous step" />
-        <NavButton label="SKIP" side="right" onPress={onSkip} accessibilityLabel="Skip this step" />
-      </View>
     </View>
-  );
-}
-
-/** A labelled arrow; renders as an empty slot when there's nowhere to go. */
-function NavButton({ label, side, onPress, accessibilityLabel }: { label: string; side: 'left' | 'right'; onPress?: () => void; accessibilityLabel: string }) {
-  const theme = useTheme();
-  if (!onPress) return <View style={styles.navButton} />;
-  const Icon = side === 'left' ? ChevronLeft : ChevronRight;
-  return (
-    <Pressable
-      onPress={onPress}
-      hitSlop={10}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [
-        styles.navButton,
-        side === 'right' && styles.navButtonRight,
-        { opacity: pressed ? 0.5 : 1 },
-      ]}
-    >
-      {side === 'left' && <Icon size={14} color={theme.textMuted} strokeWidth={2} />}
-      <ThemedText style={[styles.navText, { color: theme.textMuted }]}>{label}</ThemedText>
-      {side === 'right' && <Icon size={14} color={theme.textMuted} strokeWidth={2} />}
-    </Pressable>
   );
 }
 
@@ -164,27 +130,6 @@ const styles = StyleSheet.create({
   },
   balance: {
     width: 44,
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  navButton: {
-    minWidth: 72,
-    height: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  navButtonRight: {
-    justifyContent: 'flex-end',
-  },
-  navText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 2,
   },
   ticks: {
     flex: 1,

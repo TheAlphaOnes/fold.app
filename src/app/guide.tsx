@@ -130,15 +130,21 @@ export default function FieldGuideScreen() {
         missionState={flow.missionState}
         onSelectMission={flow.goToMission}
         onClose={leave}
-        onSkip={flow.isComplete ? undefined : flow.skip}
-        onBack={flow.stepIndex > 0 ? flow.back : undefined}
       />
 
       {flow.isComplete ? (
         <GuideComplete onFinish={handleFinish} />
       ) : (
         <>
-          {step && <GuidePrompt step={step} status={status} nudge={nudge} />}
+          {step && (
+            <GuidePrompt
+              step={step}
+              status={status}
+              nudge={nudge}
+              onPrev={flow.stepIndex > 0 ? flow.back : undefined}
+              onNext={flow.skip}
+            />
+          )}
           <View style={styles.stage} onLayout={onStageLayout}>
             {/* Keyed by stage, not step: drag → pinch keeps the same canvas. */}
             <Animated.View

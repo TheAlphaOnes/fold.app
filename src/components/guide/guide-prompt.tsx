@@ -5,12 +5,18 @@
  * hint 300ms, offset 40ms apart) so a new step arrives as a cascade. On
  * success the title is replaced by a bracketed past-tense label that springs
  * in; a nudge (wrong gesture, permission off) temporarily replaces the hint.
+ *
+ * Previous / next arrows flank the copy they move between: back a step on
+ * the left, skip ahead on the right. An arrow with nowhere to go leaves an
+ * empty slot, so the copy stays centred.
  */
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import Animated, { Keyframe } from 'react-native-reanimated';
 
+import { RoundButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { GUIDE_CHAPTERS, chapterPosition, type GuideStep } from '@/constants/guide';
@@ -27,16 +33,25 @@ interface GuidePromptProps {
   step: GuideStep;
   status: GuideStatus;
   nudge: string | null;
+  /** Back one step; omitted on the first. */
+  onPrev?: () => void;
+  /** Skip ahead; omitted when there is nothing to skip. */
+  onNext?: () => void;
 }
 
-export function GuidePrompt({ step, status, nudge }: GuidePromptProps) {
+export function GuidePrompt({ step, status, nudge, onPrev, onNext }: GuidePromptProps) {
   const theme = useTheme();
   const { chapterNumber, index, total } = chapterPosition(step);
   const chapterLabel = GUIDE_CHAPTERS[chapterNumber - 1]?.label ?? '';
   const isSuccess = status === 'success';
 
   return (
-    <View style={styles.container} accessibilityLiveRegion="polite">
+    <View style={styles.container}>
+      <View style={styles.arrowSlot}>
+        {onPrev && <RoundButton icon={ChevronLeft} onPress={onPrev} accessibilityLabel="Previous step" />}
+      </View>
+
+      <View style={styles.copy} accessibilityLiveRegion="polite">
       {/* Re-keyed per step so every layer re-runs its entrance. */}
       <Animated.View key={step.id} exiting={fadeOut()} style={styles.block}>
         <Animated.View entering={fadeIn(160)}>
@@ -80,6 +95,11 @@ export function GuidePrompt({ step, status, nudge }: GuidePromptProps) {
           )}
         </View>
       </Animated.View>
+      </View>
+
+      <View style={styles.arrowSlot}>
+        {onNext && <RoundButton icon={ChevronRight} onPress={onNext} accessibilityLabel="Skip this step" />}
+      </View>
     </View>
   );
 }
@@ -88,8 +108,17 @@ const styles = StyleSheet.create({
   container: {
     // Fixed height: the stage below never jumps when copy length changes.
     height: 112,
-    paddingHorizontal: 32,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  copy: {
+    flex: 1,
+  },
+  // Same width as RoundButton, so an empty side still balances the other.
+  arrowSlot: {
+    width: 44,
   },
   block: {
     alignItems: 'center',
