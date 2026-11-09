@@ -326,7 +326,7 @@ export function FromYourPastCard() {
       ) : (
         <View style={styles.empty}>
           <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-            your past starts tomorrow. memories flow in here once you have a few.
+            your past starts tomorrow.
           </ThemedText>
         </View>
       )}
@@ -398,10 +398,13 @@ const styles = StyleSheet.create({
   empty: {
     paddingHorizontal: PROFILE_GUTTER,
     paddingTop: 8,
+    paddingBottom: 12,
+    alignItems: 'center',
   },
   emptyText: {
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 12,
     lineHeight: 18,
+    textAlign: 'center',
   },
 });
