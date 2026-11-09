@@ -234,7 +234,7 @@ export function newDoc(media: MediaElement[], template: TemplateId = suggestTemp
 }
 
 /** Ring radius, as a fraction of the canvas width. */
-export const RING_RADIUS = 0.3;
+export const RING_RADIUS = 0.34;
 
 /**
  * Where photo `index` of `count` sits on the Ring template: evenly round a
@@ -243,7 +243,8 @@ export const RING_RADIUS = 0.3;
  */
 export function ringSpot(index: number, count: number): Pick<MediaSticker, 'x' | 'y' | 'scale' | 'rotation'> {
   const angle = -Math.PI / 2 + (index / Math.max(1, count)) * Math.PI * 2;
-  const scale = count <= 4 ? 1.2 : count <= 6 ? 1 : count <= 9 ? 0.85 : 0.75;
+  // Neighbours just overlap (like the story wheel) and the middle stays open.
+  const scale = count <= 4 ? 1.1 : count <= 6 ? 0.95 : count <= 9 ? 0.8 : 0.7;
   return {
     x: 0.5 + RING_RADIUS * Math.cos(angle),
     // y is a fraction of the 9:16 height, so the radius shrinks by the aspect to stay round.
