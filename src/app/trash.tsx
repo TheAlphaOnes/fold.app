@@ -26,7 +26,6 @@ import { fadeIn, fadeOut, riseIn } from '@/constants/motion';
 import { BALANCED_TEXT } from '@/constants/theme';
 import { getTrashedCompositions } from '@/db/journal-repository';
 import { useJournalStore } from '@/hooks/use-journal';
-import { useMoments } from '@/hooks/use-moments';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
@@ -173,7 +172,6 @@ export default function TrashScreen() {
     try {
       await restoreComposition(memory.id);
       haptic.success();
-      useMoments.getState().celebrate('RESTORED');
     } catch (error) {
       console.error('Failed to restore memory', error);
       haptic.error();

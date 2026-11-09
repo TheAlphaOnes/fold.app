@@ -4,7 +4,7 @@
  * the moment still lands without adding anything to look at.
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe } from 'react-native-reanimated';
 import { Check } from 'lucide-react-native';
@@ -13,7 +13,6 @@ import { ActionLink } from '@/components/action-link';
 import { ThemedText } from '@/components/themed-text';
 import { SPRING_BOUNCE, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
-import { useMoments } from '@/hooks/use-moments';
 
 const MARK = 44;
 
@@ -28,10 +27,6 @@ interface GuideCompleteProps {
 
 export function GuideComplete({ onFinish }: GuideCompleteProps) {
   const theme = useTheme();
-  // Finishing the guide gets the same sparkle as a save.
-  useEffect(() => {
-    useMoments.getState().celebrate();
-  }, []);
 
   return (
     <View style={styles.container} accessibilityLiveRegion="polite">

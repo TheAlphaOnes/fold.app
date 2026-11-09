@@ -1,8 +1,8 @@
 /**
  * CelebrationHost — mounted once at the root; plays the current moment
- * (useMoments): the screen dims, then a white sparkle (new memory), ripple
- * or the streak's ticks, and a short
- * caption rises under it when there is one ("DAY 05", "RESTORED"). Same dim
+ * (useMoments): the screen dims, then a white sparkle (new memory) or the
+ * streak's ticks, and a short
+ * caption rises under it when there is one ("DAY 05"). Same dim
  * as the share bird, so every small moment in Fold looks alike.
 
  */
@@ -13,7 +13,6 @@ import Animated from 'react-native-reanimated';
 import { usePathname } from 'expo-router';
 
 import { CelebrationBurst } from '@/components/celebration-burst';
-import { MomentRipple } from '@/components/moment-ripple';
 import { MomentStreak } from '@/components/moment-streak';
 import { MOMENT_INK, MomentDim } from '@/components/moment-dim';
 import { ThemedText } from '@/components/themed-text';
@@ -30,8 +29,8 @@ const BURST_DELAY_MS = LEAD_MS + 220;
 const DIM_HOLD_MS = 1150;
 /** Whole moment, start to clear. */
 const TOTAL_MS = LEAD_MS + 240 + DIM_HOLD_MS + 380;
-/** Caption sits below the effect: past the ripple's rings, or under the ticks. */
-const CAPTION_OFFSET = { sparkle: 56, ripple: 132, streak: 56 } as const;
+/** Caption sits just below the sparkle or under the ticks. */
+const CAPTION_OFFSET = { sparkle: 56, streak: 56 } as const;
 
 export function CelebrationHost() {
   const moment = useMoments((state) => state.moment);
@@ -57,10 +56,8 @@ export function CelebrationHost() {
         <View style={styles.streak}>
           <MomentStreak delayMs={BURST_DELAY_MS} />
         </View>
-      ) : moment.kind === 'sparkle' ? (
-        <CelebrationBurst color={MOMENT_INK} delayMs={BURST_DELAY_MS} />
       ) : (
-        <MomentRipple delayMs={BURST_DELAY_MS} />
+        <CelebrationBurst color={MOMENT_INK} delayMs={BURST_DELAY_MS} />
       )}
       {moment.caption && (
         <Animated.View key={moment.caption} entering={riseIn(360, BURST_DELAY_MS, 10)} style={[styles.captionWrap, { marginTop: CAPTION_OFFSET[moment.kind] }]}>

@@ -15,7 +15,6 @@ import { COFFEE_ART } from '@/constants/ascii-art';
 import { useTheme } from '@/hooks/use-theme';
 import { ThemedText } from '@/components/themed-text';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { useMoments } from '@/hooks/use-moments';
 import { useRouter } from 'expo-router';
 import type { Story } from '@/types/journal';
 
@@ -63,7 +62,6 @@ export function CreateStoryTray({ onClose, onSuccess, navigateOnCreate = true }:
     if (!title.trim()) return;
     try {
       const newStory = await addStory({ title: title.trim() });
-      useMoments.getState().celebrate();
       onSuccess?.(newStory);
       handleClose();
       if (navigateOnCreate) {

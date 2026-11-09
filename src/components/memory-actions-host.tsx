@@ -17,7 +17,6 @@ import { MemoryCard } from '@/components/memory-card';
 import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
-import { useMoments } from '@/hooks/use-moments';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
@@ -44,8 +43,6 @@ export function MemoryActionsHost() {
   const removeComposition = useJournalStore((state) => state.removeComposition);
   const toggleStoryId = useJournalStore((state) => state.toggleStoryId);
   const completeGuideStep = useSettingsStore((state) => state.completeGuideStep);
-  // A quiet ripple once an action has worked.
-  const ripple = () => useMoments.getState().celebrate();
 
   // The memory an action is working on, kept after the menu closes.
   const [target, setTarget] = useState<Composition | null>(null);
@@ -79,7 +76,6 @@ export function MemoryActionsHost() {
         await Sharing.shareAsync(uri, { dialogTitle: 'Share Memory Card', mimeType: 'image/png' });
         completeGuideStep('share');
         track('memory_shared', { method: 'card' });
-        ripple();
         onShared?.();
       }
     } catch (error) {
@@ -124,7 +120,7 @@ export function MemoryActionsHost() {
           setPickingStory(true);
         }}
         onSave={async () => {
-          if (firstMedia && (await saveToGallery(firstMedia.uri))) ripple();
+          if (firstMedia) await saveToGallery(firstMedia.uri);
         }}
         onDelete={confirmDelete}
       />
@@ -135,10 +131,7 @@ export function MemoryActionsHost() {
         onClose={() => setPickingStory(false)}
         selectedStoryIds={live?.storyIds ?? []}
         onToggle={async (storyId) => {
-          if (!live) return;
-          const adding = !live.storyIds.includes(storyId);
-          await toggleStoryId(live.id, storyId);
-          if (adding) ripple();
+          if (live) await toggleStoryId(live.id, storyId);
         }}
       />
 

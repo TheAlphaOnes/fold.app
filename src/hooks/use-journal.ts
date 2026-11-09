@@ -292,7 +292,6 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       hydratedById[input.id] = updated;
     }
 
-    useMoments.getState().celebrate();
     set((state) => ({
       hydratedById,
       compositions: state.compositions.map((c) => (c.id === input.id ? updated : c)),

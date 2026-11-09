@@ -1,6 +1,6 @@
 /**
- * Moments — the small celebrations (dim + a white sparkle, ripple or
- * streak ticks, optional caption) that CelebrationHost plays over the whole screen.
+ * Moments — the small celebrations (dim + a white sparkle or streak ticks,
+ * optional caption) that CelebrationHost plays over the whole screen.
  *
  * celebrate() calls that land together merge into one moment: a new
  * memory sparkles, and if the same save also grows the streak, it becomes the
@@ -13,13 +13,13 @@ import { create } from 'zustand';
 const MERGE_MS = 900;
 
 /**
- * sparkle: a new memory, and only that. ripple: everything else (edits,
- * shares, restores, new stories). streak: the streak grew.
+ * Kept to two on purpose, both earned: sparkle for a new memory, streak
+ * when that memory grows the streak (DAY nn, · BEST).
  */
-export type MomentKind = 'sparkle' | 'ripple' | 'streak';
+export type MomentKind = 'sparkle' | 'streak';
 
 /** When calls merge, the more specific kind wins. */
-const RANK: Record<MomentKind, number> = { ripple: 0, sparkle: 1, streak: 2 };
+const RANK: Record<MomentKind, number> = { sparkle: 0, streak: 1 };
 
 export interface Moment {
   id: number;
@@ -36,7 +36,7 @@ interface MomentsState {
 
 export const useMoments = create<MomentsState>((set, get) => ({
   moment: null,
-  celebrate: (caption, kind = 'ripple') => {
+  celebrate: (caption, kind = 'sparkle') => {
     const now = Date.now();
     const current = get().moment;
     if (current && now - current.startedAt < MERGE_MS) {

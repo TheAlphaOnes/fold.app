@@ -132,27 +132,16 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
         streak: streak.current,
       });
     }
-    // One caption under the save sparkle, most meaningful first: a growing
-    // streak (marked when it beats the best), else a new monthly ink record.
-    let caption: string | null = null;
     if (before && streak.current > before.streak.current) {
       track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
+      // Past day one, the save's sparkle becomes the streak moment.
       if (streak.current > 1) {
         const isBest = streak.current > before.streak.longest;
-        caption = `DAY ${String(streak.current).padStart(2, '0')}${isBest ? ' · BEST' : ''}`;
+        useMoments
+          .getState()
+          .celebrate(`DAY ${String(streak.current).padStart(2, '0')}${isBest ? ' · BEST' : ''}`, 'streak');
       }
     }
-    if (
-      !caption &&
-      before &&
-      before.ink.monthKey === ink.monthKey &&
-      before.ink.record > 0 &&
-      before.ink.month <= before.ink.record &&
-      ink.month > before.ink.record
-    ) {
-      caption = 'NEW INK RECORD';
-    }
-    if (caption) useMoments.getState().celebrate(caption, caption.startsWith('DAY') ? 'streak' : 'ripple');
     void enableReminders();
   },
 
