@@ -294,6 +294,8 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       compositions: state.compositions.map((c) => (c.id === input.id ? updated : c)),
       allCompositions: state.allCompositions.map((c) => (c.id === input.id ? updated : c)),
       hydrationVersion: state.hydrationVersion + 1,
+      // The edited card sparkles, like a new one does.
+      justAddedId: input.id,
     }));
 
     await get().refresh();
