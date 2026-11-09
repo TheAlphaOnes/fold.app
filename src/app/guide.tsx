@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import Animated from 'react-native-reanimated';
 
 import { GrainBackground } from '@/components/grain-background';

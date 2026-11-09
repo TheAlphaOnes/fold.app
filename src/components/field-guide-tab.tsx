@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-import { router } from 'expo-router';
+
 import { useTheme } from '@/hooks/use-theme';
 import { useGuideProgress } from '@/hooks/use-guide-progress';
 import { useSettingsStore } from '@/hooks/use-settings';

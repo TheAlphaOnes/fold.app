@@ -13,7 +13,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';

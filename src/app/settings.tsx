@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';

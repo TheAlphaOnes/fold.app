@@ -4,7 +4,7 @@
  */
 
 import { useContext, useEffect } from 'react';
-import { router } from 'expo-router';
+
 import * as Notifications from 'expo-notifications';
 import { create } from 'zustand';
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
 import { textLengthBucket, track } from '@/services/analytics';
@@ -11,7 +11,6 @@ import { ThemedText } from '@/components/themed-text';
 import { CloseButton } from '@/components/round-button';
 import { ActionLink } from "@/components/action-link";
 import { goBack } from '@/utils/navigation';
-
 
 export default function FeedbackScreen() {
   const theme = useTheme();
