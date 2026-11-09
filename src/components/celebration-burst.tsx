@@ -5,15 +5,17 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, withDelay, Easi
 interface CelebrationBurstProps {
   color: string;
   onComplete?: () => void;
+  /** Wait before bursting (default 400ms). */
+  delayMs?: number;
 }
 
-export function CelebrationBurst({ color, onComplete }: CelebrationBurstProps) {
+export function CelebrationBurst({ color, onComplete, delayMs = 400 }: CelebrationBurstProps) {
   const progress = useSharedValue(0);
   
   useEffect(() => {
     // Trigger the burst snappier (300ms scroll delay + 100ms)
     progress.value = withDelay(
-      400, 
+      delayMs, 
       withTiming(1, { 
         duration: 1400, // Fluid majestic burst
         easing: Easing.out(Easing.cubic) 

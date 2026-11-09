@@ -18,15 +18,19 @@ export const MOMENT_INK = '#FFFFFF';
 const IN_MS = 240;
 const OUT_MS = 380;
 
-export function MomentDim({ holdMs }: { holdMs: number }) {
+/** delayMs lets a moment wait out a closing screen before it dims. */
+export function MomentDim({ holdMs, delayMs = 0 }: { holdMs: number; delayMs?: number }) {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withSequence(
-      withTiming(MOMENT_DIM_OPACITY, { duration: IN_MS, easing: Easing.out(Easing.cubic) }),
-      withDelay(holdMs, withTiming(0, { duration: OUT_MS })),
+    opacity.value = withDelay(
+      delayMs,
+      withSequence(
+        withTiming(MOMENT_DIM_OPACITY, { duration: IN_MS, easing: Easing.out(Easing.cubic) }),
+        withDelay(holdMs, withTiming(0, { duration: OUT_MS })),
+      ),
     );
-  }, [holdMs, opacity]);
+  }, [holdMs, delayMs, opacity]);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.dim, style]} />;

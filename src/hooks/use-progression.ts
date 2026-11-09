@@ -15,6 +15,7 @@ import { requestReminderPermission, syncMomentReminders } from '@/services/remin
 import { setPersonProperties, track, type PersonProperties } from '@/services/analytics';
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
+import { useMoments } from '@/hooks/use-moments';
 import { toDayKey } from '@/utils/format-date';
 
 /** Stored as `YYYY-MM:value` — the month and the ink last shown for it. */
@@ -133,6 +134,8 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     }
     if (before && streak.current > before.streak.current) {
       track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
+      // A streak that grows past day one gets its number under the save sparkle.
+      if (streak.current > 1) useMoments.getState().celebrate(`DAY ${String(streak.current).padStart(2, '0')}`);
     }
     void enableReminders();
   },
