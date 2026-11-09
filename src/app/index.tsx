@@ -373,7 +373,6 @@ export default function HomeScreen() {
 
       <EdgeTab slot={0} onPress={() => router.push('/profile')} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
-        <View style={[styles.notchIndicator, { backgroundColor: theme.accentWarm }]} />
       </EdgeTab>
       <InkGain />
 
@@ -474,12 +473,6 @@ const styles = StyleSheet.create({
     color: '#878787',
     minWidth: 200,
     textAlign: 'center',
-  },
-  notchIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginLeft: 6,
   },
   carouselItem: {
     justifyContent: 'center',
