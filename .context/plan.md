@@ -317,3 +317,21 @@ src/components/compose/*   toolbar, template switcher, text editor sheet, sticke
 4. Grids: yes, as in §5.4 (incl. the 4-media grid).
 5. Sticker shapes: the set in §5.3, stamp included.
 6. Stripes: keep, they're iconic (D11).
+
+## 13. Progress (2026-11-09)
+
+| Phase | State | Commits |
+|---|---|---|
+| P0 Foundations | ✅ types, geometry, templates, 10 grids, legacy conversion (on read, no DB rewrite), renderer, `template`/`layout` columns; 118 unit tests (`pnpm test`) | 3115f37, 7431f31 |
+| P1 Display | ✅ feed card, full-screen memory (9:16, live video/audio), 1080×1920 export, timeline dragging removed. **D2 feed shape still open**: compare in `fold://dev/canvas-gallery` | eb2ad6c, 92c716a, 2133f1d |
+| P2 Composer | ✅ one screen, opens ready to write, camera/gallery, template strip, save/edit, undo | b5db396 |
+| P3 Text tool | ✅ font strip, ink, highlight, alignment, size; drag/pinch/rotate; centre snap; trash | b5db396 |
+| P4 Grids | ✅ 10 layouts, frame by pinch/pan, tap to fill, hold-then-tap to swap, gap | b5db396 |
+| P5 Stickers | ✅ Stickers template + shapes (rounded, square, circle, polaroid, stamp, tape); sheet: photo, GIF, song, voice, place, date | b5db396 |
+| P6 Teach & polish | ✅ guide CANVAS chapter on the real editor, FAQ, analytics (template, layer count). ⏳ website visuals, feature flag not used (shipped directly on dev) | a84faf6, 1dd239c, 2a52f20 |
+| Review | ✅ 13 bugs from a code-review subagent fixed | 28a52f3 |
+
+Decisions made during the build:
+- Old memories are converted when read (`canvasOf`), not migrated in the DB; a memory gets a saved layout the first time it's edited.
+- No in-composer "recent photos" strip: it would need full gallery read permission, which Play's photo policy and our save-only stance rule out. The system picker + camera are used instead.
+- Photo placement: a photo is either base (background/cell) or a user sticker; the Stickers template's own stickers are `auto` and return to the base when leaving it; new photos never land invisibly (template moves to one that shows them).
