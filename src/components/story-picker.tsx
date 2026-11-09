@@ -304,9 +304,6 @@ export function StoryPicker(props: StoryPickerProps) {
                     </View>
                     <ThemedText style={[styles.storyTitle, { color: theme.text }]}>NEW STORY</ThemedText>
                   </Pressable>
-                  <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-                    {'no stories yet.\nstart your first.'}
-                  </ThemedText>
                 </View>
               }
             />
@@ -414,12 +411,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-  },
-  emptyText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    marginBottom: 24,
   },
   newCover: {
     borderStyle: 'dashed',
