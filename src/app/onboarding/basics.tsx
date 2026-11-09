@@ -4,9 +4,10 @@
  * knowing how to capture. Swipe between slides or use BACK / NEXT; dots
  * show where you are.
  *
- * The key is live practice: a ghost finger shows the gesture, doing it on
- * the key confirms and moves on, a wrong gesture says what to do instead.
- * Nothing is captured; the journal is untouched.
+ * The key is the real key: tap opens the writing page, hold records a voice
+ * note, swipe up opens the camera. When the memory is saved and you're
+ * back, the slide confirms it and moves on; a wrong gesture says what to
+ * do instead. Same rule as the Field Guide: only a real saved memory counts.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -17,12 +18,15 @@ import Animated from 'react-native-reanimated';
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 
 import { AddButton } from '@/components/add-button';
+import { RecordingOverlay } from '@/components/recording-overlay';
 import { GrainBackground } from '@/components/grain-background';
 import { GestureHint } from '@/components/guide/gesture-hint';
 import { StepMarker } from '@/components/onboarding/onboarding-frame';
 import { ThemedText } from '@/components/themed-text';
 import { GUIDE_STEPS, type GuideStepId } from '@/constants/guide';
 import { fadeIn, riseIn } from '@/constants/motion';
+import { useLatestMemory } from '@/hooks/use-latest-memory';
+import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { goBack } from '@/utils/navigation';
@@ -31,7 +35,8 @@ const SLIDE_IDS: GuideStepId[] = ['write', 'voice', 'capture'];
 const SLIDES = SLIDE_IDS.map((id) => GUIDE_STEPS.find((step) => step.id === id)!);
 type KeyGesture = 'tap' | 'hold' | 'swipe-up';
 const NAMES: Record<KeyGesture, string> = { tap: 'a tap', hold: 'a hold', 'swipe-up': 'a swipe' };
-const DONE: Record<KeyGesture, string> = { tap: 'nice. that opens a page.', hold: 'nice. that starts a voice note.', 'swipe-up': 'nice. that opens the camera.' };
+const DONE: Record<KeyGesture, string> = { tap: 'written. saved to your journal.', hold: 'recorded. saved to your journal.', 'swipe-up': 'snapped. saved to your journal.' };
+const DENIED = { hold: 'mic is off. allow it in settings, or tap next.', 'swipe-up': 'camera is off. allow it in settings, or tap next.' };
 
 export default function OnboardingBasicsScreen() {
   const theme = useTheme();
@@ -44,24 +49,50 @@ export default function OnboardingBasicsScreen() {
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
 
-  const tryGesture = (done: KeyGesture) => {
-    const expected = SLIDES[index].gesture as KeyGesture;
-    if (done === expected) {
-      haptic.success();
-      setFeedback({ text: DONE[done], ok: true });
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
-      advanceTimer.current = setTimeout(() => (isLast ? router.push('/onboarding/tour') : goTo(index + 1)), 900);
-    } else {
-      haptic.select();
-      setFeedback({ text: `that was ${NAMES[done]}. try ${NAMES[expected]}.`, ok: false });
-    }
-  };
-
   const goTo = (next: number) => {
     haptic.select();
     setFeedback(null);
     setIndex(next);
     scroller.current?.scrollTo({ x: next * width, animated: true });
+  };
+
+  const quickCapture = useQuickCapture();
+  const latest = useLatestMemory();
+
+  // Success = a memory newer than the newest one when this slide began.
+  const baseline = useRef<number | null>(null);
+  const newestId = latest.memory?.id ?? 0;
+  useEffect(() => {
+    baseline.current = latest.loaded ? newestId : null;
+    // Re-baseline only when the slide changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, latest.loaded]);
+  useEffect(() => {
+    if (baseline.current === null || newestId <= baseline.current) return;
+    baseline.current = newestId;
+    const gesture = SLIDES[index].gesture as KeyGesture;
+    haptic.success();
+    setFeedback({ text: DONE[gesture], ok: true });
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => (isLast ? router.push('/onboarding/tour') : goTo(index + 1)), 1100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newestId]);
+
+  const tryGesture = async (done: KeyGesture) => {
+    const expected = SLIDES[index].gesture as KeyGesture;
+    if (done !== expected) {
+      haptic.select();
+      setFeedback({ text: `that was ${NAMES[done]}. try ${NAMES[expected]}.`, ok: false });
+      return;
+    }
+    setFeedback(null);
+    if (done === 'tap') {
+      router.push('/compose');
+    } else if (done === 'hold') {
+      if ((await quickCapture.startRecording()) === 'denied') setFeedback({ text: DENIED.hold, ok: false });
+    } else if ((await quickCapture.capturePhoto()) === 'denied') {
+      setFeedback({ text: DENIED['swipe-up'], ok: false });
+    }
   };
 
   const onBack = () => (index === 0 ? goBack('/onboarding/dob') : goTo(index - 1));
@@ -117,7 +148,11 @@ export default function OnboardingBasicsScreen() {
                   onHold={() => tryGesture('hold')}
                   onSwipeUp={() => tryGesture('swipe-up')}
                 />
-                <GestureHint gesture={slide.gesture} visible={i === index && !feedback?.ok} style={StyleSheet.absoluteFill} />
+                <GestureHint
+                  gesture={slide.gesture}
+                  visible={i === index && !feedback?.ok && !quickCapture.isRecording}
+                  style={StyleSheet.absoluteFill}
+                />
               </View>
             </View>
           </View>
@@ -143,6 +178,12 @@ export default function OnboardingBasicsScreen() {
           <ArrowRight size={18} color={theme.text} strokeWidth={1.75} />
         </Pressable>
       </Animated.View>
+
+      <RecordingOverlay
+        visible={quickCapture.isRecording}
+        durationMillis={quickCapture.durationMillis}
+        onStop={quickCapture.stopRecording}
+      />
     </View>
   );
 }
