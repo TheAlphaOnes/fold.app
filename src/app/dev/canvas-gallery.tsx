@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CanvasView } from '@/canvas/render/canvas-view';
 import { CANVAS_ASPECT } from '@/canvas/geometry';
 import type { CanvasDoc, Layer, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
+import { CloseButton } from '@/components/round-button';
 import { useTheme } from '@/hooks/use-theme';
 import { BASE_TEMPLATES, GRID_TEMPLATES, newDoc } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
@@ -63,6 +64,7 @@ export default function CanvasGallery() {
   const memory = { id: -1, mediaElements: MEDIA, createdAt: SAMPLE_DATE, location: { latitude: 0, longitude: 0, name: 'Pune' } };
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>
       {[...BASE_TEMPLATES, ...GRID_TEMPLATES].slice(Number(from) || 0).map((t) => {
         const doc = docFor(t.id);
@@ -82,6 +84,9 @@ export default function CanvasGallery() {
         );
       })}
     </ScrollView>
+      {/* Pinned, so it's reachable however far down the page is scrolled. */}
+      <CloseButton style={{ position: 'absolute', top: insets.top + 8, right: 16 }} />
+    </View>
   );
 }
 
