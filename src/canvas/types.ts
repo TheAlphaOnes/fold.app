@@ -22,7 +22,7 @@ export type GridLayoutId =
   | 'diary'
   | 'polaroid';
 
-export type TemplateId = 'story' | 'text' | 'stickers' | `grid:${GridLayoutId}`;
+export type TemplateId = 'story' | 'text' | 'stickers' | 'ring' | `grid:${GridLayoutId}`;
 
 /** Pan/zoom of media inside its frame. x/y: offset as a fraction of the frame; scale ≥ 1. */
 export interface Crop {

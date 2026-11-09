@@ -8,7 +8,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { Image as ImageIcon, Layers, Type as TypeIcon } from 'lucide-react-native';
+import { CircleDashed, Image as ImageIcon, Layers, Type as TypeIcon } from 'lucide-react-native';
 
 import type { GapSize, TemplateId } from '@/canvas/types';
 import { CycleList, CyclePill, useThemedCyclePalette } from '@/components/compose/cycle-pill';
@@ -22,7 +22,7 @@ import { BASE_TEMPLATES, GRID_TEMPLATES, gridIdOf, isGrid, templateName } from '
 
 // Shares the bottom row with the round buttons, so it matches their height.
 const HEIGHT = ROUND_BUTTON_SIZE;
-const ICONS = { story: ImageIcon, text: TypeIcon, stickers: Layers } as const;
+const ICONS = { story: ImageIcon, text: TypeIcon, stickers: Layers, ring: CircleDashed } as const;
 const TEMPLATE_IDS: readonly TemplateId[] = [...BASE_TEMPLATES, ...GRID_TEMPLATES].map((t) => t.id);
 const GAPS: readonly GapSize[] = ['none', 'thin', 'thick'];
 
