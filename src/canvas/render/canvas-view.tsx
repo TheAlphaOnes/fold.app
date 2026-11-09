@@ -32,12 +32,25 @@ export interface CanvasViewProps {
   animated?: boolean;
 }
 
+/**
+ * Side of the invisible box a layer is centred in. A zero-size anchor would
+ * squeeze the layer's content to zero width, so the box is big enough for
+ * any layer to lay out at its natural size; touches pass through it.
+ */
+export function anchorBox(width: number, height: number): number {
+  return Math.max(width, height) * 2;
+}
+
 /** Positions a layer's centre at its normalised point and applies rotation. */
 export function LayerAnchor({ layer, width, height, children }: { layer: Layer; width: number; height: number; children: React.ReactNode }) {
+  const box = anchorBox(width, height);
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.anchor, { left: layer.x * width, top: layer.y * height, transform: [{ rotate: `${layer.rotation}deg` }] }]}
+      style={[
+        styles.anchor,
+        { width: box, height: box, left: layer.x * width - box / 2, top: layer.y * height - box / 2, transform: [{ rotate: `${layer.rotation}deg` }] },
+      ]}
     >
       {children}
     </View>
@@ -93,13 +106,10 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
 
 const styles = StyleSheet.create({
   canvas: { overflow: 'hidden' },
-  // A zero-size point; its child centres on it through flex and overflows.
+  // A large box centred on the layer's point; its child centres in it.
   anchor: {
     position: 'absolute',
-    width: 0,
-    height: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible',
   },
 });

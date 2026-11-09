@@ -15,6 +15,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue }
 
 import { clamp, snapToCentre } from '@/canvas/geometry';
 import type { Layer } from '@/canvas/types';
+import { anchorBox } from '@/canvas/render/canvas-view';
 
 /** Normalised area at the bottom centre that counts as the trash. */
 export const TRASH_ZONE = { y: 0.9, halfWidth: 0.16 } as const;
@@ -112,15 +113,16 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
 
   const gesture = Gesture.Exclusive(Gesture.Simultaneous(pan, pinch, rotate), tap);
 
+  const box = anchorBox(width, height);
   const style = useAnimatedStyle(() => ({
-    left: x.get() * width,
-    top: y.get() * height,
+    left: x.get() * width - box / 2,
+    top: y.get() * height - box / 2,
     transform: [{ rotate: `${rotation.get()}deg` }, { scale: pinchScale.get() * (active.get() && signals.overTrash.get() ? 0.6 : 1) }],
     opacity: active.get() && signals.overTrash.get() ? 0.6 : 1,
   }));
 
   return (
-    <Animated.View style={[styles.anchor, style]} pointerEvents="box-none">
+    <Animated.View style={[styles.anchor, { width: box, height: box }, style]} pointerEvents="box-none">
       <GestureDetector gesture={gesture}>
         <Animated.View style={selected ? styles.selected : undefined} collapsable={false}>
           {children}
@@ -133,11 +135,8 @@ export function EditableLayer({ layer, width, height, selected, signals, onChang
 const styles = StyleSheet.create({
   anchor: {
     position: 'absolute',
-    width: 0,
-    height: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible',
   },
   selected: {
     borderWidth: 1,
