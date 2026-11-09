@@ -15,7 +15,8 @@ export interface TemplateInfo {
 }
 
 export const BASE_TEMPLATES: readonly TemplateInfo[] = [
-  { id: 'story', name: 'Story' },
+  // Shown as "Canvas"; the id stays 'story' so saved memories keep working.
+  { id: 'story', name: 'Canvas' },
   { id: 'text', name: 'Text' },
   { id: 'stickers', name: 'Stickers' },
 ];
@@ -34,7 +35,7 @@ export function gridIdOf(template: TemplateId): GridLayoutId | null {
 }
 
 export function templateName(template: TemplateId): string {
-  return [...BASE_TEMPLATES, ...GRID_TEMPLATES].find((t) => t.id === template)?.name ?? 'Story';
+  return [...BASE_TEMPLATES, ...GRID_TEMPLATES].find((t) => t.id === template)?.name ?? 'Canvas';
 }
 
 /** Photos and videos, the media a background or cell can show. */

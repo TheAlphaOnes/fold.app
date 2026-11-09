@@ -55,11 +55,11 @@ describe('template id helpers', () => {
   });
 
   it('templateName', () => {
-    expect(templateName('story')).toBe('Story');
+    expect(templateName('story')).toBe('Canvas');
     expect(templateName('text')).toBe('Text');
     expect(templateName('stickers')).toBe('Stickers');
     expect(templateName('grid:duo-side')).toBe('Split');
-    expect(templateName('grid:nope' as TemplateId)).toBe('Story');
+    expect(templateName('grid:nope' as TemplateId)).toBe('Canvas');
   });
 });
 

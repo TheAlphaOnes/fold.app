@@ -64,12 +64,12 @@ export default function FAQScreen() {
 
         <ThemedText style={heading}>3. Templates & the canvas</ThemedText>
         <ThemedText style={text}>
-          Every memory is a full-screen canvas, like a story. Pick how it looks from the row under the canvas:{'\n'}
-          <B>STORY</B> one photo or video, edge to edge.{'\n'}
+          Every memory is a full-screen canvas, like a story. Pick how it looks from the pill under the canvas: tap it for the next look, hold it to see them all.{'\n'}
+          <B>CANVAS</B> one photo or video, edge to edge.{'\n'}
           <B>TEXT</B> your words on the stripes.{'\n'}
           <B>STICKERS</B> photos placed freely, in shapes like polaroid, stamp or tape.{'\n'}
           <B>GRIDS</B> collages from two to six photos, including a film strip and a diary page.{'\n'}
-          Fold picks one as you add photos; tap another any time.{'\n\n'}
+          Fold picks one as you add photos; change it any time.{'\n\n'}
           On the canvas, <B>DRAG</B> text or a sticker to move it, <B>PINCH</B> to resize, <B>TWIST</B> to rotate, and drop it on the bin to remove it. Pinch and drag a photo to frame it. In a grid, tap an empty spot to fill it, and hold one photo then tap another to swap them.
         </ThemedText>
 
