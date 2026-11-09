@@ -80,11 +80,11 @@ export default function StoryBoardScreen() {
     stories.length === 0 ? (
       <View style={styles.empty}>
         <Animated.View entering={fadeIn(400)} style={styles.emptyArt}>
-          <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={9} />
+          <AsciiArt art={BOOK_ART} color={theme.textMuted} fontSize={6} />
         </Animated.View>
         <Animated.View entering={riseIn(300, 80)}>
           <ThemedText {...BALANCED_TEXT} style={[styles.emptyText, { color: theme.textSecondary }]}>
-            chapters gather your memories. a trip, a season, a person.
+            chapters gather your memories.
           </ThemedText>
         </Animated.View>
         <Animated.View entering={riseIn(280, 140)}>
@@ -131,7 +131,7 @@ export default function StoryBoardScreen() {
         )}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.list, stories.length === 0 && styles.listEmpty, { paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
@@ -150,6 +150,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: GUTTER,
     paddingTop: GUTTER,
   },
+  // No stories yet: the empty state sits in the middle of the screen.
+  listEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   listHeader: {
     marginBottom: GAP + 8,
   },
@@ -160,8 +165,9 @@ const styles = StyleSheet.create({
   empty: {
     alignItems: 'center',
     gap: 16,
-    paddingTop: 72,
     paddingHorizontal: 24,
+    // Lifts it a touch above true centre, where the eye expects the middle.
+    marginBottom: 64,
   },
   emptyArt: {
     opacity: 0.6,
