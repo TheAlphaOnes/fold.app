@@ -23,7 +23,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { ArrowUpToLine, Book, Camera, Image as ImageIcon, Shapes, Smile, Trash2, Type as TypeIcon, Undo2 } from 'lucide-react-native';
+import { ArrowUpToLine, Camera, Image as ImageIcon, Shapes, Smile, Trash2, Type as TypeIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
@@ -352,12 +352,20 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           <CloseButton accessibilityLabel="Close without saving" />
           <View style={styles.topRight}>
             {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
-            <RoundButton
-              icon={Book}
-              active={storyIds.length > 0}
+            {/* Optional filing: an outlined text CTA, never as loud as Save. */}
+            <Pressable
+              onPress={() => {
+                haptic.tap();
+                setSheet('stories');
+              }}
+              accessibilityRole="button"
               accessibilityLabel={storyIds.length > 0 ? `In ${storyLabel.toLowerCase()}. Change stories` : 'Add to a story'}
-              onPress={() => setSheet('stories')}
-            />
+              style={({ pressed }) => [styles.storyCta, { borderColor: storyIds.length > 0 ? theme.text : theme.border, opacity: pressed ? 0.5 : 1 }]}
+            >
+              <ThemedText style={[styles.storyCtaText, { color: theme.text }]} numberOfLines={1}>
+                {storyLabel}
+              </ThemedText>
+            </Pressable>
             <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
             <RoundButton icon={Smile} accessibilityLabel="Add a sticker" onPress={() => setSheet('stickers')} />
           </View>
@@ -545,6 +553,8 @@ const styles = StyleSheet.create({
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
   middle: { flex: 1, alignItems: 'center' },
+  storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, justifyContent: 'center' },
+  storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
   saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
 });
