@@ -33,7 +33,7 @@ import { GifPicker } from '@/components/gif-picker';
 import { GrainBackground } from '@/components/grain-background';
 import { MusicPicker } from '@/components/music-picker';
 import { RecordingOverlay } from '@/components/recording-overlay';
-import { CloseButton, RoundButton } from '@/components/round-button';
+import { CloseButton, ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { StoryPicker } from '@/components/story-picker';
 import { ThemedText } from '@/components/themed-text';
 import { DEFAULT_MEMORY_FONT } from '@/constants/fonts';
@@ -402,7 +402,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       )}
 
       {!editing && (
-        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
           <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
           <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
           <Pressable
@@ -414,7 +414,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             accessibilityLabel={storyIds.length > 0 ? `Story: ${storyLabel}` : 'Add to a story'}
             style={[styles.storyChip, storyIds.length > 0 ? { backgroundColor: theme.text, borderColor: theme.text } : { borderColor: theme.border }]}
           >
-            <Book size={13} color={storyIds.length > 0 ? theme.background : theme.text} />
+            <Book size={12} color={storyIds.length > 0 ? theme.background : theme.text} />
             <ThemedText style={[styles.storyText, { color: storyIds.length > 0 ? theme.background : theme.text }]} numberOfLines={1}>
               {storyLabel}
             </ThemedText>
@@ -430,7 +430,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           </Pressable>
         </Animated.View>
       )}
-      {editing && <View style={{ height: BOTTOM_AREA - 50 + Math.max(insets.bottom, 12) }} />}
+      {editing && <View style={{ height: BOTTOM_AREA - 50 + insets.bottom + 8 }} />}
 
       {editing && (
         <TextEditorSheet
@@ -526,9 +526,10 @@ const styles = StyleSheet.create({
   selBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 36, justifyContent: 'center' },
   selText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.5 },
   templates: { paddingTop: 10 },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 10 },
-  storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1 },
-  storyText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2, flexShrink: 1 },
-  save: { height: 40, paddingHorizontal: 20, borderRadius: 20, justifyContent: 'center' },
-  saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
+  // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
+  storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1 },
+  storyText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
+  save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 18, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
+  saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
 });

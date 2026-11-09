@@ -87,10 +87,10 @@ export function TemplateStrip({ current, gap = 'none', onPick, onGap }: Template
   );
 }
 
-/** A 18×32 drawing of a layout's cells. */
+/** A 14×25 (9:16) drawing of a layout's cells. */
 function GridGlyph({ layout, color }: { layout: GridLayout; color: string }) {
-  const W = 18;
-  const H = 32;
+  const W = 14;
+  const H = 25;
   return (
     <View style={{ width: W, height: H }}>
       {layout.cells.map((c) => (
@@ -112,11 +112,11 @@ function GridGlyph({ layout, color }: { layout: GridLayout; color: string }) {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
+  row: { paddingHorizontal: 24, gap: 8, alignItems: 'center' },
   chip: {
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,8 +125,8 @@ const styles = StyleSheet.create({
   label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.5 },
   divider: { width: 1, height: 24, marginHorizontal: 2 },
   gridChip: {
-    width: 40,
-    height: 48,
+    width: 30,
+    height: 36,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
