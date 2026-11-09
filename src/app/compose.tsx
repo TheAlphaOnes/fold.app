@@ -46,12 +46,6 @@ import {
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
-import {
-  AudioModule,
-  useAudioRecorder,
-  useAudioRecorderState,
-  RecordingPresets,
-} from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Location from "expo-location";
 import { haptic } from '@/services/haptics';
@@ -70,7 +64,7 @@ import {
 } from "@/utils/media-attach";
 import { memoryTextMetrics } from "@/utils/memory-text";
 import { arrangeStickers } from "@/utils/sticker-layout";
-import { endRecordingSession } from "@/utils/audio-session";
+import { useVoiceTake } from "@/hooks/use-voice-take";
 import { useVideoThumbnail } from "@/hooks/use-video-thumbnail";
 import { trackError, type CaptureSource } from "@/services/analytics";
 import { MusicPicker } from "@/components/music-picker";
@@ -277,8 +271,7 @@ export default function ComposeScreen() {
   const { addComposition, updateComposition } = useJournalStore();
   const { settings } = useSettings();
   const [isSaving, setIsSaving] = useState(false);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 100);
+  const take = useVoiceTake();
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isMusicPickerVisible, setIsMusicPickerVisible] = useState(false);
   
@@ -754,52 +747,37 @@ export default function ComposeScreen() {
     goBack();
   };
 
-  const handleRecordToggle = async () => {
+  /** The mic button: starts a take; the overlay's controls end it. */
+  const handleStartRecording = async () => {
+    if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
+      alertElementCap();
+      return;
+    }
+    haptic.tap();
+    await take.start();
+  };
+
+  /** Save on the overlay: the take joins this memory's page. */
+  const handleSaveRecording = async () => {
     try {
-      if (recorderState.isRecording) {
-        // Stop recording
-        await recorder.stop();
-        // Leave record mode right away: iOS mutes haptics while it is active.
-        await endRecordingSession();
-        const uri = recorder.uri;
-        if (uri) {
-          // Copy to safe document directory
-          const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
-          const ext = extMatch ? extMatch[1].toLowerCase() : "m4a";
-          const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+      const uri = await take.finish();
+      if (!uri) return;
+      // Copy to safe document directory
+      const extMatch = uri.match(/\.([a-zA-Z0-9]+)(\?.*)?$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : "m4a";
+      const dest = `${FileSystem.documentDirectory}audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+      await FileSystem.copyAsync({ from: uri, to: dest });
 
-          await FileSystem.copyAsync({ from: uri, to: dest });
-
-          const newMedia: MediaElement = {
-            id: Math.random().toString(36).substring(2, 9),
-            uri: dest,
-            type: "audio",
-            x_pos: 30 + Math.random() * (screenWidth - 150),
-            y_pos: 30 + Math.random() * (screenHeight - 150),
-          };
-          setMediaElements((prev) => [...prev, newMedia]);
-        }
-      } else {
-        // Start recording
-        if (mediaElements.length >= MAX_MEDIA_ELEMENTS) {
-          alertElementCap();
-          return;
-        }
-
-        const { status } = await AudioModule.requestRecordingPermissionsAsync();
-        if (status !== "granted") return;
-
-        await AudioModule.setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
-
-        await recorder.prepareToRecordAsync();
-        haptic.tap();
-        await recorder.record();
-      }
+      const newMedia: MediaElement = {
+        id: Math.random().toString(36).substring(2, 9),
+        uri: dest,
+        type: "audio",
+        x_pos: 30 + Math.random() * (screenWidth - 150),
+        y_pos: 30 + Math.random() * (screenHeight - 150),
+      };
+      setMediaElements((prev) => [...prev, newMedia]);
     } catch (err) {
-      console.error("Failed to toggle recording", err);
+      console.error("Failed to save recording", err);
     }
   };
 
@@ -1004,7 +982,7 @@ export default function ComposeScreen() {
 
               {/* 6. Record Audio (Kept with Video) */}
               <Pressable
-                onPress={handleRecordToggle}
+                onPress={handleStartRecording}
                 style={({ pressed }) => [
                   styles.attachButton,
                   { opacity: pressed ? 0.5 : 1 },
@@ -1109,9 +1087,13 @@ export default function ComposeScreen() {
 
       {/* Full-screen recording overlay — shared with the home quick-record */}
       <RecordingOverlay
-        visible={recorderState.isRecording}
-        durationMillis={recorderState.durationMillis}
-        onStop={handleRecordToggle}
+        visible={take.isActive}
+        paused={take.isPaused}
+        durationMillis={take.durationMillis}
+        onPause={take.pause}
+        onResume={take.resume}
+        onSave={handleSaveRecording}
+        onDiscard={take.discard}
       />
 
       <MusicPicker

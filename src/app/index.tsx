@@ -444,7 +444,11 @@ export default function HomeScreen() {
       <RecordingOverlay
         visible={quickCapture.isRecording}
         durationMillis={quickCapture.durationMillis}
-        onStop={quickCapture.stopRecording}
+        paused={quickCapture.isPaused}
+        onPause={quickCapture.pauseRecording}
+        onResume={quickCapture.resumeRecording}
+        onSave={quickCapture.saveRecording}
+        onDiscard={quickCapture.discardRecording}
       />
     </View>
   );

@@ -2,8 +2,9 @@
  * useQuickCapture — the orange key's two shortcut gestures, shared by the
  * home screen and the field guide so both behave identically.
  *
- *   hold      → start a voice take; it keeps recording after release and
- *               is saved as its own memory when the user taps to stop
+ *   hold      → start a voice take; it keeps recording after release, can
+ *               be paused, and is saved as its own memory on Save (or
+ *               thrown away on Discard)
  *   swipe up  → open the camera, then hand the photo to the compose screen
  */
 
@@ -12,20 +13,14 @@ import { useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  AudioModule,
-  RecordingPresets,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from 'expo-audio';
 
 import { useJournalStore } from '@/hooks/use-journal';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
-import { endRecordingSession } from '@/utils/audio-session';
+import { useVoiceTake, type CaptureStartResult } from '@/hooks/use-voice-take';
 import type { MediaElement } from '@/types/journal';
 import { trackError } from '@/services/analytics';
 
-export type CaptureStartResult = 'started' | 'denied' | 'released' | 'failed';
+export type { CaptureStartResult };
 export type PhotoCaptureResult = 'opened' | 'denied' | 'cancelled' | 'busy' | 'failed';
 
 /** Copies a temp capture into the documents directory so it survives reinstalls. */
@@ -41,54 +36,14 @@ export function useQuickCapture() {
   const { width, height } = useWindowDimensions();
   const addComposition = useJournalStore((state) => state.addComposition);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 100);
-
-  // A stop can land while permissions/prepare are still resolving; the
-  // start then backs out instead of recording with nothing to end it.
-  const recordIntentRef = useRef(false);
-  // A double tap on the overlay can fire stop twice; only one may save.
-  const isStoppingRef = useRef(false);
+  const take = useVoiceTake();
   const isCameraOpenRef = useRef(false);
 
-  const startRecording = useCallback(async (): Promise<CaptureStartResult> => {
-    recordIntentRef.current = true;
+  /** Saves the take as a memory. Resolves true when a memory was saved. */
+  const saveRecording = useCallback(async (): Promise<boolean> => {
     try {
-      const { status } = await AudioModule.requestRecordingPermissionsAsync();
-      if (status !== 'granted') return 'denied';
-
-      await AudioModule.setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
-
-      if (!recordIntentRef.current) {
-        await endRecordingSession();
-        return 'released';
-      }
-      await recorder.record();
-      return 'started';
-    } catch (error) {
-      console.error('Failed to start quick record', error);
-      await endRecordingSession();
-      return 'failed';
-    }
-  }, [recorder]);
-
-  /** Stops the take and saves it as a memory. Resolves true when a memory was saved. */
-  const stopRecording = useCallback(async (): Promise<boolean> => {
-    recordIntentRef.current = false;
-    if (isStoppingRef.current) return false;
-    if (!recorder.isRecording && !recorder.uri) return false;
-
-    isStoppingRef.current = true;
-    try {
-      await recorder.stop();
-      // Leave record mode right away: iOS mutes haptics while it is active.
-      await endRecordingSession();
-      const uri = recorder.uri;
+      const uri = await take.finish();
       if (!uri) return false;
-
-      const info = await FileSystem.getInfoAsync(uri);
-      if (!info.exists || (info.size !== undefined && info.size === 0)) return false;
 
       const dest = await persistCapture(uri, 'audio', 'm4a');
       const media: MediaElement = {
@@ -110,10 +65,8 @@ export function useQuickCapture() {
       console.error('Failed to save quick record', error);
       trackError(error, 'quick_voice_save');
       return false;
-    } finally {
-      isStoppingRef.current = false;
     }
-  }, [recorder, addComposition, width, height]);
+  }, [take, addComposition, width, height]);
 
   /** Opens the camera; a taken photo continues into the compose screen. */
   const capturePhoto = useCallback(async (): Promise<PhotoCaptureResult> => {
@@ -143,10 +96,15 @@ export function useQuickCapture() {
   }, []);
 
   return {
-    isRecording: recorderState.isRecording,
-    durationMillis: recorderState.durationMillis,
-    startRecording,
-    stopRecording,
+    /** A voice take is in progress (recording or paused). */
+    isRecording: take.isActive,
+    isPaused: take.isPaused,
+    durationMillis: take.durationMillis,
+    startRecording: take.start,
+    pauseRecording: take.pause,
+    resumeRecording: take.resume,
+    saveRecording,
+    discardRecording: take.discard,
     capturePhoto,
   };
 }
