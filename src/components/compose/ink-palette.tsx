@@ -122,8 +122,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 21,
-    paddingBottom: 12,
+    // Lines up with the toolbar's edge, with breathing room beneath it.
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
   },
   swatchRing: {
     width: SWATCH + 8,

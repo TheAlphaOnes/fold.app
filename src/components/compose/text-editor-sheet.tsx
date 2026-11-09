@@ -12,14 +12,14 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { AlignCenter, AlignLeft, AlignRight, Camera, Highlighter, Image as ImageIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { InkButton, InkPalette } from '@/components/compose/ink-palette';
-import { MEMORY_FONTS } from '@/constants/fonts';
+import { FontList, FontPill } from '@/components/compose/font-pill';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { fadeIn, riseIn } from '@/constants/motion';
 import type { TextAlign, TextLayer } from '@/canvas/types';
@@ -49,6 +49,7 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
   const keyboardShown = useKeyboardShown();
   const [draft, setDraft] = useState<TextDraft>(initial);
   const [inkOpen, setInkOpen] = useState(false);
+  const [fontsOpen, setFontsOpen] = useState(false);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -136,7 +137,16 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
         </View>
 
         <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: keyboardShown ? 8 : insets.bottom + 8 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fontRow} keyboardShouldPersistTaps="always">
+          {fontsOpen && (
+            <FontList
+              font={draft.font}
+              onPick={(font) => {
+                set({ font });
+                setFontsOpen(false);
+              }}
+            />
+          )}
+          <View style={styles.fontRow}>
             {(onCamera || onGallery) && (
               <View style={styles.quickAdd}>
                 {onCamera && (
@@ -151,27 +161,8 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
                 )}
               </View>
             )}
-            {MEMORY_FONTS.map((f) => {
-              const active = f.id === draft.font;
-              return (
-                <Pressable
-                  key={f.id}
-                  onPress={() => {
-                    haptic.select();
-                    set({ font: f.id });
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Font ${f.name}`}
-                  accessibilityState={{ selected: active }}
-                  style={[styles.fontChip, active && styles.fontChipActive]}
-                >
-                  <ThemedText style={[styles.fontChipText, { fontFamily: f.id, color: active ? '#111111' : '#FFFFFF' }]} numberOfLines={1}>
-                    Aa
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+            <FontPill font={draft.font} open={fontsOpen} onChange={(font) => set({ font })} onToggleList={() => setFontsOpen((o) => !o)} />
+          </View>
         </Animated.View>
       </KeyboardAvoidingView>
     </Animated.View>
@@ -198,18 +189,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   input: { minWidth: 40, padding: 0 },
   bottom: {},
-  fontRow: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
-  quickAdd: { flexDirection: 'row', gap: 8, marginRight: 8 },
+  fontRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, alignItems: 'center' },
+  quickAdd: { flexDirection: 'row', gap: 8 },
   quickBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  fontChip: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#FFFFFF66',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fontChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  fontChipText: { fontSize: 15 },
 });
