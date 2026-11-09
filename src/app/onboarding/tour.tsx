@@ -51,11 +51,11 @@ export default function OnboardingTourScreen() {
 
   return (
     <OnboardingFrame
-      step={3}
+      step={4}
       title="QUICK TOUR?"
       subtitle={'TWO MINUTES, ON YOUR\nOWN MEMORIES.'}
       footnote={'Skip it now? The guide waits\non the home screen, right edge.'}
-      onBack={() => goBack('/onboarding/dob')}
+      onBack={() => goBack('/onboarding/basics')}
       cta={{ text: 'TAKE THE TOUR', onPress: () => void finish(true) }}
       secondary={{ text: 'I’ll explore myself', onPress: () => void finish(false) }}
     >

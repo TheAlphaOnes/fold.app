@@ -51,7 +51,7 @@ export default function OnboardingDobScreen() {
     // marked done on the next step.
     await updateSetting('name', name.trim());
     await updateSetting('dob', dob);
-    router.push('/onboarding/tour');
+    router.push('/onboarding/basics');
   };
 
   if (!hasName) return null;
@@ -61,7 +61,6 @@ export default function OnboardingDobScreen() {
       step={2}
       title="BIRTHDAY"
       subtitle={'WHEN DID YOUR\nSTORY BEGIN?'}
-      footnote={'Stays on your phone. We only\never see an age range.'}
       onBack={() => goBack('/onboarding/name')}
       cta={{ text: 'CONTINUE', onPress: handleNext, disabled: !isValid }}
     >

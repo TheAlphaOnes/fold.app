@@ -87,6 +87,15 @@ export function useGuideFlow(initialStep?: GuideStepId) {
     setStepIndex(nextIndexAfter(stepIndex));
   }, [step, stepIndex, recordDone, nextIndexAfter]);
 
+  /** One step back; from the completion screen, back to the last step. */
+  const back = useCallback(() => {
+    if (stepIndex === 0) return;
+    haptic.select();
+    clearAdvanceTimer();
+    setStatus('active');
+    setStepIndex(stepIndex - 1);
+  }, [stepIndex]);
+
   const goToStep = useCallback((id: GuideStepId) => {
     haptic.select();
     clearAdvanceTimer();
@@ -124,6 +133,7 @@ export function useGuideFlow(initialStep?: GuideStepId) {
     completedMissions,
     succeed,
     skip,
+    back,
     goToStep,
     goToMission,
     finish,

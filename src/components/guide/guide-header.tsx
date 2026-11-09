@@ -5,10 +5,14 @@
  * ring counts), grouped by chapter. A tick fills from the left when its
  * mission completes, and half-fills when one of a two-step mission's steps
  * is done. Ticks double as navigation.
+ *
+ * Under the ticks, a plain BACK · STEP n OF N · SKIP row, so moving between
+ * steps never depends on finding the right tick.
  */
 
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, interpolateColor } from 'react-native-reanimated';
 
@@ -81,56 +85,117 @@ interface GuideHeaderProps {
   onClose: () => void;
   /** Hidden on the completion screen, where there is nothing left to skip. */
   onSkip?: () => void;
+  /** Hidden on the first step. */
+  onBack?: () => void;
+  stepNumber: number;
+  totalSteps: number;
 }
 
-export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onSkip }: GuideHeaderProps) {
+export function GuideHeader({ currentMission, missionState, onSelectMission, onClose, onSkip, onBack, stepNumber, totalSteps }: GuideHeaderProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <CloseButton onPress={onClose} accessibilityLabel="Close field guide" />
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+      <View style={styles.header}>
+        <CloseButton onPress={onClose} accessibilityLabel="Close field guide" />
 
-      <View style={styles.ticks} accessibilityRole="tablist">
-        {GUIDE_CHAPTERS.map((chapter) => (
-          <View key={chapter.id} style={styles.chapterGroup}>
-            {chapter.missions.map((mission) => (
-              <MissionTick
-                key={mission}
-                state={missionState(mission)}
-                isCurrent={mission === currentMission}
-                label={`${chapter.label.toLowerCase()} mission`}
-                onPress={() => onSelectMission(mission)}
-              />
-            ))}
-          </View>
-        ))}
+        <View style={styles.ticks} accessibilityRole="tablist">
+          {GUIDE_CHAPTERS.map((chapter) => (
+            <View key={chapter.id} style={styles.chapterGroup}>
+              {chapter.missions.map((mission) => (
+                <MissionTick
+                  key={mission}
+                  state={missionState(mission)}
+                  isCurrent={mission === currentMission}
+                  label={`${chapter.label.toLowerCase()} mission`}
+                  onPress={() => onSelectMission(mission)}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+
+        {/* Balances the close button so the ticks stay centred. */}
+        <View style={styles.balance} />
       </View>
 
-      {onSkip ? (
-        <Pressable
-          onPress={onSkip}
-          accessibilityRole="button"
-          accessibilityLabel="Skip this step"
-          style={({ pressed }) => [styles.skip, { opacity: pressed ? 0.5 : 1 }]}
-        >
-          <ThemedText style={[styles.skipText, { color: theme.textMuted }]}>SKIP</ThemedText>
-        </Pressable>
-      ) : (
-        <View style={styles.skip} />
-      )}
+      <View style={styles.navRow}>
+        <NavButton label="BACK" side="left" onPress={onBack} accessibilityLabel="Previous step" />
+        <ThemedText style={[styles.counter, { color: theme.textMuted }]}>
+          STEP {String(stepNumber).padStart(2, '0')} OF {String(totalSteps).padStart(2, '0')}
+        </ThemedText>
+        <NavButton label="SKIP" side="right" onPress={onSkip} accessibilityLabel="Skip this step" />
+      </View>
     </View>
   );
 }
 
+/** A labelled arrow; renders as an empty slot when there's nowhere to go. */
+function NavButton({ label, side, onPress, accessibilityLabel }: { label: string; side: 'left' | 'right'; onPress?: () => void; accessibilityLabel: string }) {
+  const theme = useTheme();
+  if (!onPress) return <View style={styles.navButton} />;
+  const Icon = side === 'left' ? ChevronLeft : ChevronRight;
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [
+        styles.navButton,
+        { borderColor: theme.border, opacity: pressed ? 0.5 : 1 },
+      ]}
+    >
+      {side === 'left' && <Icon size={14} color={theme.text} strokeWidth={2} />}
+      <ThemedText style={[styles.navText, { color: theme.text }]}>{label}</ThemedText>
+      {side === 'right' && <Icon size={14} color={theme.text} strokeWidth={2} />}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+    gap: 10,
+    zIndex: 200,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 8,
     gap: 12,
-    zIndex: 200,
+  },
+  balance: {
+    width: 44,
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  navButton: {
+    minWidth: 84,
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  navText: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 2,
+  },
+  counter: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 2,
   },
   ticks: {
     flex: 1,
@@ -153,17 +218,5 @@ const styles = StyleSheet.create({
   tickFill: {
     borderRadius: TICK_HEIGHT / 2,
     transformOrigin: 'left',
-  },
-  skip: {
-    minWidth: HIT,
-    height: HIT,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  skipText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 2,
   },
 });

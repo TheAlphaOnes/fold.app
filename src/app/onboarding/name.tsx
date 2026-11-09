@@ -22,7 +22,6 @@ export default function OnboardingNameScreen() {
       step={1}
       title="YOUR NAME"
       subtitle={'WHAT SHOULD FOLD\nCALL YOU?'}
-      footnote={'Only you see it. Change it\nanytime in settings.'}
       cta={{ text: 'CONTINUE', onPress: handleNext, disabled: !isValid }}
     >
       <CleanInput

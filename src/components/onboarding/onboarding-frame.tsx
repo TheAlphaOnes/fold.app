@@ -21,7 +21,7 @@ import { fadeIn, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
-export const ONBOARDING_STEPS = 3;
+export const ONBOARDING_STEPS = 4;
 
 interface OnboardingFrameProps {
   /** 1-based position in the setup flow. */
@@ -117,7 +117,7 @@ export function OnboardingFrame({ step, title, subtitle, footnote, onBack, cta, 
 }
 
 /** "02 / 03" plus a row of short bars, the current one in accent. */
-function StepMarker({ step }: { step: number }) {
+export function StepMarker({ step }: { step: number }) {
   const theme = useTheme();
   return (
     <View
