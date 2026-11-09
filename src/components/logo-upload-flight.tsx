@@ -11,14 +11,32 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Logo } from './logo';
 
+/** Scrim behind the flight; black in both themes so the badge and streaks always stand out. */
+const SCRIM_OPACITY = 0.38;
+const BADGE = 84;
+
 const DATA_PARTICLES = 8;
 
-export function LogoUploadFlight({ color }: { color: string }) {
+/**
+ * LogoUploadFlight — the bird that carries a shared card away.
+ *
+ * It flies on its own surface so it reads over any photo or the list:
+ * the screen dims briefly, and the bird sits in a round badge of the page
+ * colour with a hairline border and shadow. Three clocks: the dim settles
+ * first, the badge scales in and hangs, then it accelerates off the top
+ * trailing white streaks while the dim clears.
+ */
+export function LogoUploadFlight({ color, surface, border }: { color: string; surface: string; border: string }) {
+  const scrim = useSharedValue(0);
   const flightY = useSharedValue(0);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.4);
 
   useEffect(() => {
+    scrim.value = withSequence(
+      withTiming(SCRIM_OPACITY, { duration: 240, easing: Easing.out(Easing.cubic) }),
+      withDelay(1050, withTiming(0, { duration: 380 })),
+    );
     // 1. Fade in and scale up subtly at the center
     opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
     scale.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
@@ -44,23 +62,22 @@ export function LogoUploadFlight({ color }: { color: string }) {
         { translateY: flightY.value },
         { scale: scale.value }
       ],
-      shadowColor: color,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.8,
-      shadowRadius: 20,
       zIndex: 10,
     };
   });
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: scrim.value }));
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
-      <Animated.View style={logoStyle}>
-        <Logo size={48} color={color} />
+      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]} />
+
+      <Animated.View style={[styles.badge, { backgroundColor: surface, borderColor: border }, logoStyle]}>
+        <Logo size={44} color={color} />
       </Animated.View>
-      
-      {/* Glowing data streams following the logo */}
+
+      {/* Streaks trailing the badge, white on the dim in either theme. */}
       {Array.from({ length: DATA_PARTICLES }).map((_, i) => {
-        return <DataParticle key={i} index={i} color={color} />;
+        return <DataParticle key={i} index={i} color="#FFFFFF" />;
       })}
     </View>
   );
@@ -118,5 +135,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
-  }
+  },
+  scrim: {
+    backgroundColor: '#000',
+  },
+  badge: {
+    width: BADGE,
+    height: BADGE,
+    borderRadius: BADGE / 2,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
+  },
 });

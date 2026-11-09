@@ -137,7 +137,7 @@ export function MemoryActionsHost() {
 
       {flightKey > 0 && (
         <View style={[StyleSheet.absoluteFill, styles.flight]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} color={theme.text} />
+          <LogoUploadFlight key={flightKey} color={theme.text} surface={theme.background} border={theme.border} />
         </View>
       )}
 

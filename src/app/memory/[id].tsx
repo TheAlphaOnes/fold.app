@@ -662,7 +662,7 @@ export default function MemoryDetailScreen() {
       />
       {flightKey > 0 && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 9000, justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} color={theme.text} />
+          <LogoUploadFlight key={flightKey} color={theme.text} surface={theme.background} border={theme.border} />
         </View>
       )}
       {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
