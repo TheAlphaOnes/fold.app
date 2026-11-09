@@ -285,11 +285,29 @@ export function StoryPicker(props: StoryPickerProps) {
               style={styles.list}
               contentContainerStyle={styles.listContent}
               ListEmptyComponent={
-                <Pressable onPress={() => setIsCreating(true)} style={styles.empty}>
+                // No stories yet: a "new story" cover in the slot the first
+                // story will take, so the empty state reads as the next step.
+                <View style={styles.empty}>
+                  <Pressable
+                    onPress={() => {
+                      haptic.tap();
+                      setIsCreating(true);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Start your first story"
+                    style={({ pressed }) => [styles.storyItem, pressed && styles.pressed]}
+                  >
+                    <View style={styles.coverWrap}>
+                      <View style={[styles.cover, styles.newCover, { borderColor: theme.textMuted }]}>
+                        <Plus size={22} color={theme.text} />
+                      </View>
+                    </View>
+                    <ThemedText style={[styles.storyTitle, { color: theme.text }]}>NEW STORY</ThemedText>
+                  </Pressable>
                   <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-                    No stories yet. Tap + to start one.
+                    {'no stories yet.\nstart your first.'}
                   </ThemedText>
-                </Pressable>
+                </View>
               }
             />
           )}
@@ -393,12 +411,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   empty: {
-    height: COVER + 40,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   emptyText: {
     fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 24,
+  },
+  newCover: {
+    borderStyle: 'dashed',
   },
   // ── Create form ──────────────────────────────────────────────────────────
   inputRow: {
