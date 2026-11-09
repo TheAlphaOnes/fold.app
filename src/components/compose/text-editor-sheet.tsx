@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { InkButton, InkPalette } from '@/components/compose/ink-palette';
 import { MEMORY_FONTS } from '@/constants/fonts';
+import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { fadeIn, riseIn } from '@/constants/motion';
 import type { TextAlign, TextLayer } from '@/canvas/types';
 import { useTheme } from '@/hooks/use-theme';
@@ -45,6 +46,7 @@ interface TextEditorSheetProps {
 export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGallery }: TextEditorSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardShown = useKeyboardShown();
   const [draft, setDraft] = useState<TextDraft>(initial);
   const [inkOpen, setInkOpen] = useState(false);
   const input = useRef<TextInput>(null);
@@ -133,7 +135,7 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
           </View>
         </View>
 
-        <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: 8 }]}>
+        <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: keyboardShown ? 8 : insets.bottom + 8 }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fontRow} keyboardShouldPersistTaps="always">
             {(onCamera || onGallery) && (
               <View style={styles.quickAdd}>

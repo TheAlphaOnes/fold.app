@@ -1,6 +1,7 @@
 /**
- * Ink (text colour) controls for compose, living in the top toolbar beside
- * the size and font buttons.
+ * Ink (text colour) controls for the text editor's toolbar. The editor
+ * always sits on a dark dim, so these draw white-on-dark in both themes,
+ * and "no ink" (null) shows as white, which is how the editor writes it.
  *
  * InkButton — a toolbar button showing the current ink as a dot.
  * InkPalette — the swatch row it discloses, under the toolbar.
@@ -12,11 +13,12 @@ import Animated from 'react-native-reanimated';
 
 import { MEMORY_INKS } from '@/constants/theme';
 import { fadeOut, riseIn } from '@/constants/motion';
-import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
-/** Height of every compose toolbar chip (ink, size, font), so they line up. */
-export const TOOL_CHIP_HEIGHT = 42;
+/** Matches the editor's other tool buttons. */
+const BUTTON = 40;
+const ON_DARK = '#FFFFFF';
+const ON_DARK_BORDER = '#FFFFFF66';
 
 const SWATCH = 28;
 const SWATCH_HIT = (40 - SWATCH) / 2;
@@ -33,7 +35,6 @@ interface InkButtonProps {
 }
 
 export function InkButton({ color, open, onPress, style }: InkButtonProps) {
-  const theme = useTheme();
   return (
     <Pressable
       onPress={() => {
@@ -46,10 +47,10 @@ export function InkButton({ color, open, onPress, style }: InkButtonProps) {
       style={({ pressed }) => [
         style,
         styles.button,
-        { borderColor: open ? theme.text : theme.border, opacity: pressed ? 0.5 : 1 },
+        { borderColor: open ? ON_DARK : ON_DARK_BORDER, opacity: pressed ? 0.5 : 1 },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: color ?? theme.text, borderColor: theme.border }]} />
+      <View style={[styles.dot, { backgroundColor: color ?? ON_DARK }]} />
     </Pressable>
   );
 }
@@ -60,7 +61,6 @@ interface InkPaletteProps {
 }
 
 export function InkPalette({ color, onChange }: InkPaletteProps) {
-  const theme = useTheme();
   return (
     <Animated.View entering={riseIn(220, 0, -6)} exiting={fadeOut(120)}>
       <ScrollView
@@ -87,12 +87,12 @@ export function InkPalette({ color, onChange }: InkPaletteProps) {
               style={({ pressed }) => [
                 styles.swatchRing,
                 {
-                  borderColor: selected ? theme.text : 'transparent',
+                  borderColor: selected ? ON_DARK : 'transparent',
                   transform: [{ scale: pressed ? 0.92 : 1 }],
                 },
               ]}
             >
-              <View style={[styles.swatch, { backgroundColor: option.id ?? theme.text }]} />
+              <View style={[styles.swatch, { backgroundColor: option.id ?? ON_DARK }]} />
             </Pressable>
           );
         })}
@@ -102,12 +102,11 @@ export function InkPalette({ color, onChange }: InkPaletteProps) {
 }
 
 const styles = StyleSheet.create({
-  // A circle at the toolbar chip height, level with the size and font chips.
   button: {
-    width: TOOL_CHIP_HEIGHT,
-    height: TOOL_CHIP_HEIGHT,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+    width: BUTTON,
+    height: BUTTON,
+    borderRadius: BUTTON / 2,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -115,7 +114,9 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    // Keeps dark inks visible against the dim.
+    borderWidth: 1,
+    borderColor: ON_DARK_BORDER,
   },
   palette: {
     flexDirection: 'row',

@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   templates: { paddingTop: 10 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
-  storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1 },
+  storyChip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1 },
   storyText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 18, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
   saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
