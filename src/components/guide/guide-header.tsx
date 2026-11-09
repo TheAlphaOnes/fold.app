@@ -118,13 +118,13 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
             icon={ChevronLeft}
             onPress={onPrev ?? (() => {})}
             accessibilityLabel="Previous step"
-            style={[styles.arrow, !onPrev && styles.arrowOff]}
+            style={!onPrev && styles.arrowOff}
           />
           <RoundButton
             icon={ChevronRight}
             onPress={onNext ?? (() => {})}
             accessibilityLabel="Next step"
-            style={[styles.arrow, !onNext && styles.arrowOff]}
+            style={!onNext && styles.arrowOff}
           />
         </View>
       </View>
@@ -147,12 +147,7 @@ const styles = StyleSheet.create({
   },
   arrows: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  arrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    gap: 8,
   },
   arrowOff: {
     opacity: 0.3,
