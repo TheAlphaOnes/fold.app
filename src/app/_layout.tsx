@@ -175,8 +175,15 @@ function RootLayoutNav() {
     getDatabase()
       .then(async () => {
         await useSettingsStore.getState().loadSettings();
-        // Ink and the streak, before the profile first reads them.
-        await useProgressionStore.getState().refresh();
+        // Ink and the streak, before the profile first reads them: the saved
+        // snapshot if there is one (instant), recomputed in the background.
+        // Only a first launch waits for the full computation.
+        const progression = useProgressionStore.getState();
+        if (await progression.hydrateFromSnapshot()) {
+          void progression.refresh();
+        } else {
+          await progression.refresh();
+        }
         setDbReady(true);
         // Recently Deleted keeps memories for 30 days; clear out the expired
         // ones in the background so startup never waits on file cleanup.

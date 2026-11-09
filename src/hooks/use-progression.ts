@@ -16,6 +16,7 @@ import { setPersonProperties, track, type PersonProperties } from '@/services/an
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
 import { useMoments } from '@/hooks/use-moments';
+import { readCache, writeCache } from '@/db/cache-repository';
 import { toDayKey } from '@/utils/format-date';
 
 /** Stored as `YYYY-MM:value` — the month and the ink last shown for it. */
@@ -48,6 +49,8 @@ interface ProgressionState {
   /** Re-reads everything from the journal and reschedules reminders. Never throws. */
   refresh: () => Promise<void>;
   /** Call after a memory is saved: refreshes and notes any ink it earned. */
+  /** Loads the saved progress; true if there was one. */
+  hydrateFromSnapshot: () => Promise<boolean>;
   recordCapture: () => Promise<void>;
   clearGain: (id: number) => void;
   /** The profile has shown the current ink; the next count-up starts here. */
@@ -82,6 +85,20 @@ async function enableReminders(): Promise<void> {
   if (await requestReminderPermission()) await syncMomentReminders();
 }
 
+/**
+ * Last computed progress, kept in app_cache. Startup shows it at once and
+ * recomputes in the background: the real computation reads every memory,
+ * which grows with use and used to hold up launch.
+ */
+const SNAPSHOT_KEY = 'progression:v1';
+
+interface ProgressionSnapshot {
+  activeDays: string[];
+  memoryCount: number;
+  streak: StreakSummary;
+  ink: ProgressionState['ink'];
+}
+
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
   activeDays: new Set(),
   memoryCount: 0,
@@ -90,6 +107,19 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   seenInk: null,
   loaded: false,
   gain: null,
+
+  hydrateFromSnapshot: async () => {
+    const snapshot = await readCache<ProgressionSnapshot>(SNAPSHOT_KEY);
+    if (!snapshot || get().loaded) return false;
+    set({
+      activeDays: new Set(snapshot.activeDays),
+      memoryCount: snapshot.memoryCount,
+      streak: snapshot.streak,
+      ink: snapshot.ink,
+      loaded: true,
+    });
+    return true;
+  },
 
   refresh: async () => {
     const todayKey = toDayKey(new Date());
@@ -110,6 +140,16 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
       }));
       void syncMomentReminders();
       syncPersonProgress(get());
+      const saved = get();
+      const snapshot: ProgressionSnapshot = {
+        activeDays: [...saved.activeDays],
+        memoryCount: saved.memoryCount,
+        streak: saved.streak,
+        ink: saved.ink,
+      };
+      writeCache(SNAPSHOT_KEY, snapshot).catch(
+        (error) => console.warn('Failed to save progression snapshot', error),
+      );
     } catch (error) {
       // Progress is a nicety on top of the journal; a failed read keeps the
       // last known values rather than breaking the screen that asked.
