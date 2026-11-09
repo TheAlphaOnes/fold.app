@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CANVAS_ASPECT } from '@/canvas/geometry';
 import type { CanvasDoc, MediaSticker } from '@/canvas/types';
-import { RING_RADIUS, applyTemplate, ringSpot } from '@/templates/registry';
+import { RING_RADIUS, ringSpot } from '@/templates/arrangements';
+import { applyTemplate } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
 
 const image = (id: string): MediaElement => ({ id, uri: id, type: 'image', x_pos: 0, y_pos: 0, width: 3, height: 4 });
