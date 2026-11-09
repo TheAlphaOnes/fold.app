@@ -4,8 +4,9 @@
  * show a gap: scale stays ≥ 1 and the pan is clamped to the overflow.
  * Commits the crop when the gesture ends.
  *
- * Grid cells also take a tap (fill/replace) and a long press (pick it up to
- * swap with another cell), like Instagram's Layout.
+ * A tap selects the photo (Replace / Flip / Remove in the selection bar);
+ * in a grid a long press picks it up to swap with another cell, like
+ * Instagram's Layout.
  */
 
 import React, { useEffect } from 'react';
@@ -29,7 +30,7 @@ interface EditableFrameProps {
   onCrop: (crop: Crop) => void;
   onTap?: () => void;
   onLongPress?: () => void;
-  /** Outline shown while picked up for a swap. */
+  /** Outline shown while selected or picked up for a swap. */
   highlighted?: boolean;
 }
 
@@ -110,7 +111,12 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
         <Animated.View style={[StyleSheet.absoluteFill, style]}>
           <MediaFill media={media} crop={NO_CROP} width={width} height={height} mirrored={mirrored} />
         </Animated.View>
-        {highlighted && <View style={[StyleSheet.absoluteFill, styles.highlight]} pointerEvents="none" />}
+        {highlighted && (
+          // White outline with a fine dark inner line: visible on light and dark photos alike.
+          <View style={[StyleSheet.absoluteFill, styles.highlight]} pointerEvents="none">
+            <View style={[StyleSheet.absoluteFill, styles.highlightInner]} />
+          </View>
+        )}
       </View>
     </GestureDetector>
   );
@@ -118,5 +124,6 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
 
 const styles = StyleSheet.create({
   frame: { overflow: 'hidden' },
-  highlight: { borderWidth: 3, borderColor: '#F27A1A' },
+  highlight: { borderWidth: 3, borderColor: '#FFFFFF' },
+  highlightInner: { borderWidth: 1, borderColor: '#00000040' },
 });

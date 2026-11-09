@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
+
+import { Hatch } from '@/components/hatch';
 
 interface DoubleDiagonalStripesProps {
   /** Stroke color for the lines */
@@ -51,8 +52,6 @@ export function DoubleDiagonalStripes({
     ],
   }));
 
-  const patternId = `doubleCardStripes-${color.replace('#', '')}-${opacity}`;
-
   return (
     <Animated.View
       style={[
@@ -62,43 +61,14 @@ export function DoubleDiagonalStripes({
       ]}
       pointerEvents="none"
     >
-      <Svg key={patternId} width="120%" height="120%">
-        <Defs>
-          <Pattern
-            id={patternId}
-            x="0"
-            y="0"
-            width="15"
-            height="15"
-            patternUnits="userSpaceOnUse"
-          >
-            {/* 
-              Using pre-calculated 45-degree paths instead of rotated <Line>s 
-              fixes aliasing / stitching artifacts on iOS CoreGraphics.
-              Direction is \ (top-left to bottom-right).
-              Line 1: y = x, Line 2: y = x - 6.
-            */}
-            <Path
-              d="
-                M-2,-2 L17,17
-                M13,-2 L17,2
-                M-2,13 L2,17
-                
-                M4,-2 L17,11
-                M-2,7 L8,17
-              "
-              stroke={color}
-              strokeWidth="1"
-              strokeLinecap="square"
-            />
-          </Pattern>
-        </Defs>
-        {/* Draw the pattern oversized to prevent edges from showing during drift */}
-        <Rect x="-20%" y="-20%" width="140%" height="140%" fill={`url(#${patternId})`} />
-      </Svg>
+      {/* Pairs of lines (y = x and y = x - 6) every 15pt. When drifting, the
+          container is oversized so no edge is revealed. */}
+      <Hatch color={color} strokeWidth={1} period={15} offsets={PAIR} />
     </Animated.View>
   );
 }
+
+const PAIR = [0, -6] as const;
 
 const styles = StyleSheet.create({
   containerAnimated: {

@@ -21,11 +21,11 @@ const mediaLayerIds = (doc: CanvasDoc) =>
 
 describe('suggestTemplate', () => {
   it('suggests text for no visual media', () => {
-    expect(suggestTemplate([])).toBe('text');
+    expect(suggestTemplate([])).toBe('story');
   });
 
   it('does not count GIFs or audio as visual', () => {
-    expect(suggestTemplate([gif('g'), audio('a')])).toBe('text');
+    expect(suggestTemplate([gif('g'), audio('a')])).toBe('story');
     expect(suggestTemplate([image('i'), gif('g'), audio('a')])).toBe('story');
   });
 
@@ -164,7 +164,8 @@ describe('applyTemplate: stickers', () => {
 
 describe('newDoc', () => {
   it('uses the suggested template by default', () => {
-    expect(newDoc([]).template).toBe('text');
+    expect(newDoc([]).template).toBe('story');
+    expect(newDoc([]).background).toEqual({ kind: 'stripes' });
     expect(newDoc([image('a')]).template).toBe('story');
     expect(newDoc([image('a'), image('b')]).template).toBe('grid:duo-stack');
   });
@@ -205,18 +206,19 @@ describe('scatterSticker', () => {
 
 describe('defaultTextSpot', () => {
   it('uses the grid text anchor', () => {
-    expect(defaultTextSpot('grid:hero')).toEqual(gridLayout('hero').textAnchor);
+    expect(defaultTextSpot({ template: 'grid:hero', background: { kind: 'stripes' } })).toEqual(gridLayout('hero').textAnchor);
   });
 
-  it('places story text above the bottom safe zone', () => {
-    const spot = defaultTextSpot('story');
+  it('captions a full-bleed photo above the bottom safe zone', () => {
+    const spot = defaultTextSpot({ template: 'story', background: { kind: 'media', mediaId: 'a', crop: { x: 0, y: 0, scale: 1 } } });
     expect(spot.x).toBe(0.5);
     expect(spot.y).toBeLessThan(1 - SAFE_ZONE.bottom);
   });
 
-  it('centres text and stickers', () => {
-    expect(defaultTextSpot('text')).toEqual({ x: 0.5, y: 0.5 });
-    expect(defaultTextSpot('stickers')).toEqual({ x: 0.5, y: 0.5 });
+  it('centres text on a blank card, text and stickers', () => {
+    expect(defaultTextSpot({ template: 'story', background: { kind: 'stripes' } })).toEqual({ x: 0.5, y: 0.5 });
+    expect(defaultTextSpot({ template: 'text', background: { kind: 'stripes' } })).toEqual({ x: 0.5, y: 0.5 });
+    expect(defaultTextSpot({ template: 'stickers', background: { kind: 'stripes' } })).toEqual({ x: 0.5, y: 0.5 });
   });
 });
 

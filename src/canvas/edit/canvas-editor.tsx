@@ -28,6 +28,10 @@ interface CanvasEditorProps {
   height: number;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** The photo frame selected for Replace / Flip / Remove ('background' or a cell id). */
+  selectedFrame?: string | null;
+  /** Without it (the guide's sample canvas) a tap on a photo selects nothing. */
+  onSelectFrame?: (target: string | null) => void;
   onLayerChange: (id: string, patch: Partial<Layer>) => void;
   onLayerDelete: (id: string) => void;
   onEditText: (id: string) => void;
@@ -39,7 +43,7 @@ interface CanvasEditorProps {
 }
 
 export function CanvasEditor(props: CanvasEditorProps) {
-  const { doc, media, memory, width, height, selectedId, onSelect } = props;
+  const { doc, media, memory, width, height, selectedId, onSelect, selectedFrame = null, onSelectFrame } = props;
   const mediaMap = useMemo(() => new Map(media.map((m) => [m.id, m])), [media]);
   const [pickedCell, setPickedCell] = useState<string | null>(null);
 
@@ -60,26 +64,32 @@ export function CanvasEditor(props: CanvasEditorProps) {
         height={h}
         mirrored={mirrored}
         onCrop={(next) => props.onCrop(target, next)}
-        highlighted={pickedCell === target}
-        onTap={
-          target === 'background'
-            ? props.onBackgroundTap
-            : () => {
-                if (pickedCell && pickedCell !== target) {
-                  haptic.select();
-                  props.onSwapCells(pickedCell, target);
-                  setPickedCell(null);
-                } else {
-                  setPickedCell(null);
-                  onSelect(null);
-                }
-              }
-        }
+        highlighted={pickedCell === target || selectedFrame === target}
+        onTap={() => {
+          // Holding a cell, a tap on another swaps them.
+          if (pickedCell && pickedCell !== target) {
+            haptic.select();
+            props.onSwapCells(pickedCell, target);
+            setPickedCell(null);
+            return;
+          }
+          setPickedCell(null);
+          // With a sticker selected, a tap on the photo just lets go of it.
+          if (selectedId) {
+            onSelect(null);
+            return;
+          }
+          // Otherwise a tap selects the photo itself (tap again to let go).
+          if (!onSelectFrame) return;
+          haptic.select();
+          onSelectFrame(selectedFrame === target ? null : target);
+        }}
         onLongPress={
           target === 'background'
             ? undefined
             : () => {
                 haptic.thud();
+                onSelectFrame?.(null);
                 setPickedCell(target);
               }
         }

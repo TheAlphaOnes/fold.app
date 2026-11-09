@@ -1,10 +1,11 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import Animated from 'react-native-reanimated';
 import { Check, Pause, Play, X, type LucideIcon } from 'lucide-react-native';
 
-import { useTheme } from '@/hooks/use-theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { MOMENT_DIM_OPACITY, MOMENT_INK } from '@/components/moment-dim';
 import { ThemedText } from '@/components/themed-text';
 import { VinylRecord } from '@/components/vinyl-record';
 import { fadeIn, riseIn } from '@/constants/motion';
@@ -26,8 +27,9 @@ interface RecordingOverlayProps {
 }
 
 /**
- * Full-screen recording overlay: vignette, TP-7 wheel, elapsed time, and the
- * three voice-memo controls — Discard, Pause/Resume, Save. Only Save keeps
+ * Full-screen recording overlay: the moment dim, the TP-7 wheel centred on
+ * screen with the elapsed time under it, and the three voice-memo controls
+ * near the bottom — Discard, Pause/Resume, Save. Only Save keeps
  * the take, so a stray tap can no longer add a recording nobody wanted.
  *
  * The wheel spins and the dot pulses while recording; both rest while paused.
@@ -48,8 +50,7 @@ export function RecordingOverlay({
   onSave,
   onDiscard,
 }: RecordingOverlayProps) {
-  const theme = useTheme();
-  const vignetteColor = theme.background === '#FFFFFF' ? '#FFFFFF' : '#000000';
+  const insets = useSafeAreaInsets();
 
   if (!visible) return null;
 
@@ -64,30 +65,26 @@ export function RecordingOverlay({
 
   return (
     <View style={styles.container} pointerEvents="auto">
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Svg style={StyleSheet.absoluteFill}>
-          <Defs>
-            <RadialGradient id="recordingVignette" cx="50%" cy="50%" rx="70%" ry="70%" fx="50%" fy="50%">
-              <Stop offset="0%" stopColor={vignetteColor} stopOpacity="0.4" />
-              <Stop offset="40%" stopColor={vignetteColor} stopOpacity="0.7" />
-              <Stop offset="100%" stopColor={vignetteColor} stopOpacity="0.95" />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#recordingVignette)" />
-        </Svg>
+      {/* The app's moment dim: black in both themes, so the wheel and the
+          white controls read over any card or photo underneath. */}
+      <Animated.View entering={fadeIn(240)} style={[StyleSheet.absoluteFill, styles.dim]} pointerEvents="none" />
+
+      {/* The wheel sits dead centre; status and time hang just below it. */}
+      <View style={styles.center} pointerEvents="none">
+        <Animated.View entering={fadeIn(320, 60)} style={styles.wheel}>
+          <VinylRecord size={WHEEL} isRecording={!paused} />
+          <Animated.View entering={fadeIn(240, 180)} style={styles.readout}>
+            <ThemedText style={styles.hint}>{paused ? 'PAUSED' : 'RECORDING'}</ThemedText>
+            <ThemedText style={styles.timer}>{formatMillis(durationMillis)}</ThemedText>
+          </Animated.View>
+        </Animated.View>
       </View>
 
-      <View pointerEvents="none" style={styles.center}>
-        <VinylRecord size={300} isRecording={!paused} />
-        <ThemedText style={[styles.hint, { color: theme.textMuted }]}>{paused ? 'PAUSED' : 'RECORDING'}</ThemedText>
-        <ThemedText style={[styles.timer, { color: theme.text }]}>{formatMillis(durationMillis)}</ThemedText>
-      </View>
-
-      <View style={styles.controls}>
-        <Animated.View entering={riseIn(260, 80, 10)}>
+      <View style={[styles.controls, { bottom: insets.bottom + 40 }]}>
+        <Animated.View entering={riseIn(260, 220, 10)}>
           <Control icon={X} label="DISCARD" onPress={confirmDiscard} />
         </Animated.View>
-        <Animated.View entering={riseIn(300, 0, 12)}>
+        <Animated.View entering={riseIn(300, 160, 12)}>
           <Control
             primary
             icon={paused ? Play : Pause}
@@ -95,7 +92,7 @@ export function RecordingOverlay({
             onPress={paused ? onResume : onPause}
           />
         </Animated.View>
-        <Animated.View entering={riseIn(260, 140, 10)}>
+        <Animated.View entering={riseIn(260, 280, 10)}>
           <Control icon={Check} label="SAVE" onPress={onSave} />
         </Animated.View>
       </View>
@@ -114,7 +111,6 @@ function Control({
   onPress: () => void;
   primary?: boolean;
 }) {
-  const theme = useTheme();
   const size = primary ? PRIMARY : SECONDARY;
   return (
     <View style={styles.control}>
@@ -131,29 +127,21 @@ function Control({
           style={({ pressed }) => [
             styles.button,
             { width: size, height: size, borderRadius: size / 2 },
-            primary
-              ? { backgroundColor: theme.text, borderColor: theme.text }
-              : {
-                  backgroundColor: theme.background,
-                  borderColor: theme.border,
-                },
+            primary ? styles.primary : styles.secondary,
             pressed && styles.pressed,
           ]}
         >
-          <Icon
-            size={primary ? 26 : 20}
-            color={primary ? theme.background : theme.text}
-            fill={primary ? theme.background : 'none'}
-          />
+          <Icon size={primary ? 26 : 20} color={primary ? '#111111' : MOMENT_INK} fill={primary ? '#111111' : 'none'} />
         </Pressable>
       </View>
-      <Animated.View entering={fadeIn(200, 200)}>
-        <ThemedText style={[styles.controlLabel, { color: theme.textMuted }]}>{label}</ThemedText>
+      <Animated.View entering={fadeIn(200, 320)}>
+        <ThemedText style={styles.controlLabel}>{label}</ThemedText>
       </Animated.View>
     </View>
   );
 }
 
+const WHEEL = 300;
 const PRIMARY = 72;
 const SECONDARY = 52;
 
@@ -162,33 +150,33 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 99999,
     elevation: 99999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Absorbs touches so nothing underneath reacts; near-invisible so
-    // absolute views still capture them on every RN version.
-    backgroundColor: 'rgba(0,0,0,0.01)',
   },
-  center: {
-    alignItems: 'center',
-  },
+  dim: { backgroundColor: '#000', opacity: Math.min(0.75, MOMENT_DIM_OPACITY + 0.2) },
+  center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  wheel: { width: WHEEL, height: WHEEL },
+  // Hangs under the wheel without moving it off centre.
+  readout: { position: 'absolute', top: WHEEL + 28, left: 0, right: 0, alignItems: 'center' },
   hint: {
-    marginTop: 40,
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 11,
     letterSpacing: 2,
+    color: '#FFFFFFA6',
   },
   timer: {
-    marginTop: 12,
+    marginTop: 10,
     fontFamily: 'JetBrainsMono-Regular',
     fontSize: 24,
     letterSpacing: 2,
-    opacity: 0.8,
+    color: MOMENT_INK,
   },
   controls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'flex-start',
     gap: 36,
-    marginTop: 40,
   },
   control: {
     alignItems: 'center',
@@ -204,10 +192,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  primary: { backgroundColor: MOMENT_INK, borderColor: MOMENT_INK },
+  secondary: { backgroundColor: 'transparent', borderColor: '#FFFFFF66' },
   controlLabel: {
     fontFamily: 'JetBrainsMono-Medium',
     fontSize: 10,
     letterSpacing: 2,
+    color: '#FFFFFFA6',
   },
   pressed: {
     transform: [{ scale: 0.94 }],

@@ -1,16 +1,17 @@
 /**
  * ComposerBody — the composer screen. Layout (top to bottom):
  *
- *   ✕            ↶  Aa  ☺      close · undo · text · stickers
+ *   ✕       ↶  [ADD TO STORY]  Aa     close · undo · story · text
+ *   [Photo][GIF][Song][Voice][Place][Date]   AddRow, in the open
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
- *   [shape · front · remove]           only while a sticker is selected
+ *   [tools for the selection]          sticker or photo, while selected
  *   📷 🖼     [ ▦ TEMPLATE ⇅ ]     SAVE
  *
  * Laid out by priority: Save is the one filled action; adding media sits
  * at the thumb; the template is a quiet style pill (tap: next, hold: list,
- * gap inside the list). Filing into a story is optional, so it's a round
- * toggle in the top bar with Text and Stickers.
+ * gap inside the list). Filing into a story is optional, so it's an
+ * outlined text CTA in the top bar.
  *
  * New memories open straight into writing (TextEditorSheet) on the
  * stripes, exactly like the old compose; the camera/gallery buttons above
@@ -23,14 +24,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { ArrowUpToLine, Book, Camera, RotateCcw, Image as ImageIcon, Shapes, Smile, Trash2, Type as TypeIcon, Undo2 } from 'lucide-react-native';
+import { Book, Camera, Image as ImageIcon, Type as TypeIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
 import { fitCanvas, newId } from '@/canvas/geometry';
-import type { CanvasDoc, Layer, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
+import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
-import { StickerSheet, type StickerKind } from '@/components/compose/sticker-sheet';
+import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
+import { FrameTools, StickerTools } from '@/components/compose/selection-bar';
 import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import { TextEditorSheet, type TextDraft } from '@/components/compose/text-editor-sheet';
 import { GifPicker } from '@/components/gif-picker';
@@ -51,7 +53,7 @@ import { useVoiceTake } from '@/hooks/use-voice-take';
 import { trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { canvasOf } from '@/templates/legacy';
-import { baseMediaIds, defaultTextSpot, scatterSticker } from '@/templates/registry';
+import { defaultTextSpot, frameMediaId, isBlankCard, scatterSticker, shownMediaIds } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
 import { alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
 import { goBack } from '@/utils/navigation';
@@ -61,6 +63,8 @@ import { consumePendingCameraMedia } from '@/utils/pending-camera-media';
 const LEGACY_CARD_WIDTH = 348;
 /** Bar heights excluding safe areas, shared by the layout and the writing spacers. */
 const TOP_BAR = 6 + ROUND_BUTTON_SIZE + 8;
+/** The add row under the top bar, with space below it. */
+const ADD_AREA = ADD_ROW_HEIGHT + 8;
 const BOTTOM_BAR = 12 + ROUND_BUTTON_SIZE + 8;
 /** Breathing room between the canvas and the bars. */
 const CANVAS_MARGIN = 24;
@@ -121,7 +125,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     }));
     const state = initialComposerState(media);
     if (sharedText?.trim()) {
-      const spot = defaultTextSpot(state.doc.template);
+      const spot = defaultTextSpot(state.doc);
       state.doc = {
         ...state.doc,
         layers: [...state.doc.layers, { id: newId(), kind: 'text', ...DEFAULT_TEXT, text: sharedText.trim(), ...spot, scale: 1, rotation: 0 }],
@@ -147,7 +151,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   const [editing, setEditing] = useState<Editing>(() =>
     !existing && start.state.media.length === 0 && !sharedText?.trim() ? { id: newId(), isNew: true } : null,
   );
-  const [sheet, setSheet] = useState<'stickers' | 'music' | 'gif' | 'stories' | null>(null);
+  const [sheet, setSheet] = useState<'music' | 'gif' | 'stories' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Song downloads by media id: the local file, or null if it failed.
   const pendingSongs = useRef(new Map<string, Promise<{ uri: string; artwork: string } | null>>());
@@ -158,7 +162,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   // ─── Canvas size: the largest 9:16 that fits between the bars ─────────
   const canvas = fitCanvas({
     width: window.width - 32,
-    height: window.height - insets.top - insets.bottom - TOP_BAR - BOTTOM_BAR - CANVAS_MARGIN * 2,
+    height: window.height - insets.top - insets.bottom - TOP_BAR - ADD_AREA - BOTTOM_BAR - CANVAS_MARGIN * 2,
   });
   const memory = {
     id: existing?.id ?? -1,
@@ -181,7 +185,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     const text = draft.text.trim();
     if (editing.isNew) {
       if (text) {
-        const spot = defaultTextSpot(c.doc.template);
+        const spot = defaultTextSpot(c.doc);
         c.addLayer({ id: editing.id, kind: 'text', ...draft, text, ...spot, scale: 1, rotation: 0 });
       }
     } else if (!text) {
@@ -212,7 +216,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     c.addLayer(scatterSticker(m.id, count + offset), m);
   };
 
-  const onPickSticker = async (kind: StickerKind) => {
+  const onAdd = async (kind: AddKind) => {
     switch (kind) {
       case 'photo': {
         const added = await media.pickFromGallery();
@@ -260,18 +264,17 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     c.addLayer({ id: newId(), kind: 'audio', mediaId: m.id, x: 0.5, y: 0.45, scale: 1.3, rotation: 0 }, m);
   };
 
-  const fillCell = async (cellId: string) => {
+  /** Fills an empty cell, or replaces the selected photo, from the gallery. */
+  const fillFrame = async (target: string) => {
     const [first] = await media.pickFromGallery();
-    if (first) c.fillCell(cellId, first);
+    if (first) c.fillFrame(target, first);
   };
 
   // ─── Selected sticker tools ───────────────────────────────────────────
   const selected = c.selectedId ? c.doc.layers.find((l) => l.id === c.selectedId) : undefined;
   const cycleShape = () => {
-    if (!selected || selected.kind !== 'media') return;
-    const next = SHAPES[(SHAPES.indexOf((selected as MediaSticker).shape) + 1) % SHAPES.length];
-    haptic.select();
-    c.updateLayer(selected.id, { shape: next } as Partial<Layer>);
+    if (selected?.kind !== 'media') return;
+    c.updateLayer(selected.id, { shape: SHAPES[(SHAPES.indexOf(selected.shape) + 1) % SHAPES.length] });
   };
 
   // ─── Save ─────────────────────────────────────────────────────────────
@@ -297,8 +300,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         }
       }
       // What you see is what's kept: media nothing on the canvas shows isn't saved.
-      const shown = new Set<string>(baseMediaIds(doc));
-      for (const l of doc.layers) if ('mediaId' in l) shown.add(l.mediaId);
+      const shown = shownMediaIds(doc);
       mediaList = mediaList.filter((m) => shown.has(m.id));
       const texts = doc.layers.filter((l): l is TextLayer => l.kind === 'text');
       const first = texts[0];
@@ -368,11 +370,15 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
               </ThemedText>
             </Pressable>
             <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
-            <RoundButton icon={Smile} accessibilityLabel="Add a sticker" onPress={() => setSheet('stickers')} />
           </View>
         </Animated.View>
       )}
-      {editing && <View style={{ height: insets.top + TOP_BAR }} />}
+      {!editing && (
+        <View style={styles.addArea}>
+          <AddRow onAdd={onAdd} />
+        </View>
+      )}
+      {editing && <View style={{ height: insets.top + TOP_BAR + ADD_AREA }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
         <CanvasEditor
@@ -387,11 +393,13 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           onLayerDelete={c.removeLayer}
           onEditText={(id) => setEditing({ id, isNew: false })}
           onCrop={c.setCrop}
-          onFillCell={fillCell}
+          onFillCell={fillFrame}
+          selectedFrame={c.selectedFrame}
+          onSelectFrame={c.selectFrame}
           onSwapCells={c.swapCells}
           onBackgroundTap={() => {
-            if (c.selectedId) c.select(null);
-            else if (c.doc.template === 'text' && textLayers.length === 0) setEditing({ id: newId(), isNew: true });
+            if (c.selectedId || c.selectedFrame) c.select(null);
+            else if (isBlankCard(c.doc) && textLayers.length === 0) setEditing({ id: newId(), isNew: true });
           }}
         />
         {templatesOpen && (
@@ -407,40 +415,22 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             />
           </View>
         )}
-        {!templatesOpen && selected && selected.kind === 'media' && (
-          <Animated.View
-            entering={riseIn(200, 0, 6)}
-            style={[styles.selectionBar, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}
-          >
-            <Pressable onPress={cycleShape} accessibilityRole="button" accessibilityLabel="Change shape" style={styles.selBtn}>
-              <Shapes size={16} color={theme.text} />
-              <ThemedText style={[styles.selText, { color: theme.text }]}>{(selected as MediaSticker).shape.toUpperCase()}</ThemedText>
-            </Pressable>
-            {/* Twisting snaps to straight; this is the one-tap version, and back. */}
-            <Pressable
-              onPress={() => {
-                haptic.select();
-                c.updateLayer(selected.id, { rotation: selected.rotation % 360 === 0 ? -6 : 0 } as Partial<Layer>);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={selected.rotation % 360 === 0 ? 'Tilt' : 'Straighten'}
-              style={styles.selBtn}
-            >
-              <RotateCcw size={16} color={theme.text} />
-              <ThemedText style={[styles.selText, { color: theme.text }]}>{selected.rotation % 360 === 0 ? 'TILT' : 'STRAIGHT'}</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={() => c.bringToFront(selected.id)}
-              accessibilityRole="button"
-              accessibilityLabel="Bring to front"
-              style={styles.selBtn}
-            >
-              <ArrowUpToLine size={16} color={theme.text} />
-            </Pressable>
-            <Pressable onPress={() => c.removeLayer(selected.id)} accessibilityRole="button" accessibilityLabel="Remove" style={styles.selBtn}>
-              <Trash2 size={16} color={theme.destructive} />
-            </Pressable>
-          </Animated.View>
+        {!templatesOpen && selected?.kind === 'media' && (
+          <StickerTools
+            sticker={selected}
+            onCycleShape={cycleShape}
+            onToggleStraight={() => c.updateLayer(selected.id, { rotation: selected.rotation % 360 === 0 ? -6 : 0 })}
+            onFront={() => c.bringToFront(selected.id)}
+            onRemove={() => c.removeLayer(selected.id)}
+          />
+        )}
+        {!templatesOpen && c.selectedFrame && frameMediaId(c.doc, c.selectedFrame) && (
+          <FrameTools
+            canFlip={c.selectedFrame !== 'background'}
+            onReplace={() => fillFrame(c.selectedFrame!)}
+            onFlip={() => c.mirrorCell(c.selectedFrame!)}
+            onRemove={() => c.clearFrame(c.selectedFrame!)}
+          />
         )}
       </Animated.View>
 
@@ -490,7 +480,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         />
       )}
 
-      <StickerSheet visible={sheet === 'stickers'} onClose={() => setSheet(null)} onPick={onPickSticker} />
 
       <MusicPicker
         visible={sheet === 'music'}
@@ -549,24 +538,12 @@ const styles = StyleSheet.create({
   topBar: { height: undefined, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   topRight: { flexDirection: 'row', gap: 10 },
   canvasSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  selectionBar: {
-    position: 'absolute',
-    bottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-  },
-  selBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 36, justifyContent: 'center' },
-  selText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.5 },
   // Floats over the bottom of the canvas, right above the picker it opened from.
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 24, paddingTop: 12 },
   middle: { flex: 1, flexDirection: 'row' },
+  addArea: { height: ADD_AREA },
   storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
