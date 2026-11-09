@@ -83,6 +83,7 @@ import { useStartupPermissions } from "@/hooks/use-startup-permissions";
 import { usePhonePortraitLock } from "@/hooks/use-phone-portrait-lock";
 import { useProfileDataSync } from "@/hooks/use-profile-data";
 import { MemoryActionsHost } from "@/components/memory-actions-host";
+import { CelebrationHost } from "@/components/celebration-host";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -273,6 +274,8 @@ function RootLayoutNav() {
             <ProgressionSync />
             {/* The hold menu for memory cards, one instance for the whole app. */}
             <MemoryActionsHost />
+            {/* Dim + sparkle when a memory is saved or changed, anywhere. */}
+            <CelebrationHost />
           </AnimatedSplashScreen>
         </BiometricGate>
       </ThemeProvider>

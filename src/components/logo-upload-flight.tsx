@@ -10,11 +10,12 @@ import Animated, {
   withSequence
 } from 'react-native-reanimated';
 import { Logo } from './logo';
+import { MOMENT_INK, MomentDim } from './moment-dim';
 
-/** Scrim behind the flight; black in both themes so the badge and streaks always stand out. */
-const SCRIM_OPACITY = 0.5;
 /** The bird and its streaks: white on the dim, with a soft glow. */
-const INK = '#FFFFFF';
+const INK = MOMENT_INK;
+/** Dim holds while the bird hangs and flies (700ms + 1000ms), then clears. */
+const DIM_HOLD_MS = 1050;
 
 const DATA_PARTICLES = 8;
 
@@ -27,16 +28,11 @@ const DATA_PARTICLES = 8;
  * accelerates off the top trailing streaks while the dim clears.
  */
 export function LogoUploadFlight() {
-  const scrim = useSharedValue(0);
   const flightY = useSharedValue(0);
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.4);
 
   useEffect(() => {
-    scrim.value = withSequence(
-      withTiming(SCRIM_OPACITY, { duration: 240, easing: Easing.out(Easing.cubic) }),
-      withDelay(1050, withTiming(0, { duration: 380 })),
-    );
     // 1. Fade in and scale up subtly at the center
     opacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
     scale.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
@@ -65,11 +61,10 @@ export function LogoUploadFlight() {
       zIndex: 10,
     };
   });
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: scrim.value }));
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
-      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]} />
+      <MomentDim holdMs={DIM_HOLD_MS} />
 
       <Animated.View style={[styles.bird, logoStyle]}>
         <Logo size={72} color={INK} />
@@ -135,9 +130,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
-  },
-  scrim: {
-    backgroundColor: '#000',
   },
   bird: {
     shadowColor: INK,

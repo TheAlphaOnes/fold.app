@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useTheme } from "@/hooks/use-theme";
-import { CelebrationBurst } from "@/components/celebration-burst";
 import { DiagonalStripes } from "@/components/diagonal-stripes";
 import type { Composition, MediaElement } from "@/types/journal";
 import { DraggableSticker } from "@/components/draggable-sticker";
@@ -268,20 +267,6 @@ export function MemoryCard({
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const story = useStoriesStore(s => s.stories.find(st => item.storyIds?.includes(st.id)));
-  const justAddedId = useJournalStore(s => s.justAddedId);
-  const setJustAddedId = useJournalStore(s => s.setJustAddedId);
-  const isNewlyAdded = justAddedId === item.id;
-
-  useEffect(() => {
-    if (isNewlyAdded) {
-      // Clear it after the burst finishes so it doesn't replay on re-renders
-      const timer = setTimeout(() => {
-        setJustAddedId(null);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isNewlyAdded, setJustAddedId]);
-
   // Card has 21px padding on both sides based on the flatlist paddingHorizontal
   const cardWidth = width - 42;
   const isDark =
@@ -385,7 +370,6 @@ export function MemoryCard({
           opacity={isDark ? 0.12 : 0.5}
           animated
         />
-        {isNewlyAdded && <CelebrationBurst color={theme.text} />}
       </View>
 
       {/* LAYER 2: Content Depending on Type */}
