@@ -1,10 +1,10 @@
 /**
  * AddRow — the things you can add to a canvas, laid out in the open under
  * the top bar so they're seen and reached in one tap instead of behind a
- * sheet. Six equal rectangular pills (icon beside a compact label) share
- * the width exactly, lined up with the top bar's edges and at its button
- * height: nothing scrolls or clips; on the narrowest phones the labels
- * shrink a touch to fit.
+ * sheet. Two rows of three equal rectangular pills (icon beside its label)
+ * lined up with the top bar's edges: six in one row would crush the
+ * labels on a phone, three per row leaves each room to breathe.
+ * Nothing scrolls or clips at any width.
  */
 
 import React from 'react';
@@ -29,13 +29,17 @@ const ITEMS: { kind: AddKind; icon: LucideIcon; label: string }[] = [
   { kind: 'date', icon: CalendarDays, label: 'Date' },
 ];
 
-/** Row height, for the composer's layout budget. */
-export const ADD_ROW_HEIGHT = ROUND_BUTTON_SIZE;
+const PILL_HEIGHT = ROUND_BUTTON_SIZE;
+const ROW_GAP = 8;
+const PER_ROW = 3;
+
+/** Height of the whole block, for the composer's layout budget. */
+export const ADD_ROW_HEIGHT = PILL_HEIGHT * 2 + ROW_GAP;
 
 export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
   const theme = useTheme();
   return (
-    <View style={styles.row}>
+    <View style={styles.grid}>
       {ITEMS.map(({ kind, icon: Icon, label }, i) => (
         // Pills arrive one after another, so the row settles rather than pops.
         <Animated.View key={kind} entering={riseIn(260, 80 + i * 40, 6)} style={styles.slot}>
@@ -51,8 +55,8 @@ export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
               { borderColor: theme.border, backgroundColor: pressed ? theme.backgroundElement : 'transparent', transform: [{ scale: pressed ? 0.96 : 1 }] },
             ]}
           >
-            <Icon size={13} color={theme.text} strokeWidth={1.75} />
-            <ThemedText style={[styles.label, { color: theme.textMuted }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+            <Icon size={14} color={theme.text} strokeWidth={1.75} />
+            <ThemedText style={[styles.label, { color: theme.textMuted }]} numberOfLines={1}>
               {label.toUpperCase()}
             </ThemedText>
           </Pressable>
@@ -63,18 +67,19 @@ export function AddRow({ onAdd }: { onAdd: (kind: AddKind) => void }) {
 }
 
 const styles = StyleSheet.create({
-  // Same side margin as the top bar, so the tiles line up under its buttons.
-  row: { flexDirection: 'row', paddingHorizontal: 16, gap: 6 },
-  slot: { flex: 1 },
+  // Same side margin as the top bar, so the pills line up under its buttons.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: ROW_GAP },
+  // A third of the row, less its share of the two gaps between columns.
+  slot: { flexBasis: `${100 / PER_ROW - 3}%`, flexGrow: 1 },
   tile: {
-    height: ADD_ROW_HEIGHT,
+    height: PILL_HEIGHT,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 4,
+    gap: 8,
+    paddingHorizontal: 12,
   },
-  label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 9, flexShrink: 1 },
+  label: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
 });
