@@ -25,7 +25,7 @@ import { EDGE_TAB_GAP, EDGE_TAB_HEIGHT, EDGE_TAB_WIDTH } from '@/components/edge
 import { OnboardingFrame } from '@/components/onboarding/onboarding-frame';
 import { ThemedText } from '@/components/themed-text';
 import { GUIDE_MISSION_COUNT } from '@/constants/guide';
-import { EASE_IN_OUT, fadeIn, riseIn } from '@/constants/motion';
+import { EASE_IN_OUT, fadeIn } from '@/constants/motion';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
@@ -33,14 +33,7 @@ import { track } from '@/services/analytics';
 import { getAgeRange } from '@/utils/dob';
 import { goBack } from '@/utils/navigation';
 
-const LESSONS = [
-  { verb: 'TAP', what: 'write' },
-  { verb: 'HOLD', what: 'talk' },
-  { verb: 'SWIPE UP', what: 'snap' },
-] as const;
-
 export default function OnboardingTourScreen() {
-  const theme = useTheme();
   const finish = async (takeTour: boolean) => {
     const { settings, updateSetting } = useSettingsStore.getState();
     haptic.success();
@@ -59,18 +52,6 @@ export default function OnboardingTourScreen() {
       secondary={{ text: 'I’ll explore myself', onPress: () => void finish(false) }}
     >
       <ShelfPreview />
-      <View style={styles.lessons}>
-        {LESSONS.map((lesson, i) => (
-          <Animated.View
-            key={lesson.verb}
-            entering={riseIn(320, 420 + i * 90, 8)}
-            style={styles.lesson}
-          >
-            <ThemedText style={[styles.lessonVerb, { color: theme.accentWarm }]}>{lesson.verb}</ThemedText>
-            <ThemedText style={[styles.lessonWhat, { color: theme.text }]}>{lesson.what}</ThemedText>
-          </Animated.View>
-        ))}
-      </View>
     </OnboardingFrame>
   );
 }
@@ -191,25 +172,5 @@ const styles = StyleSheet.create({
     height: 1.5,
     marginLeft: 8,
     borderRadius: 1,
-  },
-  lessons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 28,
-  },
-  lesson: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  lessonVerb: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 10,
-    letterSpacing: 1.5,
-  },
-  lessonWhat: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
   },
 });
