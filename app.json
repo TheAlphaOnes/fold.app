@@ -116,6 +116,7 @@
         }
       ],
       "./plugins/withAndroidFreeOrientation",
+      "./plugins/withRocketSimConnect",
       [
         "expo-build-properties",
         {
