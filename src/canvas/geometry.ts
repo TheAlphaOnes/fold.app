@@ -6,8 +6,8 @@
 /** Width / height of every canvas (9:16, like a story). */
 export const CANVAS_ASPECT = 9 / 16;
 
-/** Export size for sharing: a full-resolution story frame. */
-export const EXPORT_SIZE = { width: 1080, height: 1920 } as const;
+/** Export size for sharing: a 4K story frame (2× a 1080×1920 story), sharp when posted or reposted. */
+export const EXPORT_SIZE = { width: 2160, height: 3840 } as const;
 
 /** Bands kept clear of default placements (fractions of canvas height). */
 export const SAFE_ZONE = { top: 0.12, bottom: 0.16, side: 0.06 } as const;

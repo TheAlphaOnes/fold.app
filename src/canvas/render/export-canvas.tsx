@@ -1,11 +1,11 @@
 /**
  * ExportCanvas — an offscreen 9:16 copy of a memory, captured as a full
- * 1080×1920 story image when sharing "as a card". Fold's crane sits in the
- * bottom corner as a quiet signature.
+ * 2160×3840 story image when sharing "as a card". Fold's crane and name
+ * sit in the bottom corner as a signature that promotes the app.
  */
 
 import React, { forwardRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { PixelRatio, StyleSheet, Text, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import { CanvasView } from '@/canvas/render/canvas-view';
@@ -14,8 +14,14 @@ import { useCanvasOf } from '@/canvas/use-canvas-of';
 import { Logo } from '@/components/logo';
 import type { Composition } from '@/types/journal';
 
-/** Layout size of the offscreen view; the capture scales it to EXPORT_SIZE. */
-const LAYOUT = { width: 360, height: 640 };
+/**
+ * Layout size of the offscreen view: EXPORT_SIZE in points, so the native
+ * snapshot is already full size and nothing is upscaled (which blurred
+ * the crane and photos). Everything inside scales with the width.
+ */
+const LAYOUT = { width: EXPORT_SIZE.width / PixelRatio.get(), height: EXPORT_SIZE.height / PixelRatio.get() };
+/** The signature's size as a share of the card width. */
+const MARK = LAYOUT.width * 0.16;
 
 export const ExportCanvas = forwardRef<View, { memory: Composition }>(function ExportCanvas({ memory }, ref) {
   const doc = useCanvasOf(memory);
@@ -25,7 +31,8 @@ export const ExportCanvas = forwardRef<View, { memory: Composition }>(function E
       <View ref={ref} collapsable={false} style={LAYOUT}>
         <CanvasView doc={doc} memory={memory} width={LAYOUT.width} height={LAYOUT.height} animated={false} />
         <View style={styles.signature}>
-          <Logo size={28} color="#FFFFFF" />
+          <Logo size={MARK} color="#FFFFFF" style={styles.crane} />
+          <Text style={styles.wordmark}>fold</Text>
         </View>
       </View>
     </View>
@@ -42,12 +49,22 @@ const styles = StyleSheet.create({
   offscreen: { position: 'absolute', top: 0, left: 0, opacity: 0, zIndex: -100 },
   signature: {
     position: 'absolute',
-    right: 14,
-    bottom: 14,
-    opacity: 0.9,
+    right: LAYOUT.width * 0.04,
+    bottom: LAYOUT.width * 0.04,
+    flexDirection: 'row',
+    alignItems: 'center',
+    opacity: 0.95,
     shadowColor: '#000',
     shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowRadius: LAYOUT.width * 0.012,
     shadowOffset: { width: 0, height: 1 },
+  },
+  // The crane's viewBox has wide margins; pull the name in close to it.
+  crane: { marginRight: -MARK * 0.12 },
+  wordmark: {
+    color: '#FFFFFF',
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: MARK * 0.36,
+    letterSpacing: MARK * 0.02,
   },
 });
