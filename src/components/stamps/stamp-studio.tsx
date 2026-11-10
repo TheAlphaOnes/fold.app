@@ -54,8 +54,8 @@ import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 /** The drawer's visible height when closed (above the home indicator): the title and just the tops of the fanned stamps. */
-const PEEK = 50;
-const FAN_STAMP = 84;
+const PEEK = 74;
+const FAN_STAMP = 66;
 const FAN_MAX = 5;
 /** Room at the top for the page's close and map buttons. EDGE leaves room for the tiles' tilt. */
 const TOP_BAR = 56;
@@ -222,9 +222,10 @@ function FanCard({ stamp, offset, landing, left }: { stamp: Stamp; offset: numbe
   const style = useAnimatedStyle(() => ({
     opacity: Math.min(1, drop.get() * 2),
     transform: [
-      { translateX: offset * 52 },
-      { translateY: Math.abs(offset) * 7 - (1 - drop.get()) * 160 },
-      { rotate: `${offset * 6}deg` },
+      // An arc, like a hand of cards: the middle stamp rises highest, the outer ones dip and turn.
+      { translateX: offset * 46 },
+      { translateY: offset * offset * 9 - (1 - drop.get()) * 160 },
+      { rotate: `${offset * 9}deg` },
       { scale: 1.25 - drop.get() * 0.25 },
     ],
   }));
@@ -306,7 +307,7 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, opacity: 0.5 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
-  fan: { marginTop: 6 },
+  fan: { marginTop: 2 },
   fanCard: { position: 'absolute', top: 0 },
   fanHint: { position: 'absolute', top: FAN_STAMP * STAMP_ASPECT * 0.5 - 8, left: 0, right: 0, textAlign: 'center', fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
   collection: { ...StyleSheet.absoluteFill, top: 56 },
