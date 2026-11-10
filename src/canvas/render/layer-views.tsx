@@ -17,6 +17,7 @@ import { STICKER_BASE_WIDTH } from '@/canvas/geometry';
 import { stampOutline } from '@/canvas/render/stamp-outline';
 import { cutHeight, cutPath, isCutShape, type CutShape } from '@/canvas/render/sticker-paths';
 import { useMemoryAudio } from '@/canvas/render/use-memory-audio';
+import { PHOTO_DISSOLVE } from '@/canvas/render/media-fill';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import type { MediaElement } from '@/types/journal';
@@ -61,7 +62,8 @@ function stickerSize(media: MediaElement, width: number, scale: number) {
   return { w, h };
 }
 
-export function MediaStickerView({ layer, media, width }: { layer: MediaSticker; media: MediaElement; width: number }) {
+/** `fade`: a swapped photo dissolves in (the live card and the composer; never exports). */
+export function MediaStickerView({ layer, media, width, fade = false }: { layer: MediaSticker; media: MediaElement; width: number; fade?: boolean }) {
   const thumb = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
   const uri = media.type === 'video' ? thumb : media.uri;
   let { w, h } = stickerSize(media, width, layer.scale);
@@ -74,7 +76,7 @@ export function MediaStickerView({ layer, media, width }: { layer: MediaSticker;
   if (isCutShape(layer.shape)) return <CutSticker shape={layer.shape} uri={uri} w={w} h={cutHeight(layer.shape, w)} />;
 
   const image = uri ? (
-    <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
+    <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={fade ? PHOTO_DISSOLVE : 0} />
   ) : null;
 
   return <ShapeFrame shape={layer.shape} w={w} h={h}>{image}</ShapeFrame>;

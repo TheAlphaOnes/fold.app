@@ -47,7 +47,7 @@ export function CanvasBase({ doc, media, width, height, playing, muted = true, a
 
   const grid = gridIdOf(doc.template);
   if (grid) {
-    return <GridBase doc={doc} layout={gridLayout(grid)} media={media} width={width} height={height} playing={playing} renderers={renderers} />;
+    return <GridBase doc={doc} layout={gridLayout(grid)} media={media} width={width} height={height} playing={playing} fade={animated} renderers={renderers} />;
   }
 
   if (bg.kind === 'media') {
@@ -56,7 +56,7 @@ export function CanvasBase({ doc, media, width, height, playing, muted = true, a
       return renderers ? (
         <>{renderers.frame('background', m, bg.crop, width, height)}</>
       ) : (
-        <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={muted} />
+        <MediaFill media={m} crop={bg.crop} width={width} height={height} playing={playing} muted={muted} fade={animated} />
       );
     }
   }
@@ -75,6 +75,7 @@ function GridBase({
   width,
   height,
   playing,
+  fade,
   renderers,
 }: {
   doc: CanvasDoc;
@@ -83,6 +84,7 @@ function GridBase({
   width: number;
   height: number;
   playing: boolean;
+  fade: boolean;
   renderers?: FrameRenderers;
 }) {
   const theme = useTheme();
@@ -106,7 +108,7 @@ function GridBase({
               renderers ? (
                 renderers.frame(cell.id, m, fill!.crop, w, h, fill!.mirrored)
               ) : (
-                <MediaFill media={m} crop={fill!.crop} width={w} height={h} mirrored={fill!.mirrored} playing={playing} />
+                <MediaFill media={m} crop={fill!.crop} width={w} height={h} mirrored={fill!.mirrored} playing={playing} fade={fade} />
               )
             ) : (
               <>

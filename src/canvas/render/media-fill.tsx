@@ -23,9 +23,14 @@ interface MediaFillProps {
   /** Videos play (looping) instead of showing their thumbnail. */
   playing?: boolean;
   muted?: boolean;
+  /** A new photo dissolves in over the old one instead of popping (off for exports, so captures are never mid-fade). */
+  fade?: boolean;
 }
 
-export function MediaFill({ media, crop, width, height, mirrored, playing = false, muted = true }: MediaFillProps) {
+/** The dissolve used wherever a photo is swapped for another. */
+export const PHOTO_DISSOLVE = { duration: 320, effect: 'cross-dissolve' } as const;
+
+export function MediaFill({ media, crop, width, height, mirrored, playing = false, muted = true, fade = false }: MediaFillProps) {
   const transform = [
     { translateX: crop.x * width },
     { translateY: crop.y * height },
@@ -43,7 +48,7 @@ export function MediaFill({ media, crop, width, height, mirrored, playing = fals
             <VideoThumb uri={media.uri} />
           )
         ) : (
-          <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={0} />
+          <Image source={{ uri: media.uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={fade ? PHOTO_DISSOLVE : 0} />
         )}
       </View>
     </View>

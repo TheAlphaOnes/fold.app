@@ -7,8 +7,8 @@
  *                         the same angle so it orbits but stays level.
  * FanCard + useFanOrder   Fan: the hand closes into a stack and springs
  *                         back open, each card a beat behind the one before;
- *                         while it's closed the top card goes to the back,
- *                         so every photo takes a turn in front.
+ *                         while it's closed the top card dissolves to
+ *                         the back, so every photo takes a turn in front.
  * useDeck + DeckCard      Deck: the top print lifts, slides out (alternating
  *                         sides) and tucks under; the rest step up a place,
  *                         each easing into its new depth.
@@ -119,10 +119,13 @@ interface FanCardProps {
   active: boolean;
   /** Bumped by a tap: the hand closes and springs open right away. */
   nudge?: number;
+  /** This card is dissolving away from the top (see useFanOrder), with its opacity. */
+  leaving?: boolean;
+  dissolve?: SharedValue<number>;
   children: React.ReactNode;
 }
 
-export function FanCard({ index, at, stack, rotation, active, nudge = 0, children }: FanCardProps) {
+export function FanCard({ index, at, stack, rotation, active, nudge = 0, leaving = false, dissolve, children }: FanCardProps) {
   const reduced = useReducedMotion();
   // 1 = fanned open (the still layout), 0 = gathered into one stack.
   const open = useSharedValue(1);
@@ -154,45 +157,70 @@ export function FanCard({ index, at, stack, rotation, active, nudge = 0, childre
 
   const style = useAnimatedStyle(() => {
     const closed = 1 - open.get();
-    return { transform: [{ translateX: tx * closed }, { translateY: ty * closed }, { rotate: `${-rotation * 0.85 * closed}deg` }] };
+    return {
+      opacity: leaving && dissolve ? dissolve.get() : 1,
+      transform: [{ translateX: tx * closed }, { translateY: ty * closed }, { rotate: `${-rotation * 0.85 * closed}deg` }],
+    };
   });
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 
+/** How long the top card takes to dissolve away (and to come back, behind). */
+const FAN_DISSOLVE_MS = 300;
+
 /**
  * Which card of the fan is on top. Each time the hand closes into a stack,
- * the top card is sent to the back (the order shifts by one while the cards
- * are gathered, so the swap is hidden), so every photo takes a turn in
- * front. A tap closes the hand at once and shifts the order then too.
- * Timed to match FanCard's cycle.
+ * the top card dissolves away to reveal the one under it, moves to the
+ * back while the cards are gathered, and fades back in there, so every
+ * photo takes a turn in front. A tap closes the hand at once and turns the
+ * next card then. Timed to match FanCard's cycle.
+ *
+ * `leaving` is the card dissolving and `dissolve` its 1 → 0 → 1 opacity.
  */
 export function useFanOrder(count: number, active: boolean, nudge = 0) {
   const reduced = useReducedMotion();
   const [step, setStep] = useState(0);
+  const [leaving, setLeaving] = useState(-1);
+  const stepRef = useRef(0);
+  const dissolve = useSharedValue(1);
   const running = active && !reduced && count > 1;
   const lastNudge = useRef(nudge);
 
   useEffect(() => {
-    if (!running) return;
+    if (!running) {
+      dissolve.set(withTiming(1, { duration: SETTLE_MS }));
+      return;
+    }
     const tapped = nudge !== lastNudge.current;
     lastNudge.current = nudge;
-    const period = FAN_OPEN_HOLD_MS + FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS + FAN_OPEN_MS;
-    // The middle of the closed hold: every card has gathered, none has left.
-    const closedAt = FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS / 2 + (count - 1) * FAN_STAGGER_MS * 0.5;
-    const first = tapped ? closedAt : FAN_OPEN_HOLD_MS + closedAt;
-    // Then once per cycle, whether or not the cycle began with a tap.
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const timer = setTimeout(() => {
-      setStep((n) => n + 1);
-      interval = setInterval(() => setStep((n) => n + 1), period);
-    }, first);
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const later = (ms: number, then: () => void) => {
+      timer = setTimeout(() => {
+        if (!cancelled) then();
+      }, ms);
     };
-  }, [running, count, nudge]);
+    const period = FAN_OPEN_HOLD_MS + FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS + FAN_OPEN_MS;
+    // The swap lands mid closed-hold, when every card has gathered.
+    const swapAt = FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS / 2 + (count - 1) * FAN_STAGGER_MS * 0.5;
+    const turn = () => {
+      setLeaving(deckTop(count, stepRef.current));
+      dissolve.set(withTiming(0, { duration: FAN_DISSOLVE_MS, easing: Easing.inOut(Easing.quad) }));
+      later(FAN_DISSOLVE_MS, () => {
+        stepRef.current += 1;
+        setStep(stepRef.current);
+        dissolve.set(withTiming(1, { duration: FAN_DISSOLVE_MS, easing: Easing.inOut(Easing.quad) }));
+        later(period - FAN_DISSOLVE_MS, turn);
+      });
+    };
+    later((tapped ? 0 : FAN_OPEN_HOLD_MS) + swapAt - FAN_DISSOLVE_MS, turn);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [running, count, nudge, dissolve]);
 
-  return step;
+  return { step, leaving, dissolve };
 }
 
 // ─── Deck ───────────────────────────────────────────────────────────────
