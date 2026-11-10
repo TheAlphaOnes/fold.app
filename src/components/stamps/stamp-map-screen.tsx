@@ -58,6 +58,20 @@ export default function StampMap() {
     return region ? { coordinates: { latitude: region.latitude, longitude: region.longitude }, zoom: region.zoom } : undefined;
   });
 
+  // Opened before the collection had loaded (e.g. straight from Profile):
+  // frame the stamps once they arrive instead of staying on the world.
+  const framed = useRef(initialCamera !== undefined);
+  useEffect(() => {
+    if (framed.current || stamps.length === 0) return;
+    framed.current = true;
+    const target = id ? stamps.find((s) => s.id === Number(id)) : undefined;
+    const region = regionFor(stamps);
+    if (target) map.current?.setCameraPosition({ coordinates: { latitude: target.latitude, longitude: target.longitude }, zoom: FOCUS_ZOOM });
+    else if (region) map.current?.setCameraPosition({ coordinates: { latitude: region.latitude, longitude: region.longitude }, zoom: region.zoom });
+  }, [stamps, id]);
+
+  const serials = useMemo(() => new Map(journey.map((s, i) => [s.id, i + 1])), [journey]);
+
   const focus = (stamp: Stamp) => {
     haptic.select();
     setSelectedId(stamp.id);
@@ -129,7 +143,7 @@ export default function StampMap() {
 
       {stamps.length > 0 && (
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 10 }]} pointerEvents="box-none">
-          {selected && <HoverStamp key={selected.id} stamp={selected} />}
+          {selected && <HoverStamp key={selected.id} stamp={selected} serial={serials.get(selected.id)} />}
           <Animated.View entering={riseIn(340, 160, 14)}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
               {stamps.map((s) => (
@@ -153,7 +167,7 @@ export default function StampMap() {
 }
 
 /** The selected stamp, floating over the map with a slow bob and sway. */
-function HoverStamp({ stamp }: { stamp: Stamp }) {
+function HoverStamp({ stamp, serial }: { stamp: Stamp; serial?: number }) {
   const reduced = useReducedMotion();
   const bob = useSharedValue(0);
   useEffect(() => {
@@ -167,7 +181,7 @@ function HoverStamp({ stamp }: { stamp: Stamp }) {
   return (
     <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)} style={[styles.hover, { height: HOVER_STAMP * STAMP_ASPECT + 16 }]} pointerEvents="none">
       <Animated.View style={float}>
-        <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={HOVER_STAMP} />
+        <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={HOVER_STAMP} serial={serial} />
       </Animated.View>
     </Animated.View>
   );

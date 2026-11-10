@@ -10,15 +10,16 @@
  * Tap a stamp to see it on the map; hold to remove it.
  */
 
-import React, { useEffect } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated from 'react-native-reanimated';
+import React, { useEffect, useMemo } from 'react';
+import { Alert, FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Map as MapIcon, Stamp as StampIcon } from 'lucide-react-native';
 
 import Svg, { Path } from 'react-native-svg';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
+import { BalancedText } from '@/components/balanced-text';
 import { GrainBackground } from '@/components/grain-background';
 import { CloseButton, ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
@@ -40,17 +41,26 @@ export default function StampCollection() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { stamps, loaded, load, remove } = useStamps();
+  const { stamps, loaded, load, remove, justAdded, clearJustAdded } = useStamps();
 
   useEffect(() => {
     if (!loaded) load();
   }, [loaded, load]);
 
+  // The new stamp lands once; after that it's just part of the sheet.
+  useEffect(() => {
+    if (justAdded == null) return;
+    const t = setTimeout(clearJustAdded, 1400);
+    return () => clearTimeout(t);
+  }, [justAdded, clearJustAdded]);
+
+  // Numbers in the order stamps were made (No. 001 is the first).
+  const serials = useMemo(() => new Map([...stamps].sort((a, b) => a.createdAt - b.createdAt).map((s, i) => [s.id, i + 1])), [stamps]);
+
   const tile = (width - EDGE * 2 - COLUMN_GAP) / 2;
   const openCamera = useGuardedPress(() => navigate.push('/stamps/camera'));
 
   const confirmRemove = (stamp: Stamp) => {
-    haptic.thud();
     Alert.alert('Remove this stamp?', `${stamp.place} will come off your collection and map.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => remove(stamp.id) },
@@ -77,23 +87,28 @@ export default function StampCollection() {
       {loaded && stamps.length === 0 ? (
         <EmptyCollection width={tile * 1.15} />
       ) : (
-        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + ROUND_BUTTON_SIZE + 48 }]} showsVerticalScrollIndicator={false}>
-          {stamps.map((stamp, i) => (
-            // Laid down one after another: each arrives a beat after the last.
-            <Animated.View key={stamp.id} entering={riseIn(360, 60 + Math.min(i, 10) * 50, 14)} style={{ width: tile, height: tile * STAMP_ASPECT + 8 }}>
-              <Pressable
-                onPress={() => navigate.push(`/stamps/map?id=${stamp.id}`)}
-                onLongPress={() => confirmRemove(stamp)}
-                accessibilityRole="button"
-                accessibilityLabel={`Stamp from ${stamp.place}`}
-                accessibilityHint="Shows it on the map. Hold to remove."
-                style={({ pressed }) => ({ transform: [{ rotate: `${stampTilt(stamp.id)}deg` }, { scale: pressed ? 0.96 : 1 }] })}
-              >
-                <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={tile} />
-              </Pressable>
-            </Animated.View>
-          ))}
-        </ScrollView>
+        // Virtualised: a long collection only decodes the stamps on screen.
+        <FlatList
+          data={stamps}
+          keyExtractor={(s) => String(s.id)}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + ROUND_BUTTON_SIZE + 48 }]}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          windowSize={7}
+          renderItem={({ item, index }) => (
+            <StampTile
+              stamp={item}
+              width={tile}
+              serial={serials.get(item.id)}
+              index={index}
+              landing={item.id === justAdded}
+              onOpen={() => navigate.push(`/stamps/map?id=${item.id}`)}
+              onRemove={() => confirmRemove(item)}
+            />
+          )}
+        />
       )}
 
       <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottom, { paddingBottom: insets.bottom + 8 }]}>
@@ -111,6 +126,51 @@ export default function StampCollection() {
   );
 }
 
+interface StampTileProps {
+  stamp: Stamp;
+  width: number;
+  serial?: number;
+  index: number;
+  /** Just made: drops onto the sheet with a thud instead of rising in. */
+  landing: boolean;
+  onOpen: () => void;
+  onRemove: () => void;
+}
+
+/** One stamp on the sheet, at its own tilt. */
+function StampTile({ stamp, width, serial, index, landing, onOpen, onRemove }: StampTileProps) {
+  const drop = useSharedValue(landing ? 0 : 1);
+  useEffect(() => {
+    if (!landing) return;
+    // Held over the sheet, then pressed down hard and settles: the stamp being placed.
+    drop.set(withDelay(250, withTiming(1, { duration: 320, easing: Easing.in(Easing.cubic) })));
+    const thud = setTimeout(() => haptic.thud(), 570);
+    return () => clearTimeout(thud);
+  }, [landing, drop]);
+  const placed = useAnimatedStyle(() => ({
+    opacity: Math.min(1, drop.get() * 3),
+    transform: [{ scale: 1.35 - drop.get() * 0.35 }, { rotate: `${(1 - drop.get()) * -10}deg` }],
+  }));
+  const tilt = stampTilt(stamp.id);
+  return (
+    <Animated.View entering={landing ? undefined : riseIn(360, 60 + Math.min(index, 10) * 50, 14)} style={[{ width, height: width * STAMP_ASPECT + 8 }, placed]}>
+      <Pressable
+        onPress={onOpen}
+        onLongPress={() => {
+          haptic.thud();
+          onRemove();
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={`Stamp from ${stamp.place}`}
+        accessibilityHint="Shows it on the map. Hold to remove."
+        style={({ pressed }) => ({ transform: [{ rotate: `${tilt}deg` }, { scale: pressed ? 0.96 : 1 }] })}
+      >
+        <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={width} serial={serial} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 /** No stamps yet: an empty perforated outline and a line on what stamps are. */
 function EmptyCollection({ width }: { width: number }) {
   const theme = useTheme();
@@ -124,7 +184,7 @@ function EmptyCollection({ width }: { width: number }) {
         <StampIcon size={28} color={theme.textMuted} strokeWidth={1.5} />
       </View>
       <ThemedText style={[styles.emptyTitle, { color: theme.text }]}>your first stamp</ThemedText>
-      <ThemedText style={[styles.emptyBody, { color: theme.textMuted }]}>take a photo wherever you are and it becomes a stamp of that place, kept here and on your map</ThemedText>
+      <BalancedText style={[styles.emptyBody, { color: theme.textMuted }]}>take a photo wherever you are and it becomes a stamp of that place, kept here and on your map</BalancedText>
     </Animated.View>
   );
 }
@@ -134,7 +194,8 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: EDGE, paddingBottom: 12 },
   title: { flex: 1, alignItems: 'center' },
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8, marginTop: 2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: COLUMN_GAP, paddingHorizontal: EDGE, paddingTop: 16 },
+  grid: { paddingHorizontal: EDGE, paddingTop: 16, gap: COLUMN_GAP },
+  row: { gap: COLUMN_GAP },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
   cta: { height: ROUND_BUTTON_SIZE + 10, paddingHorizontal: 26, borderRadius: (ROUND_BUTTON_SIZE + 10) / 2, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
