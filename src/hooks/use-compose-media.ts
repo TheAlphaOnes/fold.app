@@ -25,6 +25,9 @@ import {
   sliceToElementCap,
 } from '@/utils/media-attach';
 
+/** Longest clip the camera records for a memory. */
+const VIDEO_MAX_SECONDS = 60;
+
 const rid = () => Math.random().toString(36).substring(2, 9);
 
 function extOf(uri: string, fallback: string): string {
@@ -73,27 +76,26 @@ export function useComposeMedia(count: number) {
     return added.filter((m): m is MediaElement => m !== null);
   }, [count]);
 
-  const captureWithCamera = useCallback(
-    async (kind: 'image' | 'video'): Promise<MediaElement[]> => {
-      if (roomLeft <= 0) {
-        alertElementCap();
-        return [];
-      }
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') return [];
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: [kind === 'video' ? 'videos' : 'images'], quality: 1 });
-      if (result.canceled) return [];
-      const asset = result.assets[0];
-      const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${rid()}.${extOf(asset.uri, kind === 'video' ? 'mp4' : 'jpg')}`;
-      const ok = await copyWithinFileSize({ from: asset.uri, to: dest, kind, knownSizeBytes: asset.fileSize });
-      if (!ok) {
-        alertFileTooLarge(kind);
-        return [];
-      }
-      return [element({ uri: dest, type: kind, width: asset.width, height: asset.height })];
-    },
-    [roomLeft],
-  );
+  /** Opens the camera in photo or video mode (the camera's own switch); the result is whichever was taken. */
+  const captureWithCamera = useCallback(async (): Promise<MediaElement[]> => {
+    if (roomLeft <= 0) {
+      alertElementCap();
+      return [];
+    }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return [];
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], videoMaxDuration: VIDEO_MAX_SECONDS, quality: 1 });
+    if (result.canceled) return [];
+    const asset = result.assets[0];
+    const kind: MediaKind = asset.type === 'video' ? 'video' : 'image';
+    const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${rid()}.${extOf(asset.uri, kind === 'video' ? 'mp4' : 'jpg')}`;
+    const ok = await copyWithinFileSize({ from: asset.uri, to: dest, kind, knownSizeBytes: asset.fileSize });
+    if (!ok) {
+      alertFileTooLarge(kind);
+      return [];
+    }
+    return [element({ uri: dest, type: kind, width: asset.width, height: asset.height })];
+  }, [roomLeft]);
 
   const downloadGif = useCallback(
     async (gifUrl: string): Promise<MediaElement | null> => {
