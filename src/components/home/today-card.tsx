@@ -6,12 +6,12 @@
  *   │ TUE 10.11            │   before it's centred: the date, large, and a
  *   │                      │   line for the time of day; no camera running
  *   │   first light        │
- *   │        ( ◯ )         │   centred: the live camera develops in (fades
- *   │   ‹ CANVAS ›         │   up like a print), with the shutter and the
- *   └──────────────────────┘   template the shot will open in
+ *   │   [ ▦ CANVAS ⇅ ]     │   centred: the live camera develops in (fades
+ *   │        ( ◯ )         │   up like a print), under the template picker
+ *   └──────────────────────┘   and the shutter
  *
  * Tap the shutter: a flash, and the shot opens in the composer, laid out in
- * the template picked here. Hold: the device camera opens in video mode.
+ * the template picked above the shutter (the composer's own picker). Hold: the device camera opens in video mode.
  * The camera runs only while the card is centred and the app is in front;
  * camera access is asked on the first tap, not on sight.
  */
@@ -22,23 +22,22 @@ import { useCameraPermissions, type CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { Camera as CameraIcon, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Camera as CameraIcon } from 'lucide-react-native';
 
 import { StripesSurface } from '@/canvas/render/stripes-surface';
 import { CameraSurface } from '@/components/camera/camera-surface';
+import { ROUND_BUTTON_SIZE } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { dayLine } from '@/home/today';
-import { BASE_TEMPLATES, GRID_TEMPLATES } from '@/templates/registry';
+import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import type { TemplateId } from '@/canvas/types';
 import { navigate } from '@/utils/navigation';
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 
-/** The templates a fresh shot can open in (Text has no photo, so it's left out). */
-const TEMPLATES = [...BASE_TEMPLATES, ...GRID_TEMPLATES].filter((t) => t.id !== 'text');
 const RADIUS = 28;
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -56,7 +55,8 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const container = useRef<View>(null);
-  const [templateIndex, setTemplateIndex] = useState(0);
+  const [template, setTemplate] = useState<TemplateId>('story');
+  const [listOpen, setListOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const now = new Date();
@@ -77,12 +77,6 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
-  const template = TEMPLATES[templateIndex];
-  const step = (by: number) => {
-    haptic.select();
-    setTemplateIndex((i) => (i + by + TEMPLATES.length) % TEMPLATES.length);
-  };
-
   const shoot = async () => {
     if (busy) return;
     if (!permission?.granted) {
@@ -101,7 +95,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       const dest = `${FileSystem.documentDirectory}camera_${Date.now()}.jpg`;
       await FileSystem.moveAsync({ from: saved.uri, to: dest });
       setPendingCameraMedia({ uri: dest, type: 'image', width: saved.width, height: saved.height });
-      navigate.push(`/compose?template=${encodeURIComponent(template.id as TemplateId)}`);
+      navigate.push(`/compose?template=${encodeURIComponent(template)}`);
     } catch (error) {
       trackError(error, 'today_capture');
     } finally {
@@ -125,7 +119,25 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
         <ThemedText style={[styles.line, { color: live ? '#FFFFFFCC' : theme.textMuted }]}>{dayLine(now)}</ThemedText>
       </Animated.View>
 
+      {/* The composer's template list, opening over the camera. */}
+      {listOpen && (
+        <View style={styles.list}>
+          <TemplateList
+            current={template}
+            onPick={(t) => {
+              setTemplate(t);
+              setListOpen(false);
+            }}
+            onGap={() => undefined}
+          />
+        </View>
+      )}
+
       <View style={styles.bottom}>
+        {/* The same template picker as the composer: the shot opens laid out in it. */}
+        <View style={[styles.picker, { backgroundColor: theme.background }]}>
+          <TemplatePicker current={template} open={listOpen} onPick={setTemplate} onToggleList={() => setListOpen((o) => !o)} />
+        </View>
         <Pressable
           onPress={shoot}
           onLongPress={() => {
@@ -143,17 +155,6 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             <CameraIcon size={24} color={theme.text} />
           )}
         </Pressable>
-        <View style={[styles.templates, { backgroundColor: live ? '#00000066' : 'transparent', borderColor: live ? '#FFFFFF55' : theme.border }]}>
-          <Pressable onPress={() => step(-1)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Previous template">
-            <ChevronLeft size={16} color={live ? '#FFFFFF' : theme.text} />
-          </Pressable>
-          <ThemedText style={[styles.templateName, { color: live ? '#FFFFFF' : theme.text }]} numberOfLines={1}>
-            {template.name.toUpperCase()}
-          </ThemedText>
-          <Pressable onPress={() => step(1)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Next template">
-            <ChevronRight size={16} color={live ? '#FFFFFF' : theme.text} />
-          </Pressable>
-        </View>
       </View>
     </View>
   );
@@ -168,6 +169,7 @@ const styles = StyleSheet.create({
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
   shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 56, height: 56, borderRadius: 28 },
-  templates: { flexDirection: 'row', alignItems: 'center', gap: 14, height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, minWidth: 170, justifyContent: 'space-between' },
-  templateName: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
+  // Solid behind the pill, so it reads over any picture.
+  picker: { width: 220, flexDirection: 'row', borderRadius: ROUND_BUTTON_SIZE / 2 },
+  list: { position: 'absolute', left: 16, right: 16, bottom: 26 + 72 + 16 + 34 + 12 },
 });
