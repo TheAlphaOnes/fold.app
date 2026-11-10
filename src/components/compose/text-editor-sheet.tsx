@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { AlignCenter, AlignLeft, AlignRight, Camera, Highlighter, Image as ImageIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -110,7 +110,8 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
         </View>
         {inkOpen && <InkPalette color={draft.color} onChange={(color) => set({ color })} />}
 
-        <View style={styles.center} pointerEvents="box-none">
+        {/* Long or large text scrolls here, between the tools, instead of being cut off. */}
+        <ScrollView style={styles.flex} contentContainerStyle={styles.center} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View
             style={[
               { maxWidth: canvasWidth * 0.84 },
@@ -127,14 +128,17 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
               value={draft.text}
               onChangeText={(text) => set({ text })}
               multiline
+              // iOS mis-measures a multiline input with a custom lineHeight and
+              // scrolls inside it, hiding the first line; grow with the text instead.
+              scrollEnabled={false}
               placeholder="write something…"
               placeholderTextColor="#FFFFFF88"
               cursorColor={theme.accentWarm}
               selectionColor={theme.accentWarm}
-              style={[metrics, styles.input, { fontFamily: draft.font, color: draft.style === 'highlight' ? ink : draft.color ?? '#FFFFFF', textAlign: draft.align }]}
+              style={[styles.input, metrics, { fontFamily: draft.font, color: draft.style === 'highlight' ? ink : draft.color ?? '#FFFFFF', textAlign: draft.align }]}
             />
           </View>
-        </View>
+        </ScrollView>
 
         <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: keyboardShown ? 8 : insets.bottom + 8 }]}>
           {fontsOpen && (
@@ -186,8 +190,8 @@ const styles = StyleSheet.create({
   sizeLabel: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, color: '#FFFFFF' },
   doneBtn: { paddingHorizontal: 16, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', justifyContent: 'center' },
   doneText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2, color: '#111111' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  input: { minWidth: 40, padding: 0 },
+  center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 12 },
+  input: { minWidth: 40, paddingHorizontal: 0 },
   bottom: {},
   fontRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   quickAdd: { flexDirection: 'row', gap: 8 },
