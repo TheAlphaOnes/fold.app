@@ -81,7 +81,30 @@ export function useQuickCapture() {
     }
   }, []);
 
+  /** Opens the device camera ready to film; the clip continues into the compose screen. */
+  const captureVideo = useCallback(async (): Promise<PhotoCaptureResult> => {
+    if (isCameraOpenRef.current) return 'busy';
+    isCameraOpenRef.current = true;
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') return 'denied';
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['videos'], videoMaxDuration: 60 });
+      if (result.canceled) return 'cancelled';
+      const asset = result.assets[0];
+      const dest = await persistCapture(asset.uri, 'camera', 'mov');
+      setPendingCameraMedia({ uri: dest, type: 'video', width: asset.width, height: asset.height });
+      navigate.push('/compose');
+      return 'opened';
+    } catch (error) {
+      trackError(error, 'quick_capture_video');
+      return 'failed';
+    } finally {
+      isCameraOpenRef.current = false;
+    }
+  }, []);
+
   return {
+    captureVideo,
     /** A voice take is in progress (recording or paused). */
     isRecording: take.isActive,
     isPaused: take.isPaused,

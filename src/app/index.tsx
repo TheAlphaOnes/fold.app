@@ -52,7 +52,8 @@ const SNAP_FLICK_VELOCITY = 1.2;
 import { CarouselItem } from '@/components/carousel-item';
 import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separator';
 import { TimelinePlaceholder } from '@/components/timeline-placeholder';
-import { buildTimelineRows, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
+import { buildTimelineRows, keptToday, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
+import { TodayCard } from '@/components/home/today-card';
 import { haptic } from '@/services/haptics';
 import { navigate } from '@/utils/navigation';
 
@@ -104,8 +105,14 @@ export default function HomeScreen() {
       settings.timelineMode,
       snapInterval,
       DATE_SEPARATOR_HEIGHT,
+      // Today's page leads while nothing is kept yet today (and is all there is before the first memory).
+      !keptToday(timelineSpine),
     );
   }, [timelineSpine, settings.timelineMode, snapInterval]);
+  const [todayCentred, setTodayCentred] = useState(true);
+  // The today card's camera runs only while it's centred and home is in front.
+  const todayLive = todayCentred && isFocused;
+  const { captureVideo } = quickCapture;
 
   
   // Handle incoming shared media (e.g. from Photos app, Chrome, Files, etc.)
@@ -204,6 +211,7 @@ export default function HomeScreen() {
   const prevCount = useRef(timelineData.items.length);
   const offsetsRef = useRef(timelineData.offsets);
   offsetsRef.current = timelineData.offsets;
+
   const spineRef = useRef(timelineSpine);
   spineRef.current = timelineSpine;
   const hydrateAroundRef = useRef(hydrateAround);
@@ -309,6 +317,10 @@ export default function HomeScreen() {
    * after other screens (time machine, stories) had set their own.
    */
   const settleActive = useCallback((offsetY: number) => {
+    // Today's page is centred: no memory is active (the backdrop and audio rest).
+    const onToday = timelineData.todayOffset !== null && offsetY < snapInterval / 2;
+    setTodayCentred(onToday);
+    if (onToday) return;
     const spine = spineRef.current;
     if (spine.length === 0) return;
     const id = spine[memoryIndexNearOffset(offsetsRef.current, offsetY)]?.id;
@@ -318,7 +330,7 @@ export default function HomeScreen() {
     }
     lastActiveIdRef.current = id;
     setActiveCompositionId(id);
-  }, [setActiveCompositionId]);
+  }, [setActiveCompositionId, timelineData.todayOffset, snapInterval]);
 
   // Re-assert the centred card whenever home is shown again or the feed changes.
   useFocusEffect(
@@ -327,6 +339,8 @@ export default function HomeScreen() {
     }, [settleActive, scrollY]),
   );
   useEffect(() => {
+    // Syncs with the scroll position (a native value React doesn't own) when the feed changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     settleActive(scrollY.get());
   }, [timelineData.offsets, settleActive, scrollY]);
 
@@ -358,6 +372,13 @@ export default function HomeScreen() {
     if (item.type === 'separator') {
       return <DateSeparator date={item.date} timelineMode={item.mode} />;
     }
+    if (item.type === 'today') {
+      return (
+        <View style={{ height: snapInterval, alignItems: 'center', justifyContent: 'center' }}>
+          <TodayCard width={width - 32} height={cardHeight} active={todayLive} onRecordVideo={captureVideo} />
+        </View>
+      );
+    }
     const composition = hydratedRef.current[item.compositionId];
     if (!composition) {
       return <TimelinePlaceholder height={snapInterval} cardHeight={cardHeight} />;
@@ -371,7 +392,7 @@ export default function HomeScreen() {
         scrollY={scrollY}
       />
     );
-  }, [snapInterval, cardHeight, scrollY]);
+  }, [snapInterval, cardHeight, scrollY, width, todayLive, captureVideo]);
 
   return (
     // Clean background
@@ -393,12 +414,12 @@ export default function HomeScreen() {
           ref={listRef}
           key={settings.timelineMode}
           data={timelineData.items}
-          extraData={hydrationVersion}
+          extraData={`${hydrationVersion}-${todayLive}`}
           inverted={true}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          snapToOffsets={timelineData.offsets}
+          snapToOffsets={timelineData.snapOffsets}
           decelerationRate="fast"
           disableIntervalMomentum
           windowSize={5}

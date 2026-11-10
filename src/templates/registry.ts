@@ -269,3 +269,8 @@ export function defaultTextSpot(doc: Pick<CanvasDoc, 'template' | 'background'>)
   if (doc.template === 'story' && doc.background.kind === 'media') return { x: 0.5, y: 1 - SAFE_ZONE.bottom - 0.08 };
   return { x: 0.5, y: 0.5 };
 }
+
+/** Whether a string (e.g. a route param) names a template. */
+export function isTemplateId(value: unknown): value is TemplateId {
+  return typeof value === 'string' && [...BASE_TEMPLATES, ...GRID_TEMPLATES].some((t) => t.id === value);
+}

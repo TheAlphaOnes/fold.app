@@ -30,7 +30,7 @@ import { Book, Camera, Image as ImageIcon, Undo2 } from 'lucide-react-native';
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
 import { fitCanvas, newId } from '@/canvas/geometry';
-import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
+import type { CanvasDoc, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { formatMoment } from '@/utils/format-date';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
@@ -60,7 +60,7 @@ import { trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { lookupLocation } from '@/services/location.service';
 import { canvasOf } from '@/templates/legacy';
-import { defaultTextSpot, frameMediaId, isBlankCard, scatterSticker, shownMediaIds } from '@/templates/registry';
+import { defaultTextSpot, frameMediaId, isBlankCard, newDoc, scatterSticker, shownMediaIds } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
 import { alertElementCap, alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
 import { goBack } from '@/utils/navigation';
@@ -95,11 +95,13 @@ interface ComposerBodyProps {
   sharedText?: string;
   storyId?: number;
   createdAt?: number;
+  /** A new memory starts in this template (otherwise the one that suits its media). */
+  template?: TemplateId;
 }
 
 type Editing = { id: string; isNew: boolean } | null;
 
-export function ComposerBody({ existing, sharedText, storyId, createdAt }: ComposerBodyProps) {
+export function ComposerBody({ existing, sharedText, storyId, createdAt, template }: ComposerBodyProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
@@ -127,7 +129,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       width: p.width,
       height: p.height,
     }));
-    const state = initialComposerState(media);
+    const state = initialComposerState(media, template ? newDoc(media, template) : undefined);
     // A voice note (held on the orange key) arrives as a disc in the middle,
     // the same sticker the composer's own Voice button adds.
     const voices = media.filter((m) => m.type === 'audio');
