@@ -13,8 +13,15 @@ import type { NewStamp, Stamp } from '@/types/stamp';
 interface StampsState {
   stamps: Stamp[];
   loaded: boolean;
-  /** The stamp just made: the collection lands it with a flourish, once. */
+  /**
+   * A stamp saved but still on show in the camera (its reveal); kept out of
+   * the collection until it's delivered, so it arrives once.
+   */
+  pending: number | null;
+  /** The stamp just delivered: the collection lands it with a flourish, once. */
   justAdded: number | null;
+  /** The camera has handed the pending stamp over (it flew into the fan). */
+  deliver: () => void;
   clearJustAdded: () => void;
   load: () => Promise<void>;
   add: (stamp: NewStamp) => Promise<Stamp>;
@@ -24,7 +31,9 @@ interface StampsState {
 export const useStamps = create<StampsState>((set, get) => ({
   stamps: [],
   loaded: false,
+  pending: null,
   justAdded: null,
+  deliver: () => set({ justAdded: get().pending, pending: null }),
   clearJustAdded: () => set({ justAdded: null }),
 
   load: async () => {
@@ -38,7 +47,7 @@ export const useStamps = create<StampsState>((set, get) => ({
 
   add: async (stamp) => {
     const saved = await createStamp(stamp);
-    set({ stamps: [saved, ...get().stamps], justAdded: saved.id });
+    set({ stamps: [saved, ...get().stamps], pending: saved.id });
     return saved;
   },
 
