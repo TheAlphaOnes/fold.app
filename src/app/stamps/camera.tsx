@@ -1,16 +1,13 @@
 /**
- * Route for the stamp camera. The screen uses a native module, so it's only
- * loaded when the installed app has it; otherwise a short note explains why.
+ * The stamp camera now lives on the stamps page itself (StampStudio); this
+ * route sends there, or explains when the app has no camera module yet.
  */
 
 import React from 'react';
+import { Redirect } from 'expo-router';
 
 import { NeedsUpdate, hasNativeModule } from '@/components/stamps/needs-update';
 
-// Required lazily: importing the screen loads its native module at once, which crashes an older build.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Screen: React.ComponentType | null = hasNativeModule('ExpoCamera') ? require('@/components/stamps/stamp-camera-screen').default : null;
-
 export default function Route() {
-  return Screen ? <Screen /> : <NeedsUpdate feature="the stamp camera" />;
+  return hasNativeModule('ExpoCamera') ? <Redirect href="/stamps" /> : <NeedsUpdate feature="the stamp camera" />;
 }
