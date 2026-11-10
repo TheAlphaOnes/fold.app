@@ -76,15 +76,18 @@ export function useComposeMedia(count: number) {
     return added.filter((m): m is MediaElement => m !== null);
   }, [count]);
 
-  /** Opens the camera in photo or video mode (the camera's own switch); the result is whichever was taken. */
-  const captureWithCamera = useCallback(async (): Promise<MediaElement[]> => {
+  /**
+   * Opens the device camera. Normally in photo mode (its own switch can change it);
+   * `video` opens it straight in video mode. The result is whichever was taken.
+   */
+  const captureWithCamera = useCallback(async ({ video = false }: { video?: boolean } = {}): Promise<MediaElement[]> => {
     if (roomLeft <= 0) {
       alertElementCap();
       return [];
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return [];
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], videoMaxDuration: VIDEO_MAX_SECONDS, quality: 1 });
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: video ? ['videos'] : ['images', 'videos'], videoMaxDuration: VIDEO_MAX_SECONDS, quality: 1 });
     if (result.canceled) return [];
     const asset = result.assets[0];
     const kind: MediaKind = asset.type === 'video' ? 'video' : 'image';

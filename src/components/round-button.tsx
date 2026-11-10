@@ -24,6 +24,8 @@ const ICON_SIZE = 16;
 interface RoundButtonProps {
   icon: LucideIcon;
   onPress: () => void;
+  /** A long hold: a second action on the same button (e.g. the camera button records video). */
+  onLongPress?: () => void;
   accessibilityLabel: string;
   /** Tints the icon, e.g. theme.destructive for a delete action. */
   iconColor?: string;
@@ -32,16 +34,21 @@ interface RoundButtonProps {
   hitSlop?: number;
 }
 
-export function RoundButton({ icon: Icon, onPress, accessibilityLabel, iconColor, style, hitSlop }: RoundButtonProps) {
+export function RoundButton({ icon: Icon, onPress, onLongPress, accessibilityLabel, iconColor, style, hitSlop }: RoundButtonProps) {
   const theme = useTheme();
   // A double tap acts once (no two sheets, no double close).
   const press = useGuardedPress(() => {
     haptic.tap();
     return onPress();
   });
+  const longPress = useGuardedPress(() => {
+    haptic.thud();
+    return onLongPress?.();
+  });
   return (
     <Pressable
       onPress={press}
+      onLongPress={onLongPress ? longPress : undefined}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={hitSlop}

@@ -219,6 +219,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     const added = await media.captureWithCamera();
     c.addMedia(added);
   };
+  /** Holding the camera button opens the camera ready to film. */
+  const addVideoFromCamera = async () => {
+    const added = await media.captureWithCamera({ video: true });
+    c.addMedia(added);
+  };
   /** From the text editor's camera/gallery buttons: keep what was typed, then add the photo. */
   const fromWriting = (action: () => Promise<void>) => async (draft: TextDraft) => {
     finishText(draft);
@@ -495,7 +500,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
           {/* Camera and gallery at the thumb, the most common way in; the add row has the rest. */}
           <View style={styles.side}>
-            <RoundButton icon={Camera} accessibilityLabel="Take a photo or video" onPress={addFromCamera} />
+            <RoundButton icon={Camera} accessibilityLabel="Take a photo, or hold to record a video" onPress={addFromCamera} onLongPress={addVideoFromCamera} />
             <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
           </View>
           <View style={styles.middle}>
