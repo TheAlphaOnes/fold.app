@@ -36,6 +36,8 @@ import { isArranged } from '@/templates/arrangements';
 import { FrameTools, StickerTools } from '@/components/compose/selection-bar';
 import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import { TextEditorSheet, type TextDraft } from '@/components/compose/text-editor-sheet';
+import { DoodleSurface, DoodleToolbar, type PenState } from '@/components/compose/doodle-pad';
+import { PEN_WIDTHS, toDoodle } from '@/canvas/doodle';
 import { GifPicker } from '@/components/gif-picker';
 import { GrainBackground } from '@/components/grain-background';
 import { MusicPicker } from '@/components/music-picker';
@@ -158,6 +160,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   );
   // Writing opens on request (Aa, or a tap on the blank card), never by itself.
   const [editing, setEditing] = useState<Editing>(null);
+  // Doodling: strokes in canvas pixels until Done makes them one layer.
+  const [doodle, setDoodle] = useState<number[][] | null>(null);
+  const [pen, setPen] = useState<PenState>({ color: null, widthIndex: 1 });
   const [sheet, setSheet] = useState<'music' | 'gif' | 'stories' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Song downloads by media id: the local file, or null if it failed.
@@ -269,7 +274,19 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       case 'date':
         c.addLayer({ id: newId(), kind: 'date', style: 'stamp', x: 0.78, y: 0.16, scale: 1, rotation: 4 });
         return;
+      case 'doodle':
+        c.select(null);
+        setDoodle([]);
+        return;
     }
+  };
+
+  const finishDoodle = () => {
+    if (doodle && doodle.length > 0) {
+      const d = toDoodle(doodle, canvas.width, canvas.height);
+      c.addLayer({ id: newId(), kind: 'doodle', ...d, color: pen.color, width: PEN_WIDTHS[pen.widthIndex], scale: 1, rotation: 0 });
+    }
+    setDoodle(null);
   };
 
   const saveVoice = async () => {
@@ -375,7 +392,12 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {/* While writing, the text editor owns the screen: the composer's own
           controls aren't drawn, so nothing doubles up under it. They rise
           back in when writing ends. */}
-      {!editing && (
+      {doodle && (
+        <View style={[styles.doodleBar, { paddingTop: insets.top + 6 }]}>
+          <DoodleToolbar pen={pen} onPen={setPen} canUndo={doodle.length > 0} onUndo={() => setDoodle((d) => d && d.slice(0, -1))} onDone={finishDoodle} />
+        </View>
+      )}
+      {!editing && !doodle && (
         <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
           <CloseButton accessibilityLabel="Close without saving" />
           <View style={styles.topRight}>
@@ -396,12 +418,13 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           </View>
         </Animated.View>
       )}
-      {!editing && (
+      {!editing && !doodle && (
         <View style={styles.addArea}>
           <AddRow onAdd={onAdd} />
         </View>
       )}
       {editing && <View style={{ height: insets.top + TOP_BAR + ADD_AREA }} />}
+      {doodle && <View style={{ height: insets.top + TOP_BAR + ADD_AREA }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
         <CanvasEditor
@@ -425,7 +448,10 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             else if (isBlankCard(c.doc) && textLayers.length === 0) setEditing({ id: newId(), isNew: true });
           }}
         />
-        {!editing && isBlankCard(c.doc) && c.doc.layers.length === 0 && (
+        {doodle && (
+          <DoodleSurface width={canvas.width} height={canvas.height} pen={pen} strokes={doodle} onStroke={(points) => setDoodle((d) => [...(d ?? []), points])} />
+        )}
+        {!editing && !doodle && isBlankCard(c.doc) && c.doc.layers.length === 0 && (
           <Animated.View entering={fadeIn(300, 260)} style={styles.writeHint} pointerEvents="none">
             <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>tap to write</ThemedText>
           </Animated.View>
@@ -461,7 +487,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         )}
       </Animated.View>
 
-      {!editing && (
+      {!editing && !doodle && (
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
           <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
           <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
@@ -484,7 +510,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           </Pressable>
         </Animated.View>
       )}
-      {editing && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
+      {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
 
       {editing && (
         <TextEditorSheet
@@ -571,6 +597,8 @@ const styles = StyleSheet.create({
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE, paddingTop: SPACE },
   middle: { flex: 1, flexDirection: 'row' },
   addArea: { height: ADD_AREA },
+  // Over the top bar and add row while doodling, so the canvas doesn't move.
+  doodleBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
   writeHint: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
   storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },

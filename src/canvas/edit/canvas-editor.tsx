@@ -164,7 +164,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
             else onSelect(selectedId === layer.id ? null : layer.id);
           }}
         >
-          <LayerContent layer={layer} media={mediaMap} memory={{ ...memory, mediaElements: media }} width={width} live={false} />
+          <LayerContent layer={layer} media={mediaMap} memory={{ ...memory, mediaElements: media }} width={width} live={false} moving />
         </EditableLayer>
       ))}
 

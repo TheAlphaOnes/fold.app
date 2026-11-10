@@ -109,7 +109,22 @@ export interface DateSticker extends LayerBase {
   style: DateStickerStyle;
 }
 
-export type Layer = TextLayer | MediaSticker | AudioSticker | LocationSticker | DateSticker;
+export interface DoodleStroke {
+  /** Flat [x0, y0, x1, y1, …] in canvas-width units, relative to the layer centre. */
+  points: number[];
+}
+
+/** Pen drawing: strokes that draw themselves in and then gently "boil" on the live card. */
+export interface DoodleLayer extends LayerBase {
+  kind: 'doodle';
+  strokes: DoodleStroke[];
+  /** Hex ink, or null for the theme's text colour. */
+  color: string | null;
+  /** Pen width as a fraction of canvas width. */
+  width: number;
+}
+
+export type Layer = TextLayer | MediaSticker | AudioSticker | LocationSticker | DateSticker | DoodleLayer;
 
 export interface CanvasDoc {
   version: 1;

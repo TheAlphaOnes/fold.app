@@ -12,6 +12,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
+import { DoodleView } from '@/canvas/render/doodle-view';
 import { DeckCard, FanCard, MotionGroup, Upright, useDeck } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
@@ -70,12 +71,15 @@ export function LayerContent({
   memory,
   width,
   live,
+  moving = false,
 }: {
   layer: Layer;
   media: Map<string, MediaElement>;
   memory: CanvasViewProps['memory'];
   width: number;
   live: boolean;
+  /** Animated layers (doodles) play: the live canvas and the composer, never exports. */
+  moving?: boolean;
 }) {
   switch (layer.kind) {
     case 'text':
@@ -92,6 +96,8 @@ export function LayerContent({
       return memory.location?.name ? <LocationStickerView name={memory.location.name} width={width} scale={layer.scale} /> : null;
     case 'date':
       return <DateStickerView layer={layer} createdAt={memory.createdAt} width={width} />;
+    case 'doodle':
+      return <DoodleView layer={layer} width={width} moving={moving} />;
   }
 }
 
@@ -106,7 +112,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   const shapeLayers = doc.layers.filter(inShape);
   const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck', nudge);
 
-  const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} />;
+  const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} moving={live && animated} />;
   const anchored = (layer: Layer, children: React.ReactNode) => (
     <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
       {children}

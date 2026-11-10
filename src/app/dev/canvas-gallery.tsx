@@ -39,6 +39,13 @@ const SHAPES: StickerShape[] = ['heart', 'star', 'arch', 'stamp', 'circle', 'pol
 
 const TEXT: TextLayer = { id: 't', kind: 'text', text: 'a good day.', font: 'JetBrainsMono-Medium', color: '#FFFFFF', align: 'center', style: 'highlight', size: 0.06, x: 0.5, y: 0.82, scale: 1, rotation: 0 };
 const DATE: Layer = { id: 'd', kind: 'date', style: 'stamp', x: 0.8, y: 0.14, scale: 1, rotation: 6 };
+/** A pen doodle (a heart and a squiggle), to check the draw-in and boil. */
+const heart = Array.from({ length: 40 }, (_, k) => {
+  const t = (k / 39) * Math.PI * 2;
+  return [0.006 * 16 * Math.sin(t) ** 3, -0.006 * (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))];
+}).flat();
+const squiggle = Array.from({ length: 30 }, (_, k) => [-0.12 + k * 0.008, 0.13 + Math.sin(k * 0.7) * 0.02]).flat();
+const DOODLE: Layer = { id: 'p', kind: 'doodle', strokes: [{ points: heart }, { points: squiggle }], color: '#F2600C', width: 0.014, x: 0.24, y: 0.2, scale: 1, rotation: -8 };
 
 function docFor(template: TemplateId): CanvasDoc {
   const media = template === 'text' ? [] : template === 'story' ? MEDIA.slice(0, 1) : MEDIA;
@@ -47,7 +54,7 @@ function docFor(template: TemplateId): CanvasDoc {
   let i = 0;
   const doc = template === 'stickers' ? { ...base, layers: base.layers.map((l) => (l.kind === 'media' ? { ...l, shape: SHAPES[i++ % SHAPES.length] } : l)) } : base;
   const text: TextLayer = template === 'text' ? { ...TEXT, color: null, style: 'plain', y: 0.5, size: 0.08 } : TEXT;
-  return { ...doc, layers: [...doc.layers, text, DATE] };
+  return { ...doc, layers: [...doc.layers, text, DATE, DOODLE] };
 }
 
 export default function CanvasGallery() {
