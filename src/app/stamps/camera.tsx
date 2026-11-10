@@ -12,5 +12,5 @@ import { NeedsUpdate, hasNativeModule } from '@/components/stamps/needs-update';
 const Screen: React.ComponentType | null = hasNativeModule('ExpoCamera') ? require('@/components/stamps/stamp-camera-screen').default : null;
 
 export default function Route() {
-  return Screen ? <Screen /> : <NeedsUpdate feature="The stamp camera" />;
+  return Screen ? <Screen /> : <NeedsUpdate feature="the stamp camera" />;
 }
