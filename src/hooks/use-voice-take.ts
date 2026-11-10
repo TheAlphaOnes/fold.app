@@ -46,7 +46,9 @@ export function useVoiceTake() {
       setState('recording');
       return 'started';
     } catch (error) {
-      console.error('Failed to start recording', error);
+      // Expected on devices without a usable mic or with no storage left;
+      // the caller tells the person, so this is a warning, not a crash.
+      console.warn('Failed to start recording', error);
       await endRecordingSession();
       return 'failed';
     }
