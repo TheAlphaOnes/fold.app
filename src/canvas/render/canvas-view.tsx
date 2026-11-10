@@ -13,7 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
 import { DoodleView } from '@/canvas/render/doodle-view';
-import { DeckCard, FanCard, MotionGroup, Upright, useDeck } from '@/canvas/render/arrangement-motion';
+import { DeckCard, FanCard, MotionGroup, Upright, useDeck, useFanOrder } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
   DateStickerView,
@@ -111,6 +111,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   const inShape = (layer: Layer) => !!motion && layer.kind === 'media' && !!layer.auto;
   const shapeLayers = doc.layers.filter(inShape);
   const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck', nudge);
+  const fanStep = useFanOrder(shapeLayers.length, moving && motion?.kind === 'fan', nudge);
 
   const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} moving={live && animated} />;
   const anchored = (layer: Layer, children: React.ReactNode) => (
@@ -132,7 +133,10 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
     // The hand gathers to the middle of its cards and fans back out.
     const n = Math.max(1, shapeLayers.length);
     const stack = { x: width / 2, y: (shapeLayers.reduce((sum, l) => sum + l.y, 0) / n) * height };
-    shape = shapeLayers.map((l, i) =>
+    // Each card keeps its place in the hand; only which one is on top
+    // changes, so the photos behind come to the front in turn.
+    const order = shapeLayers.map((l, i) => ({ l, i, depth: deckDepth(i, shapeLayers.length, fanStep) })).sort((a, b) => b.depth - a.depth);
+    shape = order.map(({ l, i }) =>
       anchored(
         l,
         <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving} nudge={nudge}>

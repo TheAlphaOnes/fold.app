@@ -5,8 +5,10 @@
  *
  * MotionGroup + Upright   Ring: the circle turns; each photo turns back by
  *                         the same angle so it orbits but stays level.
- * FanCard                 Fan: the hand closes into a stack and springs
- *                         back open, each card a beat behind the one before.
+ * FanCard + useFanOrder   Fan: the hand closes into a stack and springs
+ *                         back open, each card a beat behind the one before;
+ *                         while it's closed the top card goes to the back,
+ *                         so every photo takes a turn in front.
  * useDeck + DeckCard      Deck: the top print lifts, slides out (alternating
  *                         sides) and tucks under; the rest step up a place,
  *                         each easing into its new depth.
@@ -155,6 +157,42 @@ export function FanCard({ index, at, stack, rotation, active, nudge = 0, childre
     return { transform: [{ translateX: tx * closed }, { translateY: ty * closed }, { rotate: `${-rotation * 0.85 * closed}deg` }] };
   });
   return <Animated.View style={style}>{children}</Animated.View>;
+}
+
+/**
+ * Which card of the fan is on top. Each time the hand closes into a stack,
+ * the top card is sent to the back (the order shifts by one while the cards
+ * are gathered, so the swap is hidden), so every photo takes a turn in
+ * front. A tap closes the hand at once and shifts the order then too.
+ * Timed to match FanCard's cycle.
+ */
+export function useFanOrder(count: number, active: boolean, nudge = 0) {
+  const reduced = useReducedMotion();
+  const [step, setStep] = useState(0);
+  const running = active && !reduced && count > 1;
+  const lastNudge = useRef(nudge);
+
+  useEffect(() => {
+    if (!running) return;
+    const tapped = nudge !== lastNudge.current;
+    lastNudge.current = nudge;
+    const period = FAN_OPEN_HOLD_MS + FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS + FAN_OPEN_MS;
+    // The middle of the closed hold: every card has gathered, none has left.
+    const closedAt = FAN_CLOSE_MS + FAN_CLOSED_HOLD_MS / 2 + (count - 1) * FAN_STAGGER_MS * 0.5;
+    const first = tapped ? closedAt : FAN_OPEN_HOLD_MS + closedAt;
+    // Then once per cycle, whether or not the cycle began with a tap.
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const timer = setTimeout(() => {
+      setStep((n) => n + 1);
+      interval = setInterval(() => setStep((n) => n + 1), period);
+    }, first);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [running, count, nudge]);
+
+  return step;
 }
 
 // ─── Deck ───────────────────────────────────────────────────────────────

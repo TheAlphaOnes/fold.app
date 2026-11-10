@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { doodleExtent, drawInSchedule, strokeLength, strokePath, toDoodle, wobble } from '@/canvas/doodle';
+import { brushStrands, doodleExtent, drawInSchedule, strokeLength, offsetLine, strokePath, toDoodle, trim, wobble } from '@/canvas/doodle';
 
 describe('toDoodle', () => {
   it('centres strokes on their bounds, in canvas-width units', () => {
@@ -45,8 +45,6 @@ describe('drawInSchedule', () => {
     expect(strokeLength([0, 0, 3, 4])).toBe(5);
   });
 });
-
-import { brushStrands, offsetLine, trim } from '@/canvas/doodle';
 
 describe('brush', () => {
   const line = Array.from({ length: 20 }, (_, k) => [k * 0.01, 0]).flat();
