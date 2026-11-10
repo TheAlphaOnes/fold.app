@@ -18,7 +18,7 @@ import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Undo2 } from 'lucide-react-native';
 
-import { PEN_WIDTHS, strokePath } from '@/canvas/doodle';
+import { PEN_WIDTHS, brushStrands, strokePath } from '@/canvas/doodle';
 import { InkButton, InkPalette } from '@/components/compose/ink-palette';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn } from '@/constants/motion';
@@ -74,10 +74,22 @@ export function DoodleSurface({ width, height, pen, strokes, onStroke }: DoodleS
     <GestureDetector gesture={draw}>
       <View style={[StyleSheet.absoluteFill, styles.surface, { width, height }]} accessibilityLabel="Doodle on the card">
         <Svg width={width} height={height}>
+          {/* Drawn with the same brush as the placed doodle (in pixels, so unit 1). */}
           {[...strokes, live].map((points, i) =>
-            points.length >= 2 ? (
-              <Path key={i} d={toPath(points)} stroke={ink} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            ) : null,
+            points.length >= 2
+              ? brushStrands(points, strokeWidth, i).map((strand, k) => (
+                  <Path
+                    key={`${i}-${k}`}
+                    d={toPath(strand.points)}
+                    stroke={ink}
+                    strokeOpacity={strand.opacity}
+                    strokeWidth={strokeWidth * strand.width}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    fill="none"
+                  />
+                ))
+              : null,
           )}
         </Svg>
       </View>

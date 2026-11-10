@@ -1,5 +1,6 @@
 /**
- * DoodleView — a pen doodle. Still (exports, thumbnails, Reduce Motion) it
+ * DoodleView — a pen doodle, drawn as a brush (a main line with two
+ * fainter bristle strands, slightly rough) rather than a perfect tube. Still (exports, thumbnails, Reduce Motion) it
  * is the strokes as drawn. Moving, it plays in two parts:
  *
  *   draw-in   each stroke traces itself in the order it was drawn, a beat
@@ -26,14 +27,14 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { BOIL_FRAMES, doodleExtent, drawInSchedule, strokeLength, strokePath, wobble } from '@/canvas/doodle';
+import { BOIL_FRAMES, brushStrands, doodleExtent, drawInSchedule, strokeLength, strokePath, wobble } from '@/canvas/doodle';
 import type { DoodleLayer } from '@/canvas/types';
 import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** How long each boil frame shows: ~7 swaps a second, the classic hand-drawn rate. */
-const BOIL_FRAME_MS = 140;
+const BOIL_FRAME_MS = 120;
 /** Past this many strokes, draw-in would drag; the doodle just appears and boils. */
 const DRAW_IN_LIMIT = 40;
 
@@ -55,17 +56,23 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
   // Room for the pen and the wobble on every side.
   const pad = pen + unit * 0.02;
   const box = { width: extent.x * 2 * unit + pad * 2, height: extent.y * 2 * unit + pad * 2 };
-  const amp = Math.max(0.0015, layer.width * 0.18);
+  // Big enough to read clearly as a hand-drawn boil, whatever the pen.
+  const amp = Math.max(0.0035, layer.width * 0.5);
 
   const strokes = useMemo(() => {
     const offset = { x: box.width / 2, y: box.height / 2 };
     const timings = drawInSchedule(layer.strokes.map((s) => strokeLength(s.points)));
     return layer.strokes.map((s, i) => ({
-      frames: Array.from({ length: animate ? BOIL_FRAMES : 1 }, (_, f) => strokePath(wobble(s.points, f, amp, i), unit, offset)),
+      // Each strand of the brush, in each boil frame.
+      strands: brushStrands(s.points, layer.width, i).map((strand) => ({
+        width: strand.width,
+        opacity: strand.opacity,
+        frames: Array.from({ length: animate ? BOIL_FRAMES : 1 }, (_, f) => strokePath(wobble(strand.points, f, amp, i), unit, offset)),
+      })),
       length: strokeLength(s.points) * unit,
       timing: timings[i],
     }));
-  }, [layer.strokes, unit, amp, animate, box.width, box.height]);
+  }, [layer.strokes, layer.width, unit, amp, animate, box.width, box.height]);
 
   // One clock for the boil; each stroke reads it at its own offset.
   const clock = useSharedValue(0);
@@ -87,7 +94,7 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
       {strokes.map((s, i) => (
           <DoodleStroke
             key={i}
-            frames={s.frames}
+            strands={s.strands}
             length={s.length}
             color={ink}
             pen={pen}
@@ -101,7 +108,7 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
 }
 
 interface DoodleStrokeProps {
-  frames: string[];
+  strands: { width: number; opacity: number; frames: string[] }[];
   length: number;
   color: string;
   pen: number;
@@ -112,7 +119,7 @@ interface DoodleStrokeProps {
   drawIn: { delay: number; duration: number } | null;
 }
 
-function DoodleStroke({ frames, length, color, pen, clock, phase, drawIn }: DoodleStrokeProps) {
+function DoodleStroke({ strands, length, color, pen, clock, phase, drawIn }: DoodleStrokeProps) {
   // 0 = not drawn yet, 1 = fully drawn.
   const reveal = useSharedValue(drawIn ? 0 : 1);
   const drawing = drawIn !== null;
@@ -131,7 +138,23 @@ function DoodleStroke({ frames, length, color, pen, clock, phase, drawIn }: Dood
 
   // The dash is a little longer than the line, so the wobbled frames are covered too.
   const dash = length * 1.08 + pen;
-  return frames.map((d, f) => <BoilFrame key={f} d={d} frame={f} count={frames.length} color={color} pen={pen} clock={clock} phase={phase} reveal={reveal} dash={dash} />);
+  return strands.flatMap((strand, k) =>
+    strand.frames.map((d, f) => (
+      <BoilFrame
+        key={`${k}-${f}`}
+        d={d}
+        frame={f}
+        count={strand.frames.length}
+        color={color}
+        pen={pen * strand.width}
+        strength={strand.opacity}
+        clock={clock}
+        phase={phase}
+        reveal={reveal}
+        dash={dash}
+      />
+    )),
+  );
 }
 
 interface BoilFrameProps {
@@ -140,16 +163,18 @@ interface BoilFrameProps {
   count: number;
   color: string;
   pen: number;
+  /** Opacity when shown (bristle strands are fainter). */
+  strength: number;
   clock: SharedValue<number> | null;
   phase: number;
   reveal: SharedValue<number>;
   dash: number;
 }
 
-function BoilFrame({ d, frame, count, color, pen, clock, phase, reveal, dash }: BoilFrameProps) {
+function BoilFrame({ d, frame, count, color, pen, strength, clock, phase, reveal, dash }: BoilFrameProps) {
   const props = useAnimatedProps(() => {
     const shown = clock ? Math.floor(clock.get() + phase) % count === frame : frame === 0;
-    return { opacity: shown ? 1 : 0, strokeDashoffset: dash * (1 - reveal.get()) };
+    return { opacity: shown ? strength : 0, strokeDashoffset: dash * (1 - reveal.get()) };
   });
   return (
     <AnimatedPath

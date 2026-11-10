@@ -126,3 +126,58 @@ export function drawInSchedule(lengths: number[]): { delay: number; duration: nu
   }
   return out;
 }
+
+/**
+ * A brush look from plain points: a main line plus two thinner "bristle"
+ * strands just off it, each a touch shorter and fainter, so the line has a
+ * dry, uneven edge and rough ends instead of a perfect tube.
+ * `pen` is the pen width in canvas-width units.
+ */
+export interface BrushStrand {
+  points: number[];
+  /** Share of the pen width. */
+  width: number;
+  opacity: number;
+}
+
+export function brushStrands(points: number[], pen: number, seed = 0): BrushStrand[] {
+  const base = roughen(points, pen * 0.22, seed);
+  if (points.length < 6) return [{ points: base, width: 1, opacity: 1 }];
+  return [
+    { points: base, width: 1, opacity: 1 },
+    { points: trim(offsetLine(roughen(points, pen * 0.3, seed + 3), pen * 0.34), 0.05, 0.02), width: 0.42, opacity: 0.6 },
+    { points: trim(offsetLine(roughen(points, pen * 0.3, seed + 7), -pen * 0.3), 0.02, 0.07), width: 0.32, opacity: 0.5 },
+  ];
+}
+
+/** Small, quick jitter along the line: the unsteadiness of a real hand. */
+export function roughen(points: number[], amp: number, seed = 0): number[] {
+  if (amp === 0) return points;
+  return points.map((v, i) => {
+    const k = i >> 1;
+    return v + amp * Math.sin(k * 1.9 + seed * 2.7 + (i % 2) * 4.1) * Math.sin(k * 0.73 + seed);
+  });
+}
+
+/** The line moved sideways by `d` (canvas-width units) along its normals. */
+export function offsetLine(points: number[], d: number): number[] {
+  const n = points.length / 2;
+  const out: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1) * 2;
+    const b = Math.min(n - 1, k + 1) * 2;
+    const dx = points[b] - points[a];
+    const dy = points[b + 1] - points[a + 1];
+    const len = Math.hypot(dx, dy) || 1;
+    out.push(points[k * 2] - (dy / len) * d, points[k * 2 + 1] + (dx / len) * d);
+  }
+  return out;
+}
+
+/** Drops a share of the points from each end (at least two points stay). */
+export function trim(points: number[], start: number, end: number): number[] {
+  const n = points.length / 2;
+  const from = Math.floor(n * start);
+  const to = Math.max(from + 2, n - Math.floor(n * end));
+  return points.slice(from * 2, to * 2);
+}
