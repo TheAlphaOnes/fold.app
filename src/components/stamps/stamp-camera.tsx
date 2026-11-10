@@ -22,7 +22,6 @@ import { Alert, Linking, Pressable, StyleSheet, View, useWindowDimensions } from
 import { useCameraPermissions, type CameraType, type CameraView } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
-import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -30,6 +29,7 @@ import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
 import { CameraSurface } from '@/components/camera/camera-surface';
+import { takeShotAsShown } from '@/components/camera/shot-as-shown';
 import { RoundButton } from '@/components/round-button';
 import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
@@ -38,7 +38,7 @@ import { useStamps } from '@/hooks/use-stamps';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
-import { formatSerial, isNewPlace, photoCropFor, photoMatchesPreview, stampCropFor } from '@/stamps/geometry';
+import { formatSerial, isNewPlace } from '@/stamps/geometry';
 
 /** The stamp's widest, as a share of the screen. */
 const STAMP_WIDTH = 0.74;
@@ -133,10 +133,8 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
     flash.set(1);
     flash.set(withTiming(0, { duration: 260, easing: Easing.out(Easing.quad) }));
     try {
-      // A snapshot of the viewfinder as shown, taken alongside the photo: the stamp's
-      // source when the photo turns out not to match the preview.
-      const shown = captureRef(preview, { format: 'jpg', quality: 0.95 }).catch(() => null);
-      const shot = await camera.current.takePictureAsync({ quality: 0.9 });
+      const view = { width: screen.width, height: screen.height };
+      const { image: frame, scale } = await takeShotAsShown(camera.current, preview, view);
       camera.current?.pausePreview().catch(() => undefined);
       const resolved = place !== 'finding' && place ? place : await freshPlace.current;
       if (!resolved?.name) {
@@ -145,26 +143,9 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
         askForLocation();
         return;
       }
-      // Crop against the image as decoded (orientation applied), not the size the camera
-      // reports: those can differ.
-      const upright = await ImageManipulator.manipulate(shot.uri).renderAsync();
-      const view = { width: screen.width, height: screen.height };
-      let source: string | typeof upright = upright;
-      let crop = photoCropFor({ width: upright.width, height: upright.height }, view, window);
-      if (!photoMatchesPreview({ width: upright.width, height: upright.height }, view)) {
-        // The photo isn't the picture the viewfinder showed (simulator cameras hand back a
-        // different frame), so the stamp is cut from what was on screen instead.
-        const snapshot = await shown;
-        if (snapshot) {
-          const frame = await ImageManipulator.manipulate(snapshot).renderAsync();
-          const scale = frame.width / view.width;
-          source = frame;
-          crop = { originX: Math.round(window.x * scale), originY: Math.round(window.y * scale), width: Math.round(window.width * scale), height: Math.round(window.height * scale) };
-        } else {
-          crop = stampCropFor({ width: upright.width, height: upright.height }, view, window);
-        }
-      }
-      const image = await ImageManipulator.manipulate(source).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
+      // The stamp is the window's part of exactly what was on screen.
+      const crop = { originX: Math.round(window.x * scale), originY: Math.round(window.y * scale), width: Math.round(window.width * scale), height: Math.round(window.height * scale) };
+      const image = await ImageManipulator.manipulate(frame).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
       const saved = await image.saveAsync({ compress: 0.86, format: SaveFormat.JPEG });
       const dest = `${FileSystem.documentDirectory}stamp_${Date.now()}.jpg`;
       await FileSystem.moveAsync({ from: saved.uri, to: dest });

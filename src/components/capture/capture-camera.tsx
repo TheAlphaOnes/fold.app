@@ -18,7 +18,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { SaveFormat } from 'expo-image-manipulator';
 import { useCameraPermissions, useMicrophonePermissions, type CameraMode, type CameraType, type CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -26,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwitchCamera } from 'lucide-react-native';
 
 import { CameraSurface } from '@/components/camera/camera-surface';
+import { takeShotAsShown } from '@/components/camera/shot-as-shown';
 import { CloseButton, RoundButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { trackError } from '@/services/analytics';
@@ -50,6 +52,8 @@ export default function CaptureCamera() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mic, requestMic] = useMicrophonePermissions();
   const camera = useRef<CameraView>(null);
+  const preview = useRef<View>(null);
+  const screen = useWindowDimensions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [mode, setMode] = useState<CameraMode>('picture');
   const [busy, setBusy] = useState(false);
@@ -98,9 +102,11 @@ export default function CaptureCamera() {
     flash.set(1);
     flash.set(withTiming(0, { duration: 260, easing: Easing.out(Easing.quad) }));
     try {
-      const photo = await camera.current.takePictureAsync({ quality: 0.92 });
+      // Exactly what the viewfinder showed (the full photo extends past the screen's edges).
+      const { image } = await takeShotAsShown(camera.current, preview, { width: screen.width, height: screen.height });
       camera.current?.pausePreview().catch(() => undefined);
-      await deliver({ uri: photo.uri, type: 'image', width: photo.width, height: photo.height });
+      const saved = await image.saveAsync({ compress: 0.92, format: SaveFormat.JPEG });
+      await deliver({ uri: saved.uri, type: 'image', width: saved.width, height: saved.height });
     } catch (error) {
       trackError(error, 'capture_photo');
       camera.current?.resumePreview().catch(() => undefined);
@@ -159,7 +165,7 @@ export default function CaptureCamera() {
 
   return (
     <View style={styles.root}>
-      <CameraSurface cameraRef={camera} facing={facing} mode={mode} mirror={facing === 'front'} mute={!mic?.granted} animateShutter={false} />
+      <CameraSurface cameraRef={camera} containerRef={preview} facing={facing} mode={mode} mirror={facing === 'front'} mute={!mic?.granted} animateShutter={false} />
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
       {/* Hidden, not removed, while recording: the screen keeps one fixed set of views. */}
