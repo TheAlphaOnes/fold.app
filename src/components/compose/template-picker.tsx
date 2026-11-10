@@ -32,10 +32,11 @@ const ICONS = {
   fan: GalleryHorizontalEnd,
   stack: Layers2,
 } as const;
-const TEMPLATE_IDS: readonly TemplateId[] = [...BASE_TEMPLATES, ...GRID_TEMPLATES].map((t) => t.id);
+export const TEMPLATE_IDS: readonly TemplateId[] = [...BASE_TEMPLATES, ...GRID_TEMPLATES].map((t) => t.id);
 const GAPS: readonly GapSize[] = ['none', 'thin', 'thick'];
 
-function renderTemplate(id: TemplateId, ink: string) {
+/** A template's icon (or grid diagram) and name, as every template control shows it. */
+export function renderTemplate(id: TemplateId, ink: string) {
   const layout = isGrid(id) ? GRID_LAYOUTS.find((g) => g.id === gridIdOf(id)) : undefined;
   const Icon = isGrid(id) ? null : ICONS[id as keyof typeof ICONS];
   return (

@@ -22,7 +22,8 @@ import { useCameraPermissions, type CameraType, type CameraView } from 'expo-cam
 import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { Camera as CameraIcon, SwitchCamera } from 'lucide-react-native';
+import { Image } from 'expo-image';
+import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
 import { StripesSurface } from '@/canvas/render/stripes-surface';
 import { CameraSurface } from '@/components/camera/camera-surface';
@@ -32,11 +33,11 @@ import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { dayLine } from '@/home/today';
-import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
+import { dayLine, shotsFor } from '@/home/today';
+import { TemplateSlider } from '@/components/compose/template-slider';
 import type { TemplateId } from '@/canvas/types';
 import { navigate } from '@/utils/navigation';
-import { setPendingCameraMedia } from '@/utils/pending-camera-media';
+import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 
 const RADIUS = 28;
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -56,7 +57,6 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const camera = useRef<CameraView>(null);
   const container = useRef<View>(null);
   const [template, setTemplate] = useState<TemplateId>('story');
-  const [listOpen, setListOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
@@ -74,9 +74,21 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
     develop.set(live ? withDelay(180, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 220 }));
   }, [live, develop]);
   const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
-  const cover = useAnimatedStyle(() => ({ opacity: 1 - develop.get() * 0.85, transform: [{ translateY: -develop.get() * 24 }] }));
+  // The date stays put and readable over the picture; it only eases up a little.
+  const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
+
+  // Photos taken so far for this page; how many the template takes.
+  const [shots, setShots] = useState<PendingMedia[]>([]);
+  const limit = shotsFor(template);
+  const finish = (taken: PendingMedia[]) => {
+    if (taken.length === 0) return;
+    haptic.success();
+    setPendingCameraMedia(taken);
+    setShots([]);
+    navigate.push(`/compose?template=${encodeURIComponent(template)}`);
+  };
 
   const shoot = async () => {
     if (busy) return;
@@ -95,8 +107,10 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       const saved = await image.saveAsync({ compress: 0.92, format: SaveFormat.JPEG });
       const dest = `${FileSystem.documentDirectory}camera_${Date.now()}.jpg`;
       await FileSystem.moveAsync({ from: saved.uri, to: dest });
-      setPendingCameraMedia({ uri: dest, type: 'image', width: saved.width, height: saved.height });
-      navigate.push(`/compose?template=${encodeURIComponent(template)}`);
+      const next = [...shots, { uri: dest, type: 'image' as const, width: saved.width, height: saved.height }];
+      // A fixed template opens once its last photo is in; a free one keeps going until Done.
+      if (next.length >= limit.max) finish(next);
+      else setShots(next);
     } catch (error) {
       trackError(error, 'today_capture');
     } finally {
@@ -114,33 +128,40 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
       <Animated.View style={[styles.cover, cover]} pointerEvents="none">
-        <ThemedText style={[styles.date, { color: live ? '#FFFFFF' : theme.text }]}>
+        <ThemedText style={[styles.date, live ? styles.overPicture : { color: theme.text }]}>
           {DAYS[now.getDay()]} {String(now.getDate()).padStart(2, '0')}.{String(now.getMonth() + 1).padStart(2, '0')}
         </ThemedText>
-        <ThemedText style={[styles.line, { color: live ? '#FFFFFFCC' : theme.textMuted }]}>{dayLine(now)}</ThemedText>
+        <ThemedText style={[styles.line, live ? [styles.overPicture, { opacity: 0.85 }] : { color: theme.textMuted }]}>{dayLine(now)}</ThemedText>
       </Animated.View>
 
-      {/* The composer's template list, opening over the camera. */}
-      {listOpen && (
-        <View style={styles.list}>
-          <TemplateList
-            current={template}
-            onPick={(t) => {
-              setTemplate(t);
-              setListOpen(false);
-            }}
-            onGap={() => undefined}
-          />
-        </View>
-      )}
-
       <View style={styles.bottom}>
-        {/* The same template picker as the composer: the shot opens laid out in it. */}
-        <View style={[styles.picker, { backgroundColor: theme.background }]}>
-          <TemplatePicker current={template} open={listOpen} onPick={setTemplate} onToggleList={() => setListOpen((o) => !o)} />
-        </View>
+        {/* Swipe through the templates; the shot opens laid out in the one in the middle. */}
+        <TemplateSlider
+          value={template}
+          onChange={(t) => {
+            setTemplate(t);
+            // Keep what's taken, up to what the new template holds.
+            setShots((s) => s.slice(0, shotsFor(t).max));
+          }}
+          width={width}
+        />
+        {/* What's been taken: thumbnails and how many of how many. */}
+        {shots.length > 0 && (
+          <View style={styles.taken}>
+            {shots.map((m) => (
+              <Image key={m.uri} source={{ uri: m.uri }} style={styles.thumb} />
+            ))}
+            <ThemedText style={styles.count}>
+              {shots.length}
+              {limit.fixed ? ` / ${limit.max}` : ''}
+            </ThemedText>
+          </View>
+        )}
         <View style={styles.shutterRow}>
-          <View style={styles.side} />
+          {/* Done: for templates that take any number of photos. */}
+          <View style={[styles.side, { opacity: shots.length > 0 && !limit.fixed ? 1 : 0 }]} pointerEvents={shots.length > 0 && !limit.fixed ? 'auto' : 'none'}>
+            <RoundButton icon={Check} accessibilityLabel={`Done, open ${shots.length} photos`} onPress={() => finish(shots)} />
+          </View>
           <Pressable
             onPress={shoot}
             onLongPress={() => {
@@ -170,12 +191,13 @@ const styles = StyleSheet.create({
   cover: { position: 'absolute', top: 28, left: 24, right: 24, gap: 8 },
   date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
   line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
+  overPicture: { color: '#FFFFFF', textShadowColor: '#00000099', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
+  taken: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 40, borderRadius: 12, backgroundColor: '#00000080' },
+  thumb: { width: 28, height: 28, borderRadius: 6 },
+  count: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 1, marginLeft: 4 },
   shutterRow: { flexDirection: 'row', alignItems: 'center', gap: 28 },
   side: { width: ROUND_BUTTON_SIZE, alignItems: 'center' },
   shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 56, height: 56, borderRadius: 28 },
-  // Solid behind the pill, so it reads over any picture.
-  picker: { width: 260, flexDirection: 'row', borderRadius: ROUND_BUTTON_SIZE / 2 },
-  list: { position: 'absolute', left: 16, right: 16, bottom: 26 + 72 + 16 + 34 + 12 },
 });
