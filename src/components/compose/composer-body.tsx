@@ -16,7 +16,7 @@
  * twin beside it.
  *
  * New memories open on the blank canvas, not in the keyboard: a quiet
- * "tap to write" hint sits in the middle until something is added, and
+ * journaling prompt ("what's worth remembering?") sits in the middle until something is added, and
  * Aa or a tap on the card opens writing (TextEditorSheet).
  */
 
@@ -465,7 +465,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         )}
         {!editing && !doodle && isBlankCard(c.doc) && c.doc.layers.length === 0 && (
           <Animated.View entering={fadeIn(300, 260)} style={styles.writeHint} pointerEvents="none">
-            <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>tap to write</ThemedText>
+            <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>what's worth remembering?</ThemedText>
           </Animated.View>
         )}
         {templatesOpen && (
