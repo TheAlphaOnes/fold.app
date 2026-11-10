@@ -99,3 +99,27 @@ export function formatSerial(serial: number): string {
 export function isNewPlace(stamps: { place: string }[], place: string): boolean {
   return !stamps.some((s) => s.place.toLowerCase() === place.toLowerCase());
 }
+
+/** The largest centred rectangle of `aspect` (height ÷ width) inside a photo, in photo pixels. */
+export function centreCropFor(photo: Size, aspect: number): { originX: number; originY: number; width: number; height: number } {
+  let width = photo.width;
+  let height = Math.round(width * aspect);
+  if (height > photo.height) {
+    height = photo.height;
+    width = Math.round(height / aspect);
+  }
+  return { originX: Math.round((photo.width - width) / 2), originY: Math.round((photo.height - height) / 2), width, height };
+}
+
+/**
+ * The crop for a stamp shot: what the window showed, when the photo matches
+ * the preview's orientation (it does on phones); otherwise the preview can't
+ * be trusted to show this photo (simulators hand back a different frame),
+ * so the largest centred stamp-shaped piece is used instead of a sliver.
+ */
+export function stampCropFor(photo: Size, view: Size, window: Rect): { originX: number; originY: number; width: number; height: number } {
+  const photoPortrait = photo.height >= photo.width;
+  const viewPortrait = view.height >= view.width;
+  if (photoPortrait !== viewPortrait) return centreCropFor(photo, window.height / window.width);
+  return photoCropFor(photo, view, window);
+}

@@ -37,7 +37,7 @@ import { useStamps } from '@/hooks/use-stamps';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
-import { formatSerial, isNewPlace, photoCropFor } from '@/stamps/geometry';
+import { formatSerial, isNewPlace, stampCropFor } from '@/stamps/geometry';
 import { goBack } from '@/utils/navigation';
 
 /** The stamp's width as a share of the screen. */
@@ -126,8 +126,7 @@ export default function StampCamera() {
       // Crop against the image as decoded (orientation applied), not the size the camera
       // reports: those can differ, which cut a small, wrong corner out of the photo.
       const upright = await ImageManipulator.manipulate(shot.uri).renderAsync();
-      const crop = photoCropFor({ width: upright.width, height: upright.height }, { width: screen.width, height: screen.height }, window);
-      if (__DEV__) console.log('[stamp] shot', shot.width, shot.height, 'decoded', upright.width, upright.height, 'screen', screen.width, screen.height, 'crop', crop);
+      const crop = stampCropFor({ width: upright.width, height: upright.height }, { width: screen.width, height: screen.height }, window);
       const image = await ImageManipulator.manipulate(upright).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
       const saved = await image.saveAsync({ compress: 0.86, format: SaveFormat.JPEG });
       const dest = `${FileSystem.documentDirectory}stamp_${Date.now()}.jpg`;
