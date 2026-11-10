@@ -109,7 +109,7 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
     <GestureDetector gesture={gesture}>
       <View style={[styles.frame, { width, height }]} collapsable={false}>
         <Animated.View style={[StyleSheet.absoluteFill, style]}>
-          <MediaFill media={media} crop={NO_CROP} width={width} height={height} mirrored={mirrored} />
+          <MediaFill media={media} crop={NO_CROP} width={width} height={height} mirrored={mirrored} fade />
         </Animated.View>
         {highlighted && (
           // White outline with a fine dark inner line: visible on light and dark photos alike.

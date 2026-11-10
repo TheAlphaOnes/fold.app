@@ -86,7 +86,7 @@ export function LayerContent({
       return <TextLayerView layer={layer} width={width} />;
     case 'media': {
       const m = media.get(layer.mediaId);
-      return m ? <MediaStickerView layer={layer} media={m} width={width} /> : null;
+      return m ? <MediaStickerView layer={layer} media={m} width={width} fade={moving} /> : null;
     }
     case 'audio': {
       const m = media.get(layer.mediaId);
@@ -111,7 +111,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   const inShape = (layer: Layer) => !!motion && layer.kind === 'media' && !!layer.auto;
   const shapeLayers = doc.layers.filter(inShape);
   const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck', nudge);
-  const fanStep = useFanOrder(shapeLayers.length, moving && motion?.kind === 'fan', nudge);
+  const fan = useFanOrder(shapeLayers.length, moving && motion?.kind === 'fan', nudge);
 
   const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} moving={live && animated} />;
   const anchored = (layer: Layer, children: React.ReactNode) => (
@@ -135,11 +135,11 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
     const stack = { x: width / 2, y: (shapeLayers.reduce((sum, l) => sum + l.y, 0) / n) * height };
     // Each card keeps its place in the hand; only which one is on top
     // changes, so the photos behind come to the front in turn.
-    const order = shapeLayers.map((l, i) => ({ l, i, depth: deckDepth(i, shapeLayers.length, fanStep) })).sort((a, b) => b.depth - a.depth);
+    const order = shapeLayers.map((l, i) => ({ l, i, depth: deckDepth(i, shapeLayers.length, fan.step) })).sort((a, b) => b.depth - a.depth);
     shape = order.map(({ l, i }) =>
       anchored(
         l,
-        <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving} nudge={nudge}>
+        <FanCard index={i} at={{ x: l.x * width, y: l.y * height }} stack={stack} rotation={l.rotation} active={moving} nudge={nudge} leaving={i === fan.leaving} dissolve={fan.dissolve}>
           {content(l)}
         </FanCard>,
       ),
