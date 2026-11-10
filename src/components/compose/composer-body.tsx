@@ -1,18 +1,19 @@
 /**
  * ComposerBody — the composer screen. Layout (top to bottom):
  *
- *   ✕     ↶  [ADD TO STORY]  SAVE      close · undo · story · save
+ *   ✕      TUE 10.11 · 09:59    ↶  SAVE    close · when · undo · save
  *   [Photo][Camera][GIF][Doodle][Song]…     AddRow: every way to add media
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [tools for the selection]          sticker or photo, while selected
- *   Aa   [ ▦ TEMPLATE ⇅ ]              text · template
+ *   [ Aa ]  [ ▦ TEMPLATE ⇅ ]  [ ▢ STORY ]    text · template · story
  *
  * Laid out by priority: Save is the one filled action, top right where a
  * finished thing is confirmed; writing sits at
  * the thumb, and every media source lives once, in the add row; the
- * template is a quiet style pill (tap: next, hold: list, gap inside it). Filing into a story is optional, so it's an
- * outlined text CTA in the top bar.
+ * template is a quiet style pill (tap: next, hold: list, gap inside it).
+ * Filing into a story is optional, so it's the template pill's outlined
+ * twin beside it.
  *
  * New memories open on the blank canvas, not in the keyboard: a quiet
  * "tap to write" hint sits in the middle until something is added, and
@@ -31,6 +32,7 @@ import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
 import { fitCanvas, newId } from '@/canvas/geometry';
 import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
+import { formatMoment } from '@/utils/format-date';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
 import { isArranged } from '@/templates/arrangements';
@@ -82,6 +84,8 @@ const ADD_AREA = ADD_ROW_HEIGHT;
 const BOTTOM_BAR = ROUND_BUTTON_SIZE + 8;
 /** Between the canvas and the add row above / the bottom bar below. */
 const CANVAS_MARGIN = SPACE;
+/** Width of the bottom row's side controls (text, story). */
+const SIDE_WIDTH = 92;
 const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'heart', 'star', 'arch', 'polaroid', 'stamp', 'tape'];
 
 const DEFAULT_TEXT: TextDraft = { text: '', font: DEFAULT_MEMORY_FONT, color: null, align: 'center', style: 'plain', size: 0.065 };
@@ -386,7 +390,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
   const storyLabel =
     storyIds.length === 0
-      ? 'ADD TO STORY'
+      ? 'STORY'
       : storyIds.length === 1
         ? (stories.find((s) => s.id === storyIds[0])?.title.toUpperCase() ?? 'STORY')
         : `${storyIds.length} STORIES`;
@@ -406,20 +410,14 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {!editing && !doodle && (
         <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
           <CloseButton accessibilityLabel="Close without saving" />
+          {/* When this memory is from, for context; centred on the screen, between close and save. */}
+          <View style={[styles.moment, { top: insets.top + 6 }]} pointerEvents="none">
+            <ThemedText style={[styles.momentText, { color: theme.textMuted }]} numberOfLines={1}>
+              {formatMoment(openedAt)}
+            </ThemedText>
+          </View>
           <View style={styles.topRight}>
             {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
-            {/* Optional filing: an outlined text CTA, never as loud as Save. */}
-            <Pressable
-              onPress={openStories}
-              accessibilityRole="button"
-              accessibilityLabel={storyIds.length > 0 ? `In ${storyLabel.toLowerCase()}. Change stories` : 'Add to a story'}
-              style={({ pressed }) => [styles.storyCta, { borderColor: storyIds.length > 0 ? theme.text : theme.border, opacity: pressed ? 0.5 : 1 }]}
-            >
-              <Book size={12} color={theme.text} />
-              <ThemedText style={[styles.storyCtaText, { color: theme.text }]} numberOfLines={1}>
-                {storyLabel}
-              </ThemedText>
-            </Pressable>
             <Pressable
               onPress={saveOnce}
               disabled={!hasContent || isSaving}
@@ -504,7 +502,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {!editing && !doodle && (
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
           {/* Writing is the one creative action at the thumb; photos and the rest live in the add row. */}
-          <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
+          <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} style={styles.side} />
           <View style={styles.middle}>
             <TemplatePicker
               current={c.doc.template}
@@ -513,6 +511,18 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
               onToggleList={() => setTemplatesOpen((o) => !o)}
             />
           </View>
+          {/* Optional filing: a short outlined pill, the text button's twin on the other side. */}
+          <Pressable
+            onPress={openStories}
+            accessibilityRole="button"
+            accessibilityLabel={storyIds.length > 0 ? `In ${storyLabel.toLowerCase()}. Change stories` : 'Add to a story'}
+            style={({ pressed }) => [styles.storyCta, { borderColor: storyIds.length > 0 ? theme.text : theme.border, opacity: pressed ? 0.5 : 1 }]}
+          >
+            <Book size={14} color={theme.text} />
+            <ThemedText style={[styles.storyCtaText, { color: theme.text }]} numberOfLines={1}>
+              {storyLabel}
+            </ThemedText>
+          </Pressable>
         </Animated.View>
       )}
       {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
@@ -600,14 +610,19 @@ const styles = StyleSheet.create({
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE },
-  middle: { flex: 1, flexDirection: 'row' },
+  middle: { flex: 1, flexBasis: 0, flexDirection: 'row' },
   addArea: { height: ADD_AREA },
   // Over the top bar and add row while doodling, so the canvas doesn't move.
   doodleBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 20 },
   writeHint: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
-  storyCta: { height: ROUND_BUTTON_SIZE, maxWidth: 160, paddingHorizontal: 14, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2, flexShrink: 1 },
+  // The two side controls share one width, so the template pill sits in the true centre.
+  side: { width: SIDE_WIDTH },
+  moment: { position: 'absolute', left: 0, right: 0, height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center' },
+  momentText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2 },
+  // Same height, border, radius and type as the template pill.
+  storyCta: { width: SIDE_WIDTH, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  storyCtaText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.5, flexShrink: 1 },
   save: { height: ROUND_BUTTON_SIZE, paddingHorizontal: 22, borderRadius: ROUND_BUTTON_SIZE / 2, justifyContent: 'center' },
   saveText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },
 });
