@@ -131,7 +131,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       return { state, chosen: true, source: 'compose' as CaptureSource };
     }
     const pending = consumePendingCameraMedia();
-    const source: CaptureSource = pending.length > 0 ? 'camera' : sharedText ? 'share_extension' : 'compose';
+    const heldVoice = pending.length > 0 && pending.every((p) => p.type === 'audio');
+    const source: CaptureSource = heldVoice ? 'voice_hold' : pending.length > 0 ? 'camera' : sharedText ? 'share_extension' : 'compose';
     const media: MediaElement[] = pending.map((p) => ({
       id: newId(),
       uri: p.uri,
@@ -142,6 +143,15 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       height: p.height,
     }));
     const state = initialComposerState(media);
+    // A voice note (held on the orange key) arrives as a disc in the middle,
+    // the same sticker the composer's own Voice button adds.
+    const voices = media.filter((m) => m.type === 'audio');
+    if (voices.length > 0) {
+      state.doc = {
+        ...state.doc,
+        layers: [...state.doc.layers, ...voices.map((m, i) => ({ id: newId(), kind: 'audio' as const, mediaId: m.id, x: 0.5, y: 0.45 + i * 0.12, scale: 1.3, rotation: 0 }))],
+      };
+    }
     if (sharedText?.trim()) {
       const spot = defaultTextSpot(state.doc);
       state.doc = {
