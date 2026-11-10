@@ -15,8 +15,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { MAX_MEDIA_ELEMENTS, type MediaKind } from '@/constants/media';
 import type { MusicTrack } from '@/hooks/use-music-store';
 import { haptic } from '@/services/haptics';
-import { awaitCapture } from '@/utils/capture-result';
-import { navigate } from '@/utils/navigation';
 import type { MediaElement } from '@/types/journal';
 import {
   alertElementCap,
@@ -25,8 +23,10 @@ import {
   downloadWithinFileSize,
   getHighResArtwork,
   sliceToElementCap,
-  verifyFileSize,
 } from '@/utils/media-attach';
+
+/** Longest clip the camera records for a memory. */
+const VIDEO_MAX_SECONDS = 60;
 
 const rid = () => Math.random().toString(36).substring(2, 9);
 
@@ -76,25 +76,25 @@ export function useComposeMedia(count: number) {
     return added.filter((m): m is MediaElement => m !== null);
   }, [count]);
 
-  /**
-   * Opens the app's camera (/capture) in photo or video mode; resolves with
-   * whichever was taken, or nothing if it was closed.
-   */
+  /** Opens the camera in photo or video mode (the camera's own switch); the result is whichever was taken. */
   const captureWithCamera = useCallback(async (): Promise<MediaElement[]> => {
     if (roomLeft <= 0) {
       alertElementCap();
       return [];
     }
-    const shot = awaitCapture();
-    navigate.push('/capture');
-    const taken = await shot;
-    if (!taken) return [];
-    // Removes the file itself when it's over the cap.
-    if (!(await verifyFileSize(taken.type, taken.uri))) {
-      alertFileTooLarge(taken.type);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return [];
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images', 'videos'], videoMaxDuration: VIDEO_MAX_SECONDS, quality: 1 });
+    if (result.canceled) return [];
+    const asset = result.assets[0];
+    const kind: MediaKind = asset.type === 'video' ? 'video' : 'image';
+    const dest = `${FileSystem.documentDirectory}camera_${Date.now()}_${rid()}.${extOf(asset.uri, kind === 'video' ? 'mp4' : 'jpg')}`;
+    const ok = await copyWithinFileSize({ from: asset.uri, to: dest, kind, knownSizeBytes: asset.fileSize });
+    if (!ok) {
+      alertFileTooLarge(kind);
       return [];
     }
-    return [element({ uri: taken.uri, type: taken.type, width: taken.width, height: taken.height })];
+    return [element({ uri: dest, type: kind, width: asset.width, height: asset.height })];
   }, [roomLeft]);
 
   const downloadGif = useCallback(
