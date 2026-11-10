@@ -25,6 +25,8 @@ import { ChapterStage } from '@/components/guide/chapter-stage';
 import { TagStage } from '@/components/guide/tag-stage';
 import { InkStage } from '@/components/guide/ink-stage';
 import { RemindersStage } from '@/components/guide/reminders-stage';
+import { TodayStage } from '@/components/guide/today-stage';
+import { LaunchStage } from '@/components/guide/launch-stage';
 import type { GuideStageProps, StageArea } from '@/components/guide/types';
 import { isGuideStepId } from '@/constants/guide';
 import { fadeOut, riseIn } from '@/constants/motion';
@@ -118,6 +120,10 @@ export default function FieldGuideScreen() {
         return <InkStage status={status} onSuccess={flow.succeed} />;
       case 'reminders':
         return <RemindersStage status={status} onSuccess={flow.succeed} />;
+      case 'today':
+        return <TodayStage {...shared} />;
+      case 'launch':
+        return <LaunchStage {...shared} latest={latest} />;
     }
   };
 

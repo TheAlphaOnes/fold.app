@@ -46,6 +46,7 @@ import { Type } from '@/constants/theme';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
+import { markGuideDone } from '@/services/guide-progress';
 import { placeCount } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
@@ -106,6 +107,10 @@ export default function StampStudio() {
     y.set(withSpring(open ? closedY : 0, SPRING));
     setOpen(!open);
   };
+
+  useEffect(() => {
+    if (open) markGuideDone('stampdrawer');
+  }, [open]);
 
   const start = useSharedValue(0);
   const drag = Gesture.Pan()

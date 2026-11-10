@@ -21,6 +21,7 @@ import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { goBack, navigate } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
+import { markGuideDone } from '@/services/guide-progress';
 
 /**
  * A memory, opened as a gallery: swipe through its words, photos, videos
@@ -188,7 +189,10 @@ export default function MemoryDetailScreen() {
       {/* Offscreen 1080×1920 copy, captured when sharing as a card. */}
       <ExportCanvas ref={hiddenCardRef} memory={composition} />
 
-      <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={setPage} />
+      <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={(next) => {
+        setPage(next);
+        if (next > 0) markGuideDone('pages');
+      }} />
 
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>

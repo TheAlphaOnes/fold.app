@@ -30,6 +30,7 @@ import { CameraSurface } from '@/components/camera/camera-surface';
 import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
 import { ThemedText } from '@/components/themed-text';
+import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
@@ -85,6 +86,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const finish = (taken: PendingMedia[]) => {
     if (taken.length === 0) return;
     haptic.success();
+    useSettingsStore.getState().completeGuideStep('today');
     setPendingCameraMedia(taken);
     setShots([]);
     navigate.push(`/compose?template=${encodeURIComponent(template)}`);
