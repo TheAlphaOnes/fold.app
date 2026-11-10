@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { nextHint, unlearnedGestures } from '@/home/key-hints';
 
-const none = { write: false, voice: false, capture: false };
-
 describe('key hints', () => {
-  it('teaches only gestures not yet used or done in the guide', () => {
-    expect(unlearnedGestures({ tap: true, hold: false, swipe: false }, none)).toEqual(['hold', 'swipe']);
-    expect(unlearnedGestures({ tap: false, hold: false, swipe: false }, { write: true, voice: true, capture: true })).toEqual([]);
+  it('teaches only gestures not yet used on the key', () => {
+    expect(unlearnedGestures({ tap: true, hold: false, swipe: false })).toEqual(['hold', 'swipe']);
+    expect(unlearnedGestures({ tap: true, hold: true, swipe: true })).toEqual([]);
   });
   it('goes round the remaining hints', () => {
     expect(nextHint(['tap', 'hold', 'swipe'], null)).toBe('tap');

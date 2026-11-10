@@ -8,7 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native';
 
-import { HINT_GAP_MS, HINT_SHOW_MS, KEY_HINTS, nextHint, type KeyGesture } from '@/home/key-hints';
+import { HINT_FIRST_MS, HINT_GAP_MS, HINT_SHOW_MS, KEY_HINTS, nextHint, type KeyGesture } from '@/home/key-hints';
 import { useScrambleText } from '@/hooks/use-scramble-text';
 
 interface KeyCaptionProps {
@@ -34,7 +34,10 @@ export function KeyCaption({ date, unlearned, active, onDemo, style }: KeyCaptio
   useEffect(() => {
     if (!teaching) return;
     let timer: ReturnType<typeof setTimeout>;
+    let first = true;
     const cycle = () => {
+      const wait = first ? HINT_FIRST_MS : HINT_GAP_MS;
+      first = false;
       timer = setTimeout(() => {
         const hint = nextHint(latest.current.unlearned, last.current);
         if (!hint) return;
@@ -45,7 +48,7 @@ export function KeyCaption({ date, unlearned, active, onDemo, style }: KeyCaptio
           setShowing(null);
           cycle();
         }, HINT_SHOW_MS);
-      }, HINT_GAP_MS);
+      }, wait);
     };
     cycle();
     return () => {

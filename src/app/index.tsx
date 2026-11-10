@@ -85,7 +85,7 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
 
   // ─── Teaching the orange key ───────────────────────────────────────────
-  const unlearned = unlearnedGestures(settings.keyGesturesUsed, settings.guideProgress);
+  const unlearned = unlearnedGestures(settings.keyGesturesUsed);
   const [keyDemo, setKeyDemo] = useState<{ gesture: KeyGesture; n: number } | null>(null);
   const markKeyGesture = (gesture: KeyGesture) => {
     if (!settings.keyGesturesUsed[gesture]) updateSetting('keyGesturesUsed', { ...settings.keyGesturesUsed, [gesture]: true });
