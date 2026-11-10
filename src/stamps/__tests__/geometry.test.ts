@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { photoCropFor, placeCount, postmarkDate, regionFor, stampTilt } from '@/stamps/geometry';
+import { formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
 
 describe('photoCropFor', () => {
   it('maps a centred window on a cover preview to photo pixels', () => {
@@ -41,5 +41,26 @@ describe('stamp details', () => {
   it('formats the postmark date and counts places', () => {
     expect(postmarkDate(new Date(2026, 10, 10).getTime())).toBe('10 NOV 2026');
     expect(placeCount([{ place: 'Pune' }, { place: 'pune' }, { place: 'Goa' }])).toBe(2);
+  });
+});
+
+describe('collection details', () => {
+  const stamps = [
+    { id: 3, createdAt: 300, place: 'Goa' },
+    { id: 1, createdAt: 100, place: 'Pune' },
+    { id: 2, createdAt: 200, place: 'Pune' },
+  ];
+  it('numbers stamps in the order they were made', () => {
+    expect(stampSerial(stamps, 1)).toBe(1);
+    expect(stampSerial(stamps, 3)).toBe(3);
+    expect(formatSerial(7)).toBe('No. 007');
+  });
+  it('knows a new place from a revisit', () => {
+    expect(isNewPlace(stamps, 'pune')).toBe(false);
+    expect(isNewPlace(stamps, 'Delhi')).toBe(true);
+  });
+  it('gives each place one stable ink from the palette', () => {
+    expect(postmarkInk('Pune')).toBe(postmarkInk('PUNE'));
+    expect(POSTMARK_INKS).toContain(postmarkInk('Goa'));
   });
 });

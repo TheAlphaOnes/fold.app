@@ -9,9 +9,11 @@ import { StyleSheet, View } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BalancedText } from '@/components/balanced-text';
 import { CloseButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+
 
 /** True when the installed app includes this native module. */
 export function hasNativeModule(name: string): boolean {
@@ -27,7 +29,7 @@ export function NeedsUpdate({ feature }: { feature: string }) {
         <CloseButton accessibilityLabel="Go back" />
       </View>
       <ThemedText style={[styles.title, { color: theme.text }]}>almost here</ThemedText>
-      <ThemedText style={[styles.body, { color: theme.textMuted }]}>{feature} arrives with the next update of Fold.</ThemedText>
+      <BalancedText style={[styles.body, { color: theme.textMuted }]}>{`${feature} comes with the next app update`}</BalancedText>
     </View>
   );
 }

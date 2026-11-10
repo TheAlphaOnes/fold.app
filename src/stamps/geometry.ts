@@ -72,3 +72,30 @@ export function postmarkDate(timestamp: number): string {
 export function placeCount(stamps: { place: string }[]): number {
   return new Set(stamps.map((s) => s.place.toLowerCase())).size;
 }
+
+/** Postmark inks: the muted colours real cancellation marks come in (no orange). */
+export const POSTMARK_INKS = ['#1C1B18', '#2B4C7E', '#7A2E2E', '#2F5D50', '#4B3F72'] as const;
+
+/** Each place gets its own ink, the same every time, so a collection reads varied. */
+export function postmarkInk(place: string): string {
+  let h = 0;
+  for (const ch of place.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return POSTMARK_INKS[h % POSTMARK_INKS.length];
+}
+
+/** A stamp's number in the collection, in the order they were made: 1 is the first. */
+export function stampSerial(stamps: { id: number; createdAt: number }[], id: number): number {
+  const target = stamps.find((s) => s.id === id);
+  if (!target) return stamps.length + 1;
+  return stamps.filter((s) => s.createdAt < target.createdAt || (s.createdAt === target.createdAt && s.id <= target.id)).length;
+}
+
+/** "No. 007". */
+export function formatSerial(serial: number): string {
+  return `No. ${String(serial).padStart(3, '0')}`;
+}
+
+/** Whether a place is new to the collection (no stamp of it yet). */
+export function isNewPlace(stamps: { place: string }[], place: string): boolean {
+  return !stamps.some((s) => s.place.toLowerCase() === place.toLowerCase());
+}

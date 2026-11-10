@@ -11,13 +11,15 @@ import { Image } from 'expo-image';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
-import { postmarkDate } from '@/stamps/geometry';
+import { formatSerial, postmarkDate, postmarkInk } from '@/stamps/geometry';
 
 /** Paper height per unit of width: a portrait stamp with room for its caption. */
 export const STAMP_ASPECT = 1.24;
 
 const PAPER = '#FFFFFF';
 const INK = '#1C1B18';
+/** How far the drawn shadow falls below the paper (px). */
+const SHADOW = 4;
 
 interface StampViewProps {
   imageUri: string;
@@ -26,9 +28,11 @@ interface StampViewProps {
   width: number;
   /** Hide the postmark (the camera inks it on with its own animation). */
   postmark?: boolean;
+  /** The stamp's number in the collection ("No. 007"); FOLD when unknown. */
+  serial?: number;
 }
 
-export function StampView({ imageUri, place, createdAt, width, postmark = true }: StampViewProps) {
+export function StampView({ imageUri, place, createdAt, width, postmark = true, serial }: StampViewProps) {
   const height = width * STAMP_ASPECT;
   const margin = width * 0.08;
   const photo = width - margin * 2;
@@ -37,8 +41,11 @@ export function StampView({ imageUri, place, createdAt, width, postmark = true }
   const holes = Math.round(width / (r * 3.6));
 
   return (
-    <View style={[styles.shadow, { width, height }]}>
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+    <View style={{ width, height }}>
+      {/* The shadow is the paper's own outline, offset and faint: drawn, not computed by the
+          compositor (a view shadow on a transparent view renders every stamp offscreen). */}
+      <Svg width={width + SHADOW} height={height + SHADOW} style={styles.paper}>
+        <Path d={stampOutline(width, height, r, holes, { x: 0, y: SHADOW * 0.7 })} fill="#000000" fillOpacity={0.28} />
         <Path d={stampOutline(width, height, r, holes)} fill={PAPER} />
       </Svg>
       <View style={{ position: 'absolute', left: margin, top: margin, width: photo, height: photo, overflow: 'hidden' }}>
@@ -50,7 +57,7 @@ export function StampView({ imageUri, place, createdAt, width, postmark = true }
         </Text>
         <View style={styles.captionRow}>
           <Text style={[styles.meta, { fontSize: width * 0.05 }]}>{postmarkDate(createdAt)}</Text>
-          <Text style={[styles.meta, { fontSize: width * 0.05 }]}>FOLD</Text>
+          <Text style={[styles.meta, { fontSize: width * 0.05 }]}>{serial ? formatSerial(serial) : 'FOLD'}</Text>
         </View>
       </View>
       {postmark && <Postmark size={width * 0.42} place={place} createdAt={createdAt} style={{ right: -width * 0.06, top: width * 0.5 }} />}
@@ -67,6 +74,7 @@ interface PostmarkProps {
 
 /** A round cancellation mark with wavy lines trailing off to the left. */
 export function Postmark({ size, place, createdAt, style }: PostmarkProps) {
+  const ink = postmarkInk(place);
   const c = size / 2;
   const ring = size * 0.42;
   const wave = (y: number) => `M ${-size * 0.9} ${y} q ${size * 0.11} ${-size * 0.06} ${size * 0.22} 0 t ${size * 0.22} 0 t ${size * 0.22} 0 t ${size * 0.22} 0`;
@@ -74,14 +82,14 @@ export function Postmark({ size, place, createdAt, style }: PostmarkProps) {
     <View pointerEvents="none" style={[styles.postmark, { width: size, height: size, transform: [{ rotate: '-14deg' }] }, style]}>
       <Svg width={size * 1.9} height={size} style={{ position: 'absolute', left: -size * 0.9 }} viewBox={`${-size * 0.9} 0 ${size * 1.9} ${size}`}>
         {[0.36, 0.5, 0.64].map((t) => (
-          <Path key={t} d={wave(size * t)} stroke={INK} strokeWidth={size * 0.022} fill="none" strokeLinecap="round" />
+          <Path key={t} d={wave(size * t)} stroke={ink} strokeWidth={size * 0.022} fill="none" strokeLinecap="round" />
         ))}
-        <Circle cx={c} cy={c} r={ring} stroke={INK} strokeWidth={size * 0.03} fill="none" />
-        <Circle cx={c} cy={c} r={ring * 0.72} stroke={INK} strokeWidth={size * 0.016} fill="none" />
-        <SvgText x={c} y={c - size * 0.02} fontSize={size * 0.1} fontFamily="JetBrainsMono-Bold" fill={INK} textAnchor="middle">
+        <Circle cx={c} cy={c} r={ring} stroke={ink} strokeWidth={size * 0.03} fill="none" />
+        <Circle cx={c} cy={c} r={ring * 0.72} stroke={ink} strokeWidth={size * 0.016} fill="none" />
+        <SvgText x={c} y={c - size * 0.02} fontSize={size * 0.1} fontFamily="JetBrainsMono-Bold" fill={ink} textAnchor="middle">
           {place.toUpperCase().slice(0, 10)}
         </SvgText>
-        <SvgText x={c} y={c + size * 0.11} fontSize={size * 0.08} fontFamily="JetBrainsMono-Medium" fill={INK} textAnchor="middle">
+        <SvgText x={c} y={c + size * 0.11} fontSize={size * 0.08} fontFamily="JetBrainsMono-Medium" fill={ink} textAnchor="middle">
           {postmarkDate(createdAt)}
         </SvgText>
       </Svg>
@@ -90,13 +98,7 @@ export function Postmark({ size, place, createdAt, style }: PostmarkProps) {
 }
 
 const styles = StyleSheet.create({
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 6,
-  },
+  paper: { position: 'absolute', left: 0, top: 0 },
   place: { fontFamily: 'JetBrainsMono-Bold', color: INK, letterSpacing: 0.5 },
   captionRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
   meta: { fontFamily: 'JetBrainsMono-Medium', color: '#6B6A66', letterSpacing: 1 },

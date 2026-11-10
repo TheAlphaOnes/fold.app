@@ -13,6 +13,9 @@ import type { NewStamp, Stamp } from '@/types/stamp';
 interface StampsState {
   stamps: Stamp[];
   loaded: boolean;
+  /** The stamp just made: the collection lands it with a flourish, once. */
+  justAdded: number | null;
+  clearJustAdded: () => void;
   load: () => Promise<void>;
   add: (stamp: NewStamp) => Promise<Stamp>;
   remove: (id: number) => Promise<void>;
@@ -21,6 +24,8 @@ interface StampsState {
 export const useStamps = create<StampsState>((set, get) => ({
   stamps: [],
   loaded: false,
+  justAdded: null,
+  clearJustAdded: () => set({ justAdded: null }),
 
   load: async () => {
     try {
@@ -33,7 +38,7 @@ export const useStamps = create<StampsState>((set, get) => ({
 
   add: async (stamp) => {
     const saved = await createStamp(stamp);
-    set({ stamps: [saved, ...get().stamps] });
+    set({ stamps: [saved, ...get().stamps], justAdded: saved.id });
     return saved;
   },
 

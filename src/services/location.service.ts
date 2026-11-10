@@ -26,3 +26,23 @@ export async function lookupLocation(): Promise<FoundPlace | null> {
     return null;
   }
 }
+
+/**
+ * The quickest fix there is: the phone's last known position, named. Lets a
+ * screen show the place at once while lookupLocation gets a fresh fix.
+ * Null when there's no permission or no cached position.
+ */
+export async function lastKnownPlace(): Promise<FoundPlace | null> {
+  try {
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const pos = await Location.getLastKnownPositionAsync({ maxAge: 10 * 60 * 1000 });
+    if (!pos) return null;
+    const [place] = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    const name = place ? place.city || place.subregion || place.region || place.country || undefined : undefined;
+    return name ? { name, country: place?.country ?? undefined, lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
+  } catch (error) {
+    console.warn('Failed to read last known location', error);
+    return null;
+  }
+}
