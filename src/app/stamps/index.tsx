@@ -16,6 +16,9 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Map as MapIcon, Stamp as StampIcon } from 'lucide-react-native';
 
+import Svg, { Path } from 'react-native-svg';
+
+import { stampOutline } from '@/canvas/render/stamp-outline';
 import { GrainBackground } from '@/components/grain-background';
 import { CloseButton, ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
@@ -113,7 +116,11 @@ function EmptyCollection({ width }: { width: number }) {
   const theme = useTheme();
   return (
     <Animated.View entering={fadeIn(320, 120)} style={styles.empty}>
-      <View style={[styles.emptyStamp, { width, height: width * STAMP_ASPECT, borderColor: theme.border }]}>
+      <View style={[styles.emptyStamp, { width, height: width * STAMP_ASPECT }]}>
+        {/* A blank stamp: the same perforated paper as a real one, drawn as an outline. */}
+        <Svg width={width} height={width * STAMP_ASPECT} style={StyleSheet.absoluteFill}>
+          <Path d={stampOutline(width - 2, width * STAMP_ASPECT - 2, width * 0.026, Math.round(width / (width * 0.026 * 3.6)), { x: 1, y: 1 })} stroke={theme.textMuted} strokeOpacity={0.7} strokeWidth={1.5} fill="none" />
+        </Svg>
         <StampIcon size={28} color={theme.textMuted} strokeWidth={1.5} />
       </View>
       <ThemedText style={[styles.emptyTitle, { color: theme.text }]}>your first stamp</ThemedText>
@@ -132,7 +139,7 @@ const styles = StyleSheet.create({
   cta: { height: ROUND_BUTTON_SIZE + 10, paddingHorizontal: 26, borderRadius: (ROUND_BUTTON_SIZE + 10) / 2, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 14, paddingBottom: 80 },
-  emptyStamp: { borderWidth: 1.5, borderStyle: 'dashed', borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  emptyStamp: { alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   emptyTitle: { fontFamily: 'JetBrainsMono-Medium', fontSize: 15, letterSpacing: 0.5 },
   emptyBody: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, lineHeight: 19, textAlign: 'center' },
 });
