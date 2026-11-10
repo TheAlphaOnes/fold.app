@@ -298,8 +298,10 @@ function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, 
           showsVerticalScrollIndicator={false}
           initialNumToRender={6}
           windowSize={7}
-          onScrollEndDrag={(e) => {
-            if (e.nativeEvent.contentOffset.y < -PULL_TO_CLOSE) onPullClose();
+          // Pulling past the top closes the drawer as soon as it's far enough, not on release.
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            if (open && e.nativeEvent.contentOffset.y < -PULL_TO_CLOSE) onPullClose();
           }}
           renderItem={({ item, index }) => (
             <StampTile
