@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, ScrollView, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useIsFocused } from 'expo-router';
 
 import Animated from 'react-native-reanimated';
@@ -9,6 +9,8 @@ import { Settings as SettingsIcon } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
 import { useTransitionDone } from '@/hooks/use-transition-done';
+import { useProfileDataStore } from '@/hooks/use-profile-data';
+import { useStamps } from '@/hooks/use-stamps';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
@@ -19,12 +21,18 @@ import { FromYourPastCard } from '@/components/from-your-past-card';
 import { ContinuumCard } from '@/components/continuum/continuum-card';
 import { StoryBoardCard } from '@/components/profile/story-board-card';
 import { StampAlbumCard } from '@/components/profile/stamp-album-card';
+import { ActivitySkeleton, CalendarSkeleton, MapSkeleton, PastWallSkeleton } from '@/components/profile/profile-skeleton';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { CloseButton, RoundButton } from '@/components/round-button';
 import { TECalendar } from '@/components/te-calendar';
-import { Type } from '@/constants/theme';
 import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
+
+/** Heavy sections mount in this order, one per idle callback, when they approach the viewport. */
+type SectionKey = 'map' | 'calendar' | 'activity' | 'wall';
+const SECTION_ORDER: SectionKey[] = ['map', 'calendar', 'activity', 'wall'];
+/** A section becomes eligible when its top is within this share of the viewport. */
+const SECTION_VIEWPORT = 0.85;
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -42,18 +50,75 @@ export default function ProfileScreen() {
   const focused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
 
-  // The photo wall at the bottom is mounted once you scroll near it, and only
-  // falls while it's on screen and the profile is in front. Before, it loaded
-  // with the profile and animated forever, even out of sight or under another
-  // screen.
-  const [wallTop, setWallTop] = useState<number | null>(null);
+  // Every heavy section shares one mounting policy: after the slide, the next
+  // eligible section within 85% of the viewport mounts on an idle callback.
+  // There are no timer stages and no warm-visit bypass, so native views and
+  // image walls never start just because a delay elapsed off screen.
+  const [sectionTops, setSectionTops] = useState<Partial<Record<SectionKey, number>>>({});
+  const [readySections, setReadySections] = useState<Record<SectionKey, boolean>>({
+    map: false,
+    calendar: false,
+    activity: false,
+    wall: false,
+  });
   const [scrollY, setScrollY] = useState(0);
-  const nearWall = wallTop !== null && scrollY + screenHeight * 1.5 > wallTop;
-  const wallVisible = focused && wallTop !== null && scrollY + screenHeight > wallTop;
+
+  // Each section also waits for its own cached data; the skeleton covers it.
+  const dayCounts = useProfileDataStore((state) => state.dayCounts);
+  const activeDates = useProfileDataStore((state) => state.activeDates);
+  const pastMemories = useProfileDataStore((state) => state.pastMemories);
+  const hydrateProfile = useProfileDataStore((state) => state.hydrateFromSnapshot);
+  // The root layout hydrates at launch; this is the safety net for a store
+  // that was reset (a reload) after that ran. It reads the snapshot only
+  // when the cache is empty, so a normal open costs nothing.
+  useEffect(() => {
+    if (dayCounts === null) void hydrateProfile();
+  }, [dayCounts, hydrateProfile]);
+  const stampsLoaded = useStamps((state) => state.loaded);
+  const loadStamps = useStamps((state) => state.load);
+
+  const measureSection = (key: SectionKey) => (event: LayoutChangeEvent) => {
+    const y = event.nativeEvent.layout.y;
+    setSectionTops((current) => (current[key] === y ? current : { ...current, [key]: y }));
+  };
+
+  const nextSection = SECTION_ORDER.find((key) => {
+    if (readySections[key]) return false;
+    const top = sectionTops[key];
+    if (top === undefined || scrollY + screenHeight * SECTION_VIEWPORT <= top) return false;
+    if (key === 'map') return stampsLoaded;
+    if (key === 'calendar') return activeDates !== null;
+    if (key === 'activity') return dayCounts !== null;
+    return pastMemories !== null;
+  });
+
+  // One section per idle period. If the user is scrolling or tapping, the
+  // callback waits instead of contending with that interaction.
+  useEffect(() => {
+    if (!settled || !nextSection) return;
+    const idle = requestIdleCallback(() => {
+      setReadySections((current) => ({ ...current, [nextSection]: true }));
+    });
+    return () => cancelIdleCallback(idle);
+  }, [settled, nextSection]);
+
+  // Stamps load only when their map is close enough to be shown, not merely
+  // because the profile screen mounted.
+  const mapTop = sectionTops.map;
+  const mapNear = mapTop !== undefined && scrollY + screenHeight * SECTION_VIEWPORT > mapTop;
+  useEffect(() => {
+    if (mapNear && !stampsLoaded) void loadStamps();
+  }, [mapNear, stampsLoaded, loadStamps]);
+
+  const wallTop = sectionTops.wall;
+  const wallVisible = focused && wallTop !== undefined && scrollY + screenHeight > wallTop;
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = e.nativeEvent.contentOffset.y;
     // Only re-render when crossing a quarter screen; the checks above are coarse.
     if (Math.abs(y - scrollY) > screenHeight / 4) setScrollY(y);
+  };
+  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setScrollY(e.nativeEvent.contentOffset.y);
   };
 
   return (
@@ -82,8 +147,8 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         onScroll={onScroll}
-        onScrollEndDrag={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
-        onMomentumScrollEnd={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={onScrollEnd}
+        onMomentumScrollEnd={onScrollEnd}
         scrollEventThrottle={100}
       >
         
@@ -92,42 +157,58 @@ export default function ProfileScreen() {
 
         <StoryBoardCard />
 
-        {/* Below the first screen: built once the slide has finished, so opening the
-            profile only has to draw the two cards you see (the stamp map is a native
-            view and the calendar ~40 pressables; building them mid-slide stalled it). */}
-        {settled ? (
-          <Animated.View entering={fadeIn(240)}>
-          <StampAlbumCard />
+        {/* Each heavy section reports its position; the shared policy above
+            mounts it on idle when it approaches the viewport. */}
+        <View onLayout={measureSection('map')}>
+          {readySections.map && stampsLoaded ? (
+            <Animated.View entering={fadeIn(240)}>
+              <StampAlbumCard />
+            </Animated.View>
+          ) : (
+            <MapSkeleton />
+          )}
+        </View>
 
-          {/* Heat Map (Activity Grid) */}
-          <ActivityGrid />
+        <View onLayout={measureSection('calendar')}>
+          {readySections.calendar && activeDates !== null ? (
+            <Animated.View entering={fadeIn(240)}>
+              {/* Time Machine Section */}
+              <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+                <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
+              </View>
+            </Animated.View>
+          ) : (
+            <CalendarSkeleton />
+          )}
+        </View>
 
-          {/* Time Machine Section */}
-          <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-            <View style={styles.portfolioHeader}>
-              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
-            </View>
-            <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
-          </View>
-          </Animated.View>
-        ) : (
-          <View style={{ height: screenHeight }} />
-        )}
+        <View onLayout={measureSection('activity')}>
+          {readySections.activity && dayCounts !== null ? (
+            <Animated.View entering={fadeIn(240)}>
+              {/* Heat Map (Activity Grid) */}
+              <ActivityGrid />
+            </Animated.View>
+          ) : (
+            <ActivitySkeleton />
+          )}
+        </View>
 
-        {/* Marks where the wall starts, so it can wait until you scroll near it. */}
-        <View onLayout={(e) => setWallTop(e.nativeEvent.layout.y)} />
-        {settled && nearWall && (
-          <Animated.View entering={riseIn(420, 0, 12)}>
-            {/* Today's memory from the past — photo-first, opens the memory */}
-            <FromYourPastCard visible={wallVisible} />
+        <View onLayout={measureSection('wall')}>
+          {readySections.wall ? (
+            <Animated.View entering={riseIn(420, 0, 12)}>
+              {/* Today's memory from the past — photo-first, opens the memory */}
+              <FromYourPastCard visible={wallVisible} />
 
-            {/* ASCII Easter Egg Mascot */}
-            <View style={styles.mascotContainer}>
-              <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
-              <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
-            </View>
-          </Animated.View>
-        )}
+              {/* ASCII Easter Egg Mascot */}
+              <View style={styles.mascotContainer}>
+                <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
+                <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
+              </View>
+            </Animated.View>
+          ) : (
+            <PastWallSkeleton />
+          )}
+        </View>
 
       </ScrollView>
     </View>
@@ -178,17 +259,8 @@ const styles = StyleSheet.create({
   portfolioSection: {
     marginBottom: 24,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
-  },
-  portfolioHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
   },
   mascotContainer: {
     marginTop: 40,

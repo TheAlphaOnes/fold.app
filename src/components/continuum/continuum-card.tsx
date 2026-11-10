@@ -15,7 +15,6 @@ import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ContinuumTrack, useContinuumWindow } from '@/components/continuum/continuum-track';
 import { EASE_OUT } from '@/constants/motion';
-import { Type } from '@/constants/theme';
 import { useCountUp } from '@/hooks/use-count-up';
 import { useProgressionStore } from '@/hooks/use-progression';
 import { useTheme } from '@/hooks/use-theme';
@@ -93,13 +92,6 @@ export function ContinuumCard() {
       accessibilityRole="summary"
       accessibilityLabel={spoken}
     >
-      <Animated.View
-        entering={reduceMotion ? undefined : FadeIn.duration(220).easing(EASE_OUT)}
-        style={s.rail}
-      >
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>CONTINUUM</ThemedText>
-      </Animated.View>
-
       <ContinuumTrack days={days} color={streakInk} idleColor={theme.border} reduceMotion={reduceMotion} />
 
       <Animated.View
@@ -134,17 +126,10 @@ export function ContinuumCard() {
 const s = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 24,
-  },
-  rail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 12,
   },
   readout: {
     flexDirection: 'row',

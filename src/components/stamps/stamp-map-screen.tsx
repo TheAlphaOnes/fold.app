@@ -7,8 +7,8 @@
  *   - a strip of all your stamps along the bottom, newest first.
  *
  * Opens on the whole journey, or on one stamp when `?id=` is given (from
- * the collection). Apple Maps on iOS; Android shows a note until a Google
- * Maps key is configured.
+ * the collection). MapLibre with OpenFreeMap tiles, the same on iOS and
+ * Android.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -32,6 +32,8 @@ import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 const STRIP_STAMP = 64;
+/** The strip's own height (its top padding plus a stamp), so the location button clears it. */
+const STRIP_HEIGHT = 12 + STRIP_STAMP * STAMP_ASPECT;
 const HOVER_STAMP = 150;
 /** Zoom when focusing one stamp: about a city. */
 const FOCUS_ZOOM = 11;
@@ -74,6 +76,9 @@ export default function StampMap() {
 
   const serials = useMemo(() => new Map(journey.map((s, i) => [s.id, i + 1])), [journey]);
 
+  // The location button sits just above the stamp strip, or near the bottom when there is no strip.
+  const locationButtonBottom = stamps.length > 0 ? insets.bottom + 10 + STRIP_HEIGHT + 10 : insets.bottom + 12;
+
   const focus = (stamp: Stamp) => {
     haptic.select();
     setSelectedId(stamp.id);
@@ -86,8 +91,8 @@ export default function StampMap() {
       <View style={[styles.titleChip, { backgroundColor: theme.background + 'E6', borderColor: theme.border }]}>
         <ThemedText style={[Type.rail, { color: theme.text }]}>MAP</ThemedText>
         {stamps.length > 0 && (
-          <ThemedText style={[styles.count, { color: theme.textMuted }]}>
-            {placeCount(stamps)} {placeCount(stamps) === 1 ? 'place' : 'places'}
+          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
+            · {placeCount(stamps)} {placeCount(stamps) === 1 ? 'PLACE' : 'PLACES'}
           </ThemedText>
         )}
       </View>
@@ -101,11 +106,15 @@ export default function StampMap() {
         ref={map}
         stamps={stamps}
         camera={initialCamera ? { latitude: initialCamera.coordinates.latitude, longitude: initialCamera.coordinates.longitude, zoom: initialCamera.zoom } : undefined}
+        pinSize={44}
+        selectedId={selectedId}
         onPinPress={(id) => {
           const stamp = stamps.find((s) => s.id === id);
           if (stamp) focus(stamp);
         }}
         onMapPress={() => setSelectedId(null)}
+        showLocationButton
+        locationButtonBottom={locationButtonBottom}
       />
 
       {header}
@@ -172,7 +181,6 @@ const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
   titleChip: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, marginHorizontal: 'auto' },
   topSpacer: { width: 34 },
-  count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
   centre: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   note: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, textAlign: 'center' },
   emptyCard: { alignItems: 'center', gap: 16, padding: 24, borderRadius: 20, borderWidth: 1 },

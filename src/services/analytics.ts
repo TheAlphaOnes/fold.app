@@ -93,6 +93,7 @@ export interface AnalyticsEvents {
   // Progress
   ink_earned: { points: number; month_total: number; record: number; is_record_month: boolean; streak: number };
   streak_extended: { streak: number; is_best: boolean };
+  achievement_shared: { streak: number; ink: number };
 
   // Stories
   story_created: { has_cover: boolean };

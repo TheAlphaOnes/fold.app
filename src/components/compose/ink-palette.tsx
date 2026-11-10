@@ -1,7 +1,9 @@
 /**
  * Ink (text colour) controls for the text editor's toolbar. The editor
- * always sits on a dark dim, so these draw white-on-dark in both themes,
- * and "no ink" (null) shows as white, which is how the editor writes it.
+ * always sits on a dark dim, so by default these draw white-on-dark in both
+ * themes, and "no ink" (null) shows as white, which is how the editor writes
+ * it. The doodle toolbar sits on the page itself, so it asks for `onDark`
+ * false and the controls follow the theme instead.
  *
  * InkButton — a toolbar button showing the current ink as a dot.
  * InkPalette — the swatch row it discloses, under the toolbar.
@@ -13,6 +15,7 @@ import Animated from 'react-native-reanimated';
 
 import { MEMORY_INKS } from '@/constants/theme';
 import { fadeOut, riseIn } from '@/constants/motion';
+import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
 /** Matches the editor's other tool buttons. */
@@ -34,9 +37,14 @@ interface InkButtonProps {
   style?: object;
   /** What the colour is for, read out with its name. */
   label?: string;
+  /** True on the editor's dark dim; false on the page's own surface. */
+  onDark?: boolean;
 }
 
-export function InkButton({ color, open, onPress, style, label = 'Text colour' }: InkButtonProps) {
+export function InkButton({ color, open, onPress, style, label = 'Text colour', onDark = true }: InkButtonProps) {
+  const theme = useTheme();
+  const ink = color ?? (onDark ? ON_DARK : theme.text);
+  const border = onDark ? ON_DARK_BORDER : theme.border;
   return (
     <Pressable
       onPress={() => {
@@ -49,10 +57,10 @@ export function InkButton({ color, open, onPress, style, label = 'Text colour' }
       style={({ pressed }) => [
         style,
         styles.button,
-        { borderColor: open ? ON_DARK : ON_DARK_BORDER, opacity: pressed ? 0.5 : 1 },
+        { borderColor: open ? (onDark ? ON_DARK : theme.text) : border, opacity: pressed ? 0.5 : 1 },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: color ?? ON_DARK }]} />
+      <View style={[styles.dot, { backgroundColor: ink, borderColor: border }]} />
     </Pressable>
   );
 }
@@ -60,9 +68,14 @@ export function InkButton({ color, open, onPress, style, label = 'Text colour' }
 interface InkPaletteProps {
   color: string | null;
   onChange: (color: string | null) => void;
+  /** True on the editor's dark dim; false on the page's own surface. */
+  onDark?: boolean;
 }
 
-export function InkPalette({ color, onChange }: InkPaletteProps) {
+export function InkPalette({ color, onChange, onDark = true }: InkPaletteProps) {
+  const theme = useTheme();
+  const inkOf = (id: string | null) => id ?? (onDark ? ON_DARK : theme.text);
+  const ring = onDark ? ON_DARK : theme.text;
   return (
     <Animated.View entering={riseIn(220, 0, -6)} exiting={fadeOut(120)}>
       <ScrollView
@@ -89,12 +102,12 @@ export function InkPalette({ color, onChange }: InkPaletteProps) {
               style={({ pressed }) => [
                 styles.swatchRing,
                 {
-                  borderColor: selected ? ON_DARK : 'transparent',
+                  borderColor: selected ? ring : 'transparent',
                   transform: [{ scale: pressed ? 0.92 : 1 }],
                 },
               ]}
             >
-              <View style={[styles.swatch, { backgroundColor: option.id ?? ON_DARK }]} />
+              <View style={[styles.swatch, { backgroundColor: inkOf(option.id) }]} />
             </Pressable>
           );
         })}

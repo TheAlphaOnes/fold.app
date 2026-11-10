@@ -24,7 +24,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, FadeOut, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg';
 import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
@@ -35,11 +35,14 @@ import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/component
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { useStamps } from '@/hooks/use-stamps';
+import { useTheme } from '@/hooks/use-theme';
+import { hatchPath } from '@/utils/hatch';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
 import { formatSerial, isNewPlace } from '@/stamps/geometry';
+import { goHome } from '@/utils/navigation';
 
 /** The stamp's widest, as a share of the screen. */
 const STAMP_WIDTH = 0.74;
@@ -54,8 +57,8 @@ const CONTROLS = 132;
 const SHUTTER_LIFT = 34;
 /** How long the made stamp takes to fly into the drawer's fan. */
 const FLY_MS = 560;
-/** The app's dark ground around the viewfinder. */
-const BACKDROP = '#0E0E0E';
+/** Spacing of the ground's diagonal hatch. */
+const HATCH_PERIOD = 14;
 
 type Phase = 'aiming' | 'shooting' | 'stamped' | 'delivering';
 type PlaceState = FoundPlace | null | 'finding';
@@ -80,6 +83,7 @@ interface StampCameraProps {
 
 export function StampCamera({ active, topInset, bottomInset, landing }: StampCameraProps) {
   const screen = useWindowDimensions();
+  const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const preview = useRef<View>(null);
@@ -166,7 +170,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
 
   // Done: the stamp flies down into the fan's centre slot, shrinking to the
   // fan's size on a slight arc; as it arrives it's handed to the collection
-  // (which settles it in place) and the viewfinder comes back.
+  // (which settles it in place) and the flow ends on the timeline.
   const fly = useSharedValue(0);
   const done = () => {
     if (phase !== 'stamped') return;
@@ -181,6 +185,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
       setPhase('aiming');
       setZoom(0);
       fly.set(0);
+      goHome();
     }, FLY_MS);
   };
 
@@ -191,17 +196,17 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
 
   if (permission && !permission.granted) {
     return (
-      <View style={[styles.root, styles.centre, { paddingBottom: bottomInset }]}>
-        <ThemedText style={styles.note}>Fold needs the camera to make stamps</ThemedText>
-        <Pressable onPress={permission.canAskAgain ? requestPermission : () => Linking.openSettings()} accessibilityRole="button" style={styles.allow}>
-          <ThemedText style={styles.allowText}>{permission.canAskAgain ? 'ALLOW CAMERA' : 'OPEN SETTINGS'}</ThemedText>
+      <View style={[styles.root, styles.centre, { paddingBottom: bottomInset, backgroundColor: theme.background }]}>
+        <ThemedText style={[styles.note, { color: theme.text }]}>Fold needs the camera to make stamps</ThemedText>
+        <Pressable onPress={permission.canAskAgain ? requestPermission : () => Linking.openSettings()} accessibilityRole="button" style={[styles.allow, { backgroundColor: theme.text }]}>
+          <ThemedText style={[styles.allowText, { color: theme.background }]}>{permission.canAskAgain ? 'ALLOW CAMERA' : 'OPEN SETTINGS'}</ThemedText>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
           {/* Stays mounted through the reveal (only paused): remounting it showed a second of black. */}
@@ -215,7 +220,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
       {!revealing && (
         <Animated.View entering={fadeIn(260, 120)} style={[styles.placeLine, { top: stampY - 44 }]}>
           <Pressable onPress={place === null ? askForLocation : undefined} disabled={place !== null} accessibilityRole={place === null ? 'button' : 'text'}>
-            <ThemedText style={styles.placeText} numberOfLines={1}>
+            <ThemedText style={[styles.placeText, { color: theme.text }]} numberOfLines={1}>
               {placeLabel(place)}
             </ThemedText>
           </Pressable>
@@ -226,15 +231,15 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
 
       {!revealing ? (
         <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { bottom: bottomInset + SHUTTER_LIFT }]}>
-          <View style={styles.side}>{zoom > 0.01 && <ThemedText style={styles.zoom}>{(1 + zoom * 10).toFixed(1)}×</ThemedText>}</View>
+          <View style={styles.side}>{zoom > 0.01 && <ThemedText style={[styles.zoom, { color: theme.text }]}>{(1 + zoom * 10).toFixed(1)}×</ThemedText>}</View>
           <Pressable
             onPress={shoot}
             disabled={phase !== 'aiming'}
             accessibilityRole="button"
             accessibilityLabel="Make stamp"
-            style={({ pressed }) => [styles.shutter, { transform: [{ scale: pressed || phase === 'shooting' ? 0.9 : 1 }] }]}
+            style={({ pressed }) => [styles.shutter, { borderColor: theme.text, transform: [{ scale: pressed || phase === 'shooting' ? 0.9 : 1 }] }]}
           >
-            <View style={styles.shutterInner} />
+            <View style={[styles.shutterInner, { backgroundColor: theme.text }]} />
           </Pressable>
           <View style={styles.side}>
             <RoundButton icon={SwitchCamera} accessibilityLabel="Switch camera" onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))} />
@@ -243,8 +248,8 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
       ) : (
         phase === 'stamped' && (
           <Animated.View entering={riseIn(320, 900, 14)} exiting={FadeOut.duration(120)} style={[styles.after, { bottom: bottomInset + SHUTTER_LIFT }]}>
-            <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
-              <ThemedText style={styles.primaryText}>DONE</ThemedText>
+            <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { backgroundColor: theme.text, opacity: pressed ? 0.8 : 1 }]}>
+              <ThemedText style={[styles.primaryText, { color: theme.background }]}>DONE</ThemedText>
             </Pressable>
           </Animated.View>
         )
@@ -283,12 +288,24 @@ interface MaskProps {
  * cut out of it, scalloped edge and all, with a thin outline tracing it.
  */
 function StampMask({ screen, x, y, w, h, solid }: MaskProps) {
+  const theme = useTheme();
   const { r, holes } = stampPerforation(w);
   const outline = stampOutline(w, h, r, holes, { x, y });
+  const ground = `M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${outline}`;
   return (
     <Svg width={screen.width} height={screen.height} style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Path d={solid ? `M 0 0 H ${screen.width} V ${screen.height} H 0 Z` : `M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${outline}`} fill={BACKDROP} fillRule="evenodd" />
-      {!solid && <Path d={outline} stroke="#FFFFFF" strokeOpacity={0.55} strokeWidth={1.5} fill="none" />}
+      <Defs>
+        <ClipPath id="stamp-ground">
+          <Path d={ground} clipRule="evenodd" />
+        </ClipPath>
+      </Defs>
+      <Path d={solid ? `M 0 0 H ${screen.width} V ${screen.height} H 0 Z` : ground} fill={theme.background} fillRule="evenodd" />
+      {!solid && (
+        <G clipPath="url(#stamp-ground)">
+          <Path d={hatchPath(screen.width, screen.height, HATCH_PERIOD)} stroke={theme.text} strokeOpacity={0.07} strokeWidth={1} strokeLinecap="square" />
+        </G>
+      )}
+      {!solid && <Path d={outline} stroke={theme.text} strokeOpacity={0.55} strokeWidth={1.5} fill="none" />}
     </Svg>
   );
 }
@@ -298,6 +315,7 @@ function StampMask({ screen, x, y, w, h, solid }: MaskProps) {
  * hard (thud) and settles; then what it means is printed under it.
  */
 function MadeStamp({ made, x, y, w, fly, landing }: { made: Made; x: number; y: number; w: number; fly: SharedValue<number>; landing: { x: number; y: number; width: number } }) {
+  const theme = useTheme();
   const ink = useSharedValue(0);
   useEffect(() => {
     ink.set(withDelay(260, withTiming(1, { duration: 220, easing: Easing.in(Easing.quad) })));
@@ -341,8 +359,8 @@ function MadeStamp({ made, x, y, w, fly, landing }: { made: Made; x: number; y: 
       </Animated.View>
       <Animated.View style={extras}>
         <Animated.View entering={FadeIn.delay(700).duration(320)} style={styles.verdict}>
-          <ThemedText style={styles.verdictBadge}>{made.newPlace ? 'NEW PLACE' : `BACK IN ${made.place.toUpperCase()}`}</ThemedText>
-          <ThemedText style={styles.verdictMeta}>{formatSerial(made.serial)} in your collection</ThemedText>
+          <ThemedText style={[styles.verdictBadge, { color: theme.text }]}>{made.newPlace ? 'NEW PLACE' : `BACK IN ${made.place.toUpperCase()}`}</ThemedText>
+          <ThemedText style={[styles.verdictMeta, { color: theme.textMuted }]}>{formatSerial(made.serial)} in your collection</ThemedText>
         </Animated.View>
       </Animated.View>
     </Animated.View>
@@ -350,23 +368,23 @@ function MadeStamp({ made, x, y, w, fly, landing }: { made: Made; x: number; y: 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BACKDROP },
+  root: { flex: 1 },
   centre: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40 },
   flash: { backgroundColor: '#FFFFFF' },
-  note: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 13, textAlign: 'center' },
-  allow: { height: 44, paddingHorizontal: 22, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center' },
-  allowText: { color: '#111111', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
+  note: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, textAlign: 'center' },
+  allow: { height: 44, paddingHorizontal: 22, borderRadius: 22, justifyContent: 'center' },
+  allowText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
   placeLine: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
-  placeText: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 2.5 },
+  placeText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 2.5 },
   controls: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32 },
   side: { width: 48, alignItems: 'center' },
-  zoom: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 12 },
-  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFFFFF' },
+  zoom: { fontFamily: 'JetBrainsMono-Medium', fontSize: 12 },
+  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 60, height: 60, borderRadius: 30 },
   verdict: { alignItems: 'center', marginTop: 28, gap: 6 },
-  verdictBadge: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 13, letterSpacing: 3 },
-  verdictMeta: { color: '#FFFFFF99', fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
+  verdictBadge: { fontFamily: 'JetBrainsMono-Bold', fontSize: 13, letterSpacing: 3 },
+  verdictMeta: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
   after: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24 },
-  primary: { height: 48, paddingHorizontal: 34, borderRadius: 24, backgroundColor: '#FFFFFF', justifyContent: 'center' },
-  primaryText: { color: '#111111', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
+  primary: { height: 48, paddingHorizontal: 34, borderRadius: 24, justifyContent: 'center' },
+  primaryText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
 });

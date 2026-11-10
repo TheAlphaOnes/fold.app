@@ -9,7 +9,7 @@
  *    is visible in the grid itself;
  *  - today wears an outline that breathes gently;
  *  - months with writing are labelled in full ink, the rest muted;
- *  - a small less/more legend; tap a square to open that day.
+ *  - tap a square to open that day.
  *
  * The whole year sits on one line that fits the card exactly, no scrolling:
  * square size is derived from the card width and the year's week count.
@@ -27,6 +27,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions, type GestureResponderEvent } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { Share2 } from 'lucide-react-native';
 
 import Animated, {
   Easing,
@@ -45,18 +46,9 @@ import { EASE_OUT, fadeIn } from '@/constants/motion';
 import { useProfileDataStore } from '@/hooks/use-profile-data';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
+import { CELL_GAP, buildPanel, formatDate, shadePaths, type Panel } from '@/utils/activity-grid';
 import { navigate } from '@/utils/navigation';
 
-interface DayCell {
-  date: string;
-  count: number;
-  inYear: boolean;
-  isToday: boolean;
-  isFuture: boolean;
-}
-
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const CELL_GAP = 1.5;
 const GRID_PADDING = 16;
 const LABEL_SIZE = 9;
 const LABEL_TRACKING = 0.4;
@@ -64,8 +56,6 @@ const LABEL_CHAR = LABEL_SIZE * 0.62;
 /** How long the wipe takes to uncover the whole year. */
 const WIPE_MS = 520;
 const EMPTY_COUNTS: Record<string, number> = {};
-/** Accent opacity for 1, 2, 3 and 4+ memories in a day. */
-const LEVELS = [0.42, 0.62, 0.82, 1];
 
 function textWidth(text: string): number {
   return text.length * LABEL_CHAR + Math.max(0, text.length - 1) * LABEL_TRACKING;
@@ -73,70 +63,6 @@ function textWidth(text: string): number {
 
 function pad3(n: number): string {
   return String(n).padStart(3, '0');
-}
-
-function formatDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-interface Panel {
-  weeks: DayCell[][];
-  monthStarts: { label: string; month: number; week: number }[];
-}
-
-/** Week columns for months [firstMonth, lastMonth] of a year, Sunday-aligned. */
-function buildPanel(
-  year: number,
-  firstMonth: number,
-  lastMonth: number,
-  countMap: Record<string, number>,
-  todayKey: string,
-): Panel {
-  const first = new Date(year, firstMonth, 1);
-  const last = new Date(year, lastMonth + 1, 0);
-  const start = new Date(year, firstMonth, 1 - first.getDay());
-  const end = new Date(year, lastMonth, last.getDate() + (6 - last.getDay()));
-
-  const weeks: DayCell[][] = [];
-  let cursor = new Date(start);
-  let week = 0;
-  while (cursor <= end) {
-    const key = formatDate(cursor);
-    const inPanel = cursor >= first && cursor <= last;
-    (weeks[week] ??= []).push({
-      date: key,
-      count: countMap[key] ?? 0,
-      inYear: inPanel,
-      isToday: key === todayKey,
-      isFuture: key > todayKey,
-    });
-    if (cursor.getDay() === 6) week += 1;
-    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
-  }
-
-  const monthStarts = [];
-  for (let m = firstMonth; m <= lastMonth; m++) {
-    const offset = Math.round((new Date(year, m, 1).getTime() - start.getTime()) / 86400000);
-    monthStarts.push({
-      label: MONTHS[m],
-      month: m,
-      week: Math.floor(offset / 7),
-    });
-  }
-  return { weeks, monthStarts };
-}
-
-function levelFor(count: number): number {
-  return LEVELS[Math.min(count, LEVELS.length) - 1];
-}
-
-/** SVG path data for a square with corners rounded by r, at (x, y). */
-function roundedSquare(x: number, y: number, size: number, r: number): string {
-  const e = size - 2 * r;
-  return (
-    `M${x + r} ${y}h${e}a${r} ${r} 0 0 1 ${r} ${r}v${e}a${r} ${r} 0 0 1 ${-r} ${r}` +
-    `h${-e}a${r} ${r} 0 0 1 ${-r} ${-r}v${-e}a${r} ${r} 0 0 1 ${r} ${-r}z`
-  );
 }
 
 /** Today's square: an accent outline that breathes, so "now" is findable. */
@@ -233,18 +159,7 @@ function YearStrip({
       ? { left: todayWeek * columnPitch, top: weeks[todayWeek].findIndex((day) => day.isToday) * columnPitch }
       : null;
   // One path per shade: lit days by level, then lived and future empty days.
-  const shades = new Map<string, { lit: boolean; opacity: number; d: string }>();
-  weeks.forEach((days, week) => {
-    days.forEach((day, weekday) => {
-      if (!day.inYear) return;
-      const lit = day.count > 0;
-      const opacity = lit ? levelFor(day.count) : day.isFuture ? 0.1 : 0.28;
-      const key = `${lit}:${opacity}`;
-      const shade = shades.get(key) ?? { lit, opacity, d: '' };
-      shade.d += roundedSquare(week * columnPitch, weekday * columnPitch, cellSize, 1.5);
-      shades.set(key, shade);
-    });
-  });
+  const shades = shadePaths(panel, columnPitch, cellSize);
 
   return (
     <View>
@@ -258,7 +173,7 @@ function YearStrip({
         <View style={{ width: gridWidth, height: gridHeight }} pointerEvents="none">
           <Svg width={gridWidth} height={gridHeight}>
             {[...shades].map(([key, shade]) => (
-              <Path key={key} d={shade.d} fill={shade.lit ? ink : theme.border} opacity={shade.opacity} />
+              <Path key={key} d={shade.d} fill={shade.lit ? ink : theme.textMuted} opacity={shade.opacity} />
             ))}
           </Svg>
           {today && <TodayOutline size={cellSize} left={today.left} top={today.top} />}
@@ -320,7 +235,6 @@ export function ActivityGrid() {
   const columns = year.weeks.length;
   const cellSize = Math.floor(((innerWidth - (columns - 1) * CELL_GAP) / columns) * 10) / 10;
   const columnPitch = cellSize + CELL_GAP;
-  const ink = theme.accentWarm;
 
   return (
     <View
@@ -329,11 +243,6 @@ export function ActivityGrid() {
       accessibilityRole="image"
       accessibilityLabel={`Activity ${currentYear}. ${litDays} days written.`}
     >
-      <Animated.View entering={reduceMotion ? undefined : fadeIn(220)} style={styles.rail}>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>ACTIVITY</ThemedText>
-        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{pad3(litDays)} DAYS</ThemedText>
-      </Animated.View>
-
       <YearStrip
         panel={year}
         cellSize={cellSize}
@@ -343,17 +252,26 @@ export function ActivityGrid() {
         reduceMotion={reduceMotion}
       />
 
-      <Animated.View
-        entering={reduceMotion ? undefined : fadeIn(240, 300)}
-        style={styles.legend}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <ThemedText style={[styles.legendText, { color: theme.textMuted }]}>less</ThemedText>
-        {LEVELS.map((opacity) => (
-          <View key={opacity} style={[styles.legendCell, { backgroundColor: ink, opacity }]} />
-        ))}
-        <ThemedText style={[styles.legendText, { color: theme.textMuted }]}>more</ThemedText>
+      {/* The name signs the card off, so the card reads as one surface. */}
+      <Animated.View entering={reduceMotion ? undefined : fadeIn(240, 300)} style={styles.footer}>
+        <View style={styles.footerTop}>
+          <View style={styles.caption}>
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>ACTIVITY</ThemedText>
+            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`· ${pad3(litDays)} DAYS`}</ThemedText>
+          </View>
+          <Pressable
+            onPress={() => {
+              haptic.tap();
+              navigate.push('/achievement');
+            }}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Share your achievement"
+            style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+          >
+            <Share2 size={16} color={theme.textMuted} />
+          </Pressable>
+        </View>
       </Animated.View>
     </View>
   );
@@ -363,19 +281,12 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
-  },
-  rail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
   },
   grid: {
     paddingHorizontal: GRID_PADDING,
+    paddingTop: 16,
   },
   todayOutline: {
     position: 'absolute',
@@ -400,24 +311,19 @@ const styles = StyleSheet.create({
     letterSpacing: LABEL_TRACKING,
     lineHeight: 12,
   },
-  legend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 3,
+  footer: {
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 14,
   },
-  legendCell: {
-    width: 9,
-    height: 9,
-    borderRadius: 2.5,
+  footerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  legendText: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 8,
-    lineHeight: 11,
-    marginHorizontal: 3,
+  caption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
 });
