@@ -19,3 +19,20 @@ describe('gallerySlides', () => {
     expect(gallerySlides(memory('', []))).toEqual([]);
   });
 });
+
+describe('gallerySlides: canvas pieces', () => {
+  const base = { textContent: '', fontFamily: undefined, fontSize: undefined, textColor: undefined };
+  it('gives each doodle its own page, after the media', () => {
+    const doodle = { id: 'd1', kind: 'doodle' as const, strokes: [{ points: [0, 0, 0.1, 0.1] }], color: null, width: 0.01, x: 0.5, y: 0.5, scale: 1, rotation: 0 };
+    const slides = gallerySlides({ ...base, mediaElements: [{ id: 'm1', uri: 'a.jpg', type: 'image', x_pos: 0, y_pos: 0 }], layout: { version: 1, template: 'story', background: { kind: 'stripes' }, layers: [doodle] } });
+    expect(slides.map((s) => s.type)).toEqual(['media', 'doodle']);
+  });
+  it('shows a placed stamp as a stamp, not a photo', () => {
+    const slides = gallerySlides({
+      ...base,
+      mediaElements: [{ id: 's1', uri: 's.jpg', type: 'image', isStamp: true, x_pos: 0, y_pos: 0 }],
+      layout: { version: 1, template: 'story', background: { kind: 'stripes' }, layers: [{ id: 'l', kind: 'stamp', mediaId: 's1', place: 'Pune', stampedAt: 1, x: 0.5, y: 0.5, scale: 1, rotation: 0 }] },
+    });
+    expect(slides).toEqual([{ type: 'stamp', id: 'stamp-s1', imageUri: 's.jpg', place: 'Pune', stampedAt: 1 }]);
+  });
+});
