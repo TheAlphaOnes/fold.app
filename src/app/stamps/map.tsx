@@ -12,5 +12,5 @@ import { NeedsUpdate, hasNativeModule } from '@/components/stamps/needs-update';
 const Screen: React.ComponentType | null = hasNativeModule('ExpoMaps') ? require('@/components/stamps/stamp-map-screen').default : null;
 
 export default function Route() {
-  return Screen ? <Screen /> : <NeedsUpdate feature="The map" />;
+  return Screen ? <Screen /> : <NeedsUpdate feature="your map" />;
 }

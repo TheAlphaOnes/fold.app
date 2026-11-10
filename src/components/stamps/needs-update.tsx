@@ -26,8 +26,8 @@ export function NeedsUpdate({ feature }: { feature: string }) {
       <View style={[styles.close, { top: insets.top + 6 }]}>
         <CloseButton accessibilityLabel="Go back" />
       </View>
-      <ThemedText style={[styles.title, { color: theme.text }]}>{feature} needs an app update</ThemedText>
-      <ThemedText style={[styles.body, { color: theme.textMuted }]}>This version of Fold doesn’t include it yet. Update the app to use it.</ThemedText>
+      <ThemedText style={[styles.title, { color: theme.text }]}>almost here</ThemedText>
+      <ThemedText style={[styles.body, { color: theme.textMuted }]}>{feature} arrives with the next update of Fold.</ThemedText>
     </View>
   );
 }
