@@ -22,6 +22,7 @@ import { Alert, Linking, Pressable, StyleSheet, View, useWindowDimensions } from
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
+import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,7 +38,7 @@ import { useStamps } from '@/hooks/use-stamps';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
-import { formatSerial, isNewPlace, stampCropFor } from '@/stamps/geometry';
+import { formatSerial, isNewPlace, photoCropFor, photoMatchesPreview, stampCropFor } from '@/stamps/geometry';
 import { goBack } from '@/utils/navigation';
 
 /** The stamp's width as a share of the screen. */
@@ -65,6 +66,7 @@ export default function StampCamera() {
   const screen = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
+  const preview = useRef<View>(null);
   const [facing, setFacing] = useState<CameraType>('back');
   const [place, setPlace] = useState<PlaceState>('finding');
   // The fresh fix, for a shot taken before it arrived.
@@ -114,6 +116,9 @@ export default function StampCamera() {
     flash.set(1);
     flash.set(withTiming(0, { duration: 260, easing: Easing.out(Easing.quad) }));
     try {
+      // A snapshot of the viewfinder as shown, taken alongside the photo: the stamp's
+      // source when the photo turns out not to match the preview.
+      const shown = captureRef(preview, { format: 'jpg', quality: 0.95 }).catch(() => null);
       const shot = await camera.current.takePictureAsync({ quality: 0.9 });
       camera.current?.pausePreview().catch(() => undefined);
       const resolved = place !== 'finding' && place ? place : await freshPlace.current;
@@ -124,10 +129,25 @@ export default function StampCamera() {
         return;
       }
       // Crop against the image as decoded (orientation applied), not the size the camera
-      // reports: those can differ, which cut a small, wrong corner out of the photo.
+      // reports: those can differ.
       const upright = await ImageManipulator.manipulate(shot.uri).renderAsync();
-      const crop = stampCropFor({ width: upright.width, height: upright.height }, { width: screen.width, height: screen.height }, window);
-      const image = await ImageManipulator.manipulate(upright).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
+      const view = { width: screen.width, height: screen.height };
+      let source: string | typeof upright = upright;
+      let crop = photoCropFor({ width: upright.width, height: upright.height }, view, window);
+      if (!photoMatchesPreview({ width: upright.width, height: upright.height }, view)) {
+        // The photo isn't the picture the viewfinder showed (simulator cameras hand back a
+        // different frame), so the stamp is cut from what was on screen instead.
+        const snapshot = await shown;
+        if (snapshot) {
+          const frame = await ImageManipulator.manipulate(snapshot).renderAsync();
+          const scale = frame.width / view.width;
+          source = frame;
+          crop = { originX: Math.round(window.x * scale), originY: Math.round(window.y * scale), width: Math.round(window.width * scale), height: Math.round(window.height * scale) };
+        } else {
+          crop = stampCropFor({ width: upright.width, height: upright.height }, view, window);
+        }
+      }
+      const image = await ImageManipulator.manipulate(source).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
       const saved = await image.saveAsync({ compress: 0.86, format: SaveFormat.JPEG });
       const dest = `${FileSystem.documentDirectory}stamp_${Date.now()}.jpg`;
       await FileSystem.moveAsync({ from: saved.uri, to: dest });
@@ -170,7 +190,9 @@ export default function StampCamera() {
     <View style={styles.root}>
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
-          {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
+          <View ref={preview} collapsable={false} style={StyleSheet.absoluteFill}>
+            {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
+          </View>
           <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={phase === 'stamped'} />
         </View>
       </GestureDetector>
