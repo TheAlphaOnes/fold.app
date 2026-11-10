@@ -57,7 +57,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   const renderers: FrameRenderers = {
-    frame: (target, m, crop, w, h, mirrored) => (
+    frame: (target, m, crop, w, h, mirrored, origin = { left: 0, top: 0 }) => (
       <EditableFrame
         key={`${target}-${m.id}`}
         media={m}
@@ -67,6 +67,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
         mirrored={mirrored}
         onCrop={(next) => props.onCrop(target, next)}
         highlighted={pickedCell === target || selectedFrame === target}
+        // The outline follows the canvas's rounded corners wherever this frame reaches one.
+        highlightRadii={cornerRadii(origin.left, origin.top, w, h, width, height, CANVAS_RADIUS)}
         onTap={() => {
           // Holding a cell, a tap on another swaps them.
           if (pickedCell && pickedCell !== target) {
@@ -178,8 +180,25 @@ export function CanvasEditor(props: CanvasEditorProps) {
   );
 }
 
+/** The editing canvas's corner radius. */
+const CANVAS_RADIUS = 24;
+
+/** Rounded corners for a frame inside the canvas: only the corners that touch the canvas's own corners. */
+function cornerRadii(left: number, top: number, w: number, h: number, cw: number, ch: number, r: number) {
+  const atLeft = left <= 0.5;
+  const atTop = top <= 0.5;
+  const atRight = left + w >= cw - 0.5;
+  const atBottom = top + h >= ch - 0.5;
+  return {
+    borderTopLeftRadius: atTop && atLeft ? r : 0,
+    borderTopRightRadius: atTop && atRight ? r : 0,
+    borderBottomRightRadius: atBottom && atRight ? r : 0,
+    borderBottomLeftRadius: atBottom && atLeft ? r : 0,
+  };
+}
+
 const styles = StyleSheet.create({
-  canvas: { overflow: 'hidden', borderRadius: 24 },
+  canvas: { overflow: 'hidden', borderRadius: CANVAS_RADIUS },
   emptyCell: { alignItems: 'center', justifyContent: 'center' },
   addBadge: {
     width: 40,

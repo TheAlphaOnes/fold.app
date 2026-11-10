@@ -436,6 +436,14 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {doodle && <View style={{ height: insets.top + TOP_BAR + ADD_AREA }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
+        {/* Taps around the canvas (not on it) let go of a selected sticker or photo. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            if (c.selectedId || c.selectedFrame) c.select(null);
+          }}
+          accessible={false}
+        />
         <CanvasEditor
           doc={c.doc}
           media={c.media}
