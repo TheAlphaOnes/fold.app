@@ -32,9 +32,11 @@ interface InkButtonProps {
   open: boolean;
   onPress: () => void;
   style?: object;
+  /** What the colour is for, read out with its name. */
+  label?: string;
 }
 
-export function InkButton({ color, open, onPress, style }: InkButtonProps) {
+export function InkButton({ color, open, onPress, style, label = 'Text colour' }: InkButtonProps) {
   return (
     <Pressable
       onPress={() => {
@@ -42,7 +44,7 @@ export function InkButton({ color, open, onPress, style }: InkButtonProps) {
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={`Text colour, ${inkLabel(color)}`}
+      accessibilityLabel={`${label}, ${inkLabel(color)}`}
       accessibilityState={{ expanded: open }}
       style={({ pressed }) => [
         style,
