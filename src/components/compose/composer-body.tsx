@@ -268,7 +268,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           return;
         }
         haptic.tap();
-        await take.start();
+        {
+          const started = await take.start();
+          if (started === 'denied') Alert.alert('Microphone is off', 'Allow microphone access in Settings to record a voice note.');
+          else if (started === 'failed') Alert.alert("Couldn't start recording", 'Your phone may be low on storage, or another app is using the microphone. Try again in a moment.');
+        }
         return;
       case 'location':
         if (!location.name) {
@@ -409,15 +413,18 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       )}
       {!editing && !doodle && (
         <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-          <CloseButton accessibilityLabel="Close without saving" />
-          {/* When this memory is from, for context: centred in the space between close and the actions, so it never runs under undo. */}
+          {/* Two equal side groups, so the date stays in the true centre whether or not undo shows. */}
+          <View style={styles.topLeft}>
+            <CloseButton accessibilityLabel="Close without saving" />
+            {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
+          </View>
+          {/* When this memory is from, for context. */}
           <View style={styles.moment} pointerEvents="none">
             <ThemedText style={[styles.momentText, { color: theme.textMuted }]} numberOfLines={1}>
               {formatMoment(openedAt)}
             </ThemedText>
           </View>
           <View style={styles.topRight}>
-            {c.canUndo && <RoundButton icon={Undo2} accessibilityLabel="Undo" onPress={c.undo} />}
             <Pressable
               onPress={saveOnce}
               disabled={!hasContent || isSaving}
@@ -608,7 +615,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 const styles = StyleSheet.create({
   root: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: EDGE, paddingBottom: SPACE },
-  topRight: { flexDirection: 'row', gap: GAP },
+  topLeft: { flex: 1, flexBasis: 0, flexDirection: 'row', gap: GAP },
+  topRight: { flex: 1, flexBasis: 0, flexDirection: 'row', justifyContent: 'flex-end', gap: GAP },
   canvasSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   // Floats over the bottom of the canvas, right above the picker it opened from (bottom set inline).
   templateList: { position: 'absolute', left: 24, right: 24 },
@@ -622,7 +630,7 @@ const styles = StyleSheet.create({
   writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
   // The two side controls share one width, so the template pill sits in the true centre.
   side: { width: SIDE_WIDTH },
-  moment: { flex: 1, height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center', marginHorizontal: GAP },
+  moment: { height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center', marginHorizontal: GAP },
   momentText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2 },
   // Same height, border, radius and type as the template pill.
   storyCta: { width: SIDE_WIDTH, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
