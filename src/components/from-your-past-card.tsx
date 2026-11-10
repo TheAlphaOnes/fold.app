@@ -36,7 +36,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
 import { getHighResArtwork } from '@/utils/media-attach';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition, MediaElement } from '@/types/journal';
 import { dealColumns, wallPieces } from '@/utils/past-wall';
@@ -62,7 +62,7 @@ interface Tile {
 }
 
 function visualOf(memory: Composition) {
-  return memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+  return memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
 }
 
 /** Natural aspect when known, otherwise a stable pseudo-random one per memory. */

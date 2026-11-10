@@ -28,7 +28,7 @@ import { useJournalStore } from '@/hooks/use-journal';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { useThemeContext } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 
 /** The photo is decoded and blurred at 1/DOWNSCALE of the screen, then scaled back up. */
 const DOWNSCALE = 8;
@@ -55,7 +55,7 @@ export function AmbientBackdrop() {
   const memory = useJournalStore((state) => (activeId !== null ? state.hydratedById[activeId] : undefined));
 
   const visual = memory?.mediaElements.find(
-    (m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m),
+    (m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m),
   );
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
   const uri = intensity > 0 ? (visual?.type === 'video' ? videoThumb : visual?.uri) ?? null : null;

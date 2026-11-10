@@ -40,6 +40,7 @@ import { TextEditorSheet, type TextDraft } from '@/components/compose/text-edito
 import { DoodleSurface, DoodleToolbar, type PenState } from '@/components/compose/doodle-pad';
 import { PEN_WIDTHS, toDoodle } from '@/canvas/doodle';
 import { GifPicker } from '@/components/gif-picker';
+import { StampPicker } from '@/components/stamps/stamp-picker';
 import { GrainBackground } from '@/components/grain-background';
 import { MusicPicker } from '@/components/music-picker';
 import { RecordingOverlay } from '@/components/recording-overlay';
@@ -164,7 +165,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   // Doodling: strokes in canvas pixels until Done makes them one layer.
   const [doodle, setDoodle] = useState<number[][] | null>(null);
   const [pen, setPen] = useState<PenState>({ color: null, widthIndex: 1 });
-  const [sheet, setSheet] = useState<'music' | 'gif' | 'stories' | null>(null);
+  const [sheet, setSheet] = useState<'music' | 'gif' | 'stamp' | 'stories' | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Song downloads by media id: the local file, or null if it failed.
   const pendingSongs = useRef(new Map<string, Promise<{ uri: string; artwork: string } | null>>());
@@ -236,6 +237,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         return;
       case 'gif':
         setSheet('gif');
+        return;
+      case 'stamp':
+        setSheet('stamp');
         return;
       case 'music':
         if (hasMusicElement(c.media)) {
@@ -577,6 +581,31 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
           setSheet(null);
           const gif = await media.downloadGif(url);
           if (gif) addSticker(gif);
+        }}
+      />
+
+      <StampPicker
+        visible={sheet === 'stamp'}
+        onClose={() => setSheet(null)}
+        onSelect={async (stamp) => {
+          setSheet(null);
+          if (media.roomLeft <= 0) {
+            alertElementCap();
+            return;
+          }
+          // The memory keeps its own copy of the stamp's photo, so it stays whole even if
+          // the stamp is later removed from the collection.
+          const dest = `${FileSystem.documentDirectory}stamp_sticker_${Date.now()}_${newId()}.jpg`;
+          try {
+            await FileSystem.copyAsync({ from: stamp.imageUri, to: dest });
+          } catch (error) {
+            trackError(error, 'stamp_sticker_copy');
+            Alert.alert("Couldn't add the stamp", 'Try picking it again.');
+            return;
+          }
+          const m: MediaElement = { id: newId(), uri: dest, type: 'image', isStamp: true, x_pos: 0, y_pos: 0 };
+          c.addLayer({ id: newId(), kind: 'stamp', mediaId: m.id, place: stamp.place, stampedAt: stamp.createdAt, x: 0.5, y: 0.4, scale: 1, rotation: -5 }, m);
+          haptic.thud();
         }}
       />
 

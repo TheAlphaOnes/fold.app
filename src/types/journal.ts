@@ -11,6 +11,7 @@ export interface MediaElement {
   scale?: number;
   zIndex?: number; // Paint order among stickers on the canvas; higher paints later
   isGif?: boolean; // Picked from the GIF library; decorative, kept out of story reels
+  isStamp?: boolean; // A stamp from the collection, placed as a sticker; decorative like a GIF
   metadata?: {
     title: string;
     artist: string;

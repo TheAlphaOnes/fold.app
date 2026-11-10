@@ -37,7 +37,7 @@ import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { AsciiArt } from '@/components/ascii-art';
 import { ALBUM_ART } from '@/constants/ascii-art';
 import type { Composition } from '@/types/journal';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 import { goBack, navigate } from '@/utils/navigation';
 import { getHighResArtwork } from '@/utils/media-attach';
 
@@ -251,7 +251,7 @@ export default function StoryDetailScreen() {
     const items: StoryItem[] = [];
     activeStoryMemories.forEach(mem => {
       mem.mediaElements.forEach((media, index) => {
-        if ((media.type === 'audio' && !media.metadata) || isGifMedia(media)) return;
+        if ((media.type === 'audio' && !media.metadata) || isDecorativeMedia(media)) return;
         
         items.push({
           id: `media-${mem.id}-${index}`,
@@ -284,7 +284,7 @@ export default function StoryDetailScreen() {
       }
       
       mem.mediaElements.forEach((media, index) => {
-        if (isGifMedia(media)) return;
+        if (isDecorativeMedia(media)) return;
         items.push({
           id: `media-${mem.id}-${index}`,
           memoryId: mem.id,
