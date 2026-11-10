@@ -8,7 +8,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { CircleDashed, Clapperboard, GalleryHorizontalEnd, Image as ImageIcon, Layers, Layers2, Type as TypeIcon } from 'lucide-react-native';
+import { CircleDashed, Clapperboard, GalleryHorizontalEnd, Layers, Layers2, Paintbrush, Type as TypeIcon } from 'lucide-react-native';
 
 import type { GapSize, TemplateId } from '@/canvas/types';
 import { CycleList, CyclePill, useThemedCyclePalette } from '@/components/compose/cycle-pill';
@@ -23,7 +23,8 @@ import { BASE_TEMPLATES, GRID_TEMPLATES, gridIdOf, isGrid, templateName } from '
 // Shares the bottom row with the round buttons, so it matches their height.
 const HEIGHT = ROUND_BUTTON_SIZE;
 const ICONS = {
-  story: ImageIcon,
+  // The free canvas you make anything on (Photo has the image icon, Doodle the pen)
+  story: Paintbrush,
   text: TypeIcon,
   stickers: Layers,
   slideshow: Clapperboard,

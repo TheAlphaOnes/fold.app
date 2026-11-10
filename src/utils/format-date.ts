@@ -85,3 +85,13 @@ export function formatMillis(millis: number): string {
   const seconds = totalSeconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
+
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+/** A memory's moment, short: "TUE 10.11 · 09:59". */
+export function formatMoment(timestamp: number): string {
+  const date = new Date(timestamp);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${WEEKDAYS[date.getDay()]} ${day}.${month} · ${formatClock(timestamp)}`;
+}
