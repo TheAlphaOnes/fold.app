@@ -19,7 +19,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
+import { useCameraPermissions, type CameraType, type CameraView } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import { captureRef } from 'react-native-view-shot';
@@ -29,6 +29,7 @@ import Svg, { Path } from 'react-native-svg';
 import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
+import { CameraSurface } from '@/components/camera/camera-surface';
 import { RoundButton } from '@/components/round-button';
 import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
@@ -220,10 +221,8 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
     <View style={styles.root}>
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
-          <View ref={preview} collapsable={false} style={StyleSheet.absoluteFill}>
-            {/* Stays mounted through the reveal (only paused): remounting it showed a second of black. */}
-            {<CameraView ref={camera} style={StyleSheet.absoluteFill} active={active} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
-          </View>
+          {/* Stays mounted through the reveal (only paused): remounting it showed a second of black. */}
+          <CameraSurface cameraRef={camera} containerRef={preview} active={active} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />
           <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={revealing} />
         </View>
       </GestureDetector>

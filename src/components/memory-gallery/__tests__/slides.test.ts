@@ -21,7 +21,7 @@ describe('gallerySlides', () => {
 });
 
 describe('gallerySlides: canvas pieces', () => {
-  const base = { textContent: '', fontFamily: undefined, fontSize: undefined, textColor: undefined };
+  const base = { textContent: '', fontFamily: 'JetBrainsMono-Regular', fontSize: 21, textColor: undefined };
   it('gives each doodle its own page, after the media', () => {
     const doodle = { id: 'd1', kind: 'doodle' as const, strokes: [{ points: [0, 0, 0.1, 0.1] }], color: null, width: 0.01, x: 0.5, y: 0.5, scale: 1, rotation: 0 };
     const slides = gallerySlides({ ...base, mediaElements: [{ id: 'm1', uri: 'a.jpg', type: 'image', x_pos: 0, y_pos: 0 }], layout: { version: 1, template: 'story', background: { kind: 'stripes' }, layers: [doodle] } });

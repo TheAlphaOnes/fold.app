@@ -5,13 +5,13 @@
  *   hold      → start a voice take; it keeps recording after release, can
  *               be paused, and on Save opens in the compose screen as a
  *               voice disc (or is thrown away on Discard)
- *   swipe up  → open the camera, then hand the photo to the compose screen
+ *   swipe up  → open the app's camera; the photo or video starts a new memory
  */
 
 import { useCallback, useRef } from 'react';
 
 import * as FileSystem from 'expo-file-system/legacy';
-import * as ImagePicker from 'expo-image-picker';
+import { Camera } from 'expo-camera';
 
 import { setPendingCameraMedia } from '@/utils/pending-camera-media';
 import { useVoiceTake, type CaptureStartResult } from '@/hooks/use-voice-take';
@@ -54,27 +54,21 @@ export function useQuickCapture() {
     }
   }, [take]);
 
-  /** Opens the camera; a taken photo continues into the compose screen. */
+  /**
+   * Opens the app's camera (/capture); a photo or video taken there continues
+   * into the compose screen. Asks for camera access first, so callers can
+   * explain a refusal where the gesture happened.
+   */
   const capturePhoto = useCallback(async (): Promise<PhotoCaptureResult> => {
     if (isCameraOpenRef.current) return 'busy';
     isCameraOpenRef.current = true;
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
       if (status !== 'granted') return 'denied';
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-      });
-      if (result.canceled) return 'cancelled';
-
-      const asset = result.assets[0];
-      const dest = await persistCapture(asset.uri, 'camera', 'jpg');
-      setPendingCameraMedia({ uri: dest, type: 'image', width: asset.width, height: asset.height });
-      navigate.push('/compose');
+      navigate.push('/capture');
       return 'opened';
     } catch (error) {
-      console.error('Failed to launch camera', error);
+      trackError(error, 'quick_capture_camera');
       return 'failed';
     } finally {
       isCameraOpenRef.current = false;
