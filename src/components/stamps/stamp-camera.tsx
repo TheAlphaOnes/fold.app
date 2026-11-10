@@ -46,7 +46,9 @@ const PHOTO_PX = 900;
 const MAX_ZOOM = 0.3;
 /** Room above the stamp for the place line, and below it for the shutter row. */
 const PLACE_LINE = 52;
-const CONTROLS = 112;
+const CONTROLS = 132;
+/** Space between the shutter row and the drawer's peek. */
+const SHUTTER_LIFT = 34;
 /** How long the made stamp takes to sink into the drawer. */
 const SINK_MS = 420;
 /** The app's dark ground around the viewfinder. */
@@ -235,7 +237,7 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
       )}
 
       {phase !== 'stamped' ? (
-        <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { bottom: bottomInset + 14 }]}>
+        <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { bottom: bottomInset + SHUTTER_LIFT }]}>
           <View style={styles.side}>{zoom > 0.01 && <ThemedText style={styles.zoom}>{(1 + zoom * 10).toFixed(1)}×</ThemedText>}</View>
           <Pressable
             onPress={shoot}
@@ -251,7 +253,7 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
           </View>
         </Animated.View>
       ) : (
-        <Animated.View entering={riseIn(320, 900, 14)} style={[styles.after, { bottom: bottomInset + 14 }]}>
+        <Animated.View entering={riseIn(320, 900, 14)} style={[styles.after, { bottom: bottomInset + SHUTTER_LIFT }]}>
           <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
             <ThemedText style={styles.primaryText}>DONE</ThemedText>
           </Pressable>
