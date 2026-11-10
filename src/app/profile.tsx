@@ -9,7 +9,7 @@ import { Settings as SettingsIcon } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
 import { useTransitionDone } from '@/hooks/use-transition-done';
-import { riseIn } from '@/constants/motion';
+import { fadeIn, riseIn } from '@/constants/motion';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -92,18 +92,27 @@ export default function ProfileScreen() {
 
         <StoryBoardCard />
 
-        <StampAlbumCard />
+        {/* Below the first screen: built once the slide has finished, so opening the
+            profile only has to draw the two cards you see (the stamp map is a native
+            view and the calendar ~40 pressables; building them mid-slide stalled it). */}
+        {settled ? (
+          <Animated.View entering={fadeIn(240)}>
+          <StampAlbumCard />
 
-        {/* Heat Map (Activity Grid) */}
-        <ActivityGrid />
+          {/* Heat Map (Activity Grid) */}
+          <ActivityGrid />
 
-        {/* Time Machine Section */}
-        <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-          <View style={styles.portfolioHeader}>
-            <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+          {/* Time Machine Section */}
+          <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+            <View style={styles.portfolioHeader}>
+              <ThemedText style={[Type.rail, { color: theme.textMuted }]}>TIME MACHINE</ThemedText>
+            </View>
+            <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
           </View>
-          <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
-        </View>
+          </Animated.View>
+        ) : (
+          <View style={{ height: screenHeight }} />
+        )}
 
         {/* Marks where the wall starts, so it can wait until you scroll near it. */}
         <View onLayout={(e) => setWallTop(e.nativeEvent.layout.y)} />
