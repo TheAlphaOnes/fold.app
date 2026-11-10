@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
+import { centreCropFor, stampCropFor, formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
 
 describe('photoCropFor', () => {
   it('maps a centred window on a cover preview to photo pixels', () => {
@@ -62,5 +62,26 @@ describe('collection details', () => {
   it('gives each place one stable ink from the palette', () => {
     expect(postmarkInk('Pune')).toBe(postmarkInk('PUNE'));
     expect(POSTMARK_INKS).toContain(postmarkInk('Goa'));
+  });
+});
+
+describe('stampCropFor', () => {
+  const view = { width: 402, height: 874 };
+  const window = { x: 44, y: 200, width: 313, height: 388 };
+  it('uses the window when the photo matches the preview', () => {
+    expect(stampCropFor({ width: 3024, height: 4032 }, view, window)).toEqual(
+      expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }),
+    );
+  });
+  it('falls back to a large centred stamp crop when the photo is sideways to the preview', () => {
+    const crop = stampCropFor({ width: 480, height: 222 }, view, window);
+    expect(crop.height).toBe(222);
+    expect(crop.width).toBe(Math.round(222 / (388 / 313)));
+    expect(crop.originX).toBe(Math.round((480 - crop.width) / 2));
+  });
+  it('centre crop fits inside the photo', () => {
+    const c = centreCropFor({ width: 1000, height: 500 }, 1.24);
+    expect(c.height).toBeLessThanOrEqual(500);
+    expect(c.originX + c.width).toBeLessThanOrEqual(1000);
   });
 });
