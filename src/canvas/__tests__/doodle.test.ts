@@ -45,3 +45,20 @@ describe('drawInSchedule', () => {
     expect(strokeLength([0, 0, 3, 4])).toBe(5);
   });
 });
+
+import { brushStrands, offsetLine, trim } from '@/canvas/doodle';
+
+describe('brush', () => {
+  const line = Array.from({ length: 20 }, (_, k) => [k * 0.01, 0]).flat();
+  it('builds a main line and two fainter, thinner strands', () => {
+    const s = brushStrands(line, 0.02);
+    expect(s).toHaveLength(3);
+    expect(s[0]).toMatchObject({ width: 1, opacity: 1 });
+    expect(s[1].width).toBeLessThan(1);
+    expect(s[2].opacity).toBeLessThan(1);
+  });
+  it('offsets along the normal and trims ends', () => {
+    expect(offsetLine([0, 0, 1, 0], 0.1)).toEqual([0, 0.1, 1, 0.1]);
+    expect(trim(line, 0.1, 0.1).length).toBe(32);
+  });
+});
