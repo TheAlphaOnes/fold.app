@@ -134,7 +134,7 @@ export default function StampMap() {
         <Animated.View entering={fadeIn(300, 120)} style={styles.centre} pointerEvents="box-none">
           <View style={[styles.emptyCard, { backgroundColor: theme.background + 'F0', borderColor: theme.border }]}>
             <ThemedText style={[styles.note, { color: theme.text }]}>no places yet</ThemedText>
-            <Pressable onPress={() => navigate.replace('/stamps/camera')} accessibilityRole="button" style={[styles.cta, { backgroundColor: theme.text }]}>
+            <Pressable onPress={() => navigate.replace('/stamps')} accessibilityRole="button" style={[styles.cta, { backgroundColor: theme.text }]}>
               <ThemedText style={[styles.ctaText, { color: theme.background }]}>STAMP A PLACE</ThemedText>
             </Pressable>
           </View>

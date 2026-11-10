@@ -1,16 +1,15 @@
 /**
- * Stamp camera — a live viewfinder framed as a blank stamp. The world shows
- * through the stamp's window (everything around it dimmed), the place
- * you're in is printed above it, and the shutter makes the stamp:
+ * StampCamera — the live viewfinder framed as a blank stamp, the top layer
+ * of the stamps page (StampStudio). The world shows through a perforated
+ * stamp cut out of the dark, the place is printed above it, and the shutter
+ * makes the stamp:
  *
  *   1. instant feedback: a flash, the view freezes on the shot;
- *   2. the photo is cut to exactly what the window showed;
- *   3. the stamp is shown with that photo, and its postmark is inked on
- *      (it lands with a thud, slightly over-sized, and settles), then a
- *      line says what it means: a NEW PLACE, or BACK IN somewhere, with the
- *      stamp's number in the collection;
- *   4. Done goes to the collection (where it lands in its slot); Another
- *      goes straight back to the viewfinder.
+ *   2. the stamp is cut to exactly what the window showed;
+ *   3. its postmark is inked on (lands with a thud, settles), then a line
+ *      says what it means: NEW PLACE or BACK IN somewhere, with its number;
+ *   4. Done sinks the stamp down into the collection drawer below and the
+ *      viewfinder comes back.
  *
  * The place shows at once from the last known position and is refined in
  * the background, so the shutter never waits on GPS. A stamp is proof of a
@@ -25,12 +24,11 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, FadeIn, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
-import { CloseButton, RoundButton } from '@/components/round-button';
+import { RoundButton } from '@/components/round-button';
 import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn, riseIn } from '@/constants/motion';
@@ -39,14 +37,18 @@ import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
 import { formatSerial, isNewPlace, photoCropFor, photoMatchesPreview, stampCropFor } from '@/stamps/geometry';
-import { goBack } from '@/utils/navigation';
 
-/** The stamp's width as a share of the screen. */
-const STAMP_WIDTH = 0.78;
+/** The stamp's widest, as a share of the screen. */
+const STAMP_WIDTH = 0.74;
 /** Width of the saved stamp photo: sharp on the map's hover card, light in the grid. */
 const PHOTO_PX = 900;
 /** Pinch range: the camera's zoom is 0…1; past ~0.3 phone lenses get soft. */
 const MAX_ZOOM = 0.3;
+/** Room above the stamp for the place line, and below it for the shutter row. */
+const PLACE_LINE = 52;
+const CONTROLS = 112;
+/** How long the made stamp takes to sink into the drawer. */
+const SINK_MS = 420;
 /** The app's dark ground around the viewfinder. */
 const BACKDROP = '#0E0E0E';
 
@@ -61,8 +63,15 @@ interface Made {
   newPlace: boolean;
 }
 
-export default function StampCamera() {
-  const insets = useSafeAreaInsets();
+interface StampCameraProps {
+  /** The camera runs; off while the collection drawer is open. */
+  active: boolean;
+  /** Space the page keeps at the top (its buttons) and bottom (the drawer's peek). */
+  topInset: number;
+  bottomInset: number;
+}
+
+export function StampCamera({ active, topInset, bottomInset }: StampCameraProps) {
   const screen = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -92,11 +101,13 @@ export default function StampCamera() {
     };
   }, []);
 
-  // The stamp: centred, a little above the middle so the shutter has room.
-  const stampW = screen.width * STAMP_WIDTH;
+  // The stamp: as large as fits between the place line and the shutter, centred there.
+  const top = topInset + PLACE_LINE;
+  const bottom = screen.height - bottomInset - CONTROLS;
+  const stampW = Math.min(screen.width * STAMP_WIDTH, (bottom - top) / STAMP_ASPECT);
   const stampH = stampW * STAMP_ASPECT;
   const stampX = (screen.width - stampW) / 2;
-  const stampY = (screen.height - stampH) / 2 - screen.height * 0.04;
+  const stampY = top + (bottom - top - stampH) / 2;
   // The photo runs to the stamp's perforated edge, so the window is the whole stamp.
   const window = { x: stampX, y: stampY, width: stampW, height: stampH };
 
@@ -164,20 +175,28 @@ export default function StampCamera() {
     }
   };
 
-  const another = () => {
-    setMade(null);
-    setPhase('aiming');
-    setZoom(0);
+  // Done: the stamp sinks down into the drawer, then the viewfinder is back.
+  const sink = useSharedValue(0);
+  const done = () => {
+    haptic.tap();
+    sink.set(withTiming(1, { duration: SINK_MS, easing: Easing.in(Easing.cubic) }));
+    setTimeout(() => {
+      setMade(null);
+      setPhase('aiming');
+      setZoom(0);
+      sink.set(0);
+    }, SINK_MS);
   };
+  const sinking = useAnimatedStyle(() => ({
+    opacity: 1 - sink.get() * 0.6,
+    transform: [{ translateY: sink.get() * (screen.height - stampY) * 0.85 }, { scale: 1 - sink.get() * 0.78 }],
+  }));
 
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
   if (permission && !permission.granted) {
     return (
-      <View style={[styles.root, styles.centre, { paddingTop: insets.top }]}>
-        <View style={[styles.close, { top: insets.top + 6 }]}>
-          <CloseButton accessibilityLabel="Close camera" />
-        </View>
+      <View style={[styles.root, styles.centre, { paddingBottom: bottomInset }]}>
         <ThemedText style={styles.note}>Fold needs the camera to make stamps</ThemedText>
         <Pressable onPress={permission.canAskAgain ? requestPermission : () => Linking.openSettings()} accessibilityRole="button" style={styles.allow}>
           <ThemedText style={styles.allowText}>{permission.canAskAgain ? 'ALLOW CAMERA' : 'OPEN SETTINGS'}</ThemedText>
@@ -191,7 +210,7 @@ export default function StampCamera() {
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
           <View ref={preview} collapsable={false} style={StyleSheet.absoluteFill}>
-            {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
+            {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} active={active} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
           </View>
           <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={phase === 'stamped'} />
         </View>
@@ -209,14 +228,14 @@ export default function StampCamera() {
         </Animated.View>
       )}
 
-      {made && <MadeStamp made={made} x={stampX} y={stampY} w={stampW} />}
-
-      <View style={[styles.close, { top: insets.top + 6 }]}>
-        <CloseButton accessibilityLabel="Close camera" />
-      </View>
+      {made && (
+        <Animated.View style={[StyleSheet.absoluteFill, sinking]} pointerEvents="none">
+          <MadeStamp made={made} x={stampX} y={stampY} w={stampW} />
+        </Animated.View>
+      )}
 
       {phase !== 'stamped' ? (
-        <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { paddingBottom: insets.bottom + 18 }]}>
+        <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { bottom: bottomInset + 14 }]}>
           <View style={styles.side}>{zoom > 0.01 && <ThemedText style={styles.zoom}>{(1 + zoom * 10).toFixed(1)}×</ThemedText>}</View>
           <Pressable
             onPress={shoot}
@@ -232,11 +251,8 @@ export default function StampCamera() {
           </View>
         </Animated.View>
       ) : (
-        <Animated.View entering={riseIn(320, 900, 14)} style={[styles.after, { paddingBottom: insets.bottom + 18 }]}>
-          <Pressable onPress={another} accessibilityRole="button" style={({ pressed }) => [styles.secondary, { opacity: pressed ? 0.6 : 1 }]}>
-            <ThemedText style={styles.secondaryText}>ANOTHER</ThemedText>
-          </Pressable>
-          <Pressable onPress={() => goBack()} accessibilityRole="button" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
+        <Animated.View entering={riseIn(320, 900, 14)} style={[styles.after, { bottom: bottomInset + 14 }]}>
+          <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
             <ThemedText style={styles.primaryText}>DONE</ThemedText>
           </Pressable>
         </Animated.View>
@@ -323,14 +339,13 @@ function MadeStamp({ made, x, y, w }: { made: Made; x: number; y: number; w: num
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BACKDROP },
   centre: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40 },
-  close: { position: 'absolute', left: 16 },
   flash: { backgroundColor: '#FFFFFF' },
   note: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 13, textAlign: 'center' },
   allow: { height: 44, paddingHorizontal: 22, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center' },
   allowText: { color: '#111111', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
   placeLine: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
   placeText: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 12, letterSpacing: 2.5 },
-  controls: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32 },
+  controls: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32 },
   side: { width: 48, alignItems: 'center' },
   zoom: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Medium', fontSize: 12 },
   shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
@@ -338,9 +353,7 @@ const styles = StyleSheet.create({
   verdict: { alignItems: 'center', marginTop: 28, gap: 6 },
   verdictBadge: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 13, letterSpacing: 3 },
   verdictMeta: { color: '#FFFFFF99', fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
-  after: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24 },
-  secondary: { height: 48, paddingHorizontal: 26, borderRadius: 24, borderWidth: 1, borderColor: '#FFFFFF66', justifyContent: 'center' },
-  secondaryText: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
+  after: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 12, paddingHorizontal: 24 },
   primary: { height: 48, paddingHorizontal: 34, borderRadius: 24, backgroundColor: '#FFFFFF', justifyContent: 'center' },
   primaryText: { color: '#111111', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
 });
