@@ -30,7 +30,7 @@ import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
 import { CloseButton, RoundButton } from '@/components/round-button';
-import { Postmark, StampView, STAMP_ASPECT, STAMP_MARGIN } from '@/components/stamps/stamp-view';
+import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { useStamps } from '@/hooks/use-stamps';
@@ -95,9 +95,8 @@ export default function StampCamera() {
   const stampH = stampW * STAMP_ASPECT;
   const stampX = (screen.width - stampW) / 2;
   const stampY = (screen.height - stampH) / 2 - screen.height * 0.04;
-  const inset = stampW * STAMP_MARGIN;
-  // The photo fills the stamp, an even border all round, so the window is the whole inner rectangle.
-  const window = { x: stampX + inset, y: stampY + inset, width: stampW - inset * 2, height: stampH - inset * 2 };
+  // The photo runs to the stamp's perforated edge, so the window is the whole stamp.
+  const window = { x: stampX, y: stampY, width: stampW, height: stampH };
 
   const pinchStart = useSharedValue(0);
   const pinch = Gesture.Pinch()
@@ -169,7 +168,7 @@ export default function StampCamera() {
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
           {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
-          <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} window={window} solid={phase === 'stamped'} />
+          <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={phase === 'stamped'} />
         </View>
       </GestureDetector>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
@@ -241,25 +240,21 @@ interface MaskProps {
   y: number;
   w: number;
   h: number;
-  window: { x: number; y: number; width: number; height: number };
   /** After the shot the live view is gone; the dim becomes solid. */
   solid: boolean;
 }
 
 /**
  * The viewfinder's frame, drawn like the collection's blank stamp: the
- * screen stays the app's plain dark, a thin perforated outline marks the
- * stamp, and the camera shows only through the photo's window inside it
- * (the gap between is where the white border will be).
+ * screen stays the app's plain dark and the camera shows through a stamp
+ * cut out of it, scalloped edge and all, with a thin outline tracing it.
  */
-function StampMask({ screen, x, y, w, h, window, solid }: MaskProps) {
-  const r = w * 0.026;
-  const holes = Math.round(w / (r * 3.6));
+function StampMask({ screen, x, y, w, h, solid }: MaskProps) {
+  const { r, holes } = stampPerforation(w);
   const outline = stampOutline(w, h, r, holes, { x, y });
-  const hole = `M ${window.x} ${window.y} h ${window.width} v ${window.height} h ${-window.width} Z`;
   return (
     <Svg width={screen.width} height={screen.height} style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Path d={solid ? `M 0 0 H ${screen.width} V ${screen.height} H 0 Z` : `M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${hole}`} fill={BACKDROP} fillRule="evenodd" />
+      <Path d={solid ? `M 0 0 H ${screen.width} V ${screen.height} H 0 Z` : `M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${outline}`} fill={BACKDROP} fillRule="evenodd" />
       {!solid && <Path d={outline} stroke="#FFFFFF" strokeOpacity={0.55} strokeWidth={1.5} fill="none" />}
     </Svg>
   );
@@ -289,7 +284,7 @@ function MadeStamp({ made, x, y, w }: { made: Made; x: number; y: number; w: num
   return (
     <View style={{ position: 'absolute', left: x, top: y, width: w }} pointerEvents="none">
       <StampView imageUri={made.uri} place={made.place} createdAt={made.createdAt} width={w} postmark={false} serial={made.serial} />
-      <Animated.View style={[{ position: 'absolute', right: -w * 0.06, top: w * 0.5 }, mark]}>
+      <Animated.View style={[{ position: 'absolute', right: -w * 0.06, top: w * 0.42 }, mark]}>
         <Postmark size={w * 0.42} place={made.place} createdAt={made.createdAt} style={{ position: 'relative' }} />
       </Animated.View>
       <Animated.View entering={FadeIn.delay(700).duration(320)} style={styles.verdict}>
