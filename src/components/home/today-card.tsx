@@ -170,6 +170,6 @@ const styles = StyleSheet.create({
   shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 56, height: 56, borderRadius: 28 },
   // Solid behind the pill, so it reads over any picture.
-  picker: { width: 220, flexDirection: 'row', borderRadius: ROUND_BUTTON_SIZE / 2 },
+  picker: { width: 260, flexDirection: 'row', borderRadius: ROUND_BUTTON_SIZE / 2 },
   list: { position: 'absolute', left: 16, right: 16, bottom: 26 + 72 + 16 + 34 + 12 },
 });
