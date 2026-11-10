@@ -30,7 +30,7 @@ import { SwitchCamera } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
 import { CloseButton, RoundButton } from '@/components/round-button';
-import { Postmark, StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
+import { Postmark, StampView, STAMP_ASPECT, STAMP_MARGIN } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { useStamps } from '@/hooks/use-stamps';
@@ -40,13 +40,14 @@ import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/loca
 import { formatSerial, isNewPlace, photoCropFor } from '@/stamps/geometry';
 import { goBack } from '@/utils/navigation';
 
-/** The stamp's width as a share of the screen, and the photo inside it. */
+/** The stamp's width as a share of the screen. */
 const STAMP_WIDTH = 0.78;
-const PHOTO_INSET = 0.08;
 /** Width of the saved stamp photo: sharp on the map's hover card, light in the grid. */
 const PHOTO_PX = 900;
 /** Pinch range: the camera's zoom is 0…1; past ~0.3 phone lenses get soft. */
 const MAX_ZOOM = 0.3;
+/** The app's dark ground around the viewfinder. */
+const BACKDROP = '#0E0E0E';
 
 type Phase = 'aiming' | 'shooting' | 'stamped';
 type PlaceState = FoundPlace | null | 'finding';
@@ -94,8 +95,9 @@ export default function StampCamera() {
   const stampH = stampW * STAMP_ASPECT;
   const stampX = (screen.width - stampW) / 2;
   const stampY = (screen.height - stampH) / 2 - screen.height * 0.04;
-  const inset = stampW * PHOTO_INSET;
-  const window = { x: stampX + inset, y: stampY + inset, width: stampW - inset * 2, height: stampW - inset * 2 };
+  const inset = stampW * STAMP_MARGIN;
+  // The photo fills the stamp, an even border all round, so the window is the whole inner rectangle.
+  const window = { x: stampX + inset, y: stampY + inset, width: stampW - inset * 2, height: stampH - inset * 2 };
 
   const pinchStart = useSharedValue(0);
   const pinch = Gesture.Pinch()
@@ -244,7 +246,12 @@ interface MaskProps {
   solid: boolean;
 }
 
-/** The dim around the stamp, and the stamp's white perforated paper around the window. */
+/**
+ * The viewfinder's frame, drawn like the collection's blank stamp: the
+ * screen stays the app's plain dark, a thin perforated outline marks the
+ * stamp, and the camera shows only through the photo's window inside it
+ * (the gap between is where the white border will be).
+ */
 function StampMask({ screen, x, y, w, h, window, solid }: MaskProps) {
   const r = w * 0.026;
   const holes = Math.round(w / (r * 3.6));
@@ -252,8 +259,8 @@ function StampMask({ screen, x, y, w, h, window, solid }: MaskProps) {
   const hole = `M ${window.x} ${window.y} h ${window.width} v ${window.height} h ${-window.width} Z`;
   return (
     <Svg width={screen.width} height={screen.height} style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Path d={`M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${outline}`} fill={solid ? '#0E0E0E' : '#000000B8'} fillRule="evenodd" />
-      {!solid && <Path d={`${outline} ${hole}`} fill="#FFFFFF" fillRule="evenodd" />}
+      <Path d={solid ? `M 0 0 H ${screen.width} V ${screen.height} H 0 Z` : `M 0 0 H ${screen.width} V ${screen.height} H 0 Z ${hole}`} fill={BACKDROP} fillRule="evenodd" />
+      {!solid && <Path d={outline} stroke="#FFFFFF" strokeOpacity={0.55} strokeWidth={1.5} fill="none" />}
     </Svg>
   );
 }
@@ -294,7 +301,7 @@ function MadeStamp({ made, x, y, w }: { made: Made; x: number; y: number; w: num
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: BACKDROP },
   centre: { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 40 },
   close: { position: 'absolute', left: 16 },
   flash: { backgroundColor: '#FFFFFF' },
