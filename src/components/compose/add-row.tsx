@@ -9,7 +9,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { CalendarDays, MapPin, Mic, Music, PenLine, Smile, Type as TypeIcon, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, MapPin, Mic, Music, PenLine, Smile, Stamp as StampIcon, Type as TypeIcon, type LucideIcon } from 'lucide-react-native';
 
 import { ROUND_BUTTON_SIZE } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
@@ -18,12 +18,13 @@ import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
-export type AddKind = 'text' | 'gif' | 'doodle' | 'music' | 'voice' | 'location' | 'date';
+export type AddKind = 'text' | 'stamp' | 'gif' | 'doodle' | 'music' | 'voice' | 'location' | 'date';
 
 const ITEMS: { kind: AddKind; icon: LucideIcon; label: string }[] = [
   { kind: 'text', icon: TypeIcon, label: 'Text' },
   { kind: 'gif', icon: Smile, label: 'GIF' },
   { kind: 'doodle', icon: PenLine, label: 'Doodle' },
+  { kind: 'stamp', icon: StampIcon, label: 'Stamp' },
   { kind: 'music', icon: Music, label: 'Song' },
   { kind: 'voice', icon: Mic, label: 'Voice' },
   { kind: 'location', icon: MapPin, label: 'Place' },

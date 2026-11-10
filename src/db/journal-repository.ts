@@ -4,7 +4,7 @@ import type { Composition, CompositionRow, MediaElement, LocationData } from '@/
 import type { CanvasDoc } from '@/canvas/types';
 import type { TimelineFeedMode, TimelineSpineEntry } from '@/utils/timeline';
 import * as FileSystem from 'expo-file-system/legacy';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 
 /**
  * Re-anchors a stored absolute file URI to the current app container path.
@@ -229,6 +229,7 @@ export async function getMemorySignals(): Promise<MemorySignal[]> {
               SELECT 1 FROM json_each(c.media_elements) m
               WHERE json_extract(m.value, '$.type') IN ('image', 'video')
                 AND COALESCE(json_extract(m.value, '$.isGif'), 0) = 0
+                AND COALESCE(json_extract(m.value, '$.isStamp'), 0) = 0
             ) ELSE 0 END AS has_visual
      FROM compositions c
      WHERE c.deleted_at IS NULL`,
@@ -276,7 +277,7 @@ export async function getDayCoversForMonth(yearMonth: string): Promise<Record<st
     if (covers[row.day]) continue;
     try {
       const media: MediaElement[] = JSON.parse(row.media_elements);
-      const visual = media.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+      const visual = media.find((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
       if (visual) covers[row.day] = { uri: resolveDocumentUri(visual.uri), type: visual.type as DayCover['type'] };
     } catch (error) {
       console.error('Failed to parse media for day cover', row.day, error);

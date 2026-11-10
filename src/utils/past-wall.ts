@@ -23,7 +23,7 @@ export interface WallPiece {
 /** Below this many tiles per column, columns share the whole set instead of splitting it. */
 export const MIN_PER_COLUMN = 4;
 
-const isPicture = (m: MediaElement) => (m.type === 'image' || m.type === 'video') && !m.isGif;
+const isPicture = (m: MediaElement) => (m.type === 'image' || m.type === 'video') && !m.isGif && !m.isStamp;
 
 export function wallPieces(memories: Composition[]): WallPiece[] {
   const queues = memories.map((memory) => {

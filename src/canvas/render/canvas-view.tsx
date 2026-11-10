@@ -13,6 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
 import { DoodleView } from '@/canvas/render/doodle-view';
+import { StampView } from '@/components/stamps/stamp-view';
 import { DeckCard, FanCard, MotionGroup, Upright, useDeck, useFanOrder } from '@/canvas/render/arrangement-motion';
 import {
   AudioStickerView,
@@ -23,6 +24,9 @@ import {
 } from '@/canvas/render/layer-views';
 import { ARRANGEMENTS, deckDepth, isArranged } from '@/templates/arrangements';
 import type { Composition, MediaElement } from '@/types/journal';
+
+/** A placed stamp's width at scale 1, as a share of the canvas width. */
+export const STAMP_STICKER_WIDTH = 0.36;
 
 export interface CanvasViewProps {
   doc: CanvasDoc;
@@ -98,6 +102,11 @@ export function LayerContent({
       return <DateStickerView layer={layer} createdAt={memory.createdAt} width={width} />;
     case 'doodle':
       return <DoodleView layer={layer} width={width} moving={moving} />;
+    case 'stamp': {
+      const m = media.get(layer.mediaId);
+      // About a third of the card wide at scale 1, like a real stamp on a page.
+      return m ? <StampView imageUri={m.uri} place={layer.place} createdAt={layer.stampedAt} width={width * STAMP_STICKER_WIDTH * layer.scale} /> : null;
+    }
   }
 }
 

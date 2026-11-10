@@ -31,7 +31,7 @@ import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
 import { TRASH_DAYS, daysLeftInTrash, emptyTrash, purgeMemories } from '@/services/trash.service';
 import { getHighResArtwork } from '@/utils/media-attach';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 import { memoryTextMetrics } from '@/utils/memory-text';
 import type { Composition } from '@/types/journal';
 
@@ -58,7 +58,7 @@ function deletedAgo(deletedAt: number, now: number): string {
 
 function Cover({ memory }: { memory: Composition }) {
   const theme = useTheme();
-  const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+  const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
   const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
   const music = memory.mediaElements.find((m) => m.type === 'audio' && m.metadata);
   const uri = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : getHighResArtwork(music?.metadata?.artwork);

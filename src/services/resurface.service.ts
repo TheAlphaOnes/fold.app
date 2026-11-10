@@ -11,16 +11,16 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { getRandomCompositionsBefore } from '@/db/journal-repository';
 import type { Composition } from '@/types/journal';
-import { isGifMedia } from '@/utils/media-kind';
+import { isDecorativeMedia } from '@/utils/media-kind';
 
 const SAMPLE_POOL = 80;
 
 export function hasVisualMedia(memory: Composition): boolean {
-  return memory.mediaElements.some((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+  return memory.mediaElements.some((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
 }
 
 async function identityOf(memory: Composition): Promise<string> {
-  const lead = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isGifMedia(m));
+  const lead = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
   if (!lead) return `text:${memory.textContent.trim().toLowerCase()}`;
   try {
     const info = await FileSystem.getInfoAsync(lead.uri);

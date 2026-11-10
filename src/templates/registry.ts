@@ -43,7 +43,7 @@ export function templateName(template: TemplateId): string {
 
 /** Photos and videos, the media a background or cell can show. */
 export function visualMedia(media: MediaElement[]): MediaElement[] {
-  return media.filter((m) => (m.type === 'image' || m.type === 'video') && !m.isGif);
+  return media.filter((m) => (m.type === 'image' || m.type === 'video') && !m.isGif && !m.isStamp);
 }
 
 /**

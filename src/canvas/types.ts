@@ -109,6 +109,19 @@ export interface DateSticker extends LayerBase {
   style: DateStickerStyle;
 }
 
+/**
+ * A stamp from the collection, placed on the canvas: the full stamp
+ * (perforated photo, place, date, postmark). Its photo is the memory's own
+ * copy (a media element flagged isStamp), so it outlives the collection.
+ */
+export interface StampSticker extends LayerBase {
+  kind: 'stamp';
+  mediaId: string;
+  place: string;
+  /** When the stamp was made (its postmark date), not when it was placed. */
+  stampedAt: number;
+}
+
 export interface DoodleStroke {
   /** Flat [x0, y0, x1, y1, …] in canvas-width units, relative to the layer centre. */
   points: number[];
@@ -124,7 +137,7 @@ export interface DoodleLayer extends LayerBase {
   width: number;
 }
 
-export type Layer = TextLayer | MediaSticker | AudioSticker | LocationSticker | DateSticker | DoodleLayer;
+export type Layer = TextLayer | MediaSticker | AudioSticker | LocationSticker | DateSticker | DoodleLayer | StampSticker;
 
 export interface CanvasDoc {
   version: 1;
