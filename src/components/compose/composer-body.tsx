@@ -214,7 +214,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     c.addMedia(added);
   };
   const addFromCamera = async () => {
-    const added = await media.captureWithCamera('image');
+    const added = await media.captureWithCamera();
     c.addMedia(added);
   };
   /** From the text editor's camera/gallery buttons: keep what was typed, then add the photo. */
