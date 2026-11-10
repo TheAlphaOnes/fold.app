@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { useIsFocused } from 'expo-router';
 
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +38,22 @@ export default function ProfileScreen() {
   // the visible cards draw in the same frame as the slide. Only the photo
   // wall at the bottom (dozens of images, off screen) waits for the slide.
   const settled = useTransitionDone();
+  const focused = useIsFocused();
+  const { height: screenHeight } = useWindowDimensions();
+
+  // The photo wall at the bottom is mounted once you scroll near it, and only
+  // falls while it's on screen and the profile is in front. Before, it loaded
+  // with the profile and animated forever, even out of sight or under another
+  // screen.
+  const [wallTop, setWallTop] = useState<number | null>(null);
+  const [scrollY, setScrollY] = useState(0);
+  const nearWall = wallTop !== null && scrollY + screenHeight * 1.5 > wallTop;
+  const wallVisible = focused && wallTop !== null && scrollY + screenHeight > wallTop;
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    // Only re-render when crossing a quarter screen; the checks above are coarse.
+    if (Math.abs(y - scrollY) > screenHeight / 4) setScrollY(y);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
@@ -61,7 +78,14 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        onScrollEndDrag={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+        onMomentumScrollEnd={(e) => setScrollY(e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={100}
+      >
         
         {/* Combined Dashboard Card */}
         <ContinuumCard />
@@ -79,10 +103,12 @@ export default function ProfileScreen() {
           <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
         </View>
 
-        {settled && (
+        {/* Marks where the wall starts, so it can wait until you scroll near it. */}
+        <View onLayout={(e) => setWallTop(e.nativeEvent.layout.y)} />
+        {settled && nearWall && (
           <Animated.View entering={riseIn(420, 0, 12)}>
             {/* Today's memory from the past — photo-first, opens the memory */}
-            <FromYourPastCard />
+            <FromYourPastCard visible={wallVisible} />
 
             {/* ASCII Easter Egg Mascot */}
             <View style={styles.mascotContainer}>

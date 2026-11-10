@@ -1,11 +1,11 @@
 /**
  * ExportCanvas — an offscreen 9:16 copy of a memory, captured as a full
- * 2160×3840 story image when sharing "as a card". Fold's crane and name
- * sit in the bottom corner as a signature that promotes the app.
+ * 2160×3840 story image when sharing "as a card". Fold's crane sits in the
+ * bottom corner as a quiet signature (the mark only, no name).
  */
 
 import React, { forwardRef } from 'react';
-import { PixelRatio, StyleSheet, Text, View } from 'react-native';
+import { PixelRatio, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import { CanvasView } from '@/canvas/render/canvas-view';
@@ -31,22 +31,32 @@ export const ExportCanvas = forwardRef<View, { memory: Composition }>(function E
       <View ref={ref} collapsable={false} style={LAYOUT}>
         <CanvasView doc={doc} memory={memory} width={LAYOUT.width} height={LAYOUT.height} animated={false} />
         <View style={styles.signature}>
-          <Logo size={MARK} color="#FFFFFF" style={styles.crane} />
-          <Text style={styles.wordmark}>fold</Text>
+          <Logo size={MARK} color="#FFFFFF" />
         </View>
       </View>
     </View>
   );
 });
 
-/** Captures an ExportCanvas as a 1080×1920 PNG and returns its file URI. */
-export function captureExport(ref: React.RefObject<View | null>): Promise<string> {
-  return captureRef(ref, { format: 'png', quality: 1, width: EXPORT_SIZE.width, height: EXPORT_SIZE.height });
+/**
+ * Captures an ExportCanvas as a full-size PNG and returns its file URI.
+ * iOS's fast snapshot (drawViewHierarchyInRect) can refuse a view that isn't
+ * on screen; then it's drawn the slower, always-available way (renderInContext).
+ */
+export async function captureExport(ref: React.RefObject<View | null>): Promise<string> {
+  const options = { format: 'png' as const, quality: 1, width: EXPORT_SIZE.width, height: EXPORT_SIZE.height };
+  try {
+    return await captureRef(ref, options);
+  } catch {
+    return captureRef(ref, { ...options, useRenderInContext: true });
+  }
 }
 
 const styles = StyleSheet.create({
-  // Invisible but laid out, so view-shot can capture it.
-  offscreen: { position: 'absolute', top: 0, left: 0, opacity: 0, zIndex: -100 },
+  // Laid out and fully drawn, but parked past the right edge of the screen:
+  // iOS won't snapshot a view at opacity 0 ("drawViewHierarchyInRect was not
+  // successful"), and off-screen keeps it out of sight.
+  offscreen: { position: 'absolute', top: 0, left: 10000, zIndex: -100 },
   signature: {
     position: 'absolute',
     right: LAYOUT.width * 0.04,
@@ -58,13 +68,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: LAYOUT.width * 0.012,
     shadowOffset: { width: 0, height: 1 },
-  },
-  // The crane's viewBox has wide margins; pull the name in close to it.
-  crane: { marginRight: -MARK * 0.12 },
-  wordmark: {
-    color: '#FFFFFF',
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: MARK * 0.36,
-    letterSpacing: MARK * 0.02,
   },
 });

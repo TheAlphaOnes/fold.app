@@ -194,7 +194,10 @@ function FallingColumn({
   // Two copies of the cycle stacked: while one scrolls out the bottom, the
   // other is already in place above it, so the loop has no seam.
   return (
-    <Animated.View style={[{ width, gap: GAP }, style]}>
+    // The column only ever moves as a whole, so it's drawn once into a texture
+    // and slid on the GPU; redrawing every tile (each clipped to rounded
+    // corners) on every frame is what made the profile heavy on Android.
+    <Animated.View style={[{ width, gap: GAP }, style]} renderToHardwareTextureAndroid shouldRasterizeIOS>
       {[0, 1].map((copy) => (
         <View key={copy} style={{ gap: GAP }}>
           {tiles.map((tile) => (
@@ -269,7 +272,12 @@ function ShuffleButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function FromYourPastCard() {
+interface FromYourPastCardProps {
+  /** On screen and in front: the wall only falls while it can be seen. */
+  visible?: boolean;
+}
+
+export function FromYourPastCard({ visible = true }: FromYourPastCardProps) {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const reduceMotion = useReducedMotion() ?? false;
@@ -301,7 +309,7 @@ export function FromYourPastCard() {
                     cycle={column.cycle}
                     speed={SPEEDS[index % SPEEDS.length]}
                     width={columnWidth}
-                    paused={paused}
+                    paused={paused || !visible}
                     still={reduceMotion}
                   />
                 </Animated.View>
