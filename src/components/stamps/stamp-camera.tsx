@@ -8,8 +8,9 @@
  *   2. the stamp is cut to exactly what the window showed;
  *   3. its postmark is inked on (lands with a thud, settles), then a line
  *      says what it means: NEW PLACE or BACK IN somewhere, with its number;
- *   4. Done sinks the stamp down into the collection drawer below and the
- *      viewfinder comes back.
+ *   4. Done flies the stamp down into the collection drawer's fan, shrinking
+ *      to its size on a slight arc; it lands there once, and the viewfinder
+ *      comes back.
  *
  * The place shows at once from the last known position and is refined in
  * the background, so the shutter never waits on GPS. A stamp is proof of a
@@ -23,7 +24,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import { captureRef } from 'react-native-view-shot';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeIn, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { SwitchCamera } from 'lucide-react-native';
 
@@ -49,12 +50,12 @@ const PLACE_LINE = 52;
 const CONTROLS = 132;
 /** Space between the shutter row and the drawer's peek. */
 const SHUTTER_LIFT = 34;
-/** How long the made stamp takes to sink into the drawer. */
-const SINK_MS = 420;
+/** How long the made stamp takes to fly into the drawer's fan. */
+const FLY_MS = 560;
 /** The app's dark ground around the viewfinder. */
 const BACKDROP = '#0E0E0E';
 
-type Phase = 'aiming' | 'shooting' | 'stamped';
+type Phase = 'aiming' | 'shooting' | 'stamped' | 'delivering';
 type PlaceState = FoundPlace | null | 'finding';
 
 interface Made {
@@ -71,9 +72,11 @@ interface StampCameraProps {
   /** Space the page keeps at the top (its buttons) and bottom (the drawer's peek). */
   topInset: number;
   bottomInset: number;
+  /** Where a finished stamp flies to: the centre slot of the drawer's fan (its top-centre and width). */
+  landing: { x: number; y: number; width: number };
 }
 
-export function StampCamera({ active, topInset, bottomInset }: StampCameraProps) {
+export function StampCamera({ active, topInset, bottomInset, landing }: StampCameraProps) {
   const screen = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -85,7 +88,7 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
   const [phase, setPhase] = useState<Phase>('aiming');
   const [made, setMade] = useState<Made | null>(null);
   const [zoom, setZoom] = useState(0);
-  const { add, stamps } = useStamps();
+  const { add, stamps, deliver } = useStamps();
   const flash = useSharedValue(0);
 
   useEffect(() => {
@@ -177,23 +180,29 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
     }
   };
 
-  // Done: the stamp sinks down into the drawer, then the viewfinder is back.
-  const sink = useSharedValue(0);
+  // Done: the stamp flies down into the fan's centre slot, shrinking to the
+  // fan's size on a slight arc; as it arrives it's handed to the collection
+  // (which settles it in place) and the viewfinder comes back.
+  const fly = useSharedValue(0);
   const done = () => {
+    if (phase !== 'stamped') return;
     haptic.tap();
-    sink.set(withTiming(1, { duration: SINK_MS, easing: Easing.in(Easing.cubic) }));
+    setPhase('delivering');
+    // The viewfinder wakes while the stamp is in the air, so it's live when it lands.
+    camera.current?.resumePreview().catch(() => undefined);
+    fly.set(withTiming(1, { duration: FLY_MS, easing: Easing.inOut(Easing.cubic) }));
     setTimeout(() => {
+      deliver();
       setMade(null);
       setPhase('aiming');
       setZoom(0);
-      sink.set(0);
-    }, SINK_MS);
+      fly.set(0);
+    }, FLY_MS);
   };
-  const sinking = useAnimatedStyle(() => ({
-    opacity: 1 - sink.get() * 0.6,
-    transform: [{ translateY: sink.get() * (screen.height - stampY) * 0.85 }, { scale: 1 - sink.get() * 0.78 }],
-  }));
 
+  // The made stamp's reveal: the viewfinder and its controls step aside. They come
+  // back as soon as it starts flying to the drawer, so the camera is there behind it.
+  const revealing = phase === 'stamped';
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
   if (permission && !permission.granted) {
@@ -212,15 +221,16 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
       <GestureDetector gesture={pinch}>
         <View style={StyleSheet.absoluteFill}>
           <View ref={preview} collapsable={false} style={StyleSheet.absoluteFill}>
-            {phase !== 'stamped' && <CameraView ref={camera} style={StyleSheet.absoluteFill} active={active} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
+            {/* Stays mounted through the reveal (only paused): remounting it showed a second of black. */}
+            {<CameraView ref={camera} style={StyleSheet.absoluteFill} active={active} facing={facing} mirror={facing === 'front'} zoom={zoom} animateShutter={false} />}
           </View>
-          <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={phase === 'stamped'} />
+          <StampMask screen={screen} x={stampX} y={stampY} w={stampW} h={stampH} solid={revealing} />
         </View>
       </GestureDetector>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
       {/* The place, printed above the stamp; tap it to turn location on. */}
-      {phase !== 'stamped' && (
+      {!revealing && (
         <Animated.View entering={fadeIn(260, 120)} style={[styles.placeLine, { top: stampY - 44 }]}>
           <Pressable onPress={place === null ? askForLocation : undefined} disabled={place !== null} accessibilityRole={place === null ? 'button' : 'text'}>
             <ThemedText style={styles.placeText} numberOfLines={1}>
@@ -230,13 +240,9 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
         </Animated.View>
       )}
 
-      {made && (
-        <Animated.View style={[StyleSheet.absoluteFill, sinking]} pointerEvents="none">
-          <MadeStamp made={made} x={stampX} y={stampY} w={stampW} />
-        </Animated.View>
-      )}
+      {made && <MadeStamp made={made} x={stampX} y={stampY} w={stampW} fly={fly} landing={landing} />}
 
-      {phase !== 'stamped' ? (
+      {!revealing ? (
         <Animated.View entering={riseIn(320, 160, 12)} style={[styles.controls, { bottom: bottomInset + SHUTTER_LIFT }]}>
           <View style={styles.side}>{zoom > 0.01 && <ThemedText style={styles.zoom}>{(1 + zoom * 10).toFixed(1)}×</ThemedText>}</View>
           <Pressable
@@ -253,11 +259,13 @@ export function StampCamera({ active, topInset, bottomInset }: StampCameraProps)
           </View>
         </Animated.View>
       ) : (
-        <Animated.View entering={riseIn(320, 900, 14)} style={[styles.after, { bottom: bottomInset + SHUTTER_LIFT }]}>
-          <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
-            <ThemedText style={styles.primaryText}>DONE</ThemedText>
-          </Pressable>
-        </Animated.View>
+        phase === 'stamped' && (
+          <Animated.View entering={riseIn(320, 900, 14)} exiting={FadeOut.duration(120)} style={[styles.after, { bottom: bottomInset + SHUTTER_LIFT }]}>
+            <Pressable onPress={done} accessibilityRole="button" accessibilityLabel="Done, add to collection" style={({ pressed }) => [styles.primary, { opacity: pressed ? 0.8 : 1 }]}>
+              <ThemedText style={styles.primaryText}>DONE</ThemedText>
+            </Pressable>
+          </Animated.View>
+        )
       )}
     </View>
   );
@@ -307,7 +315,7 @@ function StampMask({ screen, x, y, w, h, solid }: MaskProps) {
  * The finished stamp: its postmark comes down a beat after it shows, lands
  * hard (thud) and settles; then what it means is printed under it.
  */
-function MadeStamp({ made, x, y, w }: { made: Made; x: number; y: number; w: number }) {
+function MadeStamp({ made, x, y, w, fly, landing }: { made: Made; x: number; y: number; w: number; fly: SharedValue<number>; landing: { x: number; y: number; width: number } }) {
   const ink = useSharedValue(0);
   useEffect(() => {
     ink.set(withDelay(260, withTiming(1, { duration: 220, easing: Easing.in(Easing.quad) })));
@@ -319,22 +327,43 @@ function MadeStamp({ made, x, y, w }: { made: Made; x: number; y: number; w: num
     };
   }, [ink]);
 
+  const h = w * STAMP_ASPECT;
+  // The flight: from this stamp's centre to the fan slot's centre, at the fan's size.
+  const end = landing.width / w;
+  const dx = landing.x - (x + w / 2);
+  const dy = landing.y + (landing.width * STAMP_ASPECT) / 2 - (y + h / 2);
+  const flight = useAnimatedStyle(() => {
+    const t = fly.get();
+    return {
+      transform: [
+        { translateX: dx * t },
+        // A slight lift first, then down: an arc, not a slide.
+        { translateY: dy * t - Math.sin(t * Math.PI) * 36 },
+        { rotate: `${Math.sin(t * Math.PI) * -6}deg` },
+        { scale: 1 + (end - 1) * t },
+      ],
+    };
+  });
+  // The postmark and the caption under the stamp go first; the stamp arrives clean, as it sits in the fan.
+  const extras = useAnimatedStyle(() => ({ opacity: 1 - Math.min(1, fly.get() * 3) }));
   const mark = useAnimatedStyle(() => ({
-    opacity: ink.get(),
+    opacity: ink.get() * (1 - Math.min(1, fly.get() * 3)),
     transform: [{ scale: 1.6 - ink.get() * 0.6 }],
   }));
 
   return (
-    <View style={{ position: 'absolute', left: x, top: y, width: w }} pointerEvents="none">
+    <Animated.View style={[{ position: 'absolute', left: x, top: y, width: w, height: h }, flight]} pointerEvents="none">
       <StampView imageUri={made.uri} place={made.place} createdAt={made.createdAt} width={w} postmark={false} serial={made.serial} />
       <Animated.View style={[{ position: 'absolute', right: -w * 0.06, top: w * 0.42 }, mark]}>
         <Postmark size={w * 0.42} place={made.place} createdAt={made.createdAt} style={{ position: 'relative' }} />
       </Animated.View>
-      <Animated.View entering={FadeIn.delay(700).duration(320)} style={styles.verdict}>
-        <ThemedText style={styles.verdictBadge}>{made.newPlace ? 'NEW PLACE' : `BACK IN ${made.place.toUpperCase()}`}</ThemedText>
-        <ThemedText style={styles.verdictMeta}>{formatSerial(made.serial)} in your collection</ThemedText>
+      <Animated.View style={extras}>
+        <Animated.View entering={FadeIn.delay(700).duration(320)} style={styles.verdict}>
+          <ThemedText style={styles.verdictBadge}>{made.newPlace ? 'NEW PLACE' : `BACK IN ${made.place.toUpperCase()}`}</ThemedText>
+          <ThemedText style={styles.verdictMeta}>{formatSerial(made.serial)} in your collection</ThemedText>
+        </Animated.View>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 

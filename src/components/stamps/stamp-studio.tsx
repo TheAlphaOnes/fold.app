@@ -23,16 +23,13 @@ import { Alert, FlatList, Pressable, StyleSheet, View, useWindowDimensions } fro
 import { useIsFocused, useLocalSearchParams } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   Extrapolation,
   interpolate,
   runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withDelay,
   withSpring,
-  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,6 +54,9 @@ import { navigate } from '@/utils/navigation';
 const PEEK = 24;
 const FAN_STAMP = 66;
 const FAN_MAX = 5;
+/** The handle's strip at the top of the drawer, and the gap before the fan (the camera aims its landing here). */
+const HANDLE_AREA = 17;
+const FAN_GAP = 2;
 /** Room at the top for the page's close and map buttons. EDGE leaves room for the tiles' tilt. */
 const TOP_BAR = 56;
 const EDGE = 22;
@@ -70,7 +70,9 @@ export default function StampStudio() {
   const insets = useSafeAreaInsets();
   const screen = useWindowDimensions();
   const focused = useIsFocused();
-  const { stamps, loaded, load, justAdded, clearJustAdded } = useStamps();
+  const { stamps: all, loaded, load, pending, justAdded, clearJustAdded } = useStamps();
+  // A stamp still on show in the camera isn't in the collection yet; it arrives on Done.
+  const stamps = useMemo(() => all.filter((s) => s.id !== pending), [all, pending]);
   // ?view=collection opens on the collection instead of the camera.
   const { view } = useLocalSearchParams<{ view?: string }>();
   const [open, setOpen] = useState(view === 'collection');
@@ -130,7 +132,12 @@ export default function StampStudio() {
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.cameraLayer, cameraLayer]}>
-        <StampCamera active={focused && !open} topInset={drawerTop} bottomInset={PEEK + insets.bottom} />
+        <StampCamera
+          active={focused && !open}
+          topInset={drawerTop}
+          bottomInset={PEEK + insets.bottom}
+          landing={{ x: screen.width / 2, y: screen.height - PEEK - insets.bottom + HANDLE_AREA + FAN_GAP, width: FAN_STAMP }}
+        />
       </Animated.View>
 
       <Animated.View style={[styles.drawer, { top: drawerTop, height: drawerHeight, backgroundColor: theme.background, borderColor: theme.border }, drawer]}>
@@ -167,7 +174,9 @@ interface FanProps {
 /** The latest stamps fanned at the drawer's edge (closed); they gather away as it opens. */
 function Fan({ stamps, progress, justAdded, width }: FanProps) {
   const theme = useTheme();
-  const latest = stamps.slice(0, FAN_MAX).reverse();
+  // The newest sits in the middle, on top (where a new stamp lands); older ones
+  // alternate outward. Drawn oldest first so the newest ends up above.
+  const latest = stamps.slice(0, FAN_MAX).map((s, i) => ({ s, offset: i === 0 ? 0 : (i % 2 === 1 ? -1 : 1) * Math.ceil(i / 2) })).reverse();
   const gathered = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0, 0.4], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: progress.get() * -24 }, { scale: 1 - progress.get() * 0.12 }],
@@ -191,35 +200,44 @@ function Fan({ stamps, progress, justAdded, width }: FanProps) {
     );
   }
 
-  const mid = (latest.length - 1) / 2;
   return (
     <Animated.View style={[styles.fan, { height: h }, gathered]} pointerEvents="none">
-      {latest.map((s, i) => (
-        <FanCard key={s.id} stamp={s} offset={i - mid} landing={s.id === justAdded} left={width / 2 - FAN_STAMP / 2} />
+      {latest.map(({ s, offset }) => (
+        <FanCard key={s.id} stamp={s} offset={offset} landing={s.id === justAdded} left={width / 2 - FAN_STAMP / 2} />
       ))}
     </Animated.View>
   );
 }
 
-/** One stamp in the fan; the one just made drops in from above and lands with a thud. */
+/**
+ * One stamp in the fan. The one just delivered has flown in from the camera,
+ * so it settles where it lands: a small press and a thud. Every card springs
+ * to its place in the arc, so the others make room as it arrives.
+ */
 function FanCard({ stamp, offset, landing, left }: { stamp: Stamp; offset: number; landing: boolean; left: number }) {
-  const drop = useSharedValue(landing ? 0 : 1);
+  const settle = useSharedValue(landing ? 0 : 1);
+  const slot = useSharedValue(offset);
+  useEffect(() => {
+    slot.set(withSpring(offset, { damping: 16, stiffness: 180 }));
+  }, [offset, slot]);
   useEffect(() => {
     if (!landing) return;
-    drop.set(withDelay(80, withTiming(1, { duration: 360, easing: Easing.in(Easing.cubic) })));
-    const thud = setTimeout(() => haptic.thud(), 440);
-    return () => clearTimeout(thud);
-  }, [landing, drop]);
-  const style = useAnimatedStyle(() => ({
-    opacity: Math.min(1, drop.get() * 2),
-    transform: [
-      // An arc, like a hand of cards: the middle stamp rises highest, the outer ones dip and turn.
-      { translateX: offset * 46 },
-      { translateY: offset * offset * 9 - (1 - drop.get()) * 160 },
-      { rotate: `${offset * 9}deg` },
-      { scale: 1.25 - drop.get() * 0.25 },
-    ],
-  }));
+    settle.set(withSpring(1, { damping: 9, stiffness: 260 }));
+    haptic.thud();
+  }, [landing, settle]);
+  const style = useAnimatedStyle(() => {
+    const o = slot.get();
+    return {
+      transform: [
+        // An arc, like a hand of cards: the middle stamp rises highest, the outer ones dip and turn.
+        { translateX: o * 46 },
+        { translateY: o * o * 9 },
+        { rotate: `${o * 9}deg` },
+        // Arrives pressed slightly small and springs to size.
+        { scale: 0.88 + settle.get() * 0.12 },
+      ],
+    };
+  });
   return (
     <Animated.View style={[styles.fanCard, { left }, style]}>
       <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={FAN_STAMP} postmark={false} />
@@ -309,7 +327,7 @@ const styles = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, opacity: 0.5 },
   titleRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingBottom: 10 },
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
-  fan: { marginTop: 2 },
+  fan: { marginTop: FAN_GAP },
   fanCard: { position: 'absolute', top: 0 },
   fanHint: { position: 'absolute', top: FAN_STAMP * STAMP_ASPECT * 0.5 - 8, left: 0, right: 0, textAlign: 'center', fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
   collection: { ...StyleSheet.absoluteFill, top: 20 },
