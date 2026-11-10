@@ -12,12 +12,11 @@ import { CloseButton, RoundButton } from '@/components/round-button';
 import { haptic } from '@/services/haptics';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useStoriesStore } from '@/hooks/use-stories';
-import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
 import { MemoryGallery } from '@/components/memory-gallery/memory-gallery';
 import { SlideBeads } from '@/components/memory-gallery/slide-beads';
 import { gallerySlides } from '@/components/memory-gallery/slides';
 import { ShareTray } from '@/components/share-tray';
-import { LogoUploadFlight } from '@/components/logo-upload-flight';
+import { useShareCard } from '@/components/share-card-host';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { goBack, navigate } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
@@ -115,34 +114,15 @@ export default function MemoryDetailScreen() {
 
   const handleSaveMedia = (uri: string) => saveToGallery(uri);
 
-  const hiddenCardRef = useRef<View>(null);
-  const [flightKey, setFlightKey] = useState(0);
+  const shareFlow = useShareCard();
   const slides = composition ? gallerySlides(composition) : [];
   const current = slides[Math.min(page, Math.max(0, slides.length - 1))];
   // Save and Share Original act on the page showing.
   const currentMedia = current?.type === 'media' ? current.media : undefined;
 
-  const captureAndShareCard = async () => {
-    try {
-      setIsShareMenuVisible(false);
-      // The bird carries the card off (700ms hang + 1000ms flight);
-      // capturing freezes JS, so wait it out.
-      haptic.thud();
-      setFlightKey((key) => key + 1);
-      await new Promise(resolve => setTimeout(resolve, 1750));
-      const uri = await captureExport(hiddenCardRef);
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(uri, {
-          dialogTitle: 'Share Memory Card',
-          mimeType: 'image/png',
-        });
-        track('memory_shared', { method: 'card' });
-      }
-    } catch (e) {
-      console.error('Failed to capture memory card:', e);
-      Alert.alert('Error', 'Failed to generate image.');
-    }
+  const captureAndShareCard = () => {
+    setIsShareMenuVisible(false);
+    if (composition) void shareFlow.share(composition);
   };
 
   const shareRawContent = async () => {
@@ -186,8 +166,6 @@ export default function MemoryDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Offscreen 1080×1920 copy, captured when sharing as a card. */}
-      <ExportCanvas ref={hiddenCardRef} memory={composition} />
 
       <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={(next) => {
         setPage(next);
@@ -284,11 +262,8 @@ export default function MemoryDetailScreen() {
           await toggleStoryId(composition.id, storyId);
         }}
       />
-      {flightKey > 0 && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 9000, justifyContent: 'center', alignItems: 'center' }]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} />
-        </View>
-      )}
+      {/* Sharing as a card: preparing pill, then the bird. */}
+      {shareFlow.overlay}
       {isDeleting && <DigitalAshOverlay color={theme.background} onComplete={finalizeDelete} />}
     </View>
   );

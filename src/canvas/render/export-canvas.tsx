@@ -5,7 +5,7 @@
  */
 
 import React, { forwardRef } from 'react';
-import { PixelRatio, StyleSheet, View } from 'react-native';
+import { PixelRatio, Platform, StyleSheet, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
 import { CanvasView } from '@/canvas/render/canvas-view';
@@ -39,17 +39,15 @@ export const ExportCanvas = forwardRef<View, { memory: Composition }>(function E
 });
 
 /**
- * Captures an ExportCanvas as a full-size PNG and returns its file URI.
- * iOS's fast snapshot (drawViewHierarchyInRect) can refuse a view that isn't
- * on screen; then it's drawn the slower, always-available way (renderInContext).
+ * Captures an ExportCanvas as a JPEG and returns its file URI (JPEG: a
+ * 2160×3840 PNG took seconds to encode). On iOS the card, parked off
+ * screen, is drawn with renderInContext at the device's scale, which fills
+ * the whole image; the fast snapshot refuses views outside the window, and
+ * forcing an output size on the fallback drew the card into one corner.
  */
-export async function captureExport(ref: React.RefObject<View | null>): Promise<string> {
-  const options = { format: 'png' as const, quality: 1, width: EXPORT_SIZE.width, height: EXPORT_SIZE.height };
-  try {
-    return await captureRef(ref, options);
-  } catch {
-    return captureRef(ref, { ...options, useRenderInContext: true });
-  }
+export function captureExport(ref: React.RefObject<View | null>): Promise<string> {
+  if (Platform.OS === 'ios') return captureRef(ref, { format: 'jpg', quality: 0.92, useRenderInContext: true });
+  return captureRef(ref, { format: 'jpg', quality: 0.92, width: EXPORT_SIZE.width, height: EXPORT_SIZE.height });
 }
 
 const styles = StyleSheet.create({
