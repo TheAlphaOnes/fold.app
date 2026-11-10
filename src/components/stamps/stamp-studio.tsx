@@ -53,8 +53,8 @@ import { placeCount } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
-/** The drawer's visible height when closed (above the home indicator), and the fan in it. */
-const PEEK = 132;
+/** The drawer's visible height when closed (above the home indicator): the title and just the tops of the fanned stamps. */
+const PEEK = 50;
 const FAN_STAMP = 84;
 const FAN_MAX = 5;
 /** Room at the top for the page's close and map buttons. EDGE leaves room for the tiles' tilt. */
