@@ -9,7 +9,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { CalendarDays, Image as ImageIcon, MapPin, Mic, Music, PenLine, Smile, type LucideIcon } from 'lucide-react-native';
+import { CalendarDays, Camera, Image as ImageIcon, MapPin, Mic, Music, PenLine, Smile, type LucideIcon } from 'lucide-react-native';
 
 import { ROUND_BUTTON_SIZE } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
@@ -18,10 +18,11 @@ import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
-export type AddKind = 'photo' | 'gif' | 'doodle' | 'music' | 'voice' | 'location' | 'date';
+export type AddKind = 'photo' | 'camera' | 'gif' | 'doodle' | 'music' | 'voice' | 'location' | 'date';
 
 const ITEMS: { kind: AddKind; icon: LucideIcon; label: string }[] = [
   { kind: 'photo', icon: ImageIcon, label: 'Photo' },
+  { kind: 'camera', icon: Camera, label: 'Camera' },
   { kind: 'gif', icon: Smile, label: 'GIF' },
   { kind: 'doodle', icon: PenLine, label: 'Doodle' },
   { kind: 'music', icon: Music, label: 'Song' },
