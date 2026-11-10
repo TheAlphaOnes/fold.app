@@ -1,16 +1,16 @@
 /**
  * ComposerBody — the composer screen. Layout (top to bottom):
  *
- *   ✕       ↶  [ADD TO STORY]  Aa     close · undo · story · text
- *   [Photo][GIF][Song][Voice][Place][Date]   AddRow, in the open
+ *   ✕          ↶  [ADD TO STORY]      close · undo · story
+ *   [Photo][Camera][GIF][Doodle][Song]…     AddRow: every way to add media
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [tools for the selection]          sticker or photo, while selected
- *   📷 🖼     [ ▦ TEMPLATE ⇅ ]     SAVE
+ *   Aa      [ ▦ TEMPLATE ⇅ ]     SAVE    text · template · save
  *
- * Laid out by priority: Save is the one filled action; adding media sits
- * at the thumb; the template is a quiet style pill (tap: next, hold: list,
- * gap inside the list). Filing into a story is optional, so it's an
+ * Laid out by priority: Save is the one filled action; writing sits at
+ * the thumb, and every media source lives once, in the add row; the
+ * template is a quiet style pill (tap: next, hold: list, gap inside it). Filing into a story is optional, so it's an
  * outlined text CTA in the top bar.
  *
  * New memories open on the blank canvas, not in the keyboard: a quiet
@@ -24,7 +24,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { Book, Camera, Image as ImageIcon, Type as TypeIcon, Undo2 } from 'lucide-react-native';
+import { Book, Type as TypeIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
@@ -230,6 +230,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
   const onAdd = async (kind: AddKind) => {
     switch (kind) {
+      case 'camera':
+        await addFromCamera();
+        return;
       case 'photo': {
         const added = await media.pickFromGallery();
         // In a shape or a slideshow, a photo joins it; elsewhere it's a sticker
@@ -414,7 +417,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
                 {storyLabel}
               </ThemedText>
             </Pressable>
-            <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
           </View>
         </Animated.View>
       )}
@@ -489,8 +491,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
       {!editing && !doodle && (
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
-          <RoundButton icon={Camera} accessibilityLabel="Take a photo" onPress={addFromCamera} />
-          <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
+          {/* Writing is the one creative action at the thumb; photos and the rest live in the add row. */}
+          <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} />
           <View style={styles.middle}>
             <TemplatePicker
               current={c.doc.template}
