@@ -465,7 +465,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         )}
         {!editing && !doodle && isBlankCard(c.doc) && c.doc.layers.length === 0 && (
           <Animated.View entering={fadeIn(300, 260)} style={styles.writeHint} pointerEvents="none">
-            <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>what's worth remembering?</ThemedText>
+            <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>{"what’s worth remembering?"}</ThemedText>
           </Animated.View>
         )}
         {templatesOpen && (
