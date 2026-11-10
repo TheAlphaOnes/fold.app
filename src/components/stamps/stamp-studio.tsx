@@ -54,7 +54,7 @@ import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 /** The drawer's visible height when closed (above the home indicator): the title and just the tops of the fanned stamps. */
-const PEEK = 46;
+const PEEK = 24;
 const FAN_STAMP = 66;
 const FAN_MAX = 5;
 /** Room at the top for the page's close and map buttons. EDGE leaves room for the tiles' tilt. */
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   cameraLayer: { overflow: 'hidden' },
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
   drawer: { position: 'absolute', left: 0, right: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0 },
-  handleArea: { alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
+  handleArea: { alignItems: 'center', paddingTop: 7, paddingBottom: 6 },
   handle: { width: 36, height: 4, borderRadius: 2, opacity: 0.5 },
   titleRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingBottom: 10 },
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
