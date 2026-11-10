@@ -1,14 +1,15 @@
 /**
  * ComposerBody — the composer screen. Layout (top to bottom):
  *
- *   ✕          ↶  [ADD TO STORY]      close · undo · story
+ *   ✕     ↶  [ADD TO STORY]  SAVE      close · undo · story · save
  *   [Photo][Camera][GIF][Doodle][Song]…     AddRow: every way to add media
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [tools for the selection]          sticker or photo, while selected
- *   Aa      [ ▦ TEMPLATE ⇅ ]     SAVE    text · template · save
+ *   Aa   [ ▦ TEMPLATE ⇅ ]              text · template
  *
- * Laid out by priority: Save is the one filled action; writing sits at
+ * Laid out by priority: Save is the one filled action, top right where a
+ * finished thing is confirmed; writing sits at
  * the thumb, and every media source lives once, in the add row; the
  * template is a quiet style pill (tap: next, hold: list, gap inside it). Filing into a story is optional, so it's an
  * outlined text CTA in the top bar.
@@ -419,6 +420,15 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
                 {storyLabel}
               </ThemedText>
             </Pressable>
+            <Pressable
+              onPress={saveOnce}
+              disabled={!hasContent || isSaving}
+              accessibilityRole="button"
+              accessibilityLabel="Save memory"
+              style={({ pressed }) => [styles.save, { backgroundColor: theme.text, opacity: !hasContent || isSaving ? 0.35 : pressed ? 0.7 : 1 }]}
+            >
+              <ThemedText style={[styles.saveText, { color: theme.background }]}>{isSaving ? '…' : 'SAVE'}</ThemedText>
+            </Pressable>
           </View>
         </Animated.View>
       )}
@@ -503,15 +513,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
               onToggleList={() => setTemplatesOpen((o) => !o)}
             />
           </View>
-          <Pressable
-            onPress={saveOnce}
-            disabled={!hasContent || isSaving}
-            accessibilityRole="button"
-            accessibilityLabel="Save memory"
-            style={({ pressed }) => [styles.save, { backgroundColor: theme.text, opacity: !hasContent || isSaving ? 0.35 : pressed ? 0.7 : 1 }]}
-          >
-            <ThemedText style={[styles.saveText, { color: theme.background }]}>{isSaving ? '…' : 'SAVE'}</ThemedText>
-          </Pressable>
         </Animated.View>
       )}
       {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
