@@ -20,6 +20,7 @@ import Svg, { Path } from 'react-native-svg';
 import { ChevronRight, Stamp as StampIcon } from 'lucide-react-native';
 
 import { stampOutline } from '@/canvas/render/stamp-outline';
+import { StampMiniMap } from '@/components/profile/stamp-mini-map';
 import { Postmark, StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
@@ -42,6 +43,8 @@ const SLOTS = [
   { x: 36, y: 26, r: 4 },
 ];
 const PILE_W = 60 + STAMP + 12;
+/** The mini map beside the pile. */
+const MAP_W = 128;
 const PILE_H = 26 + STAMP * STAMP_ASPECT + 8;
 
 export function StampAlbumCard() {
@@ -98,20 +101,36 @@ export function StampAlbumCard() {
             </View>
           </Pressable>
 
-          <View style={styles.stats}>
-            <ThemedText style={[styles.count, { color: theme.text }]}>{String(stamps.length).padStart(2, '0')}</ThemedText>
-            <ThemedText style={[styles.unit, { color: theme.accentWarm }]}>{stamps.length === 1 ? 'stamp' : 'stamps'}</ThemedText>
-            <ThemedText style={[styles.meta, { color: theme.textMuted }]}>
-              {places} {places === 1 ? 'place' : 'places'}
+          {/* Where they're from: the places, joined in the order you went. */}
+          <StampMiniMap stamps={stamps} width={MAP_W} height={PILE_H} />
+        </View>
+      )}
+
+      {/* The numbers, in one quiet strip along the bottom. */}
+      {stamps.length > 0 && (
+        <View style={[styles.strip, { borderTopColor: theme.border }]}>
+          <Stat value={String(stamps.length).padStart(2, '0')} label={stamps.length === 1 ? 'stamp' : 'stamps'} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <Stat value={String(places).padStart(2, '0')} label={places === 1 ? 'place' : 'places'} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <View style={styles.lastCell}>
+            <ThemedText style={[styles.stripLabel, { color: theme.textMuted }]}>LAST</ThemedText>
+            <ThemedText style={[styles.lastPlace, { color: theme.text }]} numberOfLines={1}>
+              {latest[0]?.place.toUpperCase()}
             </ThemedText>
-            {latest[0] && (
-              <ThemedText style={[styles.meta, { color: theme.textMuted }]} numberOfLines={1}>
-                last · {latest[0].place.toLowerCase()}
-              </ThemedText>
-            )}
           </View>
         </View>
       )}
+    </View>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.statCell}>
+      <ThemedText style={[styles.statValue, { color: theme.text }]}>{value}</ThemedText>
+      <ThemedText style={[styles.stripLabel, { color: theme.textMuted }]}>{label.toUpperCase()}</ThemedText>
     </View>
   );
 }
@@ -208,8 +227,13 @@ const styles = StyleSheet.create({
   pileStamp: { position: 'absolute', left: 0, top: 0 },
   slam: { position: 'absolute', right: -8, bottom: -6 },
   stats: { alignItems: 'flex-end', gap: 4, flexShrink: 1, paddingLeft: 12 },
-  count: { fontFamily: 'BitcountGridDouble-Light', fontSize: 44, lineHeight: 50 },
-  unit: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1, marginTop: -4 },
+  strip: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, paddingVertical: 14, paddingHorizontal: 20 },
+  statCell: { alignItems: 'flex-start', gap: 2, minWidth: 56 },
+  statValue: { fontFamily: 'BitcountGridDouble-Light', fontSize: 22, lineHeight: 26 },
+  stripLabel: { fontFamily: 'JetBrainsMono-Medium', fontSize: 9, letterSpacing: 1.5 },
+  divider: { width: 1, height: 28, marginHorizontal: 16 },
+  lastCell: { flex: 1, gap: 4 },
+  lastPlace: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 1 },
   meta: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11, letterSpacing: 0.5 },
   cta: { marginTop: 10, height: 34, paddingHorizontal: 16, borderRadius: 17, justifyContent: 'center' },
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 2 },

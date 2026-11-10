@@ -1,6 +1,6 @@
 /**
- * A gallery page with a song or voice note: the vinyl spins while its page
- * is showing; drag around the record to scrub (20° = 1 second), and the
+ * A gallery page with a song or voice note: a song shows its album cover
+ * (breathing while it plays), a voice note a spinning record; drag around the record to scrub (20° = 1 second), and the
  * title, artist and time sit underneath.
  */
 
@@ -11,6 +11,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 
 import { VinylRecord } from '@/components/vinyl-record';
+import { AlbumCover } from '@/components/music/album-cover';
 import { useAudioFocus } from '@/hooks/use-audio-focus';
 import { useTheme } from '@/hooks/use-theme';
 import type { MediaElement } from '@/types/journal';
@@ -18,6 +19,7 @@ import { formatMillis } from '@/utils/format-date';
 import { getHighResArtwork } from '@/utils/media-attach';
 
 const RECORD = 320;
+const COVER = 280;
 const DEGREES_PER_SECOND = 20;
 
 interface AudioSlideProps {
@@ -75,6 +77,7 @@ export function AudioSlide({ media, width, height, active }: AudioSlideProps) {
   }, [active, scrubbing, status.isLoaded, player, claimAudio]);
 
   const duration = status.duration;
+  const artwork = getHighResArtwork(media.metadata?.artwork);
   const scrub = Gesture.Pan()
     .onStart((e) => {
       runOnJS(setScrubbing)(true);
@@ -104,13 +107,12 @@ export function AudioSlide({ media, width, height, active }: AudioSlideProps) {
     <View style={[styles.slide, { width, height }]}>
       <GestureDetector gesture={scrub}>
         <View>
-          <VinylRecord
-            size={RECORD}
-            isRecording={false}
-            isPlaying={active && !scrubbing}
-            scrubOffset={rotation}
-            imageUrl={getHighResArtwork(media.metadata?.artwork)}
-          />
+          {/* A song shows its album cover; a voice note keeps the record. */}
+          {artwork ? (
+            <AlbumCover uri={artwork} size={COVER} playing={active && !scrubbing} scrubOffset={rotation} />
+          ) : (
+            <VinylRecord size={RECORD} isRecording={false} isPlaying={active && !scrubbing} scrubOffset={rotation} />
+          )}
         </View>
       </GestureDetector>
       {media.metadata ? (
