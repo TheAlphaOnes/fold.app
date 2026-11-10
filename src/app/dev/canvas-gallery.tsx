@@ -13,6 +13,7 @@ import { CanvasView } from '@/canvas/render/canvas-view';
 import { CANVAS_ASPECT } from '@/canvas/geometry';
 import type { CanvasDoc, Layer, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { CloseButton } from '@/components/round-button';
+import { StampView } from '@/components/stamps/stamp-view';
 import { useTheme } from '@/hooks/use-theme';
 import { BASE_TEMPLATES, GRID_TEMPLATES, newDoc } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
@@ -73,6 +74,11 @@ export default function CanvasGallery() {
   return (
     <View style={{ flex: 1 }}>
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>
+      {/* A stamp (collection tile and hover size), to check the paper and postmark. */}
+      <View style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-end' }}>
+        <StampView imageUri={MEDIA[0].uri} place="Pune" createdAt={SAMPLE_DATE} width={160} />
+        <StampView imageUri={MEDIA[1].uri} place="Goa" createdAt={SAMPLE_DATE} width={64} postmark={false} />
+      </View>
       {[...BASE_TEMPLATES, ...GRID_TEMPLATES].slice(Number(from) || 0).map((t) => {
         const doc = docFor(t.id);
         return (

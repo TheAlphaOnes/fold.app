@@ -113,6 +113,20 @@ export async function initSchema(db: SQLiteDatabase): Promise<void> {
     );
   `);
 
+  // Stamps: a photo per place visited (the stamp collection and its map).
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS stamps (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      image_uri  TEXT    NOT NULL,
+      place      TEXT    NOT NULL,
+      country    TEXT,
+      latitude   REAL    NOT NULL,
+      longitude  REAL    NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_stamps_created_at ON stamps (created_at DESC);
+  `);
+
   // Migrate existing data from compositions.story_id to the junction table safely
   await db.execAsync(`
     INSERT OR IGNORE INTO composition_stories (composition_id, story_id)
