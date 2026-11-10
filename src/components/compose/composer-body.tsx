@@ -410,8 +410,8 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {!editing && !doodle && (
         <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
           <CloseButton accessibilityLabel="Close without saving" />
-          {/* When this memory is from, for context; centred on the screen, between close and save. */}
-          <View style={[styles.moment, { top: insets.top + 6 }]} pointerEvents="none">
+          {/* When this memory is from, for context: centred in the space between close and the actions, so it never runs under undo. */}
+          <View style={styles.moment} pointerEvents="none">
             <ThemedText style={[styles.momentText, { color: theme.textMuted }]} numberOfLines={1}>
               {formatMoment(openedAt)}
             </ThemedText>
@@ -468,19 +468,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             <ThemedText style={[styles.writeHintText, { color: theme.textMuted }]}>start your page</ThemedText>
           </Animated.View>
         )}
-        {templatesOpen && (
-          <View style={styles.templateList}>
-            <TemplateList
-              current={c.doc.template}
-              gap={c.doc.gap}
-              onGap={c.setGap}
-              onPick={(template) => {
-                c.setTemplate(template);
-                setTemplatesOpen(false);
-              }}
-            />
-          </View>
-        )}
         {!templatesOpen && selected?.kind === 'media' && (
           <StickerTools
             sticker={selected}
@@ -524,6 +511,23 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             </ThemedText>
           </Pressable>
         </Animated.View>
+      )}
+      {/* The template list floats above its pill; a tap anywhere else closes it. */}
+      {templatesOpen && (
+        <>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setTemplatesOpen(false)} accessibilityLabel="Close templates" />
+          <View style={[styles.templateList, { bottom: insets.bottom + 8 + ROUND_BUTTON_SIZE + GAP }]}>
+            <TemplateList
+              current={c.doc.template}
+              gap={c.doc.gap}
+              onGap={c.setGap}
+              onPick={(template) => {
+                c.setTemplate(template);
+                setTemplatesOpen(false);
+              }}
+            />
+          </View>
+        </>
       )}
       {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
 
@@ -606,8 +610,8 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: EDGE, paddingBottom: SPACE },
   topRight: { flexDirection: 'row', gap: GAP },
   canvasSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  // Floats over the bottom of the canvas, right above the picker it opened from.
-  templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
+  // Floats over the bottom of the canvas, right above the picker it opened from (bottom set inline).
+  templateList: { position: 'absolute', left: 24, right: 24 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE },
   middle: { flex: 1, flexBasis: 0, flexDirection: 'row' },
@@ -618,7 +622,7 @@ const styles = StyleSheet.create({
   writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
   // The two side controls share one width, so the template pill sits in the true centre.
   side: { width: SIDE_WIDTH },
-  moment: { position: 'absolute', left: 0, right: 0, height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center' },
+  moment: { flex: 1, height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center', marginHorizontal: GAP },
   momentText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2 },
   // Same height, border, radius and type as the template pill.
   storyCta: { width: SIDE_WIDTH, height: ROUND_BUTTON_SIZE, paddingHorizontal: 12, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
