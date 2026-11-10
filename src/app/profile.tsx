@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings as SettingsIcon, Stamp as StampIcon } from 'lucide-react-native';
+import { Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
@@ -18,6 +18,7 @@ import { ActivityGrid } from '@/components/activity-grid';
 import { FromYourPastCard } from '@/components/from-your-past-card';
 import { ContinuumCard } from '@/components/continuum/continuum-card';
 import { StoryBoardCard } from '@/components/profile/story-board-card';
+import { StampAlbumCard } from '@/components/profile/stamp-album-card';
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { CloseButton, RoundButton } from '@/components/round-button';
 import { TECalendar } from '@/components/te-calendar';
@@ -72,7 +73,6 @@ export default function ProfileScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <RoundButton icon={StampIcon} accessibilityLabel="Stamp collection" onPress={() => navigate.push('/stamps')} />
           <RoundButton icon={SettingsIcon} accessibilityLabel="Settings" onPress={() => navigate.push('/settings')} />
           <CloseButton />
         </View>
@@ -91,6 +91,8 @@ export default function ProfileScreen() {
         <ContinuumCard />
 
         <StoryBoardCard />
+
+        <StampAlbumCard />
 
         {/* Heat Map (Activity Grid) */}
         <ActivityGrid />
