@@ -16,18 +16,18 @@ export const KEY_HINTS: Record<KeyGesture, string> = {
   swipe: 'swipe up · camera',
 };
 
-/** How long the date shows between hints, and how long a hint stays. */
+/** How long the date shows before the first hint and between hints, and how long a hint stays. */
+export const HINT_FIRST_MS = 2400;
 export const HINT_GAP_MS = 5200;
 export const HINT_SHOW_MS = 3400;
 
-/** Gestures still to learn: used on the key, or already done as a guide mission, counts as known. */
-export function unlearnedGestures(used: Record<KeyGesture, boolean>, missions: { write: boolean; voice: boolean; capture: boolean }): KeyGesture[] {
-  const known: Record<KeyGesture, boolean> = {
-    tap: used.tap || missions.write,
-    hold: used.hold || missions.voice,
-    swipe: used.swipe || missions.capture,
-  };
-  return KEY_GESTURES.filter((g) => !known[g]);
+/**
+ * Gestures still to learn: only using it on the key counts. (Guide missions
+ * don't: a voice note or photo added in the composer says nothing about
+ * knowing the key's hold or swipe.)
+ */
+export function unlearnedGestures(used: Record<KeyGesture, boolean>): KeyGesture[] {
+  return KEY_GESTURES.filter((g) => !used[g]);
 }
 
 /** The next hint after `last`, going round the ones left (null when all are known). */
