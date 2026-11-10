@@ -12,8 +12,8 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { AppleMaps } from 'expo-maps';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StampMapView, type StampMapHandle } from '@/components/stamps/stamp-map-view';
 import { useLocalSearchParams } from 'expo-router';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +24,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import { fadeIn, riseIn } from '@/constants/motion';
 import { useStamps } from '@/hooks/use-stamps';
-import { useTheme, useThemeContext } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
 import { placeCount, regionFor } from '@/stamps/geometry';
@@ -39,11 +39,11 @@ const FOCUS_ZOOM = 11;
 export default function StampMap() {
   useEffect(() => markGuideDone('stampmap'), []);
   const theme = useTheme();
-  const { isDark } = useThemeContext();
+
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { stamps, loaded, load } = useStamps();
-  const map = useRef<AppleMaps.MapView>(null);
+  const map = useRef<StampMapHandle>(null);
   const [selectedId, setSelectedId] = useState<number | null>(id ? Number(id) : null);
 
   useEffect(() => {
@@ -68,8 +68,8 @@ export default function StampMap() {
     framed.current = true;
     const target = id ? stamps.find((s) => s.id === Number(id)) : undefined;
     const region = regionFor(stamps);
-    if (target) map.current?.setCameraPosition({ coordinates: { latitude: target.latitude, longitude: target.longitude }, zoom: FOCUS_ZOOM });
-    else if (region) map.current?.setCameraPosition({ coordinates: { latitude: region.latitude, longitude: region.longitude }, zoom: region.zoom });
+    if (target) map.current?.focus(target.latitude, target.longitude, FOCUS_ZOOM);
+    else if (region) map.current?.focus(region.latitude, region.longitude, region.zoom);
   }, [stamps, id]);
 
   const serials = useMemo(() => new Map(journey.map((s, i) => [s.id, i + 1])), [journey]);
@@ -77,7 +77,7 @@ export default function StampMap() {
   const focus = (stamp: Stamp) => {
     haptic.select();
     setSelectedId(stamp.id);
-    map.current?.setCameraPosition({ coordinates: { latitude: stamp.latitude, longitude: stamp.longitude }, zoom: FOCUS_ZOOM });
+    map.current?.focus(stamp.latitude, stamp.longitude, FOCUS_ZOOM);
   };
 
   const header = (
@@ -95,39 +95,17 @@ export default function StampMap() {
     </Animated.View>
   );
 
-  if (Platform.OS !== 'ios') {
-    return (
-      <View style={[styles.root, { backgroundColor: theme.background }]}>
-        {header}
-        <View style={styles.centre}>
-          <ThemedText style={[styles.note, { color: theme.textMuted }]}>The map is coming to Android soon.</ThemedText>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <AppleMaps.View
+      <StampMapView
         ref={map}
-        style={StyleSheet.absoluteFill}
-        cameraPosition={initialCamera}
-        colorScheme={isDark ? AppleMaps.MapColorScheme.DARK : AppleMaps.MapColorScheme.LIGHT}
-        markers={stamps.map((s) => ({
-          id: String(s.id),
-          coordinates: { latitude: s.latitude, longitude: s.longitude },
-          title: s.place,
-          systemImage: 'seal.fill',
-          tintColor: s.id === selectedId ? theme.text : theme.textMuted,
-        }))}
-        polylines={journey.length > 1 ? [{ id: 'journey', coordinates: journey.map((s) => ({ latitude: s.latitude, longitude: s.longitude })), color: theme.text + '66', width: 2 }] : []}
-        uiSettings={{ compassEnabled: false, myLocationButtonEnabled: false, scaleBarEnabled: false, togglePitchEnabled: false }}
-        properties={{ pointsOfInterest: { including: [] }, elevation: AppleMaps.MapStyleElevation.FLAT }}
-        onMarkerClick={(marker) => {
-          const stamp = stamps.find((s) => String(s.id) === marker.id);
+        stamps={stamps}
+        camera={initialCamera ? { latitude: initialCamera.coordinates.latitude, longitude: initialCamera.coordinates.longitude, zoom: initialCamera.zoom } : undefined}
+        onPinPress={(id) => {
+          const stamp = stamps.find((s) => s.id === id);
           if (stamp) focus(stamp);
         }}
-        onMapClick={() => setSelectedId(null)}
+        onMapPress={() => setSelectedId(null)}
       />
 
       {header}

@@ -4,71 +4,29 @@
  * own stamp as a small thumbnail pin. Tap a pin: that stamp on the full map.
  * The header's + makes a new stamp.
  *
- * iOS uses Apple Maps; elsewhere (or on a build without the maps module)
- * the card shows a note instead.
+ * Apple Maps on iOS, Google Maps on Android (StampMapView).
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { useImage, type ImageRef } from 'expo-image';
+import React, { useEffect, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { Plus, Stamp as StampIcon } from 'lucide-react-native';
 
-import { hasNativeModule } from '@/components/stamps/needs-update';
+import { MAPS_AVAILABLE, StampMapView } from '@/components/stamps/stamp-map-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import { useStamps } from '@/hooks/use-stamps';
-import { useTheme, useThemeContext } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { regionFor } from '@/stamps/geometry';
-import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 const MAP_H = 240;
-/** Pin thumbnails are decoded small: they're drawn at ~40pt. */
-const PIN_PX = 96;
-/** One pin per place, at most this many (the newest). */
-const MAX_PINS = 24;
-
-// Loaded only where the maps module exists, so older builds don't crash.
-const AppleMaps: typeof import('expo-maps').AppleMaps | null =
-  Platform.OS === 'ios' && hasNativeModule('ExpoMaps')
-    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('expo-maps').AppleMaps
-    : null;
-
-/** Loads one stamp's photo as a small image for its pin, and hands it up. */
-function PinImage({ stamp, onReady }: { stamp: Stamp; onReady: (id: number, image: ImageRef) => void }) {
-  const image = useImage({ uri: stamp.imageUri }, { maxWidth: PIN_PX, maxHeight: PIN_PX });
-  useEffect(() => {
-    if (image) onReady(stamp.id, image);
-  }, [image, stamp.id, onReady]);
-  return null;
-}
-
 export function StampAlbumCard() {
   const theme = useTheme();
-  const { isDark } = useThemeContext();
   const { stamps, loaded, load } = useStamps();
   useEffect(() => {
     if (!loaded) load();
   }, [loaded, load]);
-
-  // One pin per place: the newest stamp taken there.
-  const pins = useMemo(() => {
-    const seen = new Set<string>();
-    const out: Stamp[] = [];
-    for (const s of stamps) {
-      const key = `${s.latitude.toFixed(3)},${s.longitude.toFixed(3)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(s);
-      if (out.length >= MAX_PINS) break;
-    }
-    return out;
-  }, [stamps]);
-
-  const [images, setImages] = useState<Record<number, ImageRef>>({});
-  const onReady = useCallback((id: number, image: ImageRef) => setImages((m) => (m[id] === image ? m : { ...m, [id]: image })), []);
 
   const region = useMemo(() => regionFor(stamps), [stamps]);
 
@@ -100,34 +58,20 @@ export function StampAlbumCard() {
         </Pressable>
       </View>
 
-      {pins.map((s) => (
-        <PinImage key={s.id} stamp={s} onReady={onReady} />
-      ))}
-
       <View style={[styles.mapBox, { borderColor: theme.border, backgroundColor: theme.background }]}>
-        {AppleMaps && region ? (
-          <AppleMaps.View
-            style={StyleSheet.absoluteFill}
-            cameraPosition={{ coordinates: { latitude: region.latitude, longitude: region.longitude }, zoom: Math.max(1, region.zoom - 1) }}
-            colorScheme={isDark ? AppleMaps.MapColorScheme.DARK : AppleMaps.MapColorScheme.LIGHT}
-            annotations={pins.map((s) => ({
-              id: String(s.id),
-              coordinates: { latitude: s.latitude, longitude: s.longitude },
-              icon: images[s.id],
-              backgroundColor: '#FFFFFF',
-              ...(images[s.id] ? {} : { text: '·' }),
-            }))}
-            onAnnotationClick={(a) => {
+        {MAPS_AVAILABLE && region ? (
+          <StampMapView
+            stamps={stamps}
+            camera={{ latitude: region.latitude, longitude: region.longitude, zoom: Math.max(1, region.zoom - 1) }}
+            onPinPress={(id) => {
               haptic.tap();
-              navigate.push(`/stamps/map?id=${a.id}`);
+              navigate.push(`/stamps/map?id=${id}`);
             }}
-            uiSettings={{ compassEnabled: false, myLocationButtonEnabled: false, scaleBarEnabled: false, togglePitchEnabled: false }}
-            properties={{ pointsOfInterest: { including: [] }, elevation: AppleMaps.MapStyleElevation.FLAT }}
           />
         ) : (
           <View style={styles.empty}>
             <ThemedText style={[styles.emptyText, { color: theme.textMuted }]}>
-              {loaded && stamps.length === 0 ? 'your first stamp lands here' : 'the map comes to android soon'}
+              {loaded && stamps.length === 0 ? 'your first stamp lands here' : 'this version has no map yet'}
             </ThemedText>
           </View>
         )}
