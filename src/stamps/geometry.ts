@@ -117,9 +117,12 @@ export function centreCropFor(photo: Size, aspect: number): { originX: number; o
  * be trusted to show this photo (simulators hand back a different frame),
  * so the largest centred stamp-shaped piece is used instead of a sliver.
  */
+/** Whether a photo can be the picture a preview of `view` showed (same orientation). */
+export function photoMatchesPreview(photo: Size, view: Size): boolean {
+  return photo.height >= photo.width === view.height >= view.width;
+}
+
 export function stampCropFor(photo: Size, view: Size, window: Rect): { originX: number; originY: number; width: number; height: number } {
-  const photoPortrait = photo.height >= photo.width;
-  const viewPortrait = view.height >= view.width;
-  if (photoPortrait !== viewPortrait) return centreCropFor(photo, window.height / window.width);
+  if (!photoMatchesPreview(photo, view)) return centreCropFor(photo, window.height / window.width);
   return photoCropFor(photo, view, window);
 }
