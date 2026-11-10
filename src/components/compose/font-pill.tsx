@@ -25,10 +25,17 @@ function nameOf(id: string): string {
   return MEMORY_FONTS.find((f) => f.id === id)?.name ?? 'FONT';
 }
 
-/** A font's name in its own face, corrected to one optical size. */
+/**
+ * A font's name in its own face, corrected to one optical size. Only the
+ * size is taken from memoryTextMetrics: its tall line box (room for script
+ * flourishes across several lines) is taller than the pill, which pushed
+ * Dancing, Caveat and Cookiemonster down and cut them off. One line here
+ * gets a line box exactly the pill's height, so every face sits centred.
+ */
 function renderFont(id: FontId, ink: string) {
+  const { fontSize } = memoryTextMetrics(id, LABEL_SIZE);
   return (
-    <ThemedText style={[styles.name, memoryTextMetrics(id, LABEL_SIZE), { fontFamily: id, color: ink }]} numberOfLines={1}>
+    <ThemedText style={[styles.name, { fontSize, lineHeight: HEIGHT, fontFamily: id, color: ink }]} numberOfLines={1}>
       {nameOf(id)}
     </ThemedText>
   );
@@ -81,6 +88,6 @@ export function FontList({ font, onPick }: { font: string; onPick: (font: FontId
 
 const styles = StyleSheet.create({
   pill: { flex: 1 },
-  name: { textAlign: 'center', includeFontPadding: false, textAlignVertical: 'center' },
+  name: { textAlign: 'center', includeFontPadding: false, textAlignVertical: 'center', paddingTop: 0, paddingBottom: 0 },
   list: { marginHorizontal: 16, marginBottom: 8 },
 });
