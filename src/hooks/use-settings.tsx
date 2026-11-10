@@ -58,7 +58,17 @@ export interface UserSettings {
   exactRemindersAsked: boolean;
   /** The home screen has pointed out the Field Guide tab once. */
   guideTabIntroduced: boolean;
+  /** Which of the orange key's gestures have been used; the home hint teaches the rest. */
+  keyGesturesUsed: KeyGesturesUsed;
 }
+
+export interface KeyGesturesUsed {
+  tap: boolean;
+  hold: boolean;
+  swipe: boolean;
+}
+
+export const defaultKeyGesturesUsed: KeyGesturesUsed = { tap: false, hold: false, swipe: false };
 
 /**
  * Settings whose changes are reported to analytics, by their event name.
@@ -94,6 +104,7 @@ const defaultSettings: UserSettings = {
   startupPermissionsAsked: false,
   exactRemindersAsked: false,
   guideTabIntroduced: false,
+  keyGesturesUsed: defaultKeyGesturesUsed,
 };
 
 interface SettingsState {
@@ -128,6 +139,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
       }
 
+      let parsedKeyGestures = defaultKeyGesturesUsed;
+      if (stored.keyGesturesUsed) {
+        try {
+          parsedKeyGestures = { ...defaultKeyGesturesUsed, ...JSON.parse(stored.keyGesturesUsed) };
+        } catch {
+          parsedKeyGestures = defaultKeyGesturesUsed;
+        }
+      }
+
       set({
         settings: {
           name: stored.name || "",
@@ -151,6 +171,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           startupPermissionsAsked: stored.startupPermissionsAsked === "true",
           exactRemindersAsked: stored.exactRemindersAsked === "true",
           guideTabIntroduced: stored.guideTabIntroduced === "true",
+          keyGesturesUsed: parsedKeyGestures,
         },
         loading: false,
       });

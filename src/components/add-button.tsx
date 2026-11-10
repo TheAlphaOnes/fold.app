@@ -1,36 +1,60 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   runOnJS,
   interpolate,
-  Extrapolation,
   useAnimatedReaction,
+  useReducedMotion,
+  withDelay,
+  withSequence,
+  Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { haptic } from '@/services/haptics';
 import { useTheme } from '@/hooks/use-theme';
 import { DiagonalStripes } from '@/components/diagonal-stripes';
-import { Camera, Plus } from 'lucide-react-native';
+import { Camera } from 'lucide-react-native';
+import type { KeyGesture } from '@/home/key-hints';
 
 interface AddButtonProps {
   onPress: () => void;
   onSwipeUp?: (type: 'photo') => void;
   /** A long press. Recording starts here and keeps going after release; it is stopped by a tap. */
   onHold?: () => void;
+  /**
+   * Acts a gesture out on its own (the home hint teaching it): a double
+   * press for tap, a long squeeze for hold, a short lift (the camera track
+   * peeks) for swipe. `n` changes each time it should play.
+   */
+  demo?: { gesture: KeyGesture; n: number } | null;
 }
 
 const PHOTO_THRESHOLD = -110;
 
-export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
+export function AddButton({ onPress, onSwipeUp, onHold, demo }: AddButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
   const swipeStage = useSharedValue(0); // 0 = none, 1 = photo trigger
   const isActive = useSharedValue(false);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    if (!demo || reduced || isActive.get()) return;
+    if (demo.gesture === 'tap') {
+      const press = () => withSequence(withTiming(0.92, { duration: 110 }), withTiming(1, { duration: 170, easing: Easing.out(Easing.back(2)) }));
+      scale.set(withSequence(press(), withDelay(140, press())));
+    } else if (demo.gesture === 'hold') {
+      scale.set(withSequence(withTiming(0.86, { duration: 520, easing: Easing.out(Easing.quad) }), withDelay(600, withTiming(1, { duration: 240, easing: Easing.out(Easing.back(1.6)) }))));
+    } else {
+      translateY.set(withSequence(withTiming(-30, { duration: 420, easing: Easing.out(Easing.cubic) }), withDelay(420, withTiming(0, { duration: 320, easing: Easing.inOut(Easing.cubic) }))));
+    }
+    // Plays when a new demo is asked for (n changes), not on other renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo?.n]);
 
   const fireHapticLight = useCallback(() => {
     haptic.tap();
@@ -55,7 +79,7 @@ export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
   }, [onHold]);
 
   useAnimatedReaction(
-    () => swipeStage.value,
+    () => swipeStage.get(),
     (current, prev) => {
       if (prev !== null && current !== prev && current === 1) {
         runOnJS(fireHapticLight)();
@@ -65,13 +89,13 @@ export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
 
   const tapGesture = Gesture.Tap()
     .onBegin(() => {
-      isActive.value = true;
-      scale.value = withTiming(0.9, { duration: 80 });
+      isActive.set(true);
+      scale.set(withTiming(0.9, { duration: 80 }));
       runOnJS(fireHapticLight)();
     })
     .onFinalize((_, success) => {
-      isActive.value = false;
-      scale.value = withTiming(1, { duration: 150 });
+      isActive.set(false);
+      scale.set(withTiming(1, { duration: 150 }));
       if (success) {
         runOnJS(firePress)();
       }
@@ -80,21 +104,21 @@ export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
   const longPressGesture = Gesture.LongPress()
     .minDuration(400)
     .onStart(() => {
-      isActive.value = true;
-      scale.value = withTiming(0.85, { duration: 150 });
+      isActive.set(true);
+      scale.set(withTiming(0.85, { duration: 150 }));
       runOnJS(fireHapticHeavy)();
       runOnJS(fireHold)();
     })
     .onFinalize(() => {
       // Letting go only settles the key; a recording it started carries on.
-      isActive.value = false;
-      scale.value = withTiming(1, { duration: 150 });
+      isActive.set(false);
+      scale.set(withTiming(1, { duration: 150 }));
     });
 
   const panGesture = Gesture.Pan()
     .activeOffsetY([-8, 8])
     .onBegin(() => {
-      isActive.value = true;
+      isActive.set(true);
     })
     .onUpdate((e) => {
       if (e.translationY < 0) {
@@ -102,36 +126,36 @@ export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
         
         if (raw <= PHOTO_THRESHOLD) {
           raw = PHOTO_THRESHOLD + (raw - PHOTO_THRESHOLD) * 0.15;
-          if (swipeStage.value !== 1) swipeStage.value = 1;
+          if (swipeStage.get() !== 1) swipeStage.set(1);
         } else {
-          if (swipeStage.value !== 0) swipeStage.value = 0;
+          if (swipeStage.get() !== 0) swipeStage.set(0);
         }
         
-        translateY.value = raw;
+        translateY.set(raw);
       }
     })
     .onEnd(() => {
-      isActive.value = false;
-      if (swipeStage.value === 1) {
+      isActive.set(false);
+      if (swipeStage.get() === 1) {
         runOnJS(fireSwipeUp)();
       }
       
-      swipeStage.value = 0;
-      translateY.value = withTiming(0, { duration: 150 });
+      swipeStage.set(0);
+      translateY.set(withTiming(0, { duration: 150 }));
     });
 
   const composedGesture = Gesture.Race(tapGesture, longPressGesture, panGesture);
 
   const buttonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: translateY.value },
-      { scale: scale.value }
+      { translateY: translateY.get() },
+      { scale: scale.get() }
     ],
   }));
 
   // Track style
   const trackStyle = useAnimatedStyle(() => {
-    const isVisible = translateY.value < -2;
+    const isVisible = translateY.get() < -2;
     const progress = withTiming(isVisible ? 1 : 0, { duration: 250 });
     
     return {
@@ -143,8 +167,8 @@ export function AddButton({ onPress, onSwipeUp, onHold }: AddButtonProps) {
   });
 
   const photoIconStyle = useAnimatedStyle(() => {
-    const active = swipeStage.value === 1;
-    const isVisible = translateY.value < -2;
+    const active = swipeStage.get() === 1;
+    const isVisible = translateY.get() < -2;
     return {
       opacity: withTiming(isVisible ? (active ? 1 : 0.4) : 0, { duration: 150 }),
       transform: [{ scale: withTiming(active ? 1.25 : 1, { duration: 150 }) }]

@@ -22,12 +22,14 @@ import { AddButton } from '@/components/add-button';
 import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
-import { useFocusEffect, Redirect } from 'expo-router';
+import { useFocusEffect, useIsFocused, Redirect } from 'expo-router';
 import { EmptyState } from '@/components/empty-state';
 import { User, Book } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useSettingsStore } from '@/hooks/use-settings';
+import { KeyCaption } from '@/components/home/key-caption';
+import { unlearnedGestures, type KeyGesture } from '@/home/key-hints';
 import * as FileSystem from 'expo-file-system/legacy';
 import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 import { copyWithinFileSize, alertFileTooLarge, alertElementCap, sliceToElementCap } from '@/utils/media-attach';
@@ -80,6 +82,14 @@ export default function HomeScreen() {
   useFulfilPhotoRequest(quickCapture.capturePhoto);
   
   const { settings, updateSetting } = useSettingsStore();
+  const isFocused = useIsFocused();
+
+  // ─── Teaching the orange key ───────────────────────────────────────────
+  const unlearned = unlearnedGestures(settings.keyGesturesUsed, settings.guideProgress);
+  const [keyDemo, setKeyDemo] = useState<{ gesture: KeyGesture; n: number } | null>(null);
+  const markKeyGesture = (gesture: KeyGesture) => {
+    if (!settings.keyGesturesUsed[gesture]) updateSetting('keyGesturesUsed', { ...settings.keyGesturesUsed, [gesture]: true });
+  };
   
   // The user wants the active card perfectly physically centered in the absolute screen
   // so that the previous card and next card peek by the exact same number of pixels.
@@ -423,18 +433,29 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.dateContainer}>
-          <Text 
+          {/* The date, which now and then turns into a hint for a key gesture not used yet. */}
+          <KeyCaption
+            date={dateDisplayString}
+            unlearned={unlearned}
+            active={isFocused && !quickCapture.isRecording}
+            onDemo={(gesture) => setKeyDemo((d) => ({ gesture, n: (d?.n ?? 0) + 1 }))}
             style={[styles.dateText, { color: theme.textMuted }]}
-            numberOfLines={1}
-            allowFontScaling={false}
-          >
-            {dateDisplayString}
-          </Text>
+          />
         </View>
-        <AddButton 
-          onPress={handleAdd} 
-          onSwipeUp={quickCapture.capturePhoto}
-          onHold={quickCapture.startRecording}
+        <AddButton
+          onPress={() => {
+            markKeyGesture('tap');
+            handleAdd();
+          }}
+          onSwipeUp={() => {
+            markKeyGesture('swipe');
+            quickCapture.capturePhoto();
+          }}
+          onHold={() => {
+            markKeyGesture('hold');
+            quickCapture.startRecording();
+          }}
+          demo={keyDemo}
         />
       </View>
 

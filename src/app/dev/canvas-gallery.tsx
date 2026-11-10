@@ -4,7 +4,7 @@
  * by eye and templates checked visually. Not reachable in release builds.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Image as RNImage, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,9 @@ import { CANVAS_ASPECT } from '@/canvas/geometry';
 import type { CanvasDoc, Layer, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { CloseButton } from '@/components/round-button';
 import { StampView } from '@/components/stamps/stamp-view';
+import { AddButton } from '@/components/add-button';
+import { KeyCaption } from '@/components/home/key-caption';
+import type { KeyGesture } from '@/home/key-hints';
 import { useTheme } from '@/hooks/use-theme';
 import { BASE_TEMPLATES, GRID_TEMPLATES, newDoc } from '@/templates/registry';
 import type { MediaElement } from '@/types/journal';
@@ -58,6 +61,16 @@ function docFor(template: TemplateId): CanvasDoc {
   return { ...doc, layers: [...doc.layers, text, DATE, DOODLE] };
 }
 
+function KeyHintSample() {
+  const [demo, setDemo] = useState<{ gesture: KeyGesture; n: number } | null>(null);
+  return (
+    <View style={{ alignItems: 'center', gap: 14, paddingVertical: 12 }}>
+      <KeyCaption date="tue  10.11.2026" unlearned={['tap', 'hold', 'swipe']} active onDemo={(gesture) => setDemo((d) => ({ gesture, n: (d?.n ?? 0) + 1 }))} style={{ fontFamily: 'JetBrainsMono-Regular', fontSize: 14, color: '#878787' }} />
+      <AddButton onPress={() => undefined} demo={demo} />
+    </View>
+  );
+}
+
 export default function CanvasGallery() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -74,6 +87,8 @@ export default function CanvasGallery() {
   return (
     <View style={{ flex: 1 }}>
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>
+      {/* The orange key teaching all three gestures, to check the hint and the key's act-outs. */}
+      <KeyHintSample />
       {/* A stamp (collection tile and hover size), to check the paper and postmark. */}
       <View style={{ flexDirection: 'row', gap: 24, alignItems: 'flex-end' }}>
         <StampView imageUri={MEDIA[0].uri} place="Pune" createdAt={SAMPLE_DATE} width={160} />
