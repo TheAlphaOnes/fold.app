@@ -18,15 +18,15 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, StyleSheet, View } from 'react-native';
-import { useCameraPermissions, type CameraView } from 'expo-camera';
+import { useCameraPermissions, type CameraType, type CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { Camera as CameraIcon } from 'lucide-react-native';
+import { Camera as CameraIcon, SwitchCamera } from 'lucide-react-native';
 
 import { StripesSurface } from '@/canvas/render/stripes-surface';
 import { CameraSurface } from '@/components/camera/camera-surface';
-import { ROUND_BUTTON_SIZE } from '@/components/round-button';
+import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,6 +58,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const [template, setTemplate] = useState<TemplateId>('story');
   const [listOpen, setListOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [facing, setFacing] = useState<CameraType>('back');
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const now = new Date();
 
@@ -108,7 +109,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       {/* A blank page, the same striped card as an empty canvas, until the camera develops in. */}
       <StripesSurface animated={false} />
       <Animated.View style={[StyleSheet.absoluteFill, picture]} pointerEvents="none">
-        {live && <CameraSurface cameraRef={camera} containerRef={container} animateShutter={false} />}
+        {live && <CameraSurface cameraRef={camera} containerRef={container} facing={facing} mirror={facing === 'front'} animateShutter={false} />}
       </Animated.View>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
@@ -138,23 +139,26 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
         <View style={[styles.picker, { backgroundColor: theme.background }]}>
           <TemplatePicker current={template} open={listOpen} onPick={setTemplate} onToggleList={() => setListOpen((o) => !o)} />
         </View>
-        <Pressable
-          onPress={shoot}
-          onLongPress={() => {
-            haptic.thud();
-            onRecordVideo();
-          }}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel={permission?.granted ? 'Take a photo for today, hold for video' : 'Use the camera for today'}
-          style={({ pressed }) => [styles.shutter, { borderColor: live ? '#FFFFFF' : theme.text, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
-        >
-          {permission?.granted ? (
-            <View style={[styles.shutterInner, { backgroundColor: live ? '#FFFFFF' : theme.text }]} />
-          ) : (
-            <CameraIcon size={24} color={theme.text} />
-          )}
-        </Pressable>
+        <View style={styles.shutterRow}>
+          <View style={styles.side} />
+          <Pressable
+            onPress={shoot}
+            onLongPress={() => {
+              haptic.thud();
+              onRecordVideo();
+            }}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={permission?.granted ? 'Take a photo for today, hold for video' : 'Use the camera for today'}
+            style={({ pressed }) => [styles.shutter, { borderColor: live ? '#FFFFFF' : theme.text, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
+          >
+            {permission?.granted ? <View style={[styles.shutterInner, { backgroundColor: live ? '#FFFFFF' : theme.text }]} /> : <CameraIcon size={24} color={theme.text} />}
+          </Pressable>
+          {/* Front or back; only while the camera is live. */}
+          <View style={[styles.side, { opacity: live ? 1 : 0 }]} pointerEvents={live ? 'auto' : 'none'}>
+            <RoundButton icon={SwitchCamera} accessibilityLabel="Switch camera" onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))} />
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -167,6 +171,8 @@ const styles = StyleSheet.create({
   date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
   line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
+  shutterRow: { flexDirection: 'row', alignItems: 'center', gap: 28 },
+  side: { width: ROUND_BUTTON_SIZE, alignItems: 'center' },
   shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 56, height: 56, borderRadius: 28 },
   // Solid behind the pill, so it reads over any picture.
