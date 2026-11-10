@@ -8,8 +8,8 @@
  *        └ ─ ─ ─ ─ ─ ┘        first thing you're here to do
  *            ( ◯ )
  *   ─────────── ▔▔ ───────────
- *    STAMPS · 12 · 5 places      the collection drawer, peeking: the latest
- *     ▱ ▱ ▱ ▱ ▱                  stamps fanned at the bottom edge
+ *       ▱ ▱ ▱ ▱ ▱                the collection drawer, peeking: just the
+ *                                latest stamps fanned at the bottom edge
  *
  * Drag the drawer up (or tap its handle) and it morphs: the camera sinks
  * back and pauses, the fan gathers away and the full collection rises in
@@ -54,7 +54,7 @@ import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 /** The drawer's visible height when closed (above the home indicator): the title and just the tops of the fanned stamps. */
-const PEEK = 74;
+const PEEK = 46;
 const FAN_STAMP = 66;
 const FAN_MAX = 5;
 /** Room at the top for the page's close and map buttons. EDGE leaves room for the tiles' tilt. */
@@ -127,7 +127,6 @@ export default function StampStudio() {
   }));
   const drawer = useAnimatedStyle(() => ({ transform: [{ translateY: y.get() }] }));
 
-  const places = placeCount(stamps);
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.cameraLayer, cameraLayer]}>
@@ -137,16 +136,8 @@ export default function StampStudio() {
       <Animated.View style={[styles.drawer, { top: drawerTop, height: drawerHeight, backgroundColor: theme.background, borderColor: theme.border }, drawer]}>
         <GestureDetector gesture={drag}>
           <View>
-            <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={open ? 'Close collection' : 'Open collection'} style={styles.handleArea}>
+            <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={open ? 'Close collection' : `Open collection, ${stamps.length} stamps`} style={styles.handleArea}>
               <View style={[styles.handle, { backgroundColor: theme.textMuted }]} />
-              <View style={styles.titleRow}>
-                <ThemedText style={[Type.rail, { color: theme.text }]}>STAMPS</ThemedText>
-                {stamps.length > 0 && (
-                  <ThemedText style={[styles.count, { color: theme.textMuted }]}>
-                    {stamps.length} · {places} {places === 1 ? 'place' : 'places'}
-                  </ThemedText>
-                )}
-              </View>
             </Pressable>
             <Fan stamps={stamps} progress={progress} justAdded={justAdded} width={screen.width} />
           </View>
@@ -249,7 +240,9 @@ interface CollectionProps {
 
 /** The full collection: rises into the drawer as it opens. */
 function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, onPullClose }: CollectionProps) {
+  const theme = useTheme();
   const { remove } = useStamps();
+  const places = placeCount(stamps);
   const tile = (width - EDGE * 2 - COLUMN_GAP) / 2;
   const serials = useMemo(() => new Map([...stamps].sort((a, b) => a.createdAt - b.createdAt).map((s, i) => [s.id, i + 1])), [stamps]);
   const risen = useAnimatedStyle(() => ({
@@ -266,6 +259,15 @@ function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, 
 
   return (
     <Animated.View style={[styles.collection, risen]} pointerEvents={open ? 'auto' : 'none'}>
+      {/* The title comes with the collection; closed, the peek is just the handle and the stamps. */}
+      <View style={styles.titleRow}>
+        <ThemedText style={[Type.rail, { color: theme.text }]}>STAMPS</ThemedText>
+        {stamps.length > 0 && (
+          <ThemedText style={[styles.count, { color: theme.textMuted }]}>
+            {stamps.length} · {places} {places === 1 ? 'place' : 'places'}
+          </ThemedText>
+        )}
+      </View>
       {loaded && stamps.length === 0 ? (
         <EmptyCollection width={tile} />
       ) : (
@@ -303,14 +305,14 @@ const styles = StyleSheet.create({
   cameraLayer: { overflow: 'hidden' },
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 },
   drawer: { position: 'absolute', left: 0, right: 0, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: StyleSheet.hairlineWidth, borderBottomWidth: 0 },
-  handleArea: { alignItems: 'center', paddingTop: 8, paddingBottom: 10, gap: 10 },
+  handleArea: { alignItems: 'center', paddingTop: 8, paddingBottom: 8 },
   handle: { width: 36, height: 4, borderRadius: 2, opacity: 0.5 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  titleRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingBottom: 10 },
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
   fan: { marginTop: 2 },
   fanCard: { position: 'absolute', top: 0 },
   fanHint: { position: 'absolute', top: FAN_STAMP * STAMP_ASPECT * 0.5 - 8, left: 0, right: 0, textAlign: 'center', fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1 },
-  collection: { ...StyleSheet.absoluteFill, top: 56 },
+  collection: { ...StyleSheet.absoluteFill, top: 20 },
   grid: { paddingHorizontal: EDGE, paddingTop: 8, gap: COLUMN_GAP },
   row: { gap: COLUMN_GAP },
 });
