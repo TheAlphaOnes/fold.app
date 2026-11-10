@@ -23,7 +23,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
 import { Book, Camera, Image as ImageIcon, Undo2 } from 'lucide-react-native';
@@ -58,6 +57,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useVoiceTake } from '@/hooks/use-voice-take';
 import { trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
+import { lookupLocation } from '@/services/location.service';
 import { canvasOf } from '@/templates/legacy';
 import { defaultTextSpot, frameMediaId, isBlankCard, scatterSticker, shownMediaIds } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
@@ -88,21 +88,6 @@ const SIDE_WIDTH = 92;
 const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'heart', 'star', 'arch', 'polaroid', 'stamp', 'tape'];
 
 const DEFAULT_TEXT: TextDraft = { text: '', font: DEFAULT_MEMORY_FONT, color: null, align: 'center', style: 'plain', size: 0.065 };
-
-/** Where the phone is, named by city (or the nearest coarser place). */
-async function lookupLocation(): Promise<{ name?: string; lat: number; lng: number } | null> {
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') return null;
-    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    const [place] = await Location.reverseGeocodeAsync({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-    const name = place ? place.city || place.subregion || place.region || place.country || undefined : undefined;
-    return { name: name ?? undefined, lat: pos.coords.latitude, lng: pos.coords.longitude };
-  } catch (error) {
-    console.warn('Failed to fetch location', error);
-    return null;
-  }
-}
 
 interface ComposerBodyProps {
   existing: Composition | null;

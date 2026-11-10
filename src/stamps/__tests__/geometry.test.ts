@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest';
+import { photoCropFor, placeCount, postmarkDate, regionFor, stampTilt } from '@/stamps/geometry';
+
+describe('photoCropFor', () => {
+  it('maps a centred window on a cover preview to photo pixels', () => {
+    // A 3000×4000 photo on a 300×600 view: scaled by 0.15, 75px cropped each side.
+    const crop = photoCropFor({ width: 3000, height: 4000 }, { width: 300, height: 600 }, { x: 50, y: 200, width: 200, height: 200 });
+    expect(crop).toEqual({ originX: 833, originY: 1333, width: 1333, height: 1333 });
+  });
+  it('clamps to the photo', () => {
+    const crop = photoCropFor({ width: 100, height: 100 }, { width: 100, height: 100 }, { x: -10, y: 90, width: 50, height: 50 });
+    expect(crop.originX).toBe(0);
+    expect(crop.originY + crop.height).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('regionFor', () => {
+  it('is null with no places and city-level for one', () => {
+    expect(regionFor([])).toBeNull();
+    expect(regionFor([{ latitude: 10, longitude: 20 }])).toEqual({ latitude: 10, longitude: 20, zoom: 11 });
+  });
+  it('centres on the bounds and zooms out for wide spans', () => {
+    const r = regionFor([
+      { latitude: 0, longitude: 0 },
+      { latitude: 40, longitude: 80 },
+    ])!;
+    expect(r.latitude).toBe(20);
+    expect(r.longitude).toBe(40);
+    expect(r.zoom).toBeGreaterThan(1);
+    expect(r.zoom).toBeLessThan(3);
+  });
+});
+
+describe('stamp details', () => {
+  it('tilts within ±4° and repeats per id', () => {
+    for (let id = 1; id < 30; id++) {
+      expect(Math.abs(stampTilt(id))).toBeLessThanOrEqual(4);
+      expect(stampTilt(id)).toBe(stampTilt(id));
+    }
+  });
+  it('formats the postmark date and counts places', () => {
+    expect(postmarkDate(new Date(2026, 10, 10).getTime())).toBe('10 NOV 2026');
+    expect(placeCount([{ place: 'Pune' }, { place: 'pune' }, { place: 'Goa' }])).toBe(2);
+  });
+});

@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings as SettingsIcon } from 'lucide-react-native';
+import { Settings as SettingsIcon, Stamp as StampIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
@@ -55,6 +55,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         <View style={styles.headerActions}>
+          <RoundButton icon={StampIcon} accessibilityLabel="Stamp collection" onPress={() => navigate.push('/stamps')} />
           <RoundButton icon={SettingsIcon} accessibilityLabel="Settings" onPress={() => navigate.push('/settings')} />
           <CloseButton />
         </View>

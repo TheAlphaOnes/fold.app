@@ -124,6 +124,20 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
+      ],
+      [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Allow Fold to show the places you've stamped on your map."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Fold to use your camera to make stamps of the places you visit.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {
