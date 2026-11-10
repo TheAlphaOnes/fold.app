@@ -76,7 +76,9 @@ const EDGE = 16;
 /** Bar heights excluding safe areas, shared by the layout and the writing spacers. */
 const TOP_BAR = 6 + ROUND_BUTTON_SIZE + SPACE;
 const ADD_AREA = ADD_ROW_HEIGHT;
-const BOTTOM_BAR = SPACE + ROUND_BUTTON_SIZE + 8;
+// The canvas slot centres the card, so the gap above it (to the add row)
+// and below it (to this bar) come out equal; the bar adds no padding of its own.
+const BOTTOM_BAR = ROUND_BUTTON_SIZE + 8;
 /** Between the canvas and the add row above / the bottom bar below. */
 const CANVAS_MARGIN = SPACE;
 const SHAPES: StickerShape[] = ['rounded', 'square', 'circle', 'heart', 'star', 'arch', 'polaroid', 'stamp', 'tape'];
@@ -596,7 +598,7 @@ const styles = StyleSheet.create({
   // Floats over the bottom of the canvas, right above the picker it opened from.
   templateList: { position: 'absolute', left: 24, right: 24, bottom: 8 },
   // Every control in the row is one height (the app's 34pt round button), inset clear of the screen's rounded corners.
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE, paddingTop: SPACE },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: GAP, paddingHorizontal: EDGE },
   middle: { flex: 1, flexDirection: 'row' },
   addArea: { height: ADD_AREA },
   // Over the top bar and add row while doodling, so the canvas doesn't move.
