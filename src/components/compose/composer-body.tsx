@@ -2,11 +2,11 @@
  * ComposerBody — the composer screen. Layout (top to bottom):
  *
  *   ✕      TUE 10.11 · 09:59    ↶  SAVE    close · when · undo · save
- *   [Photo][Camera][GIF][Doodle][Song]…     AddRow: every way to add media
+ *   [Text][GIF][Doodle][Song][Voice]…       AddRow: everything else
  *   ┌──────── 9:16 canvas ────────┐   (CanvasEditor)
  *   └─────────────────────────────┘
  *   [tools for the selection]          sticker or photo, while selected
- *   [ Aa ]  [ ▦ TEMPLATE ⇅ ]  [ ▢ STORY ]    text · template · story
+ *   📷 🖼  [ ▦ TEMPLATE ⇅ ]  [ ▢ STORY ]    camera · gallery · template · story
  *
  * Laid out by priority: Save is the one filled action, top right where a
  * finished thing is confirmed; writing sits at
@@ -26,7 +26,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
-import { Book, Type as TypeIcon, Undo2 } from 'lucide-react-native';
+import { Book, Camera, Image as ImageIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
@@ -35,7 +35,6 @@ import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
 import { formatMoment } from '@/utils/format-date';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
-import { isArranged } from '@/templates/arrangements';
 import { FrameTools, StickerTools } from '@/components/compose/selection-bar';
 import { TemplateList, TemplatePicker } from '@/components/compose/template-picker';
 import { TextEditorSheet, type TextDraft } from '@/components/compose/text-editor-sheet';
@@ -247,17 +246,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
   const onAdd = async (kind: AddKind) => {
     switch (kind) {
-      case 'camera':
-        await addFromCamera();
+      case 'text':
+        setEditing({ id: newId(), isNew: true });
         return;
-      case 'photo': {
-        const added = await media.pickFromGallery();
-        // In a shape or a slideshow, a photo joins it; elsewhere it's a sticker
-        // (each in its own spot, not the same one).
-        if (isArranged(c.doc.template) || c.doc.template === 'slideshow') c.addMedia(added);
-        else added.forEach((m, i) => addSticker(m, i));
-        return;
-      }
       case 'gif':
         setSheet('gif');
         return;
@@ -505,8 +496,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
 
       {!editing && !doodle && (
         <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
-          {/* Writing is the one creative action at the thumb; photos and the rest live in the add row. */}
-          <RoundButton icon={TypeIcon} accessibilityLabel="Add text" onPress={() => setEditing({ id: newId(), isNew: true })} style={styles.side} />
+          {/* Camera and gallery at the thumb, the most common way in; the add row has the rest. */}
+          <View style={styles.side}>
+            <RoundButton icon={Camera} accessibilityLabel="Take a photo or video" onPress={addFromCamera} />
+            <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
+          </View>
           <View style={styles.middle}>
             <TemplatePicker
               current={c.doc.template}
@@ -639,7 +633,7 @@ const styles = StyleSheet.create({
   writeHint: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   writeHintText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, letterSpacing: 1 },
   // The two side controls share one width, so the template pill sits in the true centre.
-  side: { width: SIDE_WIDTH },
+  side: { width: SIDE_WIDTH, flexDirection: 'row', justifyContent: 'center', gap: GAP },
   moment: { height: ROUND_BUTTON_SIZE, alignItems: 'center', justifyContent: 'center', marginHorizontal: GAP },
   momentText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 1.2 },
   // Same height, border, radius and type as the template pill.
