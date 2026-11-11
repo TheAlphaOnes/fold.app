@@ -183,12 +183,9 @@ function Fan({ stamps, progress, justAdded, width }: FanProps) {
   const theme = useTheme();
   // The newest sits in the middle, on top (where a new stamp lands); older ones
   // alternate outward. Drawn oldest first so the newest ends up above.
-  // One stamp per place: the fan shows the latest places, not repeats of one.
-  const latest = groupByPlace(stamps)
-    .slice(0, FAN_MAX)
-    .map((group) => group.newest)
-    .map((s, i) => ({ s, offset: i === 0 ? 0 : (i % 2 === 1 ? -1 : 1) * Math.ceil(i / 2) }))
-    .reverse();
+  // The peek is the latest stamps themselves, even from one city: the fan is
+  // the collection's edge, not the collection (that one clubs by place).
+  const latest = stamps.slice(0, FAN_MAX).map((s, i) => ({ s, offset: i === 0 ? 0 : (i % 2 === 1 ? -1 : 1) * Math.ceil(i / 2) })).reverse();
   const gathered = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0, 0.4], [1, 0], Extrapolation.CLAMP),
     transform: [{ translateY: progress.get() * -24 }, { scale: 1 - progress.get() * 0.12 }],
