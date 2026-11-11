@@ -17,7 +17,7 @@ import type { Stamp } from '@/types/stamp';
 /** OpenFreeMap's styles: free vector tiles, no key. */
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron';
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
-const PIN = 30;
+const PIN = 44;
 const MAX_PINS = 40;
 
 // A build without MapLibre's native side can't draw the map (and importing it would throw).
