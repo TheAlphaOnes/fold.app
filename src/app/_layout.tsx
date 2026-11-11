@@ -84,6 +84,7 @@ import { useProfileDataSync } from "@/hooks/use-profile-data";
 import { loadThumbnailIndex } from "@/hooks/use-video-thumbnail";
 import { MemoryActionsHost } from "@/components/memory-actions-host";
 import { CelebrationHost } from "@/components/celebration-host";
+import { ShareIntakeHost } from "@/components/share-intake-host";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -283,6 +284,8 @@ function RootLayoutNav() {
             <ProgressionSync />
             {/* The hold menu for memory cards, one instance for the whole app. */}
             <MemoryActionsHost />
+            {/* Receives shares from other apps; always mounted, whatever route the link lands on. */}
+            <ShareIntakeHost />
             {/* Dim + sparkle when a memory is saved or changed, anywhere. */}
             <CelebrationHost />
           </AnimatedSplashScreen>
