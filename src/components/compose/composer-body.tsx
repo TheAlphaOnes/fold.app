@@ -25,6 +25,8 @@ import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-n
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
+
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { Book, Camera, Image as ImageIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
@@ -105,6 +107,7 @@ type Editing = { id: string; isNew: boolean } | null;
 export function ComposerBody({ existing, sharedText, storyId, createdAt, template }: ComposerBodyProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const window = useWindowDimensions();
   const { settings } = useSettings();
   const stories = useStoriesStore((s) => s.stories);
@@ -179,7 +182,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
   // ─── Canvas size: the largest 9:16 that fits between the bars ─────────
   const canvas = fitCanvas({
     width: window.width - 32,
-    height: window.height - insets.top - insets.bottom - TOP_BAR - ADD_AREA - BOTTOM_BAR - CANVAS_MARGIN * 2,
+    height: window.height - insets.top - bottomInset - TOP_BAR - ADD_AREA - BOTTOM_BAR - CANVAS_MARGIN * 2,
   });
   const memory = {
     id: existing?.id ?? -1,
@@ -515,7 +518,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
       </Animated.View>
 
       {!editing && !doodle && (
-        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
+        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: bottomInset + 8 }]}>
           {/* Camera and gallery at the thumb, the most common way in; the add row has the rest. */}
           <View style={styles.side}>
             <RoundButton icon={Camera} accessibilityLabel="Take a photo, or hold to record a video" onPress={addFromCamera} onLongPress={addVideoFromCamera} />
@@ -547,7 +550,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
       {templatesOpen && (
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setTemplatesOpen(false)} accessibilityLabel="Close templates" />
-          <View style={[styles.templateList, { bottom: insets.bottom + 8 + ROUND_BUTTON_SIZE + GAP }]}>
+          <View style={[styles.templateList, { bottom: bottomInset + 8 + ROUND_BUTTON_SIZE + GAP }]}>
             <TemplateList
               current={c.doc.template}
               gap={c.doc.gap}
@@ -560,7 +563,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
           </View>
         </>
       )}
-      {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
+      {(editing || doodle) && <View style={{ height: BOTTOM_BAR + bottomInset }} />}
 
       {editing && (
         <TextEditorSheet

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, useWindowDimensions, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { View, StyleSheet, ScrollView, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useIsFocused } from 'expo-router';
 
-import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings as SettingsIcon } from 'lucide-react-native';
 
@@ -10,8 +9,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSettings } from '@/hooks/use-settings';
 import { useTransitionDone } from '@/hooks/use-transition-done';
 import { useProfileDataStore } from '@/hooks/use-profile-data';
+import { useProfileWarmth, type ProfileSection } from '@/hooks/use-profile-warmth';
 import { useStamps } from '@/hooks/use-stamps';
-import { fadeIn, riseIn } from '@/constants/motion';
 import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
@@ -28,11 +27,8 @@ import { TECalendar } from '@/components/te-calendar';
 import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
 
-/** Heavy sections mount in this order, one per idle callback, when they approach the viewport. */
-type SectionKey = 'map' | 'calendar' | 'activity' | 'wall';
-const SECTION_ORDER: SectionKey[] = ['map', 'calendar', 'activity', 'wall'];
-/** A section becomes eligible when its top is within this share of the viewport. */
-const SECTION_VIEWPORT = 0.85;
+/** Heavy sections build in this order, one per idle callback, right after the slide. */
+const SECTION_ORDER: ProfileSection[] = ['map', 'calendar', 'activity', 'wall'];
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -44,24 +40,18 @@ export default function ProfileScreen() {
   const borderColor = theme.border;
   const mutedText = '#878787';
   // Every card reads the profile cache, which loads in the background, so
-  // the visible cards draw in the same frame as the slide. Only the photo
-  // wall at the bottom (dozens of images, off screen) waits for the slide.
+  // the visible cards draw in the same frame as the slide. The heavy sections
+  // build after the slide, in the background, never on demand.
   const settled = useTransitionDone();
   const focused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
 
-  // Every heavy section shares one mounting policy: after the slide, the next
-  // eligible section within 85% of the viewport mounts on an idle callback.
-  // There are no timer stages and no warm-visit bypass, so native views and
-  // image walls never start just because a delay elapsed off screen.
-  const [sectionTops, setSectionTops] = useState<Partial<Record<SectionKey, number>>>({});
-  const [readySections, setReadySections] = useState<Record<SectionKey, boolean>>({
-    map: false,
-    calendar: false,
-    activity: false,
-    wall: false,
-  });
+  // Sections built once this session stay built: a return visit draws the
+  // whole page in its first frame, with no skeletons and no staged mounting.
+  const readySections = useProfileWarmth((state) => state.warm);
+  const markWarm = useProfileWarmth((state) => state.markWarm);
   const [scrollY, setScrollY] = useState(0);
+  const [wallTop, setWallTop] = useState<number | undefined>(undefined);
 
   // Each section also waits for its own cached data; the skeleton covers it.
   const dayCounts = useProfileDataStore((state) => state.dayCounts);
@@ -77,40 +67,29 @@ export default function ProfileScreen() {
   const stampsLoaded = useStamps((state) => state.loaded);
   const loadStamps = useStamps((state) => state.load);
 
-  const measureSection = (key: SectionKey) => (event: LayoutChangeEvent) => {
-    const y = event.nativeEvent.layout.y;
-    setSectionTops((current) => (current[key] === y ? current : { ...current, [key]: y }));
-  };
+  // Stamps are part of the page, not a scroll reward: load them with the rest.
+  useEffect(() => {
+    if (!stampsLoaded) void loadStamps();
+  }, [stampsLoaded, loadStamps]);
 
   const nextSection = SECTION_ORDER.find((key) => {
     if (readySections[key]) return false;
-    const top = sectionTops[key];
-    if (top === undefined || scrollY + screenHeight * SECTION_VIEWPORT <= top) return false;
     if (key === 'map') return stampsLoaded;
     if (key === 'calendar') return activeDates !== null;
     if (key === 'activity') return dayCounts !== null;
     return pastMemories !== null;
   });
 
-  // One section per idle period. If the user is scrolling or tapping, the
-  // callback waits instead of contending with that interaction.
+  // One section per idle period, in order, right after the slide. The work is
+  // spread so the page stays interactive, but it never waits for a scroll:
+  // every section is built before the user can reach it.
   useEffect(() => {
     if (!settled || !nextSection) return;
-    const idle = requestIdleCallback(() => {
-      setReadySections((current) => ({ ...current, [nextSection]: true }));
-    });
+    const idle = requestIdleCallback(() => markWarm(nextSection));
     return () => cancelIdleCallback(idle);
-  }, [settled, nextSection]);
+  }, [settled, nextSection, markWarm]);
 
-  // Stamps load only when their map is close enough to be shown, not merely
-  // because the profile screen mounted.
-  const mapTop = sectionTops.map;
-  const mapNear = mapTop !== undefined && scrollY + screenHeight * SECTION_VIEWPORT > mapTop;
-  useEffect(() => {
-    if (mapNear && !stampsLoaded) void loadStamps();
-  }, [mapNear, stampsLoaded, loadStamps]);
-
-  const wallTop = sectionTops.wall;
+  // The wall only animates while it can be seen; mounting is never gated.
   const wallVisible = focused && wallTop !== undefined && scrollY + screenHeight > wallTop;
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const y = e.nativeEvent.contentOffset.y;
@@ -157,45 +136,30 @@ export default function ProfileScreen() {
 
         <StoryBoardCard />
 
-        {/* Each heavy section reports its position; the shared policy above
-            mounts it on idle when it approaches the viewport. */}
-        <View onLayout={measureSection('map')}>
-          {readySections.map && stampsLoaded ? (
-            <Animated.View entering={fadeIn(240)}>
-              <StampAlbumCard />
-            </Animated.View>
-          ) : (
-            <MapSkeleton />
-          )}
+        {/* The scheduler above builds these in the background, one per idle
+            period, so they are already there when the page is scrolled. */}
+        <View>
+          {readySections.map && stampsLoaded ? <StampAlbumCard /> : <MapSkeleton />}
         </View>
 
-        <View onLayout={measureSection('calendar')}>
+        <View>
           {readySections.calendar && activeDates !== null ? (
-            <Animated.View entering={fadeIn(240)}>
-              {/* Time Machine Section */}
-              <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
-                <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
-              </View>
-            </Animated.View>
+            /* Time Machine Section */
+            <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
+              <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
+            </View>
           ) : (
             <CalendarSkeleton />
           )}
         </View>
 
-        <View onLayout={measureSection('activity')}>
-          {readySections.activity && dayCounts !== null ? (
-            <Animated.View entering={fadeIn(240)}>
-              {/* Heat Map (Activity Grid) */}
-              <ActivityGrid />
-            </Animated.View>
-          ) : (
-            <ActivitySkeleton />
-          )}
+        <View>
+          {readySections.activity && dayCounts !== null ? <ActivityGrid /> : <ActivitySkeleton />}
         </View>
 
-        <View onLayout={measureSection('wall')}>
+        <View onLayout={(event) => setWallTop(event.nativeEvent.layout.y)}>
           {readySections.wall ? (
-            <Animated.View entering={riseIn(420, 0, 12)}>
+            <>
               {/* Today's memory from the past — photo-first, opens the memory */}
               <FromYourPastCard visible={wallVisible} />
 
@@ -204,7 +168,7 @@ export default function ProfileScreen() {
                 <AsciiArt art={SYS_READY_ART} color="#878787" fontSize={10} />
                 <ThemedText style={styles.mascotSubtitle}>FOLD</ThemedText>
               </View>
-            </Animated.View>
+            </>
           ) : (
             <PastWallSkeleton />
           )}

@@ -43,6 +43,7 @@ import { EmptyCollection, StampTile } from '@/components/stamps/stamp-collection
 import { StampView, STAMP_ASPECT, stampPerforation } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
@@ -69,6 +70,7 @@ const SPRING = { damping: 22, stiffness: 210, mass: 0.9 } as const;
 export default function StampStudio() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const safeBottom = useBottomInset();
   const screen = useWindowDimensions();
   const focused = useIsFocused();
   const { stamps: all, loaded, load, pending, justAdded, clearJustAdded } = useStamps();
@@ -92,7 +94,7 @@ export default function StampStudio() {
   // closed, it's pushed down so only PEEK (plus the home indicator) shows.
   const drawerTop = insets.top + TOP_BAR;
   const drawerHeight = screen.height - drawerTop;
-  const closedY = drawerHeight - PEEK - insets.bottom;
+  const closedY = drawerHeight - PEEK - safeBottom;
   const y = useSharedValue(open ? 0 : closedY);
   // 0 closed … 1 open; everything in the morph reads from this.
   const progress = useDerivedValue(() => interpolate(y.get(), [closedY, 0], [0, 1], Extrapolation.CLAMP));
@@ -140,8 +142,8 @@ export default function StampStudio() {
         <StampCamera
           active={focused && !open}
           topInset={drawerTop}
-          bottomInset={PEEK + insets.bottom}
-          landing={{ x: screen.width / 2, y: screen.height - PEEK - insets.bottom + HANDLE_AREA + FAN_GAP, width: FAN_STAMP }}
+          bottomInset={PEEK + safeBottom}
+          landing={{ x: screen.width / 2, y: screen.height - PEEK - safeBottom + HANDLE_AREA + FAN_GAP, width: FAN_STAMP }}
         />
       </Animated.View>
 
@@ -154,7 +156,7 @@ export default function StampStudio() {
             <Fan stamps={stamps} progress={progress} justAdded={justAdded} width={screen.width} />
           </View>
         </GestureDetector>
-        <Collection stamps={stamps} loaded={loaded} progress={progress} open={open} justAdded={justAdded} width={screen.width} bottom={insets.bottom} onPullClose={() => {
+        <Collection stamps={stamps} loaded={loaded} progress={progress} open={open} justAdded={justAdded} width={screen.width} bottom={safeBottom} onPullClose={() => {
             y.set(withSpring(closedY, SPRING));
             setOpen(false);
           }} />

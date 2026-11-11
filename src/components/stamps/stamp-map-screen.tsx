@@ -23,6 +23,7 @@ import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import { fadeIn, riseIn } from '@/constants/motion';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
@@ -43,6 +44,7 @@ export default function StampMap() {
   const theme = useTheme();
 
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { stamps, loaded, load } = useStamps();
   const map = useRef<StampMapHandle>(null);
@@ -77,7 +79,7 @@ export default function StampMap() {
   const serials = useMemo(() => new Map(journey.map((s, i) => [s.id, i + 1])), [journey]);
 
   // The location button sits just above the stamp strip, or near the bottom when there is no strip.
-  const locationButtonBottom = stamps.length > 0 ? insets.bottom + 10 + STRIP_HEIGHT + 10 : insets.bottom + 12;
+  const locationButtonBottom = stamps.length > 0 ? bottomInset + 10 + STRIP_HEIGHT + 10 : bottomInset + 12;
 
   const focus = (stamp: Stamp) => {
     haptic.select();
@@ -131,7 +133,7 @@ export default function StampMap() {
       )}
 
       {stamps.length > 0 && (
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 10 }]} pointerEvents="box-none">
+        <View style={[styles.bottom, { paddingBottom: bottomInset + 10 }]} pointerEvents="box-none">
           {selected && <HoverStamp key={selected.id} stamp={selected} serial={serials.get(selected.id)} />}
           <Animated.View entering={riseIn(340, 160, 14)}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>

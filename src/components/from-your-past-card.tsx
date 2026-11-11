@@ -8,9 +8,9 @@
  * can be tapped to open; SHUFFLE draws a fresh random set.
  *
  * Motion: the flow is linear on purpose — it represents continuous movement,
- * like a progress bar, so easing would read as stutter at each loop. The
- * entrance is segmented: columns rise in 80ms apart and the wall fades up.
- * With reduced motion the wall is shown still.
+ * like a progress bar, so easing would read as stutter at each loop. The wall
+ * appears as it is, with no entrance animation, so it never replays when the
+ * section mounts. With reduced motion the wall is shown still.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,7 +30,6 @@ import { Image } from 'expo-image';
 import { Shuffle } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { fadeIn, riseIn } from '@/constants/motion';
 import { useRandomPastMemories } from '@/hooks/use-random-past-memories';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
@@ -295,7 +294,6 @@ export function FromYourPastCard({ visible = true }: FromYourPastCardProps) {
         <View style={styles.stage}>
           <Animated.View
             key={sampleId}
-            entering={fadeIn(400)}
             style={styles.viewport}
             onTouchStart={() => setPaused(true)}
             onTouchEnd={() => setPaused(false)}
@@ -303,7 +301,7 @@ export function FromYourPastCard({ visible = true }: FromYourPastCardProps) {
           >
             <View style={styles.columns}>
               {columns.map((column, index) => (
-                <Animated.View key={index} entering={riseIn(420, index * 80, 24)}>
+                <Animated.View key={index}>
                   <FallingColumn
                     tiles={column.tiles}
                     cycle={column.cycle}
