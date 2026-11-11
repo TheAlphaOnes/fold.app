@@ -19,7 +19,7 @@ Journaling apps tend to ask for too much: a blank page, a prompt, a daily ritual
 
 Fold asks for one second. Tap, hold or swipe a single orange key, and the moment is kept. No sign-up and no cloud. Nobody else reads it.
 
-Over time those seconds add up. Fold folds them back to you as a timeline you'll want to scroll, a calendar full of photos, and stories you didn't know you were writing.
+Over time those seconds add up. Fold folds them back to you as a timeline you'll want to scroll, a calendar full of photos, a map of the places you've stamped, and stories you didn't know you were writing.
 
 ---
 
@@ -31,7 +31,7 @@ Over time those seconds add up. Fold folds them back to you as a timeline you'll
 | **Hold** to record | Hold the key and start talking. Let go whenever you like; tap once to stop, and your voice note is saved as a memory. |
 | **Swipe up** to snap | Slide the key up and the camera opens. Take the shot and it becomes a memory. |
 
-Every memory can carry more than words: photos, videos, GIFs, a song, the place you were. Fold arranges them on the card for you, and you can drag and pinch anything to make it your own.
+Every memory can carry more than words: photos, videos, GIFs, a song, a stamp from your collection, the place you were. Fold arranges them on the card for you, and you can drag and pinch anything to make it your own.
 
 ---
 
@@ -40,6 +40,8 @@ Every memory can carry more than words: photos, videos, GIFs, a song, the place 
 **The timeline.** Your memories, newest first, split by year or month or one endless scroll, whichever you prefer. As you scroll, the background picks up the colour of the photo in front of you, so every memory feels like its own room. You can turn the glow up or down in Settings.
 
 **The Time Machine.** A calendar where each day shows a photo from that day. Tap any date to step back into it.
+
+**Stamps.** Places get their own kind of memory. Point the stamp camera at where you are and press the shutter: the shot is cut into a perforated stamp, postmarked with the place and the day. They collect in a fan you can flick through, the stamp map spreads them out — a pin for every place, a line for the journey between them — and any stamp can be pasted onto a memory like a sticker.
 
 **From Your Past.** A slow waterfall of moments you'd forgotten, drawn at random from your whole history. Shuffle it and something else floats up.
 
@@ -51,7 +53,7 @@ Every memory can carry more than words: photos, videos, GIFs, a song, the place 
 
 ## Share the card, not the diary
 
-Hold any memory to print it as a clean, square card stamped with the Fold mark, ready for WhatsApp, Instagram, X or anywhere else. You decide what leaves your phone, one card at a time.
+Hold any memory to print it as a clean, square card stamped with the Fold mark, ready for WhatsApp, Instagram, X or anywhere else. Your streak travels too: the achievement card prints the run you're on, the ink you've earned and the last three weeks, ready to send. You decide what leaves your phone, one card at a time.
 
 ---
 
@@ -106,7 +108,7 @@ Fold borrows from industrial hardware and old terminals. It's honest and tactile
 
 ### Stack
 
-Expo (SDK 57) with Expo Router, TypeScript, Zustand, expo-sqlite, React Native Reanimated 4 and Gesture Handler, expo-image, expo-video, expo-audio, expo-local-authentication. Package manager: pnpm.
+Expo (SDK 57) with Expo Router, TypeScript, Zustand, expo-sqlite, React Native Reanimated 4 and Gesture Handler, expo-image, expo-video, expo-audio, expo-local-authentication, MapLibre for the stamp map. Package manager: pnpm.
 
 ### Run it
 
@@ -128,10 +130,12 @@ The `post_install` hook in `Podfile` renames the `sqlite3.h` include guard (`SQL
 ```
 src/
 ├── app/          # screens (Expo Router)
+├── canvas/       # the memory card: its editor and renderer
 ├── components/   # UI building blocks
 ├── db/           # SQLite schema and queries
 ├── hooks/        # stores and hooks
-├── services/     # haptics, trash, media storage, resurfacing
+├── services/     # haptics, trash, media storage, analytics
+├── stamps/       # stamp geometry and places
 ├── constants/    # theme, motion, guide, ASCII art
 └── utils/        # small pure helpers
 ```

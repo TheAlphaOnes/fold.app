@@ -37,11 +37,11 @@ import { fadeIn, riseIn } from '@/constants/motion';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { hatchPath } from '@/utils/hatch';
-import { trackError } from '@/services/analytics';
+import { track, trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
-import { formatSerial, isNewPlace } from '@/stamps/geometry';
+import { formatSerial, isNewPlace, placeCount } from '@/stamps/geometry';
 import { goHome } from '@/utils/navigation';
 
 /** The stamp's widest, as a share of the screen. */
@@ -158,6 +158,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
       const createdAt = Date.now();
       markGuideDone('stampmake');
       await add({ imageUri: dest, place: resolved.name, country: resolved.country, latitude: resolved.lat, longitude: resolved.lng, createdAt });
+      track('stamp_made', { new_place: newPlace, serial: stamps.length + 1, place_count: placeCount(stamps) + (newPlace ? 1 : 0) });
       setMade({ uri: dest, place: resolved.name, createdAt, serial: stamps.length + 1, newPlace });
       setPhase('stamped');
     } catch (error) {

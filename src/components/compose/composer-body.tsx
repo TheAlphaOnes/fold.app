@@ -58,7 +58,7 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { useVoiceTake } from '@/hooks/use-voice-take';
-import { trackError, type CaptureSource } from '@/services/analytics';
+import { track, trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
 import { lookupLocation } from '@/services/location.service';
@@ -640,6 +640,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
           const m: MediaElement = { id: newId(), uri: dest, type: 'image', isStamp: true, x_pos: 0, y_pos: 0 };
           markGuideDone('stampsticker');
           c.addLayer({ id: newId(), kind: 'stamp', mediaId: m.id, place: stamp.place, stampedAt: stamp.createdAt, x: 0.5, y: 0.4, scale: 1, rotation: -5 }, m);
+          track('stamp_used_on_memory', {});
           haptic.thud();
         }}
       />

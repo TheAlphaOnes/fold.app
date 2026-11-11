@@ -95,10 +95,10 @@ export const AchievementCard = forwardRef<View, AchievementCardProps>(function A
           </View>
           <View style={[styles.column, styles.columnEnd]}>
             <View style={styles.figure}>
+              <ThemedText style={[styles.unit, { color: ink.month > 0 ? theme.accentWarm : theme.textMuted }]}>ink</ThemedText>
               <ThemedText style={[styles.count, { color: ink.month > 0 ? theme.text : theme.textMuted }]}>
                 {formatInk(ink.month)}
               </ThemedText>
-              <ThemedText style={[styles.unit, { color: ink.month > 0 ? theme.accentWarm : theme.textMuted }]}>ink</ThemedText>
             </View>
             <ThemedText style={[styles.best, { color: theme.textMuted }]}>{`record ${formatInk(ink.record)}`}</ThemedText>
           </View>

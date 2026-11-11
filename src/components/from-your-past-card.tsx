@@ -33,6 +33,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useRandomPastMemories } from '@/hooks/use-random-past-memories';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { isDecorativeMedia } from '@/utils/media-kind';
@@ -322,6 +323,7 @@ export function FromYourPastCard({ visible = true }: FromYourPastCardProps) {
               <ShuffleButton
                 onPress={() => {
                   haptic.select();
+                  track('wall_shuffled', { pool_size: memories.length });
                   reshuffle();
                 }}
               />

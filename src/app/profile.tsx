@@ -24,6 +24,7 @@ import { ActivitySkeleton, CalendarSkeleton, MapSkeleton, PastWallSkeleton } fro
 import { ProfileAvatar } from '@/components/profile-avatar';
 import { CloseButton, RoundButton } from '@/components/round-button';
 import { TECalendar } from '@/components/te-calendar';
+import { track } from '@/services/analytics';
 import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
 
@@ -38,7 +39,7 @@ export default function ProfileScreen() {
   const fg = theme.text;
   const elementBg = theme.backgroundElement;
   const borderColor = theme.border;
-  const mutedText = '#878787';
+  const mutedText = theme.textMuted;
   // Every card reads the profile cache, which loads in the background, so
   // the visible cards draw in the same frame as the slide. The heavy sections
   // build after the slide, in the background, never on demand.
@@ -81,6 +82,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!stampsLoaded) void loadStamps();
   }, [stampsLoaded, loadStamps]);
+
+  // One per open, next to the screen view it already sends: how the open
+  // felt, warm or cold. Read at open, so later renders never re-send it.
+  useEffect(() => {
+    const warmAtOpen = useProfileWarmth.getState().warm;
+    track('profile_opened', { warm_visit: SECTION_ORDER.every((key) => warmAtOpen[key]) });
+  }, []);
 
   const nextSection = SECTION_ORDER.find((key) => {
     if (mounted[key]) return false;

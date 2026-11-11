@@ -95,6 +95,17 @@ export interface AnalyticsEvents {
   streak_extended: { streak: number; is_best: boolean };
   achievement_shared: { streak: number; ink: number };
 
+  // Stamps — places only as counts and a yes/no; never a place name.
+  stamp_made: { new_place: boolean; serial: number; place_count: number };
+  stamp_removed: { remaining: number };
+  stamp_map_opened: { stamp_count: number; place_count: number; focus: 'journey' | 'stamp' };
+  stamp_used_on_memory: Record<string, never>;
+
+  // Profile & looking back
+  /** One per profile open, next to the screen view: how the open felt. */
+  profile_opened: { warm_visit: boolean };
+  wall_shuffled: { pool_size: number };
+
   // Stories
   story_created: { has_cover: boolean };
   story_deleted: Record<string, never>;

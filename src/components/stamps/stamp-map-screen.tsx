@@ -26,6 +26,7 @@ import { fadeIn, riseIn } from '@/constants/motion';
 import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
 import { placeCount, regionFor } from '@/stamps/geometry';
@@ -53,6 +54,14 @@ export default function StampMap() {
   useEffect(() => {
     if (!loaded) load();
   }, [loaded, load]);
+
+  // Counted once the collection is in, so the shape of the journey is real.
+  const reported = useRef(false);
+  useEffect(() => {
+    if (reported.current || !loaded) return;
+    reported.current = true;
+    track('stamp_map_opened', { stamp_count: stamps.length, place_count: placeCount(stamps), focus: id ? 'stamp' : 'journey' });
+  }, [loaded, stamps, id]);
 
   const selected = stamps.find((s) => s.id === selectedId) ?? null;
   // The journey in the order it happened.
