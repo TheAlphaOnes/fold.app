@@ -27,28 +27,39 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { BOIL_FRAMES, brushStrands, doodleExtent, drawInSchedule, strokeLength, strokePath, wobble } from '@/canvas/doodle';
+import { exportDrawInSchedule } from '@/canvas/animated-export';
+import {
+  BOIL_FRAMES,
+  BOIL_FRAME_MS,
+  DRAW_IN_LIMIT,
+  brushStrands,
+  doodleExtent,
+  drawInSchedule,
+  inOutQuad,
+  strokeLength,
+  strokePhase,
+  strokePath,
+  wobble,
+} from '@/canvas/doodle';
 import type { DoodleLayer } from '@/canvas/types';
 import { useTheme } from '@/hooks/use-theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
-
-/** How long each boil frame shows: ~7 swaps a second, the classic hand-drawn rate. */
-const BOIL_FRAME_MS = 120;
-/** Past this many strokes, draw-in would drag; the doodle just appears and boils. */
-const DRAW_IN_LIMIT = 40;
 
 interface DoodleViewProps {
   layer: DoodleLayer;
   width: number;
   /** Draw in, then boil (the live card, the memory screen, the composer). */
   moving: boolean;
+  /** Wall-clock ms into the export timeline: draws one exact animation state (the animated share export). */
+  exportT?: number;
 }
 
-export function DoodleView({ layer, width, moving }: DoodleViewProps) {
+export function DoodleView({ layer, width, moving, exportT }: DoodleViewProps) {
   const theme = useTheme();
   const reduced = useReducedMotion();
   const animate = moving && !reduced;
+  const exporting = exportT !== undefined;
 
   const unit = width * layer.scale;
   const pen = Math.max(1, layer.width * unit);
@@ -61,18 +72,20 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
 
   const strokes = useMemo(() => {
     const offset = { x: box.width / 2, y: box.height / 2 };
-    const timings = drawInSchedule(layer.strokes.map((s) => strokeLength(s.points)));
+    // The export draws at the same moments the live card does, so its
+    // draw-in is the live schedule (sped up only if it would drag).
+    const timings = exporting ? exportDrawInSchedule(layer.strokes.map((s) => strokeLength(s.points))) : drawInSchedule(layer.strokes.map((s) => strokeLength(s.points)));
     return layer.strokes.map((s, i) => ({
       // Each strand of the brush, in each boil frame.
       strands: brushStrands(s.points, layer.width, i).map((strand) => ({
         width: strand.width,
         opacity: strand.opacity,
-        frames: Array.from({ length: animate ? BOIL_FRAMES : 1 }, (_, f) => strokePath(wobble(strand.points, f, amp, i), unit, offset)),
+        frames: Array.from({ length: animate || exporting ? BOIL_FRAMES : 1 }, (_, f) => strokePath(wobble(strand.points, f, amp, i), unit, offset)),
       })),
       length: strokeLength(s.points) * unit,
       timing: timings[i],
     }));
-  }, [layer.strokes, layer.width, unit, amp, animate, box.width, box.height]);
+  }, [layer.strokes, layer.width, unit, amp, animate, exporting, box.width, box.height]);
 
   // One clock for the boil; each stroke reads it at its own offset.
   const clock = useSharedValue(0);
@@ -88,7 +101,7 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
   }, [animate, clock]);
 
   const ink = layer.color ?? theme.text;
-  const drawIn = animate && strokes.length <= DRAW_IN_LIMIT;
+  const drawIn = (animate || exporting) && strokes.length <= DRAW_IN_LIMIT;
   return (
     <Svg width={box.width} height={box.height} pointerEvents="none">
       {strokes.map((s, i) => (
@@ -99,8 +112,9 @@ export function DoodleView({ layer, width, moving }: DoodleViewProps) {
             color={ink}
             pen={pen}
             clock={animate ? clock : null}
-            phase={(i * 0.37) % BOIL_FRAMES}
+            phase={strokePhase(i)}
             drawIn={drawIn ? s.timing : null}
+            exportT={exportT}
           />
       ))}
     </Svg>
@@ -117,9 +131,11 @@ interface DoodleStrokeProps {
   /** This stroke's offset on the clock, so strokes swap at different moments. */
   phase: number;
   drawIn: { delay: number; duration: number } | null;
+  /** Set while the animated export films this doodle: render exactly this moment. */
+  exportT?: number;
 }
 
-function DoodleStroke({ strands, length, color, pen, clock, phase, drawIn }: DoodleStrokeProps) {
+function DoodleStroke({ strands, length, color, pen, clock, phase, drawIn, exportT }: DoodleStrokeProps) {
   // 0 = not drawn yet, 1 = fully drawn.
   const reveal = useSharedValue(drawIn ? 0 : 1);
   const drawing = drawIn !== null;
@@ -127,17 +143,40 @@ function DoodleStroke({ strands, length, color, pen, clock, phase, drawIn }: Doo
   const duration = drawIn?.duration ?? 0;
   // Replays whenever the doodle starts moving again.
   useEffect(() => {
-    if (!drawing) {
+    if (!drawing || exportT !== undefined) {
       reveal.set(1);
       return;
     }
     reveal.set(0);
     reveal.set(withDelay(delay, withTiming(1, { duration, easing: Easing.inOut(Easing.quad) })));
     return () => cancelAnimation(reveal);
-  }, [drawing, delay, duration, reveal]);
+  }, [drawing, delay, duration, reveal, exportT]);
 
   // The dash is a little longer than the line, so the wobbled frames are covered too.
   const dash = length * 1.08 + pen;
+
+  // Export mode: the same maths the animated card plays, evaluated at one
+  // chosen moment — this boil frame, this much of the draw-in — as plain
+  // paths, so a capture of this view is exactly that moment.
+  if (exportT !== undefined) {
+    const frame = Math.floor(exportT / BOIL_FRAME_MS + phase) % strands[0].frames.length;
+    const progress = drawing ? Math.min(1, Math.max(0, duration > 0 ? (exportT - delay) / duration : 1)) : 1;
+    return strands.map((strand, k) => (
+      <Path
+        key={k}
+        d={strand.frames[frame]}
+        stroke={color}
+        strokeWidth={pen * strand.width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        opacity={strand.opacity}
+        strokeDasharray={[dash, dash]}
+        strokeDashoffset={dash * (1 - inOutQuad(progress))}
+      />
+    ));
+  }
+
   return strands.flatMap((strand, k) =>
     strand.frames.map((d, f) => (
       <BoilFrame

@@ -16,6 +16,12 @@ import type { DoodleStroke } from '@/canvas/types';
 /** How many wobble frames the boil cycles through. */
 export const BOIL_FRAMES = 3;
 
+/** How long each boil frame shows: ~7 swaps a second, the classic hand-drawn rate. */
+export const BOIL_FRAME_MS = 120;
+
+/** Past this many strokes, draw-in would drag; the doodle just appears and boils. */
+export const DRAW_IN_LIMIT = 40;
+
 /** Pen widths, as fractions of the canvas width. */
 export const PEN_WIDTHS = [0.008, 0.014, 0.024] as const;
 
@@ -100,6 +106,24 @@ export function strokeLength(points: number[]): number {
   let length = 0;
   for (let i = 2; i < points.length; i += 2) length += Math.hypot(points[i] - points[i - 2], points[i + 1] - points[i - 1]);
   return length;
+}
+
+/**
+ * Each stroke's offset on the boil clock, so strokes swap at different
+ * moments rather than in lockstep. Fractional: it shifts when a stroke
+ * swaps frames, not what it shows.
+ */
+export function strokePhase(index: number): number {
+  return (index * 0.37) % BOIL_FRAMES;
+}
+
+/**
+ * A stroke's reveal easing — Reanimated's Easing.inOut(Easing.quad), in
+ * plain maths so the animated export can compute the exact value the live
+ * card shows at any moment.
+ */
+export function inOutQuad(t: number): number {
+  return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
 
 const round = (v: number) => Math.round(v * 10000) / 10000;

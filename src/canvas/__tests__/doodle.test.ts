@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { brushStrands, doodleExtent, drawInSchedule, strokeLength, offsetLine, strokePath, toDoodle, trim, wobble } from '@/canvas/doodle';
+import { brushStrands, doodleExtent, drawInSchedule, inOutQuad, offsetLine, strokeLength, strokePath, strokePhase, toDoodle, trim, wobble } from '@/canvas/doodle';
+
+describe('strokePhase', () => {
+  it('offsets each stroke on the boil clock, spreading the swaps', () => {
+    expect(strokePhase(0)).toBe(0);
+    expect(strokePhase(1)).toBeCloseTo(0.37);
+    expect(strokePhase(3)).toBeCloseTo(1.11);
+  });
+});
+
+describe('inOutQuad', () => {
+  it('matches the live reveal easing (Easing.inOut(quad))', () => {
+    expect(inOutQuad(0)).toBe(0);
+    expect(inOutQuad(1)).toBe(1);
+    expect(inOutQuad(0.25)).toBeCloseTo(0.125);
+    expect(inOutQuad(0.5)).toBe(0.5);
+    expect(inOutQuad(0.75)).toBeCloseTo(0.875);
+  });
+});
 
 describe('toDoodle', () => {
   it('centres strokes on their bounds, in canvas-width units', () => {
