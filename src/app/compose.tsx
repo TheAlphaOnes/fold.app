@@ -16,14 +16,17 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { ComposerBody } from '@/components/compose/composer-body';
+import { isTemplateId } from '@/templates/registry';
 import { GrainBackground } from '@/components/grain-background';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function ComposeScreen() {
   const theme = useTheme();
-  const { sharedText, storyId, editId, dateTimestamp } = useLocalSearchParams<{
+  const { sharedText, storyId, editId, dateTimestamp, template } = useLocalSearchParams<{
     sharedText?: string;
+    /** Start a new memory in this template (e.g. picked on today's page). */
+    template?: string;
     storyId?: string;
     editId?: string;
     dateTimestamp?: string;
@@ -55,6 +58,7 @@ export default function ComposeScreen() {
       existing={existing}
       sharedText={sharedText}
       storyId={storyId ? Number(storyId) : undefined}
+      template={isTemplateId(template) ? template : undefined}
       createdAt={existing?.createdAt ?? (Number.isNaN(parsedDate) ? undefined : parsedDate)}
     />
   );

@@ -30,22 +30,6 @@ export function StoryBoardCard() {
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      <Pressable
-        style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
-        onPress={() => {
-          haptic.tap();
-          navigate.push('/stories');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Story board"
-      >
-        <View style={styles.headerLead}>
-          <Book size={14} color={theme.textMuted} />
-          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
-        </View>
-        <ChevronRight size={16} color={theme.textMuted} />
-      </Pressable>
-
       {tiles.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {tiles.map((tile, index) => (
@@ -77,6 +61,23 @@ export function StoryBoardCard() {
           ))}
         </ScrollView>
       )}
+
+      {/* The name signs the card off, so the card reads as one surface. */}
+      <Pressable
+        style={({ pressed }) => [styles.footer, pressed && styles.footerPressed]}
+        onPress={() => {
+          haptic.tap();
+          navigate.push('/stories');
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Story board"
+      >
+        <View style={styles.footerLead}>
+          <Book size={14} color={theme.textMuted} />
+          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>STORY BOARD</ThemedText>
+        </View>
+        <ChevronRight size={16} color={theme.textMuted} />
+      </Pressable>
     </View>
   );
 }
@@ -85,26 +86,28 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 24,
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
   },
-  header: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  headerPressed: {
+  footerPressed: {
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  headerLead: {
+  footerLead: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   row: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingTop: 16,
     gap: 12,
   },
   tile: {

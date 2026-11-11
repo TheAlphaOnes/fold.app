@@ -1,12 +1,13 @@
 /**
- * Onboarding basics — three slides, one per gesture on the orange key
- * (the first chapter of the Field Guide), so everyone leaves onboarding
- * knowing how to capture. Each slide has to be done, not skipped: NEXT
+ * Onboarding basics — four slides: one per gesture on the orange key, then
+ * today's page (the Field Guide's CAPTURE chapter), so everyone leaves
+ * onboarding knowing how to capture. Each slide has to be done, not skipped: NEXT
  * unlocks once its gesture has saved a memory (or the mic/camera is off),
  * and there's no swiping ahead. BACK always works; dots show where you are.
  *
  * The key is the real key: tap opens the writing page, hold records a voice
- * note, swipe up opens the camera. When the memory is saved and you're
+ * note that opens in the composer, swipe up opens the camera. The last slide
+ * is the real today's page: shoot, and the photo opens in the composer. When the memory is saved and you're
  * back, the slide confirms it and moves on; a wrong gesture says what to
  * do instead. Same rule as the Field Guide: only a real saved memory counts.
  */
@@ -22,6 +23,7 @@ import { AddButton } from '@/components/add-button';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { GrainBackground } from '@/components/grain-background';
 import { GestureHint } from '@/components/guide/gesture-hint';
+import { TodayCard } from '@/components/home/today-card';
 import { StepMarker } from '@/components/onboarding/onboarding-frame';
 import { ThemedText } from '@/components/themed-text';
 import { GUIDE_STEPS, type GuideStepId } from '@/constants/guide';
@@ -32,11 +34,16 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { goBack, navigate } from '@/utils/navigation';
 
-const SLIDE_IDS: GuideStepId[] = ['write', 'voice', 'capture'];
+const SLIDE_IDS: GuideStepId[] = ['write', 'voice', 'capture', 'today'];
 const SLIDES = SLIDE_IDS.map((id) => GUIDE_STEPS.find((step) => step.id === id)!);
 type KeyGesture = 'tap' | 'hold' | 'swipe-up';
 const NAMES: Record<KeyGesture, string> = { tap: 'a tap', hold: 'a hold', 'swipe-up': 'a swipe' };
-const DONE: Record<KeyGesture, string> = { tap: 'written. saved to your journal.', hold: 'recorded. saved to your journal.', 'swipe-up': 'snapped. saved to your journal.' };
+const DONE: Partial<Record<GuideStepId, string>> = {
+  write: 'written. kept in your journal.',
+  voice: 'recorded. kept in your journal.',
+  capture: 'snapped. kept in your journal.',
+  today: "today's page, kept.",
+};
 const DENIED = { hold: 'mic is off. allow it in settings, or tap next.', 'swipe-up': 'camera is off. allow it in settings, or tap next.' };
 
 export default function OnboardingBasicsScreen() {
@@ -62,6 +69,7 @@ export default function OnboardingBasicsScreen() {
   };
 
   const quickCapture = useQuickCapture();
+  const todayWidth = Math.min(width - 64, 300);
   const latest = useLatestMemory();
 
   // Success = a memory newer than the newest one when this slide began.
@@ -75,10 +83,9 @@ export default function OnboardingBasicsScreen() {
   useEffect(() => {
     if (baseline.current === null || newestId <= baseline.current) return;
     baseline.current = newestId;
-    const gesture = SLIDES[index].gesture as KeyGesture;
     haptic.success();
     clear(index);
-    setFeedback({ text: DONE[gesture], ok: true });
+    setFeedback({ text: DONE[SLIDES[index].id] ?? 'kept.', ok: true });
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     advanceTimer.current = setTimeout(() => (isLast ? navigate.push('/onboarding/tour') : goTo(index + 1)), 1100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +154,12 @@ export default function OnboardingBasicsScreen() {
                 </Animated.View>
               )}
             </View>
+            {slide.id === 'today' ? (
+              // The real today's page: shoot, and the photo opens in the composer.
+              <View style={styles.today}>
+                <TodayCard width={todayWidth} height={todayWidth * 1.25} active={i === index} onRecordVideo={quickCapture.captureVideo} />
+              </View>
+            ) : (
             <View style={styles.demo}>
               <View>
                 <AddButton
@@ -161,6 +174,7 @@ export default function OnboardingBasicsScreen() {
                 />
               </View>
             </View>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -255,6 +269,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  today: { marginTop: 20, alignItems: 'center' },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',

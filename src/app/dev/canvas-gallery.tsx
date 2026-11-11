@@ -14,6 +14,7 @@ import { CANVAS_ASPECT } from '@/canvas/geometry';
 import type { CanvasDoc, Layer, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { CloseButton } from '@/components/round-button';
 import { StampView } from '@/components/stamps/stamp-view';
+import { TodayCard } from '@/components/home/today-card';
 import { AddButton } from '@/components/add-button';
 import { KeyCaption } from '@/components/home/key-caption';
 import type { KeyGesture } from '@/home/key-hints';
@@ -87,6 +88,8 @@ export default function CanvasGallery() {
   return (
     <View style={{ flex: 1 }}>
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>
+      {/* Today's page, as it sits in the feed before the camera is allowed. */}
+      <TodayCard width={340} height={520} active={false} onRecordVideo={() => undefined} />
       {/* The orange key teaching all three gestures, to check the hint and the key's act-outs. */}
       <KeyHintSample />
       {/* A stamp (collection tile and hover size), to check the paper and postmark. */}

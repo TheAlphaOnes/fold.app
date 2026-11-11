@@ -112,7 +112,7 @@ export function DoodleToolbar({ pen, onPen, canUndo, onUndo, onDone }: DoodleToo
   return (
     <Animated.View entering={fadeIn(200)}>
       <View style={styles.row}>
-        <InkButton color={pen.color} open={inkOpen} onPress={() => setInkOpen((o) => !o)} label="Pen colour" />
+        <InkButton color={pen.color} open={inkOpen} onPress={() => setInkOpen((o) => !o)} label="Pen colour" onDark={false} />
         <Pressable
           onPress={() => {
             haptic.select();
@@ -146,7 +146,7 @@ export function DoodleToolbar({ pen, onPen, canUndo, onUndo, onDone }: DoodleToo
           <ThemedText style={[styles.doneText, { color: theme.background }]}>DONE</ThemedText>
         </Pressable>
       </View>
-      {inkOpen && <InkPalette color={pen.color} onChange={(color) => onPen({ ...pen, color })} />}
+      {inkOpen && <InkPalette color={pen.color} onChange={(color) => onPen({ ...pen, color })} onDark={false} />}
     </Animated.View>
   );
 }

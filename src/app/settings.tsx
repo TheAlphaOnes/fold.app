@@ -225,7 +225,7 @@ export default function SettingsScreen() {
           <View style={styles.sliderRow}>
             <View style={styles.settingRow}>
               <View style={styles.settingRowLeft}>
-                <ThemedText style={[styles.settingText, { color: theme.text }]}>PHOTO GLOW</ThemedText>
+                <ThemedText style={[styles.settingText, { color: theme.text }]}>BACKGROUND GLOW</ThemedText>
               </View>
               <ThemedText style={[styles.settingSubtext, styles.sliderValue, { color: theme.textSecondary }]}>
                 {glowPreview === 0 ? 'OFF' : `${Math.round(glowPreview * 100)}%`}
@@ -239,7 +239,7 @@ export default function SettingsScreen() {
                 await updateSetting('backdropIntensity', next);
                 setGlowDraft(null);
               }}
-              accessibilityLabel="Photo glow behind the timeline"
+              accessibilityLabel="Background glow behind the timeline"
             />
           </View>
 

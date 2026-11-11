@@ -8,9 +8,9 @@
  * can be tapped to open; SHUFFLE draws a fresh random set.
  *
  * Motion: the flow is linear on purpose — it represents continuous movement,
- * like a progress bar, so easing would read as stutter at each loop. The
- * entrance is segmented: columns rise in 80ms apart and the wall fades up.
- * With reduced motion the wall is shown still.
+ * like a progress bar, so easing would read as stutter at each loop. The wall
+ * appears as it is, with no entrance animation, so it never replays when the
+ * section mounts. With reduced motion the wall is shown still.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -30,10 +30,10 @@ import { Image } from 'expo-image';
 import { Shuffle } from 'lucide-react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { fadeIn, riseIn } from '@/constants/motion';
 import { useRandomPastMemories } from '@/hooks/use-random-past-memories';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
+import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { isDecorativeMedia } from '@/utils/media-kind';
@@ -194,7 +194,10 @@ function FallingColumn({
   // Two copies of the cycle stacked: while one scrolls out the bottom, the
   // other is already in place above it, so the loop has no seam.
   return (
-    <Animated.View style={[{ width, gap: GAP }, style]}>
+    // The column only ever moves as a whole, so it's drawn once into a texture
+    // and slid on the GPU; redrawing every tile (each clipped to rounded
+    // corners) on every frame is what made the profile heavy on Android.
+    <Animated.View style={[{ width, gap: GAP }, style]} renderToHardwareTextureAndroid shouldRasterizeIOS>
       {[0, 1].map((copy) => (
         <View key={copy} style={{ gap: GAP }}>
           {tiles.map((tile) => (
@@ -269,7 +272,12 @@ function ShuffleButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function FromYourPastCard() {
+interface FromYourPastCardProps {
+  /** On screen and in front: the wall only falls while it can be seen. */
+  visible?: boolean;
+}
+
+export function FromYourPastCard({ visible = true }: FromYourPastCardProps) {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const reduceMotion = useReducedMotion() ?? false;
@@ -287,7 +295,6 @@ export function FromYourPastCard() {
         <View style={styles.stage}>
           <Animated.View
             key={sampleId}
-            entering={fadeIn(400)}
             style={styles.viewport}
             onTouchStart={() => setPaused(true)}
             onTouchEnd={() => setPaused(false)}
@@ -295,13 +302,13 @@ export function FromYourPastCard() {
           >
             <View style={styles.columns}>
               {columns.map((column, index) => (
-                <Animated.View key={index} entering={riseIn(420, index * 80, 24)}>
+                <Animated.View key={index}>
                   <FallingColumn
                     tiles={column.tiles}
                     cycle={column.cycle}
                     speed={SPEEDS[index % SPEEDS.length]}
                     width={columnWidth}
-                    paused={paused}
+                    paused={paused || !visible}
                     still={reduceMotion}
                   />
                 </Animated.View>
@@ -316,6 +323,7 @@ export function FromYourPastCard() {
               <ShuffleButton
                 onPress={() => {
                   haptic.select();
+                  track('wall_shuffled', { pool_size: memories.length });
                   reshuffle();
                 }}
               />

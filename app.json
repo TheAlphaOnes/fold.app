@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fold",
     "slug": "Fold",
-    "version": "1.2.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/fold-logo.png",
     "scheme": "fold",
@@ -116,7 +116,6 @@
         }
       ],
       "./plugins/withAndroidFreeOrientation",
-      "./plugins/withRocketSimConnect",
       [
         "expo-build-properties",
         {
@@ -127,19 +126,13 @@
         }
       ],
       [
-        "expo-maps",
-        {
-          "requestLocationPermission": true,
-          "locationPermission": "Allow Fold to show the places you've stamped on your map."
-        }
-      ],
-      [
         "expo-camera",
         {
           "cameraPermission": "Allow Fold to use your camera to make stamps of the places you visit.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

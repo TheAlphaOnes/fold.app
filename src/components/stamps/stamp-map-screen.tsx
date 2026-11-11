@@ -7,13 +7,13 @@
  *   - a strip of all your stamps along the bottom, newest first.
  *
  * Opens on the whole journey, or on one stamp when `?id=` is given (from
- * the collection). Apple Maps on iOS; Android shows a note until a Google
- * Maps key is configured.
+ * the collection). MapLibre with OpenFreeMap tiles, the same on iOS and
+ * Android.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { AppleMaps } from 'expo-maps';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StampMapView, type StampMapHandle } from '@/components/stamps/stamp-map-view';
 import { useLocalSearchParams } from 'expo-router';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,30 +23,45 @@ import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import { fadeIn, riseIn } from '@/constants/motion';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useStamps } from '@/hooks/use-stamps';
-import { useTheme, useThemeContext } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/use-theme';
+import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
+import { markGuideDone } from '@/services/guide-progress';
 import { placeCount, regionFor } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
 const STRIP_STAMP = 64;
+/** The strip's own height (its top padding plus a stamp), so the location button clears it. */
+const STRIP_HEIGHT = 12 + STRIP_STAMP * STAMP_ASPECT;
 const HOVER_STAMP = 150;
 /** Zoom when focusing one stamp: about a city. */
 const FOCUS_ZOOM = 11;
 
 export default function StampMap() {
+  useEffect(() => markGuideDone('stampmap'), []);
   const theme = useTheme();
-  const { isDark } = useThemeContext();
+
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { stamps, loaded, load } = useStamps();
-  const map = useRef<AppleMaps.MapView>(null);
+  const map = useRef<StampMapHandle>(null);
   const [selectedId, setSelectedId] = useState<number | null>(id ? Number(id) : null);
 
   useEffect(() => {
     if (!loaded) load();
   }, [loaded, load]);
+
+  // Counted once the collection is in, so the shape of the journey is real.
+  const reported = useRef(false);
+  useEffect(() => {
+    if (reported.current || !loaded) return;
+    reported.current = true;
+    track('stamp_map_opened', { stamp_count: stamps.length, place_count: placeCount(stamps), focus: id ? 'stamp' : 'journey' });
+  }, [loaded, stamps, id]);
 
   const selected = stamps.find((s) => s.id === selectedId) ?? null;
   // The journey in the order it happened.
@@ -66,16 +81,19 @@ export default function StampMap() {
     framed.current = true;
     const target = id ? stamps.find((s) => s.id === Number(id)) : undefined;
     const region = regionFor(stamps);
-    if (target) map.current?.setCameraPosition({ coordinates: { latitude: target.latitude, longitude: target.longitude }, zoom: FOCUS_ZOOM });
-    else if (region) map.current?.setCameraPosition({ coordinates: { latitude: region.latitude, longitude: region.longitude }, zoom: region.zoom });
+    if (target) map.current?.focus(target.latitude, target.longitude, FOCUS_ZOOM);
+    else if (region) map.current?.focus(region.latitude, region.longitude, region.zoom);
   }, [stamps, id]);
 
   const serials = useMemo(() => new Map(journey.map((s, i) => [s.id, i + 1])), [journey]);
 
+  // The location button sits just above the stamp strip, or near the bottom when there is no strip.
+  const locationButtonBottom = stamps.length > 0 ? bottomInset + 10 + STRIP_HEIGHT + 10 : bottomInset + 12;
+
   const focus = (stamp: Stamp) => {
     haptic.select();
     setSelectedId(stamp.id);
-    map.current?.setCameraPosition({ coordinates: { latitude: stamp.latitude, longitude: stamp.longitude }, zoom: FOCUS_ZOOM });
+    map.current?.focus(stamp.latitude, stamp.longitude, FOCUS_ZOOM);
   };
 
   const header = (
@@ -84,8 +102,8 @@ export default function StampMap() {
       <View style={[styles.titleChip, { backgroundColor: theme.background + 'E6', borderColor: theme.border }]}>
         <ThemedText style={[Type.rail, { color: theme.text }]}>MAP</ThemedText>
         {stamps.length > 0 && (
-          <ThemedText style={[styles.count, { color: theme.textMuted }]}>
-            {placeCount(stamps)} {placeCount(stamps) === 1 ? 'place' : 'places'}
+          <ThemedText style={[Type.rail, { color: theme.textMuted }]}>
+            · {placeCount(stamps)} {placeCount(stamps) === 1 ? 'PLACE' : 'PLACES'}
           </ThemedText>
         )}
       </View>
@@ -93,39 +111,21 @@ export default function StampMap() {
     </Animated.View>
   );
 
-  if (Platform.OS !== 'ios') {
-    return (
-      <View style={[styles.root, { backgroundColor: theme.background }]}>
-        {header}
-        <View style={styles.centre}>
-          <ThemedText style={[styles.note, { color: theme.textMuted }]}>The map is coming to Android soon.</ThemedText>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <AppleMaps.View
+      <StampMapView
         ref={map}
-        style={StyleSheet.absoluteFill}
-        cameraPosition={initialCamera}
-        colorScheme={isDark ? AppleMaps.MapColorScheme.DARK : AppleMaps.MapColorScheme.LIGHT}
-        markers={stamps.map((s) => ({
-          id: String(s.id),
-          coordinates: { latitude: s.latitude, longitude: s.longitude },
-          title: s.place,
-          systemImage: 'seal.fill',
-          tintColor: s.id === selectedId ? theme.text : theme.textMuted,
-        }))}
-        polylines={journey.length > 1 ? [{ id: 'journey', coordinates: journey.map((s) => ({ latitude: s.latitude, longitude: s.longitude })), color: theme.text + '66', width: 2 }] : []}
-        uiSettings={{ compassEnabled: false, myLocationButtonEnabled: false, scaleBarEnabled: false, togglePitchEnabled: false }}
-        properties={{ pointsOfInterest: { including: [] }, elevation: AppleMaps.MapStyleElevation.FLAT }}
-        onMarkerClick={(marker) => {
-          const stamp = stamps.find((s) => String(s.id) === marker.id);
+        stamps={stamps}
+        camera={initialCamera ? { latitude: initialCamera.coordinates.latitude, longitude: initialCamera.coordinates.longitude, zoom: initialCamera.zoom } : undefined}
+        pinSize={44}
+        selectedId={selectedId}
+        onPinPress={(id) => {
+          const stamp = stamps.find((s) => s.id === id);
           if (stamp) focus(stamp);
         }}
-        onMapClick={() => setSelectedId(null)}
+        onMapPress={() => setSelectedId(null)}
+        showLocationButton
+        locationButtonBottom={locationButtonBottom}
       />
 
       {header}
@@ -142,7 +142,7 @@ export default function StampMap() {
       )}
 
       {stamps.length > 0 && (
-        <View style={[styles.bottom, { paddingBottom: insets.bottom + 10 }]} pointerEvents="box-none">
+        <View style={[styles.bottom, { paddingBottom: bottomInset + 10 }]} pointerEvents="box-none">
           {selected && <HoverStamp key={selected.id} stamp={selected} serial={serials.get(selected.id)} />}
           <Animated.View entering={riseIn(340, 160, 14)}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
@@ -192,7 +192,6 @@ const styles = StyleSheet.create({
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
   titleChip: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, marginHorizontal: 'auto' },
   topSpacer: { width: 34 },
-  count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8 },
   centre: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   note: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, textAlign: 'center' },
   emptyCard: { alignItems: 'center', gap: 16, padding: 24, borderRadius: 20, borderWidth: 1 },

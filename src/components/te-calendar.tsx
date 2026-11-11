@@ -46,8 +46,17 @@ export function TECalendar({ onSelect }: TECalendarProps) {
   useEffect(() => {
     void ensureCovers(monthKey);
   }, [monthKey, ensureCovers]);
+
+  // The grid draws first, with numbers and dots; the month's photos mount
+  // once the thread is idle, so building the calendar never blocks a scroll
+  // or a tap. They fade in natively as they decode.
+  const [photosReady, setPhotosReady] = useState(false);
+  useEffect(() => {
+    const idle = requestIdleCallback(() => setPhotosReady(true));
+    return () => cancelIdleCallback(idle);
+  }, []);
   const coverFor = (dayNum: number): DayCover | undefined =>
-    monthCovers?.[`${monthKey}-${String(dayNum).padStart(2, '0')}`];
+    photosReady ? monthCovers?.[`${monthKey}-${String(dayNum).padStart(2, '0')}`] : undefined;
 
   const changePage = (delta: number) => {
     if (viewMode === 'days') {

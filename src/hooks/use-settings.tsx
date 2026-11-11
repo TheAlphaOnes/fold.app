@@ -19,6 +19,26 @@ export interface GuideProgress {
   stories: boolean;
   /** The HABIT chapter: ink and the daily reminders. */
   rhythm: boolean;
+  // Added with the rebuilt guide. Stored progress is merged over these
+  // defaults, so people who finished the old guide keep it and only these light up.
+  /** Shot something from today's page. */
+  today: boolean;
+  /** Changed a page's template in the composer. */
+  template: boolean;
+  /** Added something from the composer's add row. */
+  addrow: boolean;
+  /** Replaced, flipped or removed a photo in a frame. */
+  frame: boolean;
+  /** Swiped to another page of an opened memory. */
+  pages: boolean;
+  /** Made a stamp. */
+  stampmake: boolean;
+  /** Pulled up the stamp collection. */
+  stampdrawer: boolean;
+  /** Opened the stamp map. */
+  stampmap: boolean;
+  /** Put a stamp on a page. */
+  stampsticker: boolean;
 }
 
 export const defaultGuideProgress: GuideProgress = {
@@ -30,6 +50,15 @@ export const defaultGuideProgress: GuideProgress = {
   stickers: false,
   stories: false,
   rhythm: false,
+  today: false,
+  template: false,
+  addrow: false,
+  frame: false,
+  pages: false,
+  stampmake: false,
+  stampdrawer: false,
+  stampmap: false,
+  stampsticker: false,
 };
 
 export interface UserSettings {

@@ -25,12 +25,14 @@ import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-n
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated from 'react-native-reanimated';
+
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { Book, Camera, Image as ImageIcon, Undo2 } from 'lucide-react-native';
 
 import { CanvasEditor } from '@/canvas/edit/canvas-editor';
 import { initialComposerState, useComposerState } from '@/canvas/edit/use-composer-state';
 import { fitCanvas, newId } from '@/canvas/geometry';
-import type { CanvasDoc, StickerShape, TextLayer } from '@/canvas/types';
+import type { CanvasDoc, StickerShape, TemplateId, TextLayer } from '@/canvas/types';
 import { formatMoment } from '@/utils/format-date';
 import { legacyCardFor } from '@/canvas/use-canvas-of';
 import { ADD_ROW_HEIGHT, AddRow, type AddKind } from '@/components/compose/add-row';
@@ -56,11 +58,12 @@ import { useStoriesStore } from '@/hooks/use-stories';
 import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useTheme } from '@/hooks/use-theme';
 import { useVoiceTake } from '@/hooks/use-voice-take';
-import { trackError, type CaptureSource } from '@/services/analytics';
+import { track, trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
+import { markGuideDone } from '@/services/guide-progress';
 import { lookupLocation } from '@/services/location.service';
 import { canvasOf } from '@/templates/legacy';
-import { defaultTextSpot, frameMediaId, isBlankCard, scatterSticker, shownMediaIds } from '@/templates/registry';
+import { defaultTextSpot, frameMediaId, isBlankCard, newDoc, scatterSticker, shownMediaIds } from '@/templates/registry';
 import type { Composition, MediaElement } from '@/types/journal';
 import { alertElementCap, alertMusicLimit, hasMusicElement } from '@/utils/media-attach';
 import { goBack } from '@/utils/navigation';
@@ -95,13 +98,16 @@ interface ComposerBodyProps {
   sharedText?: string;
   storyId?: number;
   createdAt?: number;
+  /** A new memory starts in this template (otherwise the one that suits its media). */
+  template?: TemplateId;
 }
 
 type Editing = { id: string; isNew: boolean } | null;
 
-export function ComposerBody({ existing, sharedText, storyId, createdAt }: ComposerBodyProps) {
+export function ComposerBody({ existing, sharedText, storyId, createdAt, template }: ComposerBodyProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const window = useWindowDimensions();
   const { settings } = useSettings();
   const stories = useStoriesStore((s) => s.stories);
@@ -127,7 +133,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       width: p.width,
       height: p.height,
     }));
-    const state = initialComposerState(media);
+    const state = initialComposerState(media, template ? newDoc(media, template) : undefined);
     // A voice note (held on the orange key) arrives as a disc in the middle,
     // the same sticker the composer's own Voice button adds.
     const voices = media.filter((m) => m.type === 'audio');
@@ -176,7 +182,7 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
   // ─── Canvas size: the largest 9:16 that fits between the bars ─────────
   const canvas = fitCanvas({
     width: window.width - 32,
-    height: window.height - insets.top - insets.bottom - TOP_BAR - ADD_AREA - BOTTOM_BAR - CANVAS_MARGIN * 2,
+    height: window.height - insets.top - bottomInset - TOP_BAR - ADD_AREA - BOTTOM_BAR - CANVAS_MARGIN * 2,
   });
   const memory = {
     id: existing?.id ?? -1,
@@ -219,6 +225,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     const added = await media.captureWithCamera();
     c.addMedia(added);
   };
+  /** Holding the camera button opens the camera ready to film. */
+  const addVideoFromCamera = async () => {
+    const added = await media.captureWithCamera({ video: true });
+    c.addMedia(added);
+  };
   /** From the text editor's camera/gallery buttons: keep what was typed, then add the photo. */
   const fromWriting = (action: () => Promise<void>) => async (draft: TextDraft) => {
     finishText(draft);
@@ -230,7 +241,13 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
     c.addLayer(scatterSticker(m.id, count + offset), m);
   };
 
+  const pickTemplate = (template: TemplateId) => {
+    c.setTemplate(template);
+    markGuideDone('template');
+  };
+
   const onAdd = async (kind: AddKind) => {
+    markGuideDone('addrow');
     switch (kind) {
       case 'text':
         setEditing({ id: newId(), isNew: true });
@@ -436,6 +453,14 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {doodle && <View style={{ height: insets.top + TOP_BAR + ADD_AREA }} />}
 
       <Animated.View entering={riseIn(320, 60, 12)} style={styles.canvasSlot}>
+        {/* Taps around the canvas (not on it) let go of a selected sticker or photo. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            if (c.selectedId || c.selectedFrame) c.select(null);
+          }}
+          accessible={false}
+        />
         <CanvasEditor
           doc={c.doc}
           media={c.media}
@@ -476,25 +501,34 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
         {!templatesOpen && c.selectedFrame && frameMediaId(c.doc, c.selectedFrame) && (
           <FrameTools
             canFlip={c.selectedFrame !== 'background'}
-            onReplace={() => fillFrame(c.selectedFrame!)}
-            onFlip={() => c.mirrorCell(c.selectedFrame!)}
-            onRemove={() => c.clearFrame(c.selectedFrame!)}
+            onReplace={() => {
+              markGuideDone('frame');
+              fillFrame(c.selectedFrame!);
+            }}
+            onFlip={() => {
+              markGuideDone('frame');
+              c.mirrorCell(c.selectedFrame!);
+            }}
+            onRemove={() => {
+              markGuideDone('frame');
+              c.clearFrame(c.selectedFrame!);
+            }}
           />
         )}
       </Animated.View>
 
       {!editing && !doodle && (
-        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: insets.bottom + 8 }]}>
+        <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottomRow, { paddingBottom: bottomInset + 8 }]}>
           {/* Camera and gallery at the thumb, the most common way in; the add row has the rest. */}
           <View style={styles.side}>
-            <RoundButton icon={Camera} accessibilityLabel="Take a photo or video" onPress={addFromCamera} />
+            <RoundButton icon={Camera} accessibilityLabel="Take a photo, or hold to record a video" onPress={addFromCamera} onLongPress={addVideoFromCamera} />
             <RoundButton icon={ImageIcon} accessibilityLabel="Add from gallery" onPress={addFromGallery} />
           </View>
           <View style={styles.middle}>
             <TemplatePicker
               current={c.doc.template}
               open={templatesOpen}
-              onPick={c.setTemplate}
+              onPick={pickTemplate}
               onToggleList={() => setTemplatesOpen((o) => !o)}
             />
           </View>
@@ -516,20 +550,20 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
       {templatesOpen && (
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setTemplatesOpen(false)} accessibilityLabel="Close templates" />
-          <View style={[styles.templateList, { bottom: insets.bottom + 8 + ROUND_BUTTON_SIZE + GAP }]}>
+          <View style={[styles.templateList, { bottom: bottomInset + 8 + ROUND_BUTTON_SIZE + GAP }]}>
             <TemplateList
               current={c.doc.template}
               gap={c.doc.gap}
               onGap={c.setGap}
               onPick={(template) => {
-                c.setTemplate(template);
+                pickTemplate(template);
                 setTemplatesOpen(false);
               }}
             />
           </View>
         </>
       )}
-      {(editing || doodle) && <View style={{ height: BOTTOM_BAR + insets.bottom }} />}
+      {(editing || doodle) && <View style={{ height: BOTTOM_BAR + bottomInset }} />}
 
       {editing && (
         <TextEditorSheet
@@ -604,7 +638,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt }: Compo
             return;
           }
           const m: MediaElement = { id: newId(), uri: dest, type: 'image', isStamp: true, x_pos: 0, y_pos: 0 };
+          markGuideDone('stampsticker');
           c.addLayer({ id: newId(), kind: 'stamp', mediaId: m.id, place: stamp.place, stampedAt: stamp.createdAt, x: 0.5, y: 0.4, scale: 1, rotation: -5 }, m);
+          track('stamp_used_on_memory', {});
           haptic.thud();
         }}
       />

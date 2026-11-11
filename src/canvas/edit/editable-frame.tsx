@@ -10,7 +10,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
@@ -32,9 +32,11 @@ interface EditableFrameProps {
   onLongPress?: () => void;
   /** Outline shown while selected or picked up for a swap. */
   highlighted?: boolean;
+  /** Corner radii for the selection outline, matching the corners that clip this frame. */
+  highlightRadii?: ViewStyle;
 }
 
-export function EditableFrame({ media, crop, width, height, mirrored, onCrop, onTap, onLongPress, highlighted }: EditableFrameProps) {
+export function EditableFrame({ media, crop, width, height, mirrored, onCrop, onTap, onLongPress, highlighted, highlightRadii }: EditableFrameProps) {
   const x = useSharedValue(crop.x);
   const y = useSharedValue(crop.y);
   const scale = useSharedValue(crop.scale);
@@ -113,13 +115,25 @@ export function EditableFrame({ media, crop, width, height, mirrored, onCrop, on
         </Animated.View>
         {highlighted && (
           // White outline with a fine dark inner line: visible on light and dark photos alike.
-          <View style={[StyleSheet.absoluteFill, styles.highlight]} pointerEvents="none">
-            <View style={[StyleSheet.absoluteFill, styles.highlightInner]} />
+          <View style={[StyleSheet.absoluteFill, styles.highlight, highlightRadii]} pointerEvents="none">
+            <View style={[StyleSheet.absoluteFill, styles.highlightInner, insetRadii(highlightRadii, 3)]} />
           </View>
         )}
       </View>
     </GestureDetector>
   );
+}
+
+/** The inner line sits inside the 3pt outline, so its corners curve a little tighter. */
+function insetRadii(r: ViewStyle | undefined, by: number): ViewStyle | undefined {
+  if (!r) return undefined;
+  const less = (v: unknown) => (typeof v === 'number' && v > 0 ? Math.max(0, v - by) : 0);
+  return {
+    borderTopLeftRadius: less(r.borderTopLeftRadius),
+    borderTopRightRadius: less(r.borderTopRightRadius),
+    borderBottomRightRadius: less(r.borderBottomRightRadius),
+    borderBottomLeftRadius: less(r.borderBottomLeftRadius),
+  };
 }
 
 const styles = StyleSheet.create({

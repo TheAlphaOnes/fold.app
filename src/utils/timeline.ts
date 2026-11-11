@@ -7,6 +7,12 @@ export interface TimelineSpineEntry {
 
 export type TimelineRow =
   | {
+      /** Today's page: the camera card, newest slot, while nothing is kept yet today. */
+      type: 'today';
+      id: string;
+      offset: number;
+    }
+  | {
       type: 'memory';
       id: string;
       compositionId: number;
@@ -45,10 +51,17 @@ export function buildTimelineRows(
   mode: TimelineFeedMode,
   snapInterval: number,
   separatorHeight: number,
-): { items: TimelineRow[]; offsets: number[] } {
+  /** Start with today's page (the newest slot, below every memory). */
+  leadToday = false,
+): { items: TimelineRow[]; offsets: number[]; snapOffsets: number[]; todayOffset: number | null } {
   const items: TimelineRow[] = [];
+  // One per memory, in spine order (index i is spine[i]); today's page is kept apart.
   const offsets: number[] = [];
   let currentOffset = 0;
+  if (leadToday) {
+    items.push({ type: 'today', id: 'today', offset: 0 });
+    currentOffset += snapInterval;
+  }
   let lastBlock: string | null = null;
 
   for (const entry of spineNewestFirst) {
@@ -76,7 +89,15 @@ export function buildTimelineRows(
     currentOffset += snapInterval;
   }
 
-  return { items, offsets };
+  return { items, offsets, snapOffsets: leadToday ? [0, ...offsets] : offsets, todayOffset: leadToday ? 0 : null };
+}
+
+/** Whether any memory in the newest-first spine was made on the same calendar day as `now`. */
+export function keptToday(spineNewestFirst: TimelineSpineEntry[], now = new Date()): boolean {
+  const newest = spineNewestFirst[0];
+  if (!newest) return false;
+  const d = new Date(newest.createdAt);
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
 /** Closest memory index for a content offset. Offsets are ascending. */

@@ -19,7 +19,7 @@ import type { MediaElement } from '@/types/journal';
 /** Lets the composer draw editable frames in place of the static ones. */
 export interface FrameRenderers {
   /** A photo/video frame: the Story background ('background') or a grid cell (its id). */
-  frame: (target: string, media: MediaElement, crop: Crop, width: number, height: number, mirrored?: boolean) => React.ReactNode;
+  frame: (target: string, media: MediaElement, crop: Crop, width: number, height: number, mirrored?: boolean, origin?: { left: number; top: number }) => React.ReactNode;
   /** An empty grid cell. */
   emptyCell?: (cellId: string, width: number, height: number) => React.ReactNode;
 }
@@ -106,7 +106,7 @@ function GridBase({
           <View key={cell.id} style={[styles.cell, { left, top, width: w, height: h }]}>
             {m ? (
               renderers ? (
-                renderers.frame(cell.id, m, fill!.crop, w, h, fill!.mirrored)
+                renderers.frame(cell.id, m, fill!.crop, w, h, fill!.mirrored, { left, top })
               ) : (
                 <MediaFill media={m} crop={fill!.crop} width={w} height={h} mirrored={fill!.mirrored} playing={playing} fade={fade} />
               )

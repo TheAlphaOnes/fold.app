@@ -5,26 +5,22 @@
  * or video to the gallery, delete (to Recently Deleted, after confirming).
  */
 
-import React, { useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert } from 'react-native';
 
-import * as Sharing from 'expo-sharing';
 
-import { LogoUploadFlight } from '@/components/logo-upload-flight';
+import { useShareCard } from '@/components/share-card-host';
 import { MemoryActionsTray } from '@/components/memory-actions-tray';
-import { ExportCanvas, captureExport } from '@/canvas/render/export-canvas';
 import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
 import { useSettingsStore } from '@/hooks/use-settings';
-import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { saveToGallery } from '@/services/media-save.service';
 import type { Composition } from '@/types/journal';
 import { navigate } from '@/utils/navigation';
 
 /** The bird hangs, then flies off the top; capture once it's gone (700ms + 1000ms). */
-const FLIGHT_MS = 1750;
 
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -35,7 +31,6 @@ function subtitleFor(memory: Composition): string {
 }
 
 export function MemoryActionsHost() {
-  const [flightKey, setFlightKey] = useState(0);
   const memory = useMemoryActions((state) => state.memory);
   const options = useMemoryActions((state) => state.options);
   const close = useMemoryActions((state) => state.close);
@@ -45,9 +40,8 @@ export function MemoryActionsHost() {
 
   // The memory an action is working on, kept after the menu closes.
   const [target, setTarget] = useState<Composition | null>(null);
-  const [capturing, setCapturing] = useState(false);
   const [pickingStory, setPickingStory] = useState(false);
-  const cardRef = useRef<View>(null);
+  const shareFlow = useShareCard();
 
   // Keep the menu's contents while it animates out.
   const [shown, setShown] = useState<Composition | null>(null);
@@ -60,28 +54,12 @@ export function MemoryActionsHost() {
   const firstMedia = current.mediaElements.find((m) => m.type === 'image' || m.type === 'video');
   const onShared = options?.onShared;
 
-  const shareCard = async () => {
-    const item = current;
-    setTarget(item);
-    setCapturing(true);
-    haptic.thud();
-    setFlightKey((key) => key + 1);
-    try {
-      // The bird carries the card off first; capturing freezes JS, so wait it out.
-      await new Promise((resolve) => setTimeout(resolve, FLIGHT_MS));
-      const uri = await captureExport(cardRef);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { dialogTitle: 'Share Memory Card', mimeType: 'image/png' });
-        completeGuideStep('share');
-        track('memory_shared', { method: 'card' });
-        onShared?.();
-      }
-    } catch (error) {
-      console.error('Failed to share memory card', error);
-      Alert.alert('Couldn’t share', 'Please try again.');
-    } finally {
-      setCapturing(false);
-    }
+  const shareCard = () => {
+    setTarget(current);
+    void shareFlow.share(current, () => {
+      completeGuideStep('share');
+      onShared?.();
+    });
   };
 
   const confirmDelete = () => {
@@ -133,24 +111,8 @@ export function MemoryActionsHost() {
         }}
       />
 
-      {flightKey > 0 && (
-        <View style={[StyleSheet.absoluteFill, styles.flight]} pointerEvents="none">
-          <LogoUploadFlight key={flightKey} />
-        </View>
-      )}
-
-      {/* Offscreen copy of the card, captured as the shared image. */}
-      {capturing && target && (
-        <ExportCanvas ref={cardRef} memory={target} />
-      )}
+      {/* Preparing pill, the bird, and the offscreen card that becomes the image. */}
+      {shareFlow.overlay}
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  flight: {
-    zIndex: 9000,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

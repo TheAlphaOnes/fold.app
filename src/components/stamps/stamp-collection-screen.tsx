@@ -30,6 +30,7 @@ import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import { fadeIn, riseIn } from '@/constants/motion';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
@@ -44,6 +45,7 @@ const COLUMN_GAP = 18;
 export default function StampCollection() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const { width } = useWindowDimensions();
   const { stamps, loaded, load, remove, justAdded, clearJustAdded } = useStamps();
 
@@ -98,7 +100,7 @@ export default function StampCollection() {
           keyExtractor={(s) => String(s.id)}
           numColumns={2}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + ROUND_BUTTON_SIZE + 48 }]}
+          contentContainerStyle={[styles.grid, { paddingBottom: bottomInset + ROUND_BUTTON_SIZE + 48 }]}
           showsVerticalScrollIndicator={false}
           initialNumToRender={8}
           windowSize={7}
@@ -116,7 +118,7 @@ export default function StampCollection() {
         />
       )}
 
-      <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottom, { paddingBottom: insets.bottom + 8 }]}>
+      <Animated.View entering={riseIn(340, 180, 12)} style={[styles.bottom, { paddingBottom: bottomInset + 8 }]}>
         <Pressable
           onPress={openCamera}
           accessibilityRole="button"

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { InkButton, InkPalette } from '@/components/compose/ink-palette';
 import { FontList, FontPill } from '@/components/compose/font-pill';
+import { useBottomInset } from '@/hooks/use-bottom-inset';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { fadeIn, riseIn } from '@/constants/motion';
 import type { TextAlign, TextLayer } from '@/canvas/types';
@@ -46,6 +47,7 @@ interface TextEditorSheetProps {
 export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGallery }: TextEditorSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const keyboardShown = useKeyboardShown();
   const [draft, setDraft] = useState<TextDraft>(initial);
   const [inkOpen, setInkOpen] = useState(false);
@@ -140,7 +142,7 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
           </View>
         </ScrollView>
 
-        <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: keyboardShown ? 8 : insets.bottom + 8 }]}>
+        <Animated.View entering={riseIn(260, 60, 8)} style={[styles.bottom, { paddingBottom: keyboardShown ? 8 : bottomInset + 8 }]}>
           {fontsOpen && (
             <FontList
               font={draft.font}

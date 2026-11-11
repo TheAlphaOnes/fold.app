@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { createStamp, deleteStamp, getAllStamps } from '@/db/stamps-repository';
-import { trackError } from '@/services/analytics';
+import { track, trackError } from '@/services/analytics';
 import type { NewStamp, Stamp } from '@/types/stamp';
 
 interface StampsState {
@@ -55,6 +55,7 @@ export const useStamps = create<StampsState>((set, get) => ({
     const stamp = get().stamps.find((s) => s.id === id);
     await deleteStamp(id);
     set({ stamps: get().stamps.filter((s) => s.id !== id) });
+    track('stamp_removed', { remaining: get().stamps.length });
     if (stamp) await FileSystem.deleteAsync(stamp.imageUri, { idempotent: true });
   },
 }));

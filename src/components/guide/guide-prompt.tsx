@@ -11,11 +11,12 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe } from 'react-native-reanimated';
 
+import { BalancedText } from '@/components/balanced-text';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { GUIDE_CHAPTERS, chapterPosition, type GuideStep } from '@/constants/guide';
 import { SPRING_BOUNCE, fadeIn, fadeOut, liftOut, riseIn } from '@/constants/motion';
-import { BALANCED_TEXT } from '@/constants/theme';
+
 import type { GuideStatus } from '@/hooks/use-guide-flow';
 
 const successIn = new Keyframe({
@@ -64,18 +65,11 @@ export function GuidePrompt({ step, status, nudge }: GuidePromptProps) {
         <View style={styles.hintSlot}>
           {nudge ? (
             <Animated.View key={`nudge-${nudge}`} entering={fadeIn(180)} exiting={fadeOut(120)}>
-              <ThemedText {...BALANCED_TEXT} style={[styles.hint, { color: theme.accentWarm }]}>
-                {nudge}
-              </ThemedText>
+              <BalancedText style={[styles.hint, { color: theme.accentWarm }]}>{nudge}</BalancedText>
             </Animated.View>
           ) : (
             <Animated.View key="hint" entering={riseIn(300, 80, 6)} exiting={fadeOut(120)}>
-              <ThemedText
-                {...BALANCED_TEXT}
-                style={[styles.hint, { color: theme.textSecondary, opacity: isSuccess ? 0.45 : 1 }]}
-              >
-                {step.hint}
-              </ThemedText>
+              <BalancedText style={[styles.hint, { color: theme.textSecondary, opacity: isSuccess ? 0.45 : 1 }]}>{step.hint}</BalancedText>
             </Animated.View>
           )}
         </View>

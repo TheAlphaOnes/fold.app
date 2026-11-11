@@ -99,7 +99,7 @@ export function GuideHeader({ currentMission, missionState, onSelectMission, onC
 
         <View style={styles.ticks} accessibilityRole="tablist">
           {GUIDE_CHAPTERS.map((chapter) => (
-            <View key={chapter.id} style={styles.chapterGroup}>
+            <View key={chapter.id} style={[styles.chapterGroup, { flexBasis: chapter.missions.length * TICK_WIDTH }]}>
               {chapter.missions.map((mission) => (
                 <MissionTick
                   key={mission}
@@ -152,18 +152,22 @@ const styles = StyleSheet.create({
   arrowOff: {
     opacity: 0.3,
   },
+  // The ticks share whatever room the buttons leave: each shrinks (up to its
+  // full width) so every mission fits however many the guide has.
   ticks: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
   },
   chapterGroup: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
+    flexShrink: 1,
   },
   tick: {
+    flexShrink: 1,
     width: TICK_WIDTH,
     height: TICK_HEIGHT,
   },

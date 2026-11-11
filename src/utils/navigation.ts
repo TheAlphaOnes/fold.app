@@ -36,3 +36,12 @@ export function goBack(fallback: Href = '/'): void {
     else router.replace(fallback);
   });
 }
+
+/**
+ * Land on the homepage: pop every screen above it, or replace the current
+ * one when the stack doesn't contain it (a deep link opened straight into a
+ * screen). Used when a flow is finished and the next thing is the timeline.
+ */
+export function goHome(): void {
+  once('home', () => router.dismissTo('/'));
+}

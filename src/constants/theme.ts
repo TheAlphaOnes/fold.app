@@ -5,8 +5,10 @@ export const Colors = {
     backgroundSurface: '#FFFFFF', 
     backgroundSelected: '#F2F2F2',
     text: '#000000', 
-    textSecondary: '#878787', 
-    textMuted: '#878787',
+    // Muted ink on white needs 4.5:1+ to stay readable at caption sizes;
+    // #878787 (dark mode's floor) measured 3.5:1 here and read as invisible.
+    textSecondary: '#666666', 
+    textMuted: '#666666',
     border: '#878787',
     borderStrong: '#000000',
     accent: '#000000', 
