@@ -74,7 +74,7 @@ export const AchievementCard = forwardRef<View, AchievementCardProps>(function A
       <Hatch color={`${theme.textMuted}1A`} strokeWidth={1} period={9} style={StyleSheet.absoluteFill} />
 
       {/* A ghost of the mark, big and faint, in the top-right corner with room around it. */}
-      <View style={[styles.watermark, { top: 16, right: 16 }]} pointerEvents="none">
+      <View style={[styles.watermark, { top: 10, right: 10 }]} pointerEvents="none">
         <Logo size={width * 0.62} color={theme.text} opacity={0.07} />
       </View>
 
