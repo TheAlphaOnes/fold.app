@@ -48,7 +48,7 @@ import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
-import { placeCount } from '@/stamps/geometry';
+import { groupByPlace, placeCount, type PlaceGroup } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
@@ -183,6 +183,8 @@ function Fan({ stamps, progress, justAdded, width }: FanProps) {
   const theme = useTheme();
   // The newest sits in the middle, on top (where a new stamp lands); older ones
   // alternate outward. Drawn oldest first so the newest ends up above.
+  // The peek is the latest stamps themselves, even from one city: the fan is
+  // the collection's edge, not the collection (that one clubs by place).
   const latest = stamps.slice(0, FAN_MAX).map((s, i) => ({ s, offset: i === 0 ? 0 : (i % 2 === 1 ? -1 : 1) * Math.ceil(i / 2) })).reverse();
   const gathered = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0, 0.4], [1, 0], Extrapolation.CLAMP),
@@ -266,20 +268,29 @@ interface CollectionProps {
 /** The full collection: rises into the drawer as it opens. */
 function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, onPullClose }: CollectionProps) {
   const theme = useTheme();
-  const { remove } = useStamps();
+  const { removeMany } = useStamps();
   const places = placeCount(stamps);
   const tile = (width - EDGE * 2 - COLUMN_GAP) / 2;
   const serials = useMemo(() => new Map([...stamps].sort((a, b) => a.createdAt - b.createdAt).map((s, i) => [s.id, i + 1])), [stamps]);
+  // The grid is places, not stamps: a city's stamps club under its newest.
+  const groups = useMemo(() => groupByPlace(stamps), [stamps]);
   const risen = useAnimatedStyle(() => ({
     opacity: interpolate(progress.get(), [0.3, 0.9], [0, 1], Extrapolation.CLAMP),
     transform: [{ translateY: (1 - progress.get()) * 60 }],
   }));
 
-  const confirmRemove = (stamp: Stamp) => {
-    Alert.alert('Remove this stamp?', `${stamp.place} will come off your collection and map.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => remove(stamp.id) },
-    ]);
+  const confirmRemove = (group: PlaceGroup<Stamp>) => {
+    const n = group.stamps.length;
+    Alert.alert(
+      n === 1 ? 'Remove this stamp?' : `Remove all ${n} stamps?`,
+      n === 1
+        ? `${group.place} will come off your collection and map.`
+        : `Every ${group.place} stamp will come off your collection and map.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => void removeMany(group.stamps.map((s) => s.id)) },
+      ],
+    );
   };
 
   return (
@@ -297,8 +308,8 @@ function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, 
         <EmptyCollection width={tile} />
       ) : (
         <FlatList
-          data={stamps}
-          keyExtractor={(s) => String(s.id)}
+          data={groups}
+          keyExtractor={(g) => g.place.toLowerCase()}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={[styles.grid, { paddingBottom: bottom + 24 }]}
@@ -312,12 +323,13 @@ function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, 
           }}
           renderItem={({ item, index }) => (
             <StampTile
-              stamp={item}
+              stamp={item.newest}
               width={tile}
-              serial={serials.get(item.id)}
+              serial={serials.get(item.newest.id)}
+              count={item.stamps.length}
               index={index}
-              landing={open && item.id === justAdded}
-              onOpen={() => navigate.push(`/stamps/map?id=${item.id}`)}
+              landing={open && item.newest.id === justAdded}
+              onOpen={() => navigate.push(`/stamps/map?id=${item.newest.id}`)}
               onRemove={() => confirmRemove(item)}
             />
           )}

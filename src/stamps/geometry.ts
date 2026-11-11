@@ -73,6 +73,36 @@ export function placeCount(stamps: { place: string }[]): number {
   return new Set(stamps.map((s) => s.place.toLowerCase())).size;
 }
 
+/** One place's stamps, newest first; the collection shows the newest as its tile. */
+export interface PlaceGroup<T extends { place: string; createdAt: number }> {
+  /** The place as the newest stamp spells it. */
+  place: string;
+  /** Every stamp of this place, newest first. */
+  stamps: T[];
+  /** The stamp the tile shows. */
+  newest: T;
+}
+
+/**
+ * The collection as places: stamps of the same place (by name, any case)
+ * club together under their newest one, and the places run newest first.
+ */
+export function groupByPlace<T extends { place: string; createdAt: number }>(stamps: T[]): PlaceGroup<T>[] {
+  const groups = new Map<string, T[]>();
+  for (const stamp of stamps) {
+    const key = stamp.place.toLowerCase();
+    const list = groups.get(key);
+    if (list) list.push(stamp);
+    else groups.set(key, [stamp]);
+  }
+  return [...groups.values()]
+    .map((list) => {
+      const ordered = [...list].sort((a, b) => b.createdAt - a.createdAt);
+      return { place: ordered[0].place, stamps: ordered, newest: ordered[0] };
+    })
+    .sort((a, b) => b.newest.createdAt - a.newest.createdAt);
+}
+
 /** Postmark inks: the muted colours real cancellation marks come in (no orange). */
 export const POSTMARK_INKS = ['#1C1B18', '#2B4C7E', '#7A2E2E', '#2F5D50', '#4B3F72'] as const;
 

@@ -47,10 +47,12 @@ interface StampMapViewProps {
   showLocationButton?: boolean;
   /** How far that button sits from the map's bottom edge; screens with a bottom bar push it clear. */
   locationButtonBottom?: number;
+  /** A finger is on the map: parents that scroll should stand down while true. */
+  onInteractChange?: (active: boolean) => void;
   style?: StyleProp<ViewStyle>;
 }
 
-export const StampMapView = forwardRef<StampMapHandle, StampMapViewProps>(function StampMapView({ stamps, camera, onPinPress, onMapPress, pinSize = PIN, selectedId = null, showLocationButton = false, locationButtonBottom = 12, style }, ref) {
+export const StampMapView = forwardRef<StampMapHandle, StampMapViewProps>(function StampMapView({ stamps, camera, onPinPress, onMapPress, pinSize = PIN, selectedId = null, showLocationButton = false, locationButtonBottom = 12, onInteractChange, style }, ref) {
   const { isDark, colors } = useThemeContext();
   const cam = useRef<import('@maplibre/maplibre-react-native').CameraRef>(null);
   const [locating, setLocating] = useState(false);
@@ -119,7 +121,12 @@ export const StampMapView = forwardRef<StampMapHandle, StampMapViewProps>(functi
   const { Map, Camera, Marker, GeoJSONSource, Layer } = maplibre;
 
   return (
-    <View style={style ?? StyleSheet.absoluteFill}>
+    <View
+      style={style ?? StyleSheet.absoluteFill}
+      onTouchStart={() => onInteractChange?.(true)}
+      onTouchEnd={() => onInteractChange?.(false)}
+      onTouchCancel={() => onInteractChange?.(false)}
+    >
       <Map style={StyleSheet.absoluteFill} mapStyle={isDark ? STYLE_DARK : STYLE_LIGHT} logo={false} compass={false} attribution={false} onPress={onMapPress}>
         <Camera ref={cam} initialViewState={camera ? { center: [camera.longitude, camera.latitude], zoom: camera.zoom } : undefined} />
         {route && (

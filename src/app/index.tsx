@@ -42,6 +42,8 @@ import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
 import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
 import { InkGain } from '@/components/ink-gain';
+import { ProfileLayer } from '@/components/profile/profile-layer';
+import { useProfileVisibility } from '@/hooks/use-profile-visibility';
 
 const CARD_GAP = 21; // Fibonacci sequence
 /** A drag must cover this share of a card to move to the next one… */
@@ -400,7 +402,7 @@ export default function HomeScreen() {
       <AmbientBackdrop />
       <GrainBackground />
 
-      <EdgeTab slot={0} onPress={() => navigate.push('/profile')} accessibilityLabel="Profile">
+      <EdgeTab slot={0} onPress={() => useProfileVisibility.getState().openProfile()} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
       </EdgeTab>
       <InkGain />
@@ -479,6 +481,10 @@ export default function HomeScreen() {
           demo={keyDemo}
         />
       </View>
+
+      {/* The kept-alive profile: opened by the edge tab, sliding over the
+          timeline on the UI thread — never rebuilt on open. */}
+      <ProfileLayer />
 
       {/* Quick Record Overlay — shared with the compose record chip */}
       <RecordingOverlay

@@ -20,7 +20,12 @@ import { regionFor } from '@/stamps/geometry';
 import { navigate } from '@/utils/navigation';
 
 const MAP_H = 240;
-export function StampAlbumCard() {
+interface StampAlbumCardProps {
+  /** A finger is on the map: the page's scroll stands down while true. */
+  onInteractChange?: (active: boolean) => void;
+}
+
+export function StampAlbumCard({ onInteractChange }: StampAlbumCardProps) {
   const theme = useTheme();
   const { stamps, loaded, load } = useStamps();
   useEffect(() => {
@@ -39,6 +44,7 @@ export function StampAlbumCard() {
             haptic.tap();
             navigate.push(`/stamps/map?id=${id}`);
           }}
+          onInteractChange={onInteractChange}
           showLocationButton
           style={StyleSheet.absoluteFill}
         />
