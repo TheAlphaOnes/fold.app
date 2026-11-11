@@ -12,6 +12,7 @@ import Svg, { ClipPath, Defs, G, Image as SvgImage, Path } from 'react-native-sv
 
 import { MusicDisc } from '@/components/stories/music-disc';
 import { VinylRecord } from '@/components/vinyl-record';
+import { gifFrameAt, type ExportFrameState } from '@/canvas/animated-export';
 import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
 import { STICKER_BASE_WIDTH } from '@/canvas/geometry';
 import { stampOutline } from '@/canvas/render/stamp-outline';
@@ -63,9 +64,26 @@ function stickerSize(media: MediaElement, width: number, scale: number) {
 }
 
 /** `fade`: a swapped photo dissolves in (the live card and the composer; never exports). */
-export function MediaStickerView({ layer, media, width, fade = false }: { layer: MediaSticker; media: MediaElement; width: number; fade?: boolean }) {
+export function MediaStickerView({
+  layer,
+  media,
+  width,
+  fade = false,
+  exportFrame,
+}: {
+  layer: MediaSticker;
+  media: MediaElement;
+  width: number;
+  fade?: boolean;
+  /** Set while the animated export films: hold this GIF sticker at this exact moment. */
+  exportFrame?: ExportFrameState | null;
+}) {
   const thumb = useVideoThumbnail(media.type === 'video' ? media.uri : undefined);
-  const uri = media.type === 'video' ? thumb : media.uri;
+  let uri = media.type === 'video' ? thumb : media.uri;
+  // A GIF sticker plays on the native clock, which can't be stepped; the
+  // export swaps in the pre-decoded frame for the moment being captured.
+  const gifSet = exportFrame?.gifs.get(media.id);
+  if (exportFrame && gifSet) uri = gifSet.frames[gifFrameAt(exportFrame.tMs, gifSet)].uri;
   let { w, h } = stickerSize(media, width, layer.scale);
   if (layer.shape === 'circle' || layer.shape === 'stamp') h = w;
   // A card is always a portrait print, so a fan or pile of them is uniform.

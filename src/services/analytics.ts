@@ -87,7 +87,7 @@ export interface AnalyticsEvents {
   memory_deleted: { age_days: number };
   memory_restored: { from: 'single' | 'all' };
   all_memories_cleared: { count: number };
-  memory_shared: { method: 'card' | 'raw_media' | 'raw_text' };
+  memory_shared: { method: 'card' | 'card_gif' | 'raw_media' | 'raw_text' };
   audio_played: { surface: 'card' | 'canvas'; auto_play: boolean };
 
   // Progress

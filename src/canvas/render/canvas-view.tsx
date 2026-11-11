@@ -10,6 +10,7 @@
 import React, { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import type { ExportFrameState } from '@/canvas/animated-export';
 import type { CanvasDoc, Layer } from '@/canvas/types';
 import { CanvasBase } from '@/canvas/render/canvas-base';
 import { DoodleView } from '@/canvas/render/doodle-view';
@@ -41,6 +42,8 @@ export interface CanvasViewProps {
   muted?: boolean;
   /** Bumped by a tap on the live card: the template plays its touch response (next photo, spin, fan). */
   nudge?: number;
+  /** Set while the animated export films: animated layers (doodles, GIF stickers) hold exact moments. */
+  exportFrame?: ExportFrameState | null;
 }
 
 /**
@@ -76,6 +79,7 @@ export function LayerContent({
   width,
   live,
   moving = false,
+  exportFrame,
 }: {
   layer: Layer;
   media: Map<string, MediaElement>;
@@ -84,13 +88,15 @@ export function LayerContent({
   live: boolean;
   /** Animated layers (doodles) play: the live canvas and the composer, never exports. */
   moving?: boolean;
+  /** Set while the animated export films: animated layers hold exact moments. */
+  exportFrame?: ExportFrameState | null;
 }) {
   switch (layer.kind) {
     case 'text':
       return <TextLayerView layer={layer} width={width} />;
     case 'media': {
       const m = media.get(layer.mediaId);
-      return m ? <MediaStickerView layer={layer} media={m} width={width} fade={moving} /> : null;
+      return m ? <MediaStickerView layer={layer} media={m} width={width} fade={moving} exportFrame={exportFrame} /> : null;
     }
     case 'audio': {
       const m = media.get(layer.mediaId);
@@ -101,7 +107,7 @@ export function LayerContent({
     case 'date':
       return <DateStickerView layer={layer} createdAt={memory.createdAt} width={width} />;
     case 'doodle':
-      return <DoodleView layer={layer} width={width} moving={moving} />;
+      return <DoodleView layer={layer} width={width} moving={moving} exportT={exportFrame?.tMs} />;
     case 'stamp': {
       const m = media.get(layer.mediaId);
       // About a third of the card wide at scale 1, like a real stamp on a page.
@@ -110,7 +116,7 @@ export function LayerContent({
   }
 }
 
-export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true, nudge = 0 }: CanvasViewProps) {
+export const CanvasView = memo(function CanvasView({ doc, memory, width, height, live = false, animated = true, muted = true, nudge = 0, exportFrame = null }: CanvasViewProps) {
   const media = useMemo(() => new Map(memory.mediaElements.map((m) => [m.id, m])), [memory.mediaElements]);
 
   // Arranged templates (Ring, Fan, Deck) move while this is
@@ -122,7 +128,7 @@ export const CanvasView = memo(function CanvasView({ doc, memory, width, height,
   const deck = useDeck(shapeLayers.length, moving && motion?.kind === 'deck', nudge);
   const fan = useFanOrder(shapeLayers.length, moving && motion?.kind === 'fan', nudge);
 
-  const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} moving={live && animated} />;
+  const content = (layer: Layer) => <LayerContent layer={layer} media={media} memory={memory} width={width} live={live} moving={live && animated} exportFrame={exportFrame} />;
   const anchored = (layer: Layer, children: React.ReactNode) => (
     <LayerAnchor key={layer.id} layer={layer} width={width} height={height}>
       {children}
