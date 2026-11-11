@@ -60,6 +60,13 @@ export function regionFor(points: { latitude: number; longitude: number }[]): Ma
   return { latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2, zoom };
 }
 
+/**
+ * What the map shows before the first stamp exists: the whole world, quiet
+ * and explorable, so the map is a map even with nothing pinned to it yet.
+ * Europe and Africa centred is the cartographic default for a world view.
+ */
+export const UNSTAMPED_REGION: MapRegion = { latitude: 22, longitude: 12, zoom: 1.1 };
+
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 /** The postmark's date: "10 NOV 2026". */

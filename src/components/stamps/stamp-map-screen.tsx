@@ -3,7 +3,8 @@
  *
  *   - a pin per stamp, and a faint line joining them in the order you went;
  *   - the stamp you're looking at hovers over the map, gently bobbing, with
- *     its place and date (tap a pin or a stamp in the strip to change it);
+ *     its place and date (tap a pin or a stamp in the strip to change it),
+ *     and the small bin beneath it removes just that one stamp;
  *   - a strip of all your stamps along the bottom, newest first.
  *
  * Opens on the whole journey, or on one stamp when `?id=` is given (from
@@ -12,11 +13,12 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StampMapView, type StampMapHandle } from '@/components/stamps/stamp-map-view';
 import { useLocalSearchParams } from 'expo-router';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Trash2 } from 'lucide-react-native';
 
 import { CloseButton } from '@/components/round-button';
 import { StampView, STAMP_ASPECT } from '@/components/stamps/stamp-view';
@@ -29,7 +31,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { markGuideDone } from '@/services/guide-progress';
-import { placeCount, regionFor } from '@/stamps/geometry';
+import { placeCount, regionFor, UNSTAMPED_REGION } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
@@ -47,7 +49,7 @@ export default function StampMap() {
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { stamps, loaded, load } = useStamps();
+  const { stamps, loaded, load, remove } = useStamps();
   const map = useRef<StampMapHandle>(null);
   const [selectedId, setSelectedId] = useState<number | null>(id ? Number(id) : null);
 
@@ -96,6 +98,22 @@ export default function StampMap() {
     map.current?.focus(stamp.latitude, stamp.longitude, FOCUS_ZOOM);
   };
 
+  // One delete removes exactly the stamp on show — never its whole place.
+  const confirmRemove = (stamp: Stamp) => {
+    haptic.thud();
+    const remaining = stamps.filter((s) => s.place.toLowerCase() === stamp.place.toLowerCase()).length - 1;
+    Alert.alert(
+      'Remove this stamp?',
+      remaining > 0
+        ? `The other ${remaining} ${stamp.place} ${remaining === 1 ? 'stamp stays' : 'stamps stay'} on your collection and map.`
+        : `${stamp.place} comes off your collection and map.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => void remove(stamp.id) },
+      ],
+    );
+  };
+
   const header = (
     <Animated.View entering={fadeIn(200)} style={[styles.topBar, { paddingTop: insets.top + 6 }]} pointerEvents="box-none">
       <CloseButton accessibilityLabel="Close map" />
@@ -116,7 +134,7 @@ export default function StampMap() {
       <StampMapView
         ref={map}
         stamps={stamps}
-        camera={initialCamera ? { latitude: initialCamera.coordinates.latitude, longitude: initialCamera.coordinates.longitude, zoom: initialCamera.zoom } : undefined}
+        camera={initialCamera ? { latitude: initialCamera.coordinates.latitude, longitude: initialCamera.coordinates.longitude, zoom: initialCamera.zoom } : UNSTAMPED_REGION}
         pinSize={44}
         selectedId={selectedId}
         onPinPress={(id) => {
@@ -143,7 +161,7 @@ export default function StampMap() {
 
       {stamps.length > 0 && (
         <View style={[styles.bottom, { paddingBottom: bottomInset + 10 }]} pointerEvents="box-none">
-          {selected && <HoverStamp key={selected.id} stamp={selected} serial={serials.get(selected.id)} />}
+          {selected && <HoverStamp key={selected.id} stamp={selected} serial={serials.get(selected.id)} onRemove={() => confirmRemove(selected)} />}
           <Animated.View entering={riseIn(340, 160, 14)}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
               {stamps.map((s) => (
@@ -167,7 +185,8 @@ export default function StampMap() {
 }
 
 /** The selected stamp, floating over the map with a slow bob and sway. */
-function HoverStamp({ stamp, serial }: { stamp: Stamp; serial?: number }) {
+function HoverStamp({ stamp, serial, onRemove }: { stamp: Stamp; serial?: number; onRemove: () => void }) {
+  const theme = useTheme();
   const reduced = useReducedMotion();
   const bob = useSharedValue(0);
   useEffect(() => {
@@ -179,9 +198,20 @@ function HoverStamp({ stamp, serial }: { stamp: Stamp; serial?: number }) {
     transform: [{ translateY: -bob.get() * 6 }, { rotate: `${-3 + bob.get() * 2.5}deg` }],
   }));
   return (
-    <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)} style={[styles.hover, { height: HOVER_STAMP * STAMP_ASPECT + 16 }]} pointerEvents="none">
-      <Animated.View style={float}>
+    <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)} style={[styles.hover, { height: HOVER_STAMP * STAMP_ASPECT + 16 + 38 }]} pointerEvents="box-none">
+      {/* The stamp is part of the map's picture; only the chip beneath it is pressable. */}
+      <Animated.View style={float} pointerEvents="none">
         <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={HOVER_STAMP} serial={serial} />
+      </Animated.View>
+      <Animated.View entering={FadeIn.duration(240).delay(120)}>
+        <Pressable
+          onPress={onRemove}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove the ${stamp.place} stamp`}
+          style={[styles.removeChip, { backgroundColor: theme.background + 'E6', borderColor: theme.border }]}
+        >
+          <Trash2 size={15} color={theme.text} />
+        </Pressable>
       </Animated.View>
     </Animated.View>
   );
@@ -199,5 +229,6 @@ const styles = StyleSheet.create({
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   hover: { alignItems: 'center', justifyContent: 'flex-end', marginBottom: 14 },
+  removeChip: { marginTop: 8, width: 30, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
   strip: { paddingHorizontal: 16, paddingTop: 12, gap: 12, alignItems: 'flex-end' },
 });

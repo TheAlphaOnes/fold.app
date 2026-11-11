@@ -47,7 +47,7 @@ export default function StampCollection() {
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const { width } = useWindowDimensions();
-  const { stamps, loaded, load, removeMany, justAdded, clearJustAdded } = useStamps();
+  const { stamps, loaded, load, remove, justAdded, clearJustAdded } = useStamps();
 
   useEffect(() => {
     if (!loaded) load();
@@ -70,15 +70,15 @@ export default function StampCollection() {
 
 
   const confirmRemove = (group: PlaceGroup<Stamp>) => {
-    const n = group.stamps.length;
+    const remaining = group.stamps.length - 1;
     Alert.alert(
-      n === 1 ? 'Remove this stamp?' : `Remove all ${n} stamps?`,
-      n === 1
-        ? `${group.place} will come off your collection and map.`
-        : `Every ${group.place} stamp will come off your collection and map.`,
+      'Remove this stamp?',
+      remaining > 0
+        ? `The other ${remaining} ${group.place} ${remaining === 1 ? 'stamp stays' : 'stamps stay'} on your collection and map.`
+        : `${group.place} comes off your collection and map.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => void removeMany(group.stamps.map((s) => s.id)) },
+        { text: 'Remove', style: 'destructive', onPress: () => void remove(group.newest.id) },
       ],
     );
   };
@@ -184,7 +184,7 @@ export function StampTile({ stamp, width, serial, index, count = 1, landing, onO
           }}
           accessibilityRole="button"
           accessibilityLabel={count > 1 ? `${count} stamps from ${stamp.place}` : `Stamp from ${stamp.place}`}
-          accessibilityHint={count > 1 ? 'Shows the place on the map. Hold to remove all its stamps.' : 'Shows it on the map. Hold to remove.'}
+          accessibilityHint={count > 1 ? 'Shows the place on the map. Hold to remove this stamp.' : 'Shows it on the map. Hold to remove.'}
           style={({ pressed }) => ({ transform: [{ rotate: `${tilt}deg` }, { scale: pressed ? 0.96 : 1 }] })}
         >
           <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={width} serial={serial} />

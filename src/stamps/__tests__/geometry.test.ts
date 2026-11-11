@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centreCropFor, groupByPlace, stampCropFor, formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
+import { centreCropFor, groupByPlace, stampCropFor, formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt, UNSTAMPED_REGION } from '@/stamps/geometry';
 
 describe('photoCropFor', () => {
   it('maps a centred window on a cover preview to photo pixels', () => {
@@ -18,6 +18,14 @@ describe('regionFor', () => {
   it('is null with no places and city-level for one', () => {
     expect(regionFor([])).toBeNull();
     expect(regionFor([{ latitude: 10, longitude: 20 }])).toEqual({ latitude: 10, longitude: 20, zoom: 11 });
+  });
+  it('waits on the whole world when nothing is stamped yet', () => {
+    expect(UNSTAMPED_REGION.latitude).toBeGreaterThanOrEqual(-90);
+    expect(UNSTAMPED_REGION.latitude).toBeLessThanOrEqual(90);
+    expect(UNSTAMPED_REGION.longitude).toBeGreaterThanOrEqual(-180);
+    expect(UNSTAMPED_REGION.longitude).toBeLessThanOrEqual(180);
+    // Quieter than any framed collection: even a lone place is a city view.
+    expect(UNSTAMPED_REGION.zoom).toBeLessThan(regionFor([{ latitude: 10, longitude: 20 }])!.zoom);
   });
   it('centres on the bounds and zooms out for wide spans', () => {
     const r = regionFor([

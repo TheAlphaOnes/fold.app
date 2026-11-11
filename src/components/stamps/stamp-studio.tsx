@@ -268,7 +268,7 @@ interface CollectionProps {
 /** The full collection: rises into the drawer as it opens. */
 function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, onPullClose }: CollectionProps) {
   const theme = useTheme();
-  const { removeMany } = useStamps();
+  const { remove } = useStamps();
   const places = placeCount(stamps);
   const tile = (width - EDGE * 2 - COLUMN_GAP) / 2;
   const serials = useMemo(() => new Map([...stamps].sort((a, b) => a.createdAt - b.createdAt).map((s, i) => [s.id, i + 1])), [stamps]);
@@ -280,15 +280,15 @@ function Collection({ stamps, loaded, progress, open, justAdded, width, bottom, 
   }));
 
   const confirmRemove = (group: PlaceGroup<Stamp>) => {
-    const n = group.stamps.length;
+    const remaining = group.stamps.length - 1;
     Alert.alert(
-      n === 1 ? 'Remove this stamp?' : `Remove all ${n} stamps?`,
-      n === 1
-        ? `${group.place} will come off your collection and map.`
-        : `Every ${group.place} stamp will come off your collection and map.`,
+      'Remove this stamp?',
+      remaining > 0
+        ? `The other ${remaining} ${group.place} ${remaining === 1 ? 'stamp stays' : 'stamps stay'} on your collection and map.`
+        : `${group.place} comes off your collection and map.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove', style: 'destructive', onPress: () => void removeMany(group.stamps.map((s) => s.id)) },
+        { text: 'Remove', style: 'destructive', onPress: () => void remove(group.newest.id) },
       ],
     );
   };
