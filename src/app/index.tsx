@@ -1,6 +1,6 @@
 import * as Device from 'expo-device';
 import React, { memo, useCallback, useRef, useState, useMemo, useEffect } from 'react';
-import { StyleSheet, View, FlatList, useWindowDimensions, Text, Alert, Platform } from 'react-native';
+import { StyleSheet, View, FlatList, useWindowDimensions, Text, Platform } from 'react-native';
 import Animated, { 
   useAnimatedScrollHandler,
   useSharedValue, FadeOut,
@@ -30,12 +30,6 @@ import * as Sharing from 'expo-sharing';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { KeyCaption } from '@/components/home/key-caption';
 import { unlearnedGestures, type KeyGesture } from '@/home/key-hints';
-import * as FileSystem from 'expo-file-system/legacy';
-import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
-import { copyWithinFileSize, alertFileTooLarge, alertElementCap, sliceToElementCap } from '@/utils/media-attach';
-import type { MediaKind } from '@/constants/media';
-import { useShareIntent } from 'expo-share-intent';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
@@ -78,12 +72,10 @@ export default function HomeScreen() {
   hydratedRef.current = hydratedById;
   const timelineError = useJournalStore((state) => state.error);
   
-  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntent();
-
   const quickCapture = useQuickCapture();
   // A tapped moment reminder lands here and goes straight to the camera.
   useFulfilPhotoRequest(quickCapture.capturePhoto);
-  
+
   const { settings, updateSetting } = useSettingsStore();
   const isFocused = useIsFocused();
 
@@ -117,78 +109,6 @@ export default function HomeScreen() {
   const { captureVideo } = quickCapture;
 
   
-  // Handle incoming shared media (e.g. from Photos app, Chrome, Files, etc.)
-  useEffect(() => {
-    if (error) {
-      console.error('Share Intent Error:', error);
-      return;
-    }
-    
-    if (!hasShareIntent) return;
-
-    const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-    if (isExpoGo) {
-      Alert.alert(
-        'Expo Go Limitation',
-        'Receiving shared media from other apps requires a development build. It works seamlessly in your final built app.',
-        [{ text: 'OK', onPress: () => resetShareIntent() }]
-      );
-      return;
-    }
-
-    // Handle shared files (images, videos, audio, docs)
-    if (shareIntent.files && shareIntent.files.length > 0) {
-      // Every shared file becomes a sticker on one new memory, up to the
-      // card's element cap; files over the size limit are skipped and
-      // reported together.
-      const { accepted: files, capped } = sliceToElementCap(0, shareIntent.files);
-      const oversized: Record<MediaKind, number> = { image: 0, video: 0, audio: 0 };
-
-      Promise.all(
-        files.map(async (file, i): Promise<PendingMedia | null> => {
-          const mime = file.mimeType || '';
-          const kind: MediaKind =
-            mime.startsWith('video/') || file.path?.endsWith('.mp4') || file.path?.endsWith('.mov')
-              ? 'video'
-              : mime.startsWith('audio/')
-                ? 'audio'
-                : 'image';
-          const ext = kind === 'video' ? 'mp4' : kind === 'audio' ? 'm4a' : 'jpg';
-          const dest = `${FileSystem.documentDirectory}shared_${Date.now()}_${i}.${ext}`;
-          const copied = await copyWithinFileSize({ from: file.path, to: dest, kind });
-          if (!copied) {
-            oversized[kind] += 1;
-            return null;
-          }
-          return { uri: dest, type: kind, width: file.width ?? undefined, height: file.height ?? undefined };
-        }),
-      )
-        .then((results) => {
-          const media = results.filter((m): m is PendingMedia => m !== null);
-          resetShareIntent();
-          if (capped) alertElementCap();
-          for (const kind of ['image', 'video', 'audio'] as MediaKind[]) {
-            if (oversized[kind] > 0) alertFileTooLarge(kind, oversized[kind]);
-          }
-          if (media.length === 0) return;
-          setPendingCameraMedia(media);
-          navigate.push('/compose');
-        })
-        .catch((err) => {
-          console.error('Failed to copy shared files', err);
-          resetShareIntent();
-        });
-      return;
-    }
-
-    // Handle shared text / URL — open compose with the text pre-filled
-    if (shareIntent.text || shareIntent.webUrl) {
-      const sharedText = shareIntent.webUrl || shareIntent.text || '';
-      resetShareIntent();
-      navigate.push({ pathname: '/compose', params: { sharedText } });
-    }
-  }, [hasShareIntent, shareIntent, error]);
-
   // Ensure we are viewing today's data on the home screen
   useFocusEffect(
     useCallback(() => {
