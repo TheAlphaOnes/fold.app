@@ -63,6 +63,9 @@ export default function ProfileScreen() {
   });
   const [scrollY, setScrollY] = useState(0);
   const [wallTop, setWallTop] = useState<number | undefined>(undefined);
+  // While a finger is on the map, the page stops scrolling so pans and
+  // pinches move the map instead of the page.
+  const [mapActive, setMapActive] = useState(false);
 
   // Each section also waits for its own cached data; the skeleton covers it.
   const dayCounts = useProfileDataStore((state) => state.dayCounts);
@@ -148,6 +151,7 @@ export default function ProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!mapActive}
         onScroll={onScroll}
         onScrollEndDrag={onScrollEnd}
         onMomentumScrollEnd={onScrollEnd}
@@ -162,7 +166,7 @@ export default function ProfileScreen() {
         {/* The scheduler above builds these in the background, one per idle
             period, so they are already there when the page is scrolled. */}
         <View>
-          {mounted.map && stampsLoaded ? <StampAlbumCard /> : <MapSkeleton />}
+          {mounted.map && stampsLoaded ? <StampAlbumCard onInteractChange={setMapActive} /> : <MapSkeleton />}
         </View>
 
         <View>
