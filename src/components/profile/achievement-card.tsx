@@ -73,6 +73,11 @@ export const AchievementCard = forwardRef<View, AchievementCardProps>(function A
       {/* The card's own hatch, under everything. */}
       <Hatch color={`${theme.textMuted}1A`} strokeWidth={1} period={9} style={StyleSheet.absoluteFill} />
 
+      {/* A ghost of the mark, big and faint, behind everything the card says. */}
+      <View style={styles.watermark} pointerEvents="none">
+        <Logo size={width * 0.62} color={theme.text} opacity={0.07} />
+      </View>
+
       <View style={styles.content}>
         <View style={styles.rail}>
           <ThemedText style={[Type.rail, { color: theme.textMuted }]}>FOLD</ThemedText>
@@ -138,6 +143,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  watermark: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
