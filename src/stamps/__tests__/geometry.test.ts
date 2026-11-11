@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centreCropFor, stampCropFor, formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
+import { centreCropFor, groupByPlace, stampCropFor, formatSerial, isNewPlace, photoCropFor, placeCount, postmarkDate, postmarkInk, POSTMARK_INKS, regionFor, stampSerial, stampTilt } from '@/stamps/geometry';
 
 describe('photoCropFor', () => {
   it('maps a centred window on a cover preview to photo pixels', () => {
@@ -62,6 +62,35 @@ describe('collection details', () => {
   it('gives each place one stable ink from the palette', () => {
     expect(postmarkInk('Pune')).toBe(postmarkInk('PUNE'));
     expect(POSTMARK_INKS).toContain(postmarkInk('Goa'));
+  });
+});
+
+describe('groupByPlace', () => {
+  const stamps = [
+    { id: 5, createdAt: 500, place: 'San Francisco' },
+    { id: 4, createdAt: 400, place: 'Pune' },
+    { id: 3, createdAt: 300, place: 'san francisco' },
+    { id: 2, createdAt: 200, place: 'Pune' },
+    { id: 1, createdAt: 100, place: 'Goa' },
+  ];
+  it('clubs the same place, any case, under its newest stamp', () => {
+    const groups = groupByPlace(stamps);
+    expect(groups.map((g) => g.place)).toEqual(['San Francisco', 'Pune', 'Goa']);
+    expect(groups[0].stamps.map((s) => s.id)).toEqual([5, 3]);
+    expect(groups[0].newest.id).toBe(5);
+    expect(groups[1].stamps.map((s) => s.id)).toEqual([4, 2]);
+  });
+  it('keeps a lone stamp as its own group', () => {
+    const groups = groupByPlace([{ id: 1, createdAt: 100, place: 'Goa' }]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].newest.id).toBe(1);
+  });
+  it('orders places by their newest stamp, not by input order', () => {
+    const groups = groupByPlace([
+      { id: 1, createdAt: 100, place: 'Goa' },
+      { id: 2, createdAt: 900, place: 'Pune' },
+    ]);
+    expect(groups.map((g) => g.place)).toEqual(['Pune', 'Goa']);
   });
 });
 

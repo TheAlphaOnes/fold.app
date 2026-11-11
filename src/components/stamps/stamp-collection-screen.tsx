@@ -35,7 +35,7 @@ import { useGuardedPress } from '@/hooks/use-guarded-press';
 import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
-import { placeCount, stampTilt } from '@/stamps/geometry';
+import { groupByPlace, placeCount, stampTilt, type PlaceGroup } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
 
@@ -47,7 +47,7 @@ export default function StampCollection() {
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const { width } = useWindowDimensions();
-  const { stamps, loaded, load, remove, justAdded, clearJustAdded } = useStamps();
+  const { stamps, loaded, load, removeMany, justAdded, clearJustAdded } = useStamps();
 
   useEffect(() => {
     if (!loaded) load();
@@ -62,16 +62,25 @@ export default function StampCollection() {
 
   // Numbers in the order stamps were made (No. 001 is the first).
   const serials = useMemo(() => new Map([...stamps].sort((a, b) => a.createdAt - b.createdAt).map((s, i) => [s.id, i + 1])), [stamps]);
+  // The sheet is places, not stamps: a city's stamps club under its newest.
+  const groups = useMemo(() => groupByPlace(stamps), [stamps]);
 
   const tile = (width - EDGE * 2 - COLUMN_GAP) / 2;
   const openCamera = useGuardedPress(() => navigate.push('/stamps/camera'));
 
 
-  const confirmRemove = (stamp: Stamp) => {
-    Alert.alert('Remove this stamp?', `${stamp.place} will come off your collection and map.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => remove(stamp.id) },
-    ]);
+  const confirmRemove = (group: PlaceGroup<Stamp>) => {
+    const n = group.stamps.length;
+    Alert.alert(
+      n === 1 ? 'Remove this stamp?' : `Remove all ${n} stamps?`,
+      n === 1
+        ? `${group.place} will come off your collection and map.`
+        : `Every ${group.place} stamp will come off your collection and map.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => void removeMany(group.stamps.map((s) => s.id)) },
+      ],
+    );
   };
 
   const places = placeCount(stamps);
@@ -96,8 +105,8 @@ export default function StampCollection() {
       ) : (
         // Virtualised: a long collection only decodes the stamps on screen.
         <FlatList
-          data={stamps}
-          keyExtractor={(s) => String(s.id)}
+          data={groups}
+          keyExtractor={(g) => g.place.toLowerCase()}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={[styles.grid, { paddingBottom: bottomInset + ROUND_BUTTON_SIZE + 48 }]}
@@ -106,12 +115,13 @@ export default function StampCollection() {
           windowSize={7}
           renderItem={({ item, index }) => (
             <StampTile
-              stamp={item}
+              stamp={item.newest}
               width={tile}
-              serial={serials.get(item.id)}
+              serial={serials.get(item.newest.id)}
+              count={item.stamps.length}
               index={index}
-              landing={item.id === justAdded}
-              onOpen={() => navigate.push(`/stamps/map?id=${item.id}`)}
+              landing={item.newest.id === justAdded}
+              onOpen={() => navigate.push(`/stamps/map?id=${item.newest.id}`)}
               onRemove={() => confirmRemove(item)}
             />
           )}
@@ -138,14 +148,17 @@ export interface StampTileProps {
   width: number;
   serial?: number;
   index: number;
+  /** Stamps of this place in the collection; the tile shows the newest. */
+  count?: number;
   /** Just made: drops onto the sheet with a thud instead of rising in. */
   landing: boolean;
   onOpen: () => void;
   onRemove: () => void;
 }
 
-/** One stamp on the sheet, at its own tilt. */
-export function StampTile({ stamp, width, serial, index, landing, onOpen, onRemove }: StampTileProps) {
+/** One place on the sheet, at its own tilt: its newest stamp, and how many it holds. */
+export function StampTile({ stamp, width, serial, index, count = 1, landing, onOpen, onRemove }: StampTileProps) {
+  const theme = useTheme();
   const drop = useSharedValue(landing ? 0 : 1);
   useEffect(() => {
     if (!landing) return;
@@ -170,13 +183,19 @@ export function StampTile({ stamp, width, serial, index, landing, onOpen, onRemo
             onRemove();
           }}
           accessibilityRole="button"
-          accessibilityLabel={`Stamp from ${stamp.place}`}
-          accessibilityHint="Shows it on the map. Hold to remove."
+          accessibilityLabel={count > 1 ? `${count} stamps from ${stamp.place}` : `Stamp from ${stamp.place}`}
+          accessibilityHint={count > 1 ? 'Shows the place on the map. Hold to remove all its stamps.' : 'Shows it on the map. Hold to remove.'}
           style={({ pressed }) => ({ transform: [{ rotate: `${tilt}deg` }, { scale: pressed ? 0.96 : 1 }] })}
         >
           <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={width} serial={serial} />
         </Pressable>
       </Animated.View>
+      {/* How many stamps this place holds; the tile shows the newest. */}
+      {count > 1 && (
+        <View style={[styles.countBadge, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <ThemedText style={[styles.countBadgeText, { color: theme.text }]}>{`×${count}`}</ThemedText>
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -206,6 +225,19 @@ const styles = StyleSheet.create({
   count: { fontFamily: 'JetBrainsMono-Medium', fontSize: 11, letterSpacing: 0.8, marginTop: 2 },
   grid: { paddingHorizontal: EDGE, paddingTop: 16, gap: COLUMN_GAP },
   row: { gap: COLUMN_GAP },
+  countBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 26,
+    height: 22,
+    paddingHorizontal: 7,
+    borderRadius: 11,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 0.5 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
   cta: { height: ROUND_BUTTON_SIZE + 10, paddingHorizontal: 26, borderRadius: (ROUND_BUTTON_SIZE + 10) / 2, flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
