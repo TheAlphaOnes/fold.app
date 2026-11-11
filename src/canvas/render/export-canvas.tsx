@@ -12,6 +12,7 @@ import { CanvasView } from '@/canvas/render/canvas-view';
 import { EXPORT_SIZE } from '@/canvas/geometry';
 import { useCanvasOf } from '@/canvas/use-canvas-of';
 import { Logo } from '@/components/logo';
+import { useTheme } from '@/hooks/use-theme';
 import type { Composition } from '@/types/journal';
 
 /**
@@ -25,13 +26,16 @@ const MARK = LAYOUT.width * 0.16;
 
 export const ExportCanvas = forwardRef<View, { memory: Composition }>(function ExportCanvas({ memory }, ref) {
   const doc = useCanvasOf(memory);
+  // The crane follows the theme's ink: black on a light card, soft white on
+  // a dark one, so the signature never disappears into the surface.
+  const theme = useTheme();
   if (!doc) return null;
   return (
     <View style={styles.offscreen} pointerEvents="none">
       <View ref={ref} collapsable={false} style={LAYOUT}>
         <CanvasView doc={doc} memory={memory} width={LAYOUT.width} height={LAYOUT.height} animated={false} />
         <View style={styles.signature}>
-          <Logo size={MARK} color="#FFFFFF" />
+          <Logo size={MARK} color={theme.text} />
         </View>
       </View>
     </View>
