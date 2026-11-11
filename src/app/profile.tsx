@@ -27,7 +27,7 @@ import { TECalendar } from '@/components/te-calendar';
 import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
 
-/** Heavy sections build in this order, one per idle callback, right after the slide. */
+/** Heavy sections build in this order, one per idle callback. */
 const SECTION_ORDER: ProfileSection[] = ['map', 'calendar', 'activity', 'wall'];
 
 export default function ProfileScreen() {
@@ -46,10 +46,20 @@ export default function ProfileScreen() {
   const focused = useIsFocused();
   const { height: screenHeight } = useWindowDimensions();
 
-  // Sections built once this session stay built: a return visit draws the
-  // whole page in its first frame, with no skeletons and no staged mounting.
-  const readySections = useProfileWarmth((state) => state.warm);
+  // A section built once this session stays warm: its data and images are
+  // cached, so a return visit can rebuild it during the push rather than
+  // after. Every visit still stages the mounting one section at a time,
+  // because a single frame holding the map, calendar, grid and wall at once
+  // is what made the page open late.
+  const warm = useProfileWarmth((state) => state.warm);
   const markWarm = useProfileWarmth((state) => state.markWarm);
+  const warmVisit = SECTION_ORDER.every((key) => warm[key]);
+  const [mounted, setMounted] = useState<Record<ProfileSection, boolean>>({
+    map: false,
+    calendar: false,
+    activity: false,
+    wall: false,
+  });
   const [scrollY, setScrollY] = useState(0);
   const [wallTop, setWallTop] = useState<number | undefined>(undefined);
 
@@ -73,21 +83,26 @@ export default function ProfileScreen() {
   }, [stampsLoaded, loadStamps]);
 
   const nextSection = SECTION_ORDER.find((key) => {
-    if (readySections[key]) return false;
+    if (mounted[key]) return false;
     if (key === 'map') return stampsLoaded;
     if (key === 'calendar') return activeDates !== null;
     if (key === 'activity') return dayCounts !== null;
     return pastMemories !== null;
   });
 
-  // One section per idle period, in order, right after the slide. The work is
-  // spread so the page stays interactive, but it never waits for a scroll:
-  // every section is built before the user can reach it.
+  // One section per idle period, in order. A first visit waits for the push
+  // to finish so the slide stays smooth; a return visit — everything cached —
+  // starts at once, and the fill hides inside the slide. Either way no
+  // section waits for a scroll: each is built before it can be reached.
   useEffect(() => {
-    if (!settled || !nextSection) return;
-    const idle = requestIdleCallback(() => markWarm(nextSection));
+    if (!nextSection) return;
+    if (!settled && !warmVisit) return;
+    const idle = requestIdleCallback(() => {
+      setMounted((current) => (current[nextSection] ? current : { ...current, [nextSection]: true }));
+      markWarm(nextSection);
+    });
     return () => cancelIdleCallback(idle);
-  }, [settled, nextSection, markWarm]);
+  }, [settled, warmVisit, nextSection, markWarm]);
 
   // The wall only animates while it can be seen; mounting is never gated.
   const wallVisible = focused && wallTop !== undefined && scrollY + screenHeight > wallTop;
@@ -139,11 +154,11 @@ export default function ProfileScreen() {
         {/* The scheduler above builds these in the background, one per idle
             period, so they are already there when the page is scrolled. */}
         <View>
-          {readySections.map && stampsLoaded ? <StampAlbumCard /> : <MapSkeleton />}
+          {mounted.map && stampsLoaded ? <StampAlbumCard /> : <MapSkeleton />}
         </View>
 
         <View>
-          {readySections.calendar && activeDates !== null ? (
+          {mounted.calendar && activeDates !== null ? (
             /* Time Machine Section */
             <View style={[styles.portfolioSection, { backgroundColor: elementBg, borderColor: borderColor }]}>
               <TECalendar onSelect={(date) => navigate.push(`/time-machine?day=${toDayKey(date)}`)} />
@@ -154,11 +169,11 @@ export default function ProfileScreen() {
         </View>
 
         <View>
-          {readySections.activity && dayCounts !== null ? <ActivityGrid /> : <ActivitySkeleton />}
+          {mounted.activity && dayCounts !== null ? <ActivityGrid /> : <ActivitySkeleton />}
         </View>
 
         <View onLayout={(event) => setWallTop(event.nativeEvent.layout.y)}>
-          {readySections.wall ? (
+          {mounted.wall ? (
             <>
               {/* Today's memory from the past — photo-first, opens the memory */}
               <FromYourPastCard visible={wallVisible} />
