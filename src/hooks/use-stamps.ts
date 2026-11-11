@@ -26,8 +26,6 @@ interface StampsState {
   load: () => Promise<void>;
   add: (stamp: NewStamp) => Promise<Stamp>;
   remove: (id: number) => Promise<void>;
-  /** Removes a place's stamps in one go (the collection clubs them). */
-  removeMany: (ids: number[]) => Promise<void>;
 }
 
 export const useStamps = create<StampsState>((set, get) => ({
@@ -59,14 +57,5 @@ export const useStamps = create<StampsState>((set, get) => ({
     set({ stamps: get().stamps.filter((s) => s.id !== id) });
     track('stamp_removed', { remaining: get().stamps.length });
     if (stamp) await FileSystem.deleteAsync(stamp.imageUri, { idempotent: true });
-  },
-
-  removeMany: async (ids) => {
-    const removed = get().stamps.filter((s) => ids.includes(s.id));
-    if (removed.length === 0) return;
-    await Promise.all(removed.map((s) => deleteStamp(s.id)));
-    set({ stamps: get().stamps.filter((s) => !ids.includes(s.id)) });
-    track('stamp_removed', { remaining: get().stamps.length });
-    await Promise.all(removed.map((s) => FileSystem.deleteAsync(s.imageUri, { idempotent: true })));
   },
 }));
