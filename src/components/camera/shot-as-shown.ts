@@ -23,7 +23,7 @@ export interface ShotAsShown {
   scale: number;
 }
 
-export async function takeShotAsShown(camera: CameraView, container: RefObject<View | null>, view: Size): Promise<ShotAsShown> {
+export async function takeShotAsShown(camera: CameraView, container: RefObject<React.ComponentRef<typeof View> | null>, view: Size): Promise<ShotAsShown> {
   // Started on the same press, before the photo, in case the photo turns out unusable.
   const shown = captureRef(container, { format: 'jpg', quality: 0.95 }).catch(() => null);
   const shot = await camera.takePictureAsync({ quality: 0.92 });

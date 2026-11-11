@@ -50,7 +50,7 @@ export default function OnboardingBasicsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [index, setIndex] = useState(0);
   const isLast = index === SLIDES.length - 1;
   // Slides whose gesture has been done (or can't be, with permission off).

@@ -38,7 +38,7 @@ interface DobFieldProps {
 
 export function DobField({ value, onChange, invalid = false, autoFocus }: DobFieldProps) {
   const theme = useTheme();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [focused, setFocused] = useState(false);
   const digits = value.replace(/\D/g, '');
   const active = focused ? Math.min(digits.length, 7) : -1;

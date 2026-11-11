@@ -136,12 +136,46 @@
       [
         "expo-widgets",
         {
+          "enableAndroid": true,
           "widgets": [
             {
-              "name": "TodaysStamp",
-              "displayName": "Today's Stamp",
-              "description": "The daily fold: stamp today's memory and keep the streak alive.",
-              "supportedFamilies": ["systemSmall", "systemMedium"]
+              "name": "MemoriesSlideshow",
+              "displayName": "Memories",
+              "description": "A slow slideshow of your own media. Tap to open the memory, fold to capture one right now.",
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium"]
+              },
+              "android": {
+                "targetCellWidth": 4,
+                "targetCellHeight": 2,
+                "resizeMode": "horizontal"
+              }
+            },
+            {
+              "name": "MemoryWall",
+              "displayName": "Memory Wall",
+              "description": "The profile's waterfall of your past, dealt into two columns on the home screen.",
+              "ios": {
+                "supportedFamilies": ["systemMedium", "systemLarge"]
+              },
+              "android": {
+                "targetCellWidth": 4,
+                "targetCellHeight": 2,
+                "resizeMode": "both"
+              }
+            },
+            {
+              "name": "MemoryRing",
+              "displayName": "Memory Ring",
+              "description": "A turning ring of your memories, the story's own wheel on the home screen.",
+              "ios": {
+                "supportedFamilies": ["systemSmall", "systemMedium"]
+              },
+              "android": {
+                "targetCellWidth": 4,
+                "targetCellHeight": 2,
+                "resizeMode": "horizontal"
+              }
             }
           ]
         }

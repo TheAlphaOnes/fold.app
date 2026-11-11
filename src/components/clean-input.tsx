@@ -30,7 +30,7 @@ interface CleanInputProps extends Omit<TextInputProps, 'style' | 'placeholder'> 
  */
 export function CleanInput({ value, hint, style, onFocus, onBlur, ...props }: CleanInputProps) {
   const theme = useTheme();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const [isFocused, setIsFocused] = useState(false);
 
   // Blinking cursor; hidden when blurred.

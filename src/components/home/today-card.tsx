@@ -56,7 +56,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
-  const container = useRef<View>(null);
+  const container = useRef<React.ComponentRef<typeof View>>(null);
   const [template, setTemplate] = useState<TemplateId>('story');
   const [busy, setBusy] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');

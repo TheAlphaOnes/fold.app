@@ -86,7 +86,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
-  const preview = useRef<View>(null);
+  const preview = useRef<React.ComponentRef<typeof View>>(null);
   const [facing, setFacing] = useState<CameraType>('back');
   const [place, setPlace] = useState<PlaceState>('finding');
   // The fresh fix, for a shot taken before it arrived.

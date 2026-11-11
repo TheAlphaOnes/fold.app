@@ -28,7 +28,7 @@ interface TemplateSliderProps {
 
 export function TemplateSlider({ value, onChange, width }: TemplateSliderProps) {
   const theme = useTheme();
-  const list = useRef<ScrollView>(null);
+  const list = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const index = Math.max(0, TEMPLATE_IDS.indexOf(value));
   const side = (width - ITEM) / 2;
 

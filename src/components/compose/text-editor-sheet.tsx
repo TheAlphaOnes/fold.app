@@ -52,7 +52,7 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
   const [draft, setDraft] = useState<TextDraft>(initial);
   const [inkOpen, setInkOpen] = useState(false);
   const [fontsOpen, setFontsOpen] = useState(false);
-  const input = useRef<TextInput>(null);
+  const input = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   useEffect(() => {
     const t = setTimeout(() => input.current?.focus(), 60);

@@ -29,7 +29,7 @@ export default function AchievementScreen() {
   const { width, height } = useWindowDimensions();
   const streak = useProgressionStore((state) => state.streak.current);
   const ink = useProgressionStore((state) => state.ink.month);
-  const cardRef = useRef<View>(null);
+  const cardRef = useRef<React.ComponentRef<typeof View>>(null);
   const [sharing, setSharing] = useState(false);
 
   // Fits the card between the header and the share button on any screen,

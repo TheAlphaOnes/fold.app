@@ -27,7 +27,7 @@ LogBox.ignoreLogs([
   'Network error while fetching PostHog'
 ]);
 import { ProgressionSync } from "@/components/progression-sync";
-import { StampWidgetSync } from "@/widgets/stamp-widget-sync";
+import { MemoryWidgetSync } from "@/widgets/memory-widget-sync";
 import { configureNotifications } from "@/services/reminders.service";
 import { useProgressionStore } from "@/hooks/use-progression";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -283,8 +283,8 @@ function RootLayoutNav() {
               />
             </Stack>
             <ProgressionSync />
-            {/* Keeps the Today's Stamp home screen widget in step with the journal. */}
-            <StampWidgetSync />
+            {/* Keeps the three memory widgets in step with the journal. */}
+            <MemoryWidgetSync />
             {/* The hold menu for memory cards, one instance for the whole app. */}
             <MemoryActionsHost />
             {/* Receives shares from other apps; always mounted, whatever route the link lands on. */}
