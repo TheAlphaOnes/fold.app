@@ -26,7 +26,7 @@ import { Image } from 'expo-image';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
 import { TodaySky } from '@/components/home/today-sky';
-import { ViewfinderMarks } from '@/components/home/viewfinder-marks';
+import { FadedEdges } from '@/components/home/faded-edges';
 import { CameraSurface } from '@/components/camera/camera-surface';
 import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
@@ -35,14 +35,13 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { dayLine, shotsFor, skyFor } from '@/home/today';
+import { shotsFor, skyFor } from '@/home/today';
 import { TemplateSlider } from '@/components/compose/template-slider';
 import type { TemplateId } from '@/canvas/types';
 import { navigate } from '@/utils/navigation';
 import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 
 
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 interface TodayCardProps {
   width: number;
@@ -91,10 +90,6 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   }, [shown, develop]);
   // The picture rises out of the sky like a print developing.
   const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
-  // The small date only belongs over the picture; the sky carries its own.
-  const coverFade = useAnimatedStyle(() => ({ opacity: develop.get() }));
-  // The date stays put and readable over the picture; it only eases up a little.
-  const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
@@ -160,15 +155,10 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
           />
         )}
       </Animated.View>
-      <ViewfinderMarks open={develop} />
+      {/* Soft, cloud-like edges: the page fades into home instead of ending on a line. */}
+      <FadedEdges width={width} height={height} color={theme.background} />
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
-      <Animated.View style={[styles.cover, cover, coverFade]} pointerEvents="none">
-        <ThemedText style={[styles.date, shown ? styles.overPicture : { color: theme.text }]}>
-          {DAYS[now.getDay()]} {String(now.getDate()).padStart(2, '0')}.{String(now.getMonth() + 1).padStart(2, '0')}
-        </ThemedText>
-        <ThemedText style={[styles.line, shown ? [styles.overPicture, { opacity: 0.85 }] : { color: theme.textMuted }]}>{dayLine(now)}</ThemedText>
-      </Animated.View>
 
       <View style={styles.bottom}>
         {/* What's been taken: thumbnails and how many of how many. */}
@@ -192,6 +182,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             setShots((s) => s.slice(0, shotsFor(t).max));
           }}
           width={width}
+          color={controlInk}
         />
         <View style={styles.shutterRow}>
           {/* Done: for templates that take any number of photos. */}
@@ -223,17 +214,12 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
 
 const styles = StyleSheet.create({
   flash: { backgroundColor: '#FFFFFF' },
-  // Inside the viewfinder's corner marks.
-  cover: { position: 'absolute', top: 44, left: 36, right: 36, gap: 8 },
-  date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
-  line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
-  overPicture: { color: '#FFFFFF', textShadowColor: '#00000099', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
   taken: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 40, borderRadius: 12, backgroundColor: '#00000080' },
   thumb: { width: 28, height: 28, borderRadius: 6 },
   count: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 1, marginLeft: 4 },
   shutterRow: { flexDirection: 'row', alignItems: 'center', gap: 28 },
   side: { width: ROUND_BUTTON_SIZE, alignItems: 'center' },
-  shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
-  shutterInner: { width: 56, height: 56, borderRadius: 28 },
+  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 62, height: 62, borderRadius: 31 },
 });

@@ -1,12 +1,15 @@
 /**
- * TemplateSlider — templates in a horizontal strip, swiped sideways; the one
- * that settles in the middle is picked. Same icons and names as the
+ * TemplateSlider — a camera-style mode dial: templates as bare labels in a
+ * horizontal strip, swiped sideways; the one that settles in the middle is
+ * picked, marked by a small accent dot. Labels fade with their distance
+ * from the middle, read straight from the scroll on the UI thread. Same icons and names as the
  * composer's TemplatePicker, for places with no room for its list (the
  * camera on today's page). Tapping a template slides it to the middle.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import React, { useEffect } from 'react';
+import { Pressable, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, scrollTo, runOnUI, type SharedValue } from 'react-native-reanimated';
 
 import type { TemplateId } from '@/canvas/types';
 import { renderTemplate, TEMPLATE_IDS } from '@/components/compose/template-picker';
@@ -15,8 +18,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
 /** Every item is the same width, so the strip snaps one template at a time. */
-const ITEM = 128;
-const GAP = 8;
+const ITEM = 112;
+const GAP = 4;
 const STEP = ITEM + GAP;
 
 interface TemplateSliderProps {
@@ -24,17 +27,25 @@ interface TemplateSliderProps {
   onChange: (template: TemplateId) => void;
   /** The strip's width (it centres the picked template in it). */
   width: number;
+  /** Label ink: white over a picture, dark over a light sky. */
+  color?: string;
 }
 
-export function TemplateSlider({ value, onChange, width }: TemplateSliderProps) {
+export function TemplateSlider({ value, onChange, width, color = '#FFFFFF' }: TemplateSliderProps) {
   const theme = useTheme();
-  const list = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const list = useAnimatedRef<Animated.ScrollView>();
+  const offset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    offset.value = e.contentOffset.x;
+  });
+  const slideTo = (i: number) => runOnUI(() => scrollTo(list, i * STEP, 0, true))();
   const index = Math.max(0, TEMPLATE_IDS.indexOf(value));
   const side = (width - ITEM) / 2;
 
   // Start on the current template.
   useEffect(() => {
     list.current?.scrollTo({ x: index * STEP, animated: false });
+    offset.value = index * STEP;
     // Only on first layout; afterwards the strip itself drives the value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -48,8 +59,10 @@ export function TemplateSlider({ value, onChange, width }: TemplateSliderProps) 
   };
 
   return (
-    <ScrollView
+    <Animated.ScrollView
       ref={list}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       horizontal
       showsHorizontalScrollIndicator={false}
       snapToInterval={STEP}
@@ -66,25 +79,37 @@ export function TemplateSlider({ value, onChange, width }: TemplateSliderProps) 
         return (
           <Pressable
             key={id}
-            onPress={() => list.current?.scrollTo({ x: i * STEP, animated: true })}
+            onPress={() => slideTo(i)}
             accessibilityRole="button"
             accessibilityState={{ selected: picked }}
-            style={[
-              styles.item,
-              picked
-                ? { backgroundColor: theme.background, borderColor: theme.text }
-                : { backgroundColor: '#00000059', borderColor: '#FFFFFF33' },
-            ]}
+            style={styles.item}
           >
-            <View style={styles.content}>{renderTemplate(id, picked ? theme.text : '#FFFFFFCC')}</View>
+            <Label index={i} offset={offset}>
+              <View style={styles.content}>{renderTemplate(id, color)}</View>
+              <View style={[styles.dot, { backgroundColor: theme.accentWarm, opacity: picked ? 1 : 0 }]} />
+            </Label>
           </Pressable>
         );
       })}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
+/** One label's fade and scale, from its distance to the middle of the dial. */
+function Label({ index, offset, children }: { index: number; offset: SharedValue<number>; children: React.ReactNode }) {
+  const style = useAnimatedStyle(() => {
+    const d = Math.abs(offset.value / STEP - index);
+    return {
+      opacity: interpolate(d, [0, 1, 2.2], [1, 0.45, 0], Extrapolation.CLAMP),
+      transform: [{ scale: interpolate(d, [0, 1], [1, 0.9], Extrapolation.CLAMP) }],
+    };
+  });
+  return <Animated.View style={[styles.label, style]}>{children}</Animated.View>;
+}
+
 const styles = StyleSheet.create({
-  item: { width: ITEM, height: ROUND_BUTTON_SIZE, borderRadius: ROUND_BUTTON_SIZE / 2, borderWidth: 1, justifyContent: 'center' },
+  item: { width: ITEM, height: ROUND_BUTTON_SIZE, justifyContent: 'center' },
+  label: { alignItems: 'center', gap: 6 },
+  dot: { width: 4, height: 4, borderRadius: 2 },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 10 },
 });
