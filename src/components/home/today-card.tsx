@@ -26,6 +26,9 @@ import { Image } from 'expo-image';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
 import { StripesSurface } from '@/canvas/render/stripes-surface';
+import { ApertureIris } from '@/components/home/aperture-iris';
+import { ViewfinderMarks } from '@/components/home/viewfinder-marks';
+import { BalancedText } from '@/components/balanced-text';
 import { CameraSurface } from '@/components/camera/camera-surface';
 import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
@@ -41,6 +44,8 @@ import { navigate } from '@/utils/navigation';
 import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 
 const RADIUS = 28;
+/** The hexagon left open at the iris's centre while it is closed. */
+const PUPIL = 26;
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 interface TodayCardProps {
@@ -83,9 +88,10 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const develop = useSharedValue(0);
   const shown = live && ready;
   useEffect(() => {
-    develop.set(shown ? withDelay(180, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 220 }));
+    develop.set(shown ? withDelay(120, withTiming(1, { duration: 1300, easing: Easing.linear })) : withTiming(0, { duration: 520, easing: Easing.inOut(Easing.cubic) }));
   }, [shown, develop]);
-  const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
+  // The picture is up before the blades part, so the iris opens onto it.
+  const picture = useAnimatedStyle(() => ({ opacity: Math.min(1, develop.get() * 4) }));
   // The date stays put and readable over the picture; it only eases up a little.
   const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
   const flash = useSharedValue(0);
@@ -153,6 +159,14 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
           />
         )}
       </Animated.View>
+      {/* The lens: closed while the camera sleeps, opening onto the picture. */}
+      <ApertureIris width={width} height={height} open={develop} pupil={PUPIL} />
+      <ViewfinderMarks open={develop} />
+      {!permission?.granted && (
+        <View style={[styles.invite, { top: height / 2 + PUPIL + 18 }]} pointerEvents="none">
+          <BalancedText style={[styles.inviteText, { color: theme.textMuted }]}>open the lens and keep a piece of today</BalancedText>
+        </View>
+      )}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
       <Animated.View style={[styles.cover, cover]} pointerEvents="none">
@@ -216,7 +230,10 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
 const styles = StyleSheet.create({
   card: { borderRadius: RADIUS, borderWidth: 1, overflow: 'hidden' },
   flash: { backgroundColor: '#FFFFFF' },
-  cover: { position: 'absolute', top: 28, left: 24, right: 24, gap: 8 },
+  // Inside the viewfinder's corner marks.
+  cover: { position: 'absolute', top: 44, left: 36, right: 36, gap: 8 },
+  invite: { position: 'absolute', left: 48, right: 48, alignItems: 'center' },
+  inviteText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 12, lineHeight: 18, letterSpacing: 0.5, textAlign: 'center' },
   date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
   line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
   overPicture: { color: '#FFFFFF', textShadowColor: '#00000099', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
