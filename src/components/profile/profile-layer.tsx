@@ -40,7 +40,8 @@ function WarmupBackdrop() {
     <Animated.View
       entering={fadeIn(200, 120)}
       style={[styles.backdrop, { backgroundColor: theme.background }]}
-    >      <ActivityIndicator size="small" color={theme.textMuted} />
+    >
+      <ActivityIndicator size="small" color={theme.textMuted} />
     </Animated.View>
   );
 }

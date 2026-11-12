@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   xLabels: {
     position: 'relative',
     height: 12,
-    marginTop: 8,
+    marginTop: 10,
     marginHorizontal: 16,
     overflow: 'hidden',
   },
@@ -313,8 +313,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
+    // Same 16 as the grid's top, so the card is padded evenly on every side.
+    paddingTop: 14,
+    paddingBottom: 16,
   },
   footerTop: {
     flexDirection: 'row',

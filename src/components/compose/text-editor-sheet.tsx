@@ -116,7 +116,10 @@ export function TextEditorSheet({ initial, canvasWidth, onDone, onCamera, onGall
         <ScrollView style={styles.flex} contentContainerStyle={styles.center} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View
             style={[
-              { maxWidth: canvasWidth * 0.84 },
+              // A fixed width: an input that hugs its text resizes on every
+              // keystroke, re-centres, and the caret flickers as it jumps.
+              // Alignment happens inside the box instead; only height grows.
+              { width: canvasWidth * 0.84 },
               draft.style === 'highlight' && {
                 backgroundColor: ink === '#FFFFFF' ? '#000000CC' : '#FFFFFFE6',
                 paddingHorizontal: metrics.fontSize * 0.5,
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
   doneBtn: { paddingHorizontal: 16, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', justifyContent: 'center' },
   doneText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2, color: '#111111' },
   center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-  input: { minWidth: 40, paddingHorizontal: 0 },
+  input: { width: '100%', paddingHorizontal: 0 },
   bottom: {},
   fontRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   quickAdd: { flexDirection: 'row', gap: 8 },

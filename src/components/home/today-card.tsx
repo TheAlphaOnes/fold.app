@@ -69,11 +69,22 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   }, []);
 
   const live = active && foreground && !!permission?.granted;
+  // The preview is only shown once the session reports frames are coming;
+  // until then the striped page stays, never a black box.
+  const [ready, setReady] = useState(false);
+  // Bumped to rebuild the camera when its session failed to start, e.g. when
+  // it was created in the same instant the permission prompt was answered.
+  const [session, setSession] = useState(0);
+  const onMountError = () => {
+    setReady(false);
+    setSession((n) => n + 1);
+  };
   // The camera "develops" in: the date and line step back as the picture rises.
   const develop = useSharedValue(0);
+  const shown = live && ready;
   useEffect(() => {
-    develop.set(live ? withDelay(180, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 220 }));
-  }, [live, develop]);
+    develop.set(shown ? withDelay(180, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 220 }));
+  }, [shown, develop]);
   const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
   // The date stays put and readable over the picture; it only eases up a little.
   const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
@@ -99,7 +110,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       if (!res.granted) return;
       return; // The camera develops in; the next tap shoots.
     }
-    if (!camera.current) return;
+    if (!camera.current || !ready) return;
     setBusy(true);
     haptic.press();
     flash.set(1);
@@ -125,28 +136,33 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       {/* A blank page, the same striped card as an empty canvas, until the camera develops in. */}
       <StripesSurface animated={false} />
       <Animated.View style={[StyleSheet.absoluteFill, picture]} pointerEvents="none">
-        {live && <CameraSurface cameraRef={camera} containerRef={container} facing={facing} mirror={facing === 'front'} animateShutter={false} />}
+        {/* Mounted once permission is in, then paused and resumed with `active`:
+            tearing a capture session down runs on the main thread, and doing it
+            the moment a screen starts sliding over home dropped its frames. */}
+        {!!permission?.granted && (
+          <CameraSurface
+            key={session}
+            active={live}
+            cameraRef={camera}
+            containerRef={container}
+            facing={facing}
+            mirror={facing === 'front'}
+            animateShutter={false}
+            onCameraReady={() => setReady(true)}
+            onMountError={onMountError}
+          />
+        )}
       </Animated.View>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
       <Animated.View style={[styles.cover, cover]} pointerEvents="none">
-        <ThemedText style={[styles.date, live ? styles.overPicture : { color: theme.text }]}>
+        <ThemedText style={[styles.date, shown ? styles.overPicture : { color: theme.text }]}>
           {DAYS[now.getDay()]} {String(now.getDate()).padStart(2, '0')}.{String(now.getMonth() + 1).padStart(2, '0')}
         </ThemedText>
-        <ThemedText style={[styles.line, live ? [styles.overPicture, { opacity: 0.85 }] : { color: theme.textMuted }]}>{dayLine(now)}</ThemedText>
+        <ThemedText style={[styles.line, shown ? [styles.overPicture, { opacity: 0.85 }] : { color: theme.textMuted }]}>{dayLine(now)}</ThemedText>
       </Animated.View>
 
       <View style={styles.bottom}>
-        {/* Swipe through the templates; the shot opens laid out in the one in the middle. */}
-        <TemplateSlider
-          value={template}
-          onChange={(t) => {
-            setTemplate(t);
-            // Keep what's taken, up to what the new template holds.
-            setShots((s) => s.slice(0, shotsFor(t).max));
-          }}
-          width={width}
-        />
         {/* What's been taken: thumbnails and how many of how many. */}
         {shots.length > 0 && (
           <View style={styles.taken}>
@@ -159,6 +175,16 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             </ThemedText>
           </View>
         )}
+        {/* Swipe through the templates; the shot opens laid out in the one in the middle. */}
+        <TemplateSlider
+          value={template}
+          onChange={(t) => {
+            setTemplate(t);
+            // Keep what's taken, up to what the new template holds.
+            setShots((s) => s.slice(0, shotsFor(t).max));
+          }}
+          width={width}
+        />
         <View style={styles.shutterRow}>
           {/* Done: for templates that take any number of photos. */}
           <View style={[styles.side, { opacity: shots.length > 0 && !limit.fixed ? 1 : 0 }]} pointerEvents={shots.length > 0 && !limit.fixed ? 'auto' : 'none'}>
