@@ -301,7 +301,7 @@ export default function HomeScreen() {
     if (item.type === 'today') {
       return (
         <View style={{ height: snapInterval, alignItems: 'center', justifyContent: 'center' }}>
-          <TodayCard width={width - 32} height={cardHeight} active={todayLive} onRecordVideo={captureVideo} />
+          <TodayCard width={width} height={snapInterval} active={todayLive} onRecordVideo={captureVideo} />
         </View>
       );
     }

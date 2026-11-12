@@ -25,10 +25,8 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTimi
 import { Image } from 'expo-image';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
-import { StripesSurface } from '@/canvas/render/stripes-surface';
-import { ApertureIris } from '@/components/home/aperture-iris';
+import { TodaySky } from '@/components/home/today-sky';
 import { ViewfinderMarks } from '@/components/home/viewfinder-marks';
-import { BalancedText } from '@/components/balanced-text';
 import { CameraSurface } from '@/components/camera/camera-surface';
 import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
@@ -37,15 +35,13 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { dayLine, shotsFor } from '@/home/today';
+import { dayLine, shotsFor, skyFor } from '@/home/today';
 import { TemplateSlider } from '@/components/compose/template-slider';
 import type { TemplateId } from '@/canvas/types';
 import { navigate } from '@/utils/navigation';
 import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 
-const RADIUS = 28;
-/** The hexagon left open at the iris's centre while it is closed. */
-const PUPIL = 26;
+
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 interface TodayCardProps {
@@ -59,6 +55,7 @@ interface TodayCardProps {
 
 export function TodayCard({ width, height, active, onRecordVideo }: TodayCardProps) {
   const theme = useTheme();
+  const sky = skyFor();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const container = useRef<React.ComponentRef<typeof View>>(null);
@@ -87,11 +84,15 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   // The camera "develops" in: the date and line step back as the picture rises.
   const develop = useSharedValue(0);
   const shown = live && ready;
+  // Controls read on whatever is behind them: the picture, or a light or dark sky.
+  const controlInk = shown || sky.dark ? '#FFFFFF' : '#111111';
   useEffect(() => {
-    develop.set(shown ? withDelay(120, withTiming(1, { duration: 1300, easing: Easing.linear })) : withTiming(0, { duration: 520, easing: Easing.inOut(Easing.cubic) }));
+    develop.set(shown ? withDelay(160, withTiming(1, { duration: 1100, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 360, easing: Easing.inOut(Easing.cubic) }));
   }, [shown, develop]);
-  // The picture is up before the blades part, so the iris opens onto it.
-  const picture = useAnimatedStyle(() => ({ opacity: Math.min(1, develop.get() * 4) }));
+  // The picture rises out of the sky like a print developing.
+  const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
+  // The small date only belongs over the picture; the sky carries its own.
+  const coverFade = useAnimatedStyle(() => ({ opacity: develop.get() }));
   // The date stays put and readable over the picture; it only eases up a little.
   const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
   const flash = useSharedValue(0);
@@ -138,9 +139,9 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   };
 
   return (
-    <View style={[styles.card, { width, height, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      {/* A blank page, the same striped card as an empty canvas, until the camera develops in. */}
-      <StripesSurface animated={false} />
+    <View style={{ width, height, backgroundColor: sky.bottom }}>
+      {/* No card: today's sky until the camera rises out of it. */}
+      <TodaySky width={width} height={height} invite={permission?.granted ? undefined : 'tap the shutter and let today in'} />
       <Animated.View style={[StyleSheet.absoluteFill, picture]} pointerEvents="none">
         {/* Mounted once permission is in, then paused and resumed with `active`:
             tearing a capture session down runs on the main thread, and doing it
@@ -159,17 +160,10 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
           />
         )}
       </Animated.View>
-      {/* The lens: closed while the camera sleeps, opening onto the picture. */}
-      <ApertureIris width={width} height={height} open={develop} pupil={PUPIL} />
       <ViewfinderMarks open={develop} />
-      {!permission?.granted && (
-        <View style={[styles.invite, { top: height / 2 + PUPIL + 18 }]} pointerEvents="none">
-          <BalancedText style={[styles.inviteText, { color: theme.textMuted }]}>open the lens and keep a piece of today</BalancedText>
-        </View>
-      )}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
-      <Animated.View style={[styles.cover, cover]} pointerEvents="none">
+      <Animated.View style={[styles.cover, cover, coverFade]} pointerEvents="none">
         <ThemedText style={[styles.date, shown ? styles.overPicture : { color: theme.text }]}>
           {DAYS[now.getDay()]} {String(now.getDate()).padStart(2, '0')}.{String(now.getMonth() + 1).padStart(2, '0')}
         </ThemedText>
@@ -213,9 +207,9 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={permission?.granted ? 'Take a photo for today, hold for video' : 'Use the camera for today'}
-            style={({ pressed }) => [styles.shutter, { borderColor: live ? '#FFFFFF' : theme.text, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
+            style={({ pressed }) => [styles.shutter, { borderColor: controlInk, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
           >
-            {permission?.granted ? <View style={[styles.shutterInner, { backgroundColor: live ? '#FFFFFF' : theme.text }]} /> : <CameraIcon size={24} color={theme.text} />}
+            {permission?.granted ? <View style={[styles.shutterInner, { backgroundColor: controlInk }]} /> : <CameraIcon size={24} color={controlInk} />}
           </Pressable>
           {/* Front or back; only while the camera is live. */}
           <View style={[styles.side, { opacity: live ? 1 : 0 }]} pointerEvents={live ? 'auto' : 'none'}>
@@ -228,12 +222,9 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: RADIUS, borderWidth: 1, overflow: 'hidden' },
   flash: { backgroundColor: '#FFFFFF' },
   // Inside the viewfinder's corner marks.
   cover: { position: 'absolute', top: 44, left: 36, right: 36, gap: 8 },
-  invite: { position: 'absolute', left: 48, right: 48, alignItems: 'center' },
-  inviteText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 12, lineHeight: 18, letterSpacing: 0.5, textAlign: 'center' },
   date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
   line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
   overPicture: { color: '#FFFFFF', textShadowColor: '#00000099', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
