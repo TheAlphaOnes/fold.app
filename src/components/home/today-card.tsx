@@ -21,7 +21,7 @@ import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useCameraPermissions, type CameraType, type CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
@@ -63,7 +63,6 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const [busy, setBusy] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
-  const now = new Date();
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => setForeground(s === 'active'));
@@ -90,8 +89,14 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   const shown = ready;
   // Controls read on whatever is behind them: the picture, or a light or dark sky.
   const controlInk = shown || sky.dark ? '#FFFFFF' : '#111111';
+  // The sky is the page before the camera exists. Once the picture has fully
+  // developed over it, it is unmounted for good: a paused iOS preview draws
+  // nothing (it doesn't hold a frame), so anything left underneath — the
+  // sky's huge date — would show through on every navigation.
+  const [skyGone, setSkyGone] = useState(false);
+  const retireSky = () => setSkyGone(true);
   useEffect(() => {
-    develop.set(shown ? withDelay(160, withTiming(1, { duration: 1100, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 360, easing: Easing.inOut(Easing.cubic) }));
+    develop.set(shown ? withDelay(160, withTiming(1, { duration: 1100, easing: Easing.out(Easing.cubic) }, (done) => done && runOnJS(retireSky)())) : withTiming(0, { duration: 360, easing: Easing.inOut(Easing.cubic) }));
   }, [shown, develop]);
   // The picture rises out of the sky like a print developing.
   const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
@@ -139,9 +144,9 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   };
 
   return (
-    <View style={{ width, height, backgroundColor: sky.bottom }}>
+    <View style={{ width, height, backgroundColor: skyGone ? theme.background : sky.bottom }}>
       {/* No card: today's sky until the camera rises out of it. */}
-      <TodaySky width={width} height={height} invite={permission?.granted ? undefined : 'tap the shutter and let today in'} />
+      {!skyGone && <TodaySky width={width} height={height} invite={permission?.granted ? undefined : 'tap the shutter and let today in'} />}
       <Animated.View style={[StyleSheet.absoluteFill, picture]} pointerEvents="none">
         {/* Mounted once permission is in, then paused and resumed with `active`:
             tearing a capture session down runs on the main thread, and doing it
