@@ -100,7 +100,7 @@ function Label({ index, offset, children }: { index: number; offset: SharedValue
   const style = useAnimatedStyle(() => {
     const d = Math.abs(offset.value / STEP - index);
     return {
-      opacity: interpolate(d, [0, 1, 2.2], [1, 0.45, 0], Extrapolation.CLAMP),
+      opacity: interpolate(d, [0, 1, 2.2], [1, 0.7, 0], Extrapolation.CLAMP),
       transform: [{ scale: interpolate(d, [0, 1], [1, 0.9], Extrapolation.CLAMP) }],
     };
   });

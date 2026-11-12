@@ -23,6 +23,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
 import { TodaySky } from '@/components/home/today-sky';
@@ -82,7 +83,11 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   };
   // The camera "develops" in: the date and line step back as the picture rises.
   const develop = useSharedValue(0);
-  const shown = live && ready;
+  // Once the camera has shown a picture it stays up: a paused session holds
+  // its last frame, so coming back (from the profile, a pushed screen) just
+  // resumes it. Fading it out and back up let the sky's huge date ghost
+  // through the half-faded picture.
+  const shown = ready;
   // Controls read on whatever is behind them: the picture, or a light or dark sky.
   const controlInk = shown || sky.dark ? '#FFFFFF' : '#111111';
   useEffect(() => {
@@ -156,6 +161,19 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
         )}
       </Animated.View>
       {/* Soft, cloud-like edges: the page fades into home instead of ending on a line. */}
+      {/* A low wash under the controls, so the dial and shutter read over any picture. */}
+      <Animated.View pointerEvents="none" style={[styles.scrim, { height: height * 0.4 }, picture]}>
+        <Svg width={width} height={height * 0.4}>
+          <Defs>
+            <LinearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#000000" stopOpacity={0} />
+              <Stop offset="0.55" stopColor="#000000" stopOpacity={0.32} />
+              <Stop offset="1" stopColor="#000000" stopOpacity={0.6} />
+            </LinearGradient>
+          </Defs>
+          <Rect width={width} height={height * 0.4} fill="url(#scrim)" />
+        </Svg>
+      </Animated.View>
       <FadedEdges width={width} height={height} color={theme.background} />
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
@@ -214,6 +232,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
 
 const styles = StyleSheet.create({
   flash: { backgroundColor: '#FFFFFF' },
+  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
   taken: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 40, borderRadius: 12, backgroundColor: '#00000080' },
   thumb: { width: 28, height: 28, borderRadius: 6 },
