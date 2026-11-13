@@ -70,7 +70,14 @@ export function AlmanacCard() {
       </View>
 
       <View style={styles.grid}>
-        <AlmanacGrid days={month.days} cell={cell} />
+        <AlmanacGrid
+          days={month.days}
+          cell={cell}
+          onDay={(d) => {
+            haptic.press();
+            navigate.push(`/time-machine?day=${d.key}`);
+          }}
+        />
       </View>
 
       <Animated.View entering={fadeIn(240, 300)} style={styles.footer}>
