@@ -35,7 +35,7 @@ const DRAWING_SPAN = 0.8;
 /** Pen width as a share of the drawing's span, the same weight at every size. */
 const PEN = 0.026;
 /** The pop: in from small, past full size, back — the fade done by the overshoot. */
-const POP = new Keyframe({
+export const POP = new Keyframe({
   0: { opacity: 0, transform: [{ scale: 0.3 }, { rotate: '-8deg' }] },
   45: { opacity: 1, transform: [{ scale: 1.14 }, { rotate: '3deg' }], easing: Easing.out(Easing.quad) },
   75: { transform: [{ scale: 0.96 }, { rotate: '-1deg' }], easing: Easing.inOut(Easing.quad) },
@@ -51,11 +51,11 @@ interface DayDoodleProps {
   size: number;
   /** Boil (off: still, also under Reduce Motion). */
   moving?: boolean;
-  /** Entrance delay in ms, for staggering a grid. */
+  /** Pops in after this many ms; omitted, it simply appears (a parent animates it). */
   delay?: number;
 }
 
-export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleProps) {
+export function DayDoodle({ doodle, size, moving = true, delay }: DayDoodleProps) {
   const reduced = useReducedMotion();
   const animate = moving && !reduced;
   const frames = animate ? BOIL_FRAMES : 1;
@@ -85,7 +85,7 @@ export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleP
   }, [animate, clock]);
 
   return (
-    <Animated.View entering={reduced ? undefined : POP.delay(delay)} style={{ width: size, height: size }}>
+    <Animated.View entering={reduced || delay === undefined ? undefined : POP.delay(delay)} style={{ width: size, height: size }}>
       {paths.map((frame, f) => (
         <BoilLayer key={f} frame={f} count={frames} clock={animate ? clock : null}>
           <Svg width={size} height={size}>

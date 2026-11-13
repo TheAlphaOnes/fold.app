@@ -1,18 +1,23 @@
 /**
  * AlmanacGrid — one month of the almanac: each kept day's doodle, a quiet
  * dot for the others (fainter for days still to come), and today ringed in
- * the accent until it's kept. Used by the profile card and the year screen.
+ * the accent until it's kept. The days pop in one by one, in calendar
+ * order, so the month fills in like it was lived. Used by the profile card
+ * and the year screen.
  */
 
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 
 import type { AlmanacDay } from '@/doodles/almanac';
-import { DayDoodle } from '@/doodles/day-doodle';
+import { DayDoodle, POP } from '@/doodles/day-doodle';
 import { DOODLES } from '@/doodles/library';
 import { useTheme } from '@/hooks/use-theme';
 
 export const ALMANAC_COLUMNS = 8;
+/** The beat between one day's pop and the next. */
+const STEP_MS = 28;
 
 interface AlmanacGridProps {
   days: AlmanacDay[];
@@ -26,17 +31,18 @@ interface AlmanacGridProps {
 
 export function AlmanacGrid({ days, cell, moving = true, onDay }: AlmanacGridProps) {
   const theme = useTheme();
-  let kept = 0;
+  const reduced = useReducedMotion();
   return (
     <View style={styles.grid}>
-      {days.map((d) => {
-        const face = d.kept ? (
-          <DayDoodle doodle={DOODLES[d.slot]} size={cell} moving={moving} delay={(kept++) * 45} />
+      {days.map((d, i) => {
+        const drawn = d.kept ? (
+          <DayDoodle doodle={DOODLES[d.slot]} size={cell} moving={moving} />
         ) : d.isToday ? (
           <View style={[styles.today, { borderColor: theme.accentWarm }]} />
         ) : (
           <View style={[styles.dot, { backgroundColor: theme.textMuted, opacity: d.isFuture ? 0.35 : 0.8 }]} />
         );
+        const face = <Animated.View entering={reduced ? undefined : POP.delay(i * STEP_MS)}>{drawn}</Animated.View>;
         const canOpen = onDay && !d.isFuture;
         return canOpen ? (
           <Pressable
