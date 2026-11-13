@@ -24,7 +24,7 @@ import Animated, {
 
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
-import { CELL_GAP, buildPanel, formatDate } from '@/utils/activity-grid';
+import { almanacCardHeight, almanacCell } from '@/components/almanac/almanac-card';
 
 const CARD_GAP = 24;
 const CARD_RADIUS = 10;
@@ -33,11 +33,6 @@ const GRID_PADDING = 16;
 /** The calendar's header and day-of-week rows, as laid out in TECalendar. */
 const CALENDAR_HEADER = 44;
 const CALENDAR_DOW = 40;
-/** The activity card's grid padding, month labels and footer. */
-const ACTIVITY_TOP = 16;
-const ACTIVITY_LABELS = 20;
-const ACTIVITY_FOOTER = 40;
-const EMPTY_COUNTS: Record<string, number> = {};
 /** The past wall's full-bleed viewport and three uneven masonry columns. */
 const PAST_VIEWPORT_HEIGHT = 380;
 const PAST_COLUMNS = [
@@ -129,32 +124,26 @@ export function CalendarSkeleton() {
   );
 }
 
-/** The activity card: a year's row of days and its caption line. */
+/** The almanac card: its header, this month's rows of dots and its caption line, at its exact height. */
 export function ActivitySkeleton() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const { height, cell } = useMemo(() => {
+  const days = useMemo(() => {
     const now = new Date();
-    const columns = buildPanel(now.getFullYear(), 0, 11, EMPTY_COUNTS, formatDate(now)).weeks.length;
-    const innerWidth = width - 32 - GRID_PADDING * 2;
-    const size = Math.floor(((innerWidth - (columns - 1) * CELL_GAP) / columns) * 10) / 10;
-    const pitch = size + CELL_GAP;
-    return {
-      height: ACTIVITY_TOP + (7 * pitch - CELL_GAP) + ACTIVITY_LABELS + ACTIVITY_FOOTER + 2,
-      cell: size,
-    };
-  }, [width]);
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  }, []);
   const breath = useBreath(1300, 240);
+  const cell = almanacCell(width);
   return (
-    <Card style={{ height }}>
+    <Card style={{ height: almanacCardHeight(width, days) }}>
       <Animated.View style={[styles.activityInner, breath]}>
+        <View style={[styles.activityLabel, { backgroundColor: theme.textMuted }]} />
         <View style={styles.activityRow}>
-          {Array.from({ length: 20 }, (_, i) => (
-            <View key={i} style={[styles.activityCell, { width: cell, height: cell, backgroundColor: theme.textMuted }]} />
+          {Array.from({ length: days }, (_, i) => (
+            <View key={i} style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={[styles.activityCell, { backgroundColor: theme.textMuted }]} />
+            </View>
           ))}
-        </View>
-        <View style={styles.activityFooter}>
-          <View style={[styles.activityLabel, { backgroundColor: theme.textMuted }]} />
         </View>
       </Animated.View>
     </Card>
@@ -264,19 +253,17 @@ const styles = StyleSheet.create({
   activityInner: {
     flex: 1,
     paddingHorizontal: GRID_PADDING,
-    paddingTop: ACTIVITY_TOP,
+    paddingTop: 16,
   },
   activityRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 16,
   },
   activityCell: {
-    borderRadius: 1.5,
-  },
-  activityFooter: {
-    flex: 1,
-    justifyContent: 'center',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   activityLabel: {
     width: 88,

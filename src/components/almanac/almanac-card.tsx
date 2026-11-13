@@ -23,7 +23,16 @@ import { haptic } from '@/services/haptics';
 import { navigate } from '@/utils/navigation';
 
 const PADDING = 16;
+const HEAD = 40;
+const FOOTER = 44;
 const EMPTY: Record<string, number> = {};
+
+/** The card's cell size at a screen width: inset 16 from the edges, grid 16 inside. */
+export const almanacCell = (screenWidth: number) => Math.floor((screenWidth - 32 - PADDING * 2) / ALMANAC_COLUMNS);
+
+/** The card's full height for a month of `days`, so its placeholder never jumps. */
+export const almanacCardHeight = (screenWidth: number, days: number) =>
+  HEAD + Math.ceil(days / ALMANAC_COLUMNS) * almanacCell(screenWidth) + FOOTER + 2;
 
 const pad3 = (n: number) => String(n).padStart(3, '0');
 
@@ -38,8 +47,7 @@ export function AlmanacCard() {
   const month = useMemo(() => almanacMonth(now.getFullYear(), now.getMonth(), counts, now), [counts, now]);
   const keptYear = useMemo(() => Object.entries(counts).filter(([k, n]) => n > 0 && k.startsWith(`${now.getFullYear()}-`)).length, [counts, now]);
 
-  // Card inset 16 from the screen edges, grid 16 inside it.
-  const cell = Math.floor((width - 32 - PADDING * 2) / ALMANAC_COLUMNS);
+  const cell = almanacCell(width);
 
   const open = () => {
     haptic.press();
@@ -86,8 +94,8 @@ export function AlmanacCard() {
 
 const styles = StyleSheet.create({
   card: { marginBottom: 24, borderWidth: 1, borderRadius: 10, overflow: 'hidden' },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING, paddingTop: 14 },
+  head: { height: HEAD, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING },
   headRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  grid: { paddingHorizontal: PADDING, paddingTop: 8 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING, paddingTop: 8, paddingBottom: 16 },
+  grid: { paddingHorizontal: PADDING },
+  footer: { height: FOOTER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PADDING },
 });
