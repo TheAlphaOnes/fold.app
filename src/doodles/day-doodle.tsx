@@ -6,7 +6,9 @@
  * right for one doodle and far too much for thirty: here each boil frame is
  * drawn once as plain paths in its own layer, and only the layers'
  * opacities animate, three animated values per doodle whatever its strokes.
- * It arrives with a short fade, staggered by `delay`.
+ * It arrives with a little pop, staggered by `delay`: a springy scale that
+ * overshoots and settles while the fade finishes sooner, so each doodle
+ * lands rather than just appears.
  */
 
 import React, { useEffect, useMemo } from 'react';
@@ -14,7 +16,7 @@ import { StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import Animated, {
   Easing,
-  FadeIn,
+  Keyframe,
   cancelAnimation,
   useAnimatedStyle,
   useReducedMotion,
@@ -32,6 +34,14 @@ import type { LibraryDoodle } from '@/doodles/types';
 const DRAWING_SPAN = 0.8;
 /** Pen width as a share of the drawing's span, the same weight at every size. */
 const PEN = 0.026;
+/** The pop: in from small, past full size, back — the fade done by the overshoot. */
+const POP = new Keyframe({
+  0: { opacity: 0, transform: [{ scale: 0.3 }, { rotate: '-8deg' }] },
+  45: { opacity: 1, transform: [{ scale: 1.14 }, { rotate: '3deg' }], easing: Easing.out(Easing.quad) },
+  75: { transform: [{ scale: 0.96 }, { rotate: '-1deg' }], easing: Easing.inOut(Easing.quad) },
+  100: { opacity: 1, transform: [{ scale: 1 }, { rotate: '0deg' }], easing: Easing.out(Easing.quad) },
+}).duration(460);
+
 /** Wobble size, in drawing units. */
 const AMP = 0.006;
 
@@ -75,7 +85,7 @@ export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleP
   }, [animate, clock]);
 
   return (
-    <Animated.View entering={reduced ? undefined : FadeIn.delay(delay).duration(320)} style={{ width: size, height: size }}>
+    <Animated.View entering={reduced ? undefined : POP.delay(delay)} style={{ width: size, height: size }}>
       {paths.map((frame, f) => (
         <BoilLayer key={f} frame={f} count={frames} clock={animate ? clock : null}>
           <Svg width={size} height={size}>

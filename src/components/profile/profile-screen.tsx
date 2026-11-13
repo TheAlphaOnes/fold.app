@@ -30,7 +30,7 @@ import { ThemedText } from '@/components/themed-text';
 import { AsciiArt } from '@/components/ascii-art';
 import { SYS_READY_ART } from '@/constants/ascii-art';
 import { DURATION, EASE_IN, EASE_OUT } from '@/constants/motion';
-import { ActivityGrid } from '@/components/activity-grid';
+import { AlmanacCard } from '@/components/almanac/almanac-card';
 import { FromYourPastCard } from '@/components/from-your-past-card';
 import { ContinuumCard } from '@/components/continuum/continuum-card';
 import { StoryBoardCard } from '@/components/profile/story-board-card';
@@ -239,7 +239,7 @@ export default function ProfileScreen() {
           </View>
 
           <View>
-            {mounted.activity && dayCounts !== null ? <ActivityGrid /> : <ActivitySkeleton />}
+            {mounted.activity && dayCounts !== null ? <AlmanacCard /> : <ActivitySkeleton />}
           </View>
 
           <View onLayout={(event) => setWallTop(event.nativeEvent.layout.y)}>
