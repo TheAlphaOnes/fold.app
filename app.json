@@ -137,61 +137,7 @@
         "expo-widgets",
         {
           "enableAndroid": true,
-          "widgets": [
-            {
-              "name": "OnThisDay",
-              "displayName": "On This Day",
-              "description": "A memory from this date in another year, or one you'd forgotten.",
-              "ios": {
-                "supportedFamilies": [
-                  "systemSmall",
-                  "systemMedium",
-                  "systemLarge"
-                ],
-                "contentMarginsDisabled": true
-              },
-              "android": {
-                "targetCellWidth": 2,
-                "targetCellHeight": 2,
-                "resizeMode": "both"
-              }
-            },
-            {
-              "name": "Today",
-              "displayName": "Today",
-              "description": "Have you kept anything today? The hours left, your streak, and today's memory once it's kept.",
-              "ios": {
-                "supportedFamilies": [
-                  "systemSmall",
-                  "accessoryCircular",
-                  "accessoryRectangular",
-                  "accessoryInline"
-                ],
-                "contentMarginsDisabled": true
-              },
-              "android": {
-                "targetCellWidth": 2,
-                "targetCellHeight": 2,
-                "resizeMode": "none"
-              }
-            },
-            {
-              "name": "ContactSheet",
-              "displayName": "Contact Sheet",
-              "description": "Your week as a film strip, or your month as a photo calendar. Tap a day to open it.",
-              "ios": {
-                "supportedFamilies": [
-                  "systemMedium",
-                  "systemLarge"
-                ]
-              },
-              "android": {
-                "targetCellWidth": 4,
-                "targetCellHeight": 2,
-                "resizeMode": "horizontal"
-              }
-            }
-          ]
+          "widgets": []
         }
       ]
     ],

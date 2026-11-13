@@ -283,7 +283,7 @@ function RootLayoutNav() {
               />
             </Stack>
             <ProgressionSync />
-            {/* Keeps the home and lock screen widgets in step with the journal. */}
+            {/* Keeps registered widgets (src/widgets/surfaces.ts) in step with the journal. */}
             <WidgetSync />
             {/* The hold menu for memory cards, one instance for the whole app. */}
             <MemoryActionsHost />
