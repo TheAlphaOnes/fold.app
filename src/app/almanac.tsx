@@ -5,12 +5,12 @@
  * rest stay still, so a full year on screen stays light.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ALMANAC_COLUMNS, AlmanacGrid } from '@/components/almanac/almanac-grid';
+import { AlmanacGrid } from '@/components/almanac/almanac-grid';
 import { CloseButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn } from '@/constants/motion';
@@ -22,6 +22,8 @@ import { haptic } from '@/services/haptics';
 import { goBack, navigate } from '@/utils/navigation';
 
 const EMPTY: Record<string, number> = {};
+/** Denser than the card: the year reads as a field of doodles. */
+const COLUMNS = 10;
 
 export default function AlmanacScreen() {
   const theme = useTheme();
@@ -36,7 +38,10 @@ export default function AlmanacScreen() {
   const months = useMemo(() => almanacYear(year, counts, now), [counts, now, year]);
   const kept = months.reduce((n, m) => n + m.kept, 0);
   const total = months.reduce((n, m) => n + m.days.length, 0);
-  const cell = Math.floor((width - 32) / ALMANAC_COLUMNS);
+  const cell = Math.floor((width - 32) / COLUMNS);
+  // Opens on this month, not on January.
+  const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const placed = useRef(false);
 
   return (
     <View style={[styles.page, { backgroundColor: theme.background }]}>
@@ -48,9 +53,18 @@ export default function AlmanacScreen() {
         </View>
         <View style={styles.spacer} />
       </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
+      <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
         {months.map((m, i) => (
-          <Animated.View key={m.month} entering={fadeIn(260, 40 + Math.min(i, 4) * 50)} style={styles.month}>
+          <Animated.View
+            key={m.month}
+            entering={fadeIn(260, 40 + Math.min(i, 4) * 50)}
+            style={styles.month}
+            onLayout={(e) => {
+              if (placed.current || m.month !== now.getMonth()) return;
+              placed.current = true;
+              scroll.current?.scrollTo({ y: Math.max(0, e.nativeEvent.layout.y - 12), animated: false });
+            }}
+          >
             <View style={styles.monthHead}>
               <ThemedText style={[Type.rail, { color: m.month === now.getMonth() ? theme.text : theme.textMuted }]}>{MONTH_NAMES[m.month].toUpperCase()}</ThemedText>
               <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`${String(m.kept).padStart(2, '0')} / ${m.days.length}`}</ThemedText>
