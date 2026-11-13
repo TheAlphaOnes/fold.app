@@ -49,7 +49,7 @@ export default function DoodleLibraryScreen() {
           items.map((d, i) => (
             <View key={`${month}-${d.name}`} style={{ width: cell, alignItems: 'center', marginBottom: 14 }}>
               <View style={{ width: cell, height: cell, alignItems: 'center', justifyContent: 'center' }}>
-                <DayDoodle doodle={d} size={cell} />
+                <DayDoodle doodle={d} size={cell} delay={i * 35} />
               </View>
               <Text numberOfLines={1} style={[styles.label, { color: theme.textSecondary }]}>{serialOf(start + i)}</Text>
               <Text numberOfLines={1} style={[styles.label, { color: theme.text }]}>{d.name}</Text>
@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   count: { fontFamily: 'JetBrainsMono-Regular', fontSize: 11 },
   months: { gap: 6, paddingHorizontal: 16, paddingVertical: 12 },
-  month: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },
-  monthText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, lineHeight: 16 },
+  month: { height: 28, paddingHorizontal: 12, borderRadius: 14, justifyContent: 'center' },
+  monthText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, lineHeight: 18 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
   label: { fontFamily: 'JetBrainsMono-Regular', fontSize: 9, marginTop: 2 },
   empty: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, padding: 24 },

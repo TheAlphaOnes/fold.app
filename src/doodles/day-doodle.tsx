@@ -1,43 +1,108 @@
 /**
- * DayDoodle — one doodle from the year's library, drawn by the same engine
- * as a doodle drawn in the app: a brush line that traces itself in and then
- * keeps its hand-drawn boil. Still when `moving` is off (big grids, Reduce
- * Motion), which also draws each stroke once instead of in boil frames.
+ * DayDoodle — one doodle from the year's library, in the app's brush.
+ *
+ * Built for many on screen at once (a month, a year). The canvas's
+ * DoodleView animates every strand of every stroke on its own, which is
+ * right for one doodle and far too much for thirty: here each boil frame is
+ * drawn once as plain paths in its own layer, and only the layers'
+ * opacities animate, three animated values per doodle whatever its strokes.
+ * It arrives with a short fade, staggered by `delay`.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { StyleSheet } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import Animated, {
+  Easing,
+  FadeIn,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 
-import { DoodleView } from '@/canvas/render/doodle-view';
-import type { DoodleLayer } from '@/canvas/types';
+import { BOIL_FRAMES, BOIL_FRAME_MS, brushStrands, strokePath, wobble } from '@/canvas/doodle';
 import { INKS } from '@/doodles/palette';
 import type { LibraryDoodle } from '@/doodles/types';
+import { useTheme } from '@/hooks/use-theme';
 
 /** Share of the box the drawing spans, leaving room for the pen and its wobble. */
 const DRAWING_SPAN = 0.8;
 /** Pen width as a share of the drawing's span, the same weight at every size. */
 const PEN = 0.042;
+/** Wobble size, in drawing units. */
+const AMP = 0.006;
 
 interface DayDoodleProps {
   doodle: LibraryDoodle;
   /** The square it's drawn in, in points. */
   size: number;
+  /** Boil (off: still, also under Reduce Motion). */
   moving?: boolean;
+  /** Entrance delay in ms, for staggering a grid. */
+  delay?: number;
 }
 
-export function DayDoodle({ doodle, size, moving = true }: DayDoodleProps) {
-  const layer = useMemo<DoodleLayer>(
-    () => ({
-      id: `day-${doodle.name}`,
-      kind: 'doodle',
-      x: 0.5,
-      y: 0.5,
-      scale: DRAWING_SPAN,
-      rotation: 0,
-      color: null,
-      width: PEN,
-      strokes: doodle.strokes.map((s) => ({ points: s.points, color: INKS[s.ink] ?? undefined })),
-    }),
-    [doodle],
+export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleProps) {
+  const theme = useTheme();
+  const reduced = useReducedMotion();
+  const animate = moving && !reduced;
+  const frames = animate ? BOIL_FRAMES : 1;
+
+  const paths = useMemo(() => {
+    const unit = size * DRAWING_SPAN;
+    const pen = PEN * unit;
+    const centre = { x: size / 2, y: size / 2 };
+    return Array.from({ length: frames }, (_, f) =>
+      doodle.strokes.flatMap((s, i) =>
+        brushStrands(s.points, PEN, i).map((strand) => ({
+          d: strokePath(wobble(strand.points, f, AMP, i), unit, centre),
+          ink: INKS[s.ink],
+          width: pen * strand.width,
+          opacity: strand.opacity,
+        })),
+      ),
+    );
+  }, [doodle, size, frames]);
+
+  const clock = useSharedValue(0);
+  useEffect(() => {
+    if (!animate) return undefined;
+    clock.set(withRepeat(withTiming(BOIL_FRAMES, { duration: BOIL_FRAMES * BOIL_FRAME_MS, easing: Easing.linear }), -1));
+    return () => cancelAnimation(clock);
+  }, [animate, clock]);
+
+  return (
+    <Animated.View entering={reduced ? undefined : FadeIn.delay(delay).duration(320)} style={{ width: size, height: size }}>
+      {paths.map((frame, f) => (
+        <BoilLayer key={f} frame={f} count={frames} clock={animate ? clock : null}>
+          <Svg width={size} height={size}>
+            {frame.map((p, k) => (
+              <Path
+                key={k}
+                d={p.d}
+                stroke={p.ink ?? theme.text}
+                strokeWidth={p.width}
+                strokeOpacity={p.opacity}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            ))}
+          </Svg>
+        </BoilLayer>
+      ))}
+    </Animated.View>
   );
-  return <DoodleView layer={layer} width={size} moving={moving} />;
+}
+
+/** One boil frame's layer, shown while the clock is on its frame. */
+function BoilLayer({ frame, count, clock, children }: { frame: number; count: number; clock: SharedValue<number> | null; children: React.ReactNode }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: clock ? (Math.floor(clock.get()) % count === frame ? 1 : 0) : frame === 0 ? 1 : 0,
+  }));
+  return <Animated.View style={[StyleSheet.absoluteFill, style]}>{children}</Animated.View>;
 }
