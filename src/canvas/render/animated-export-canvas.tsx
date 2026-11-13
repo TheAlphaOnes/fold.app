@@ -38,7 +38,7 @@ export interface AnimatedExportCanvasProps {
   gifs: Map<string, GifFrameSet>;
 }
 
-export const AnimatedExportCanvas = forwardRef<View, AnimatedExportCanvasProps>(function AnimatedExportCanvas({ memory, frameIndex, stepMs, gifs }, ref) {
+export const AnimatedExportCanvas = forwardRef<React.ComponentRef<typeof View>, AnimatedExportCanvasProps>(function AnimatedExportCanvas({ memory, frameIndex, stepMs, gifs }, ref) {
   const doc = useCanvasOf(memory);
   const theme = useTheme();
   if (!doc) return null;
@@ -85,7 +85,7 @@ export async function decodeGifStickers(media: MediaElement[]): Promise<Map<stri
  * of the offscreen canvas (renderInContext, like the still export — the
  * fast snapshot refuses parked views), decoded back to RGBA for gifenc.
  */
-export async function captureAnimatedFrame(ref: React.RefObject<View | null>): Promise<RgbaFrame> {
+export async function captureAnimatedFrame(ref: React.RefObject<React.ComponentRef<typeof View> | null>): Promise<RgbaFrame> {
   const b64 =
     Platform.OS === 'ios'
       ? await captureRef(ref, { format: 'png', result: 'base64', useRenderInContext: true })

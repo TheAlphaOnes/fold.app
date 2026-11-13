@@ -36,7 +36,7 @@ interface AchievementCardProps {
   height: number;
 }
 
-export const AchievementCard = forwardRef<View, AchievementCardProps>(function AchievementCard({ width, height }, ref) {
+export const AchievementCard = forwardRef<React.ComponentRef<typeof View>, AchievementCardProps>(function AchievementCard({ width, height }, ref) {
   const theme = useTheme();
   const { settings } = useSettings();
   const { current, longest } = useProgressionStore((state) => state.streak);

@@ -125,6 +125,8 @@ export interface StampSticker extends LayerBase {
 export interface DoodleStroke {
   /** Flat [x0, y0, x1, y1, …] in canvas-width units, relative to the layer centre. */
   points: number[];
+  /** Hex ink for this stroke alone; otherwise the layer's ink. */
+  color?: string;
 }
 
 /** Pen drawing: strokes that draw themselves in and then gently "boil" on the live card. */

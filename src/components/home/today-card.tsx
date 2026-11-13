@@ -21,11 +21,13 @@ import { AppState, Pressable, StyleSheet, View } from 'react-native';
 import { useCameraPermissions, type CameraType, type CameraView } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy';
 import { SaveFormat } from 'expo-image-manipulator';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Camera as CameraIcon, Check, SwitchCamera } from 'lucide-react-native';
 
-import { StripesSurface } from '@/canvas/render/stripes-surface';
+import { TodaySky } from '@/components/home/today-sky';
+import { FadedEdges } from '@/components/home/faded-edges';
 import { CameraSurface } from '@/components/camera/camera-surface';
 import { ROUND_BUTTON_SIZE, RoundButton } from '@/components/round-button';
 import { takeShotAsShown } from '@/components/camera/shot-as-shown';
@@ -34,14 +36,13 @@ import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { dayLine, shotsFor } from '@/home/today';
+import { shotsFor, skyFor } from '@/home/today';
 import { TemplateSlider } from '@/components/compose/template-slider';
 import type { TemplateId } from '@/canvas/types';
 import { navigate } from '@/utils/navigation';
 import { setPendingCameraMedia, type PendingMedia } from '@/utils/pending-camera-media';
 
-const RADIUS = 28;
-const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
 
 interface TodayCardProps {
   width: number;
@@ -54,14 +55,14 @@ interface TodayCardProps {
 
 export function TodayCard({ width, height, active, onRecordVideo }: TodayCardProps) {
   const theme = useTheme();
+  const sky = skyFor();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
-  const container = useRef<View>(null);
+  const container = useRef<React.ComponentRef<typeof View>>(null);
   const [template, setTemplate] = useState<TemplateId>('story');
   const [busy, setBusy] = useState(false);
   const [facing, setFacing] = useState<CameraType>('back');
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
-  const now = new Date();
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => setForeground(s === 'active'));
@@ -69,14 +70,36 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   }, []);
 
   const live = active && foreground && !!permission?.granted;
+  // The preview is only shown once the session reports frames are coming;
+  // until then the striped page stays, never a black box.
+  const [ready, setReady] = useState(false);
+  // Bumped to rebuild the camera when its session failed to start, e.g. when
+  // it was created in the same instant the permission prompt was answered.
+  const [session, setSession] = useState(0);
+  const onMountError = () => {
+    setReady(false);
+    setSession((n) => n + 1);
+  };
   // The camera "develops" in: the date and line step back as the picture rises.
   const develop = useSharedValue(0);
+  // Once the camera has shown a picture it stays up: a paused session holds
+  // its last frame, so coming back (from the profile, a pushed screen) just
+  // resumes it. Fading it out and back up let the sky's huge date ghost
+  // through the half-faded picture.
+  const shown = ready;
+  // Controls read on whatever is behind them: the picture, or a light or dark sky.
+  const controlInk = shown || sky.dark ? '#FFFFFF' : '#111111';
+  // The sky is the page before the camera exists. Once the picture has fully
+  // developed over it, it is unmounted for good: a paused iOS preview draws
+  // nothing (it doesn't hold a frame), so anything left underneath — the
+  // sky's huge date — would show through on every navigation.
+  const [skyGone, setSkyGone] = useState(false);
+  const retireSky = () => setSkyGone(true);
   useEffect(() => {
-    develop.set(live ? withDelay(180, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 220 }));
-  }, [live, develop]);
+    develop.set(shown ? withDelay(160, withTiming(1, { duration: 1100, easing: Easing.out(Easing.cubic) }, (done) => done && runOnJS(retireSky)())) : withTiming(0, { duration: 360, easing: Easing.inOut(Easing.cubic) }));
+  }, [shown, develop]);
+  // The picture rises out of the sky like a print developing.
   const picture = useAnimatedStyle(() => ({ opacity: develop.get() }));
-  // The date stays put and readable over the picture; it only eases up a little.
-  const cover = useAnimatedStyle(() => ({ transform: [{ translateY: -develop.get() * 8 }] }));
   const flash = useSharedValue(0);
   const flashStyle = useAnimatedStyle(() => ({ opacity: flash.get() }));
 
@@ -99,7 +122,7 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
       if (!res.granted) return;
       return; // The camera develops in; the next tap shoots.
     }
-    if (!camera.current) return;
+    if (!camera.current || !ready) return;
     setBusy(true);
     haptic.press();
     flash.set(1);
@@ -121,32 +144,46 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
   };
 
   return (
-    <View style={[styles.card, { width, height, backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
-      {/* A blank page, the same striped card as an empty canvas, until the camera develops in. */}
-      <StripesSurface animated={false} />
+    <View style={{ width, height, backgroundColor: skyGone ? theme.background : sky.bottom }}>
+      {/* No card: today's sky until the camera rises out of it. */}
+      {!skyGone && <TodaySky width={width} height={height} invite={permission?.granted ? undefined : 'tap the shutter and let today in'} />}
       <Animated.View style={[StyleSheet.absoluteFill, picture]} pointerEvents="none">
-        {live && <CameraSurface cameraRef={camera} containerRef={container} facing={facing} mirror={facing === 'front'} animateShutter={false} />}
+        {/* Mounted once permission is in, then paused and resumed with `active`:
+            tearing a capture session down runs on the main thread, and doing it
+            the moment a screen starts sliding over home dropped its frames. */}
+        {!!permission?.granted && (
+          <CameraSurface
+            key={session}
+            active={live}
+            cameraRef={camera}
+            containerRef={container}
+            facing={facing}
+            mirror={facing === 'front'}
+            animateShutter={false}
+            onCameraReady={() => setReady(true)}
+            onMountError={onMountError}
+          />
+        )}
       </Animated.View>
+      {/* Soft, cloud-like edges: the page fades into home instead of ending on a line. */}
+      {/* A low wash under the controls, so the dial and shutter read over any picture. */}
+      <Animated.View pointerEvents="none" style={[styles.scrim, { height: height * 0.4 }, picture]}>
+        <Svg width={width} height={height * 0.4}>
+          <Defs>
+            <LinearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor="#000000" stopOpacity={0} />
+              <Stop offset="0.55" stopColor="#000000" stopOpacity={0.32} />
+              <Stop offset="1" stopColor="#000000" stopOpacity={0.6} />
+            </LinearGradient>
+          </Defs>
+          <Rect width={width} height={height * 0.4} fill="url(#scrim)" />
+        </Svg>
+      </Animated.View>
+      <FadedEdges width={width} height={height} color={theme.background} />
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.flash, flashStyle]} />
 
-      <Animated.View style={[styles.cover, cover]} pointerEvents="none">
-        <ThemedText style={[styles.date, live ? styles.overPicture : { color: theme.text }]}>
-          {DAYS[now.getDay()]} {String(now.getDate()).padStart(2, '0')}.{String(now.getMonth() + 1).padStart(2, '0')}
-        </ThemedText>
-        <ThemedText style={[styles.line, live ? [styles.overPicture, { opacity: 0.85 }] : { color: theme.textMuted }]}>{dayLine(now)}</ThemedText>
-      </Animated.View>
 
       <View style={styles.bottom}>
-        {/* Swipe through the templates; the shot opens laid out in the one in the middle. */}
-        <TemplateSlider
-          value={template}
-          onChange={(t) => {
-            setTemplate(t);
-            // Keep what's taken, up to what the new template holds.
-            setShots((s) => s.slice(0, shotsFor(t).max));
-          }}
-          width={width}
-        />
         {/* What's been taken: thumbnails and how many of how many. */}
         {shots.length > 0 && (
           <View style={styles.taken}>
@@ -159,6 +196,17 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             </ThemedText>
           </View>
         )}
+        {/* Swipe through the templates; the shot opens laid out in the one in the middle. */}
+        <TemplateSlider
+          value={template}
+          onChange={(t) => {
+            setTemplate(t);
+            // Keep what's taken, up to what the new template holds.
+            setShots((s) => s.slice(0, shotsFor(t).max));
+          }}
+          width={width}
+          color={controlInk}
+        />
         <View style={styles.shutterRow}>
           {/* Done: for templates that take any number of photos. */}
           <View style={[styles.side, { opacity: shots.length > 0 && !limit.fixed ? 1 : 0 }]} pointerEvents={shots.length > 0 && !limit.fixed ? 'auto' : 'none'}>
@@ -173,9 +221,9 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
             disabled={busy}
             accessibilityRole="button"
             accessibilityLabel={permission?.granted ? 'Take a photo for today, hold for video' : 'Use the camera for today'}
-            style={({ pressed }) => [styles.shutter, { borderColor: live ? '#FFFFFF' : theme.text, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
+            style={({ pressed }) => [styles.shutter, { borderColor: controlInk, transform: [{ scale: pressed ? 0.92 : 1 }] }]}
           >
-            {permission?.granted ? <View style={[styles.shutterInner, { backgroundColor: live ? '#FFFFFF' : theme.text }]} /> : <CameraIcon size={24} color={theme.text} />}
+            {permission?.granted ? <View style={[styles.shutterInner, { backgroundColor: controlInk }]} /> : <CameraIcon size={24} color={controlInk} />}
           </Pressable>
           {/* Front or back; only while the camera is live. */}
           <View style={[styles.side, { opacity: live ? 1 : 0 }]} pointerEvents={live ? 'auto' : 'none'}>
@@ -188,18 +236,14 @@ export function TodayCard({ width, height, active, onRecordVideo }: TodayCardPro
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: RADIUS, borderWidth: 1, overflow: 'hidden' },
   flash: { backgroundColor: '#FFFFFF' },
-  cover: { position: 'absolute', top: 28, left: 24, right: 24, gap: 8 },
-  date: { fontFamily: 'JetBrainsMono-Bold', fontSize: 34, lineHeight: 44, letterSpacing: 1 },
-  line: { fontFamily: 'JetBrainsMono-Medium', fontSize: 13, lineHeight: 18, letterSpacing: 0.5 },
-  overPicture: { color: '#FFFFFF', textShadowColor: '#00000099', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 26, alignItems: 'center', gap: 16 },
   taken: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 40, borderRadius: 12, backgroundColor: '#00000080' },
   thumb: { width: 28, height: 28, borderRadius: 6 },
   count: { color: '#FFFFFF', fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 1, marginLeft: 4 },
   shutterRow: { flexDirection: 'row', alignItems: 'center', gap: 28 },
   side: { width: ROUND_BUTTON_SIZE, alignItems: 'center' },
-  shutter: { width: 72, height: 72, borderRadius: 36, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
-  shutterInner: { width: 56, height: 56, borderRadius: 28 },
+  shutter: { width: 76, height: 76, borderRadius: 38, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  shutterInner: { width: 62, height: 62, borderRadius: 31 },
 });

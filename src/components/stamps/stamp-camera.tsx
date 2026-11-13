@@ -86,7 +86,7 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
   const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
-  const preview = useRef<View>(null);
+  const preview = useRef<React.ComponentRef<typeof View>>(null);
   const [facing, setFacing] = useState<CameraType>('back');
   const [place, setPlace] = useState<PlaceState>('finding');
   // The fresh fix, for a shot taken before it arrived.
@@ -149,7 +149,16 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
         return;
       }
       // The stamp is the window's part of exactly what was on screen.
-      const crop = { originX: Math.round(window.x * scale), originY: Math.round(window.y * scale), width: Math.round(window.width * scale), height: Math.round(window.height * scale) };
+      // Clamped to the frame: the viewfinder is measured, so on a phone whose
+      // camera view is shorter than the window the stamp can graze its edge.
+      const originX = Math.max(0, Math.round(window.x * scale));
+      const originY = Math.max(0, Math.round(window.y * scale));
+      const crop = {
+        originX,
+        originY,
+        width: Math.min(frame.width - originX, Math.round(window.width * scale)),
+        height: Math.min(frame.height - originY, Math.round(window.height * scale)),
+      };
       const image = await ImageManipulator.manipulate(frame).crop(crop).resize({ width: PHOTO_PX }).renderAsync();
       const saved = await image.saveAsync({ compress: 0.86, format: SaveFormat.JPEG });
       const dest = `${FileSystem.documentDirectory}stamp_${Date.now()}.jpg`;

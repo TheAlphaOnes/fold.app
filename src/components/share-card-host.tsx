@@ -49,8 +49,8 @@ interface PreparedShare {
 
 export function useShareCard() {
   const { width, height } = useWindowDimensions();
-  const cardRef = useRef<View>(null);
-  const frameRef = useRef<View>(null);
+  const cardRef = useRef<React.ComponentRef<typeof View>>(null);
+  const frameRef = useRef<React.ComponentRef<typeof View>>(null);
   const [memory, setMemory] = useState<Composition | null>(null);
   const [animated, setAnimated] = useState<{ plan: AnimatedPlan; gifs: Map<string, GifFrameSet> } | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);

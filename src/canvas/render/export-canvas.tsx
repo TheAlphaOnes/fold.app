@@ -24,7 +24,7 @@ const LAYOUT = { width: EXPORT_SIZE.width / PixelRatio.get(), height: EXPORT_SIZ
 /** The signature's size as a share of the card width. */
 const MARK = LAYOUT.width * 0.16;
 
-export const ExportCanvas = forwardRef<View, { memory: Composition }>(function ExportCanvas({ memory }, ref) {
+export const ExportCanvas = forwardRef<React.ComponentRef<typeof View>, { memory: Composition }>(function ExportCanvas({ memory }, ref) {
   const doc = useCanvasOf(memory);
   // The crane follows the theme's ink: black on a light card, soft white on
   // a dark one, so the signature never disappears into the surface.
@@ -49,7 +49,7 @@ export const ExportCanvas = forwardRef<View, { memory: Composition }>(function E
  * the whole image; the fast snapshot refuses views outside the window, and
  * forcing an output size on the fallback drew the card into one corner.
  */
-export function captureExport(ref: React.RefObject<View | null>): Promise<string> {
+export function captureExport(ref: React.RefObject<React.ComponentRef<typeof View> | null>): Promise<string> {
   if (Platform.OS === 'ios') return captureRef(ref, { format: 'jpg', quality: 0.92, useRenderInContext: true });
   return captureRef(ref, { format: 'jpg', quality: 0.92, width: EXPORT_SIZE.width, height: EXPORT_SIZE.height });
 }

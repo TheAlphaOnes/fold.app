@@ -188,6 +188,9 @@ export default function StampMap() {
 function HoverStamp({ stamp, serial, onRemove }: { stamp: Stamp; serial?: number; onRemove: () => void }) {
   const theme = useTheme();
   const reduced = useReducedMotion();
+  const [armed, setArmed] = useState(false);
+  // A different stamp on show starts without the option.
+  useEffect(() => setArmed(false), [stamp.id]);
   const bob = useSharedValue(0);
   useEffect(() => {
     if (reduced) return;
@@ -199,20 +202,43 @@ function HoverStamp({ stamp, serial, onRemove }: { stamp: Stamp; serial?: number
   }));
   return (
     <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut.duration(160)} style={[styles.hover, { height: HOVER_STAMP * STAMP_ASPECT + 16 + 38 }]} pointerEvents="box-none">
-      {/* The stamp is part of the map's picture; only the chip beneath it is pressable. */}
-      <Animated.View style={float} pointerEvents="none">
-        <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={HOVER_STAMP} serial={serial} />
-      </Animated.View>
-      <Animated.View entering={FadeIn.duration(240).delay(120)}>
-        <Pressable
-          onPress={onRemove}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove the ${stamp.place} stamp`}
-          style={[styles.removeChip, { backgroundColor: theme.background + 'E6', borderColor: theme.border }]}
-        >
-          <Trash2 size={15} color={theme.text} />
-        </Pressable>
-      </Animated.View>
+      {/* Hold the stamp to bring up Remove; a tap puts it away again. */}
+      <Pressable
+        onLongPress={() => {
+          haptic.thud();
+          setArmed(true);
+        }}
+        onPress={() => setArmed(false)}
+        delayLongPress={380}
+        accessibilityRole="button"
+        accessibilityLabel={`${stamp.place} stamp`}
+        accessibilityHint="Hold for the option to remove it"
+        accessibilityActions={[{ name: 'longpress', label: 'Show remove' }]}
+        onAccessibilityAction={() => setArmed(true)}
+      >
+        <Animated.View style={float}>
+          <StampView imageUri={stamp.imageUri} place={stamp.place} createdAt={stamp.createdAt} width={HOVER_STAMP} serial={serial} />
+        </Animated.View>
+      </Pressable>
+      {/* The slot is always reserved, so the stamp never jumps when Remove appears. */}
+      <View style={styles.removeSlot}>
+        {armed && (
+          <Animated.View entering={riseIn(220, 0, 6)} exiting={FadeOut.duration(120)}>
+            <Pressable
+              onPress={() => {
+                setArmed(false);
+                onRemove();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove the ${stamp.place} stamp`}
+              style={[styles.removeChip, { backgroundColor: theme.background + 'E6', borderColor: theme.border }]}
+            >
+              <Trash2 size={14} color={theme.text} />
+              <ThemedText style={[styles.removeText, { color: theme.text }]}>REMOVE</ThemedText>
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
     </Animated.View>
   );
 }
@@ -229,6 +255,8 @@ const styles = StyleSheet.create({
   ctaText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 12, letterSpacing: 2 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   hover: { alignItems: 'center', justifyContent: 'flex-end', marginBottom: 14 },
-  removeChip: { marginTop: 8, width: 30, height: 30, borderRadius: 15, borderWidth: StyleSheet.hairlineWidth, alignItems: 'center', justifyContent: 'center' },
+  removeSlot: { height: 38, marginTop: 16, alignItems: 'center', justifyContent: 'center' },
+  removeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1 },
+  removeText: { fontFamily: 'JetBrainsMono-Bold', fontSize: 11, letterSpacing: 1.5 },
   strip: { paddingHorizontal: 16, paddingTop: 12, gap: 12, alignItems: 'flex-end' },
 });

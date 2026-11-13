@@ -24,7 +24,8 @@ import { navigate } from '@/utils/navigation';
 export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { compositions, removeAllCompositions } = useJournalStore();
+  // Only the action: reading the store's state here would re-render Settings on every journal change.
+  const removeAllCompositions = useJournalStore((state) => state.removeAllCompositions);
   const { settings, updateSetting, resetGuide } = useSettingsStore();
   // Live readout while the glow slider moves; null once the value is saved.
   const [glowDraft, setGlowDraft] = useState<number | null>(null);

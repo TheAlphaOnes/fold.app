@@ -83,6 +83,7 @@ export function DoodleView({ layer, width, moving, exportT }: DoodleViewProps) {
         frames: Array.from({ length: animate || exporting ? BOIL_FRAMES : 1 }, (_, f) => strokePath(wobble(strand.points, f, amp, i), unit, offset)),
       })),
       length: strokeLength(s.points) * unit,
+      color: s.color,
       timing: timings[i],
     }));
   }, [layer.strokes, layer.width, unit, amp, animate, exporting, box.width, box.height]);
@@ -109,7 +110,7 @@ export function DoodleView({ layer, width, moving, exportT }: DoodleViewProps) {
             key={i}
             strands={s.strands}
             length={s.length}
-            color={ink}
+            color={s.color ?? ink}
             pen={pen}
             clock={animate ? clock : null}
             phase={strokePhase(i)}

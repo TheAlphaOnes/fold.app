@@ -136,14 +136,8 @@
       [
         "expo-widgets",
         {
-          "widgets": [
-            {
-              "name": "TodaysStamp",
-              "displayName": "Today's Stamp",
-              "description": "The daily fold: stamp today's memory and keep the streak alive.",
-              "supportedFamilies": ["systemSmall", "systemMedium"]
-            }
-          ]
+          "enableAndroid": true,
+          "widgets": []
         }
       ]
     ],

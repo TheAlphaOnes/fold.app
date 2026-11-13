@@ -78,6 +78,8 @@ export default function HomeScreen() {
 
   const { settings, updateSetting } = useSettingsStore();
   const isFocused = useIsFocused();
+  // The profile is a layer over home, not a route, so home stays "focused" under it.
+  const profileOpen = useProfileVisibility((state) => state.open);
 
   // ─── Teaching the orange key ───────────────────────────────────────────
   const unlearned = unlearnedGestures(settings.keyGesturesUsed);
@@ -104,8 +106,10 @@ export default function HomeScreen() {
     );
   }, [timelineSpine, settings.timelineMode, snapInterval]);
   const [todayCentred, setTodayCentred] = useState(true);
-  // The today card's camera runs only while it's centred and home is in front.
-  const todayLive = todayCentred && isFocused;
+  // The today card's camera runs only while it's centred and home is in front:
+  // a capture session left running under the profile (and every screen pushed
+  // from it, such as Settings) costs frames on every transition.
+  const todayLive = todayCentred && isFocused && !profileOpen;
   const { captureVideo } = quickCapture;
 
   
@@ -297,7 +301,7 @@ export default function HomeScreen() {
     if (item.type === 'today') {
       return (
         <View style={{ height: snapInterval, alignItems: 'center', justifyContent: 'center' }}>
-          <TodayCard width={width - 32} height={cardHeight} active={todayLive} onRecordVideo={captureVideo} />
+          <TodayCard width={width} height={snapInterval} active={todayLive} onRecordVideo={captureVideo} />
         </View>
       );
     }

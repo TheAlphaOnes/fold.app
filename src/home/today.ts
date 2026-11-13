@@ -30,3 +30,21 @@ export function shotsFor(template: TemplateId): { max: number; fixed: boolean } 
   if (template === 'story' || template === 'text') return { max: 1, fixed: true };
   return { max: FREE_SHOTS, fixed: false };
 }
+
+/** Today's sky: a top and bottom colour for the time of day, and whether ink on it reads light. */
+export interface Sky {
+  top: string;
+  bottom: string;
+  /** Text and controls sit in white on this sky. */
+  dark: boolean;
+}
+
+/** The sky behind today's page, following the same hours as `dayLine`. Pure, so it's tested. */
+export function skyFor(now = new Date()): Sky {
+  const h = now.getHours();
+  if (h < 5) return { top: '#070B1F', bottom: '#1E2350', dark: true };
+  if (h < 11) return { top: '#F9D9B8', bottom: '#F4EDE2', dark: false };
+  if (h < 16) return { top: '#9CCBEA', bottom: '#EAF4F9', dark: false };
+  if (h < 20) return { top: '#FF5A12', bottom: '#FFB66B', dark: false };
+  return { top: '#120B24', bottom: '#3A1F4F', dark: true };
+}

@@ -20,7 +20,7 @@ import { CameraView, type CameraViewProps } from 'expo-camera';
 
 interface CameraSurfaceProps extends Omit<CameraViewProps, 'ref' | 'style'> {
   cameraRef: Ref<CameraView>;
-  containerRef?: Ref<View>;
+  containerRef?: Ref<React.ComponentRef<typeof View>>;
   style?: StyleProp<ViewStyle>;
 }
 

@@ -8,37 +8,33 @@
  * Restore or Delete forever. Anything permanent asks first.
  */
 
-import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Alert, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { LinearTransition } from 'react-native-reanimated';
-import { Image } from 'expo-image';
-import { Mic, RotateCcw, Trash2 } from 'lucide-react-native';
+import Animated from 'react-native-reanimated';
 
 import { AsciiArt } from '@/components/ascii-art';
+import { BalancedText } from '@/components/balanced-text';
 import { GrainBackground } from '@/components/grain-background';
 import { ScreenHeader } from '@/components/screen-header';
 import { ThemedText } from '@/components/themed-text';
-import { Type } from '@/constants/theme';
+import { TrashActionBar } from '@/components/trash/trash-action-bar';
+import { TrashTile } from '@/components/trash/trash-tile';
 import { BIN_ART } from '@/constants/ascii-art';
-import { fadeIn, fadeOut, riseIn } from '@/constants/motion';
-import { BALANCED_TEXT } from '@/constants/theme';
+import { fadeIn, riseIn } from '@/constants/motion';
+import { BALANCED_TEXT, Type } from '@/constants/theme';
 import { getTrashedCompositions } from '@/db/journal-repository';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useTheme } from '@/hooks/use-theme';
-import { useVideoThumbnail } from '@/hooks/use-video-thumbnail';
 import { haptic } from '@/services/haptics';
 import { TRASH_DAYS, daysLeftInTrash, emptyTrash, purgeMemories } from '@/services/trash.service';
-import { getHighResArtwork } from '@/utils/media-attach';
-import { isDecorativeMedia } from '@/utils/media-kind';
-import { memoryTextMetrics } from '@/utils/memory-text';
+import { trashSections } from '@/utils/trash-groups';
 import type { Composition } from '@/types/journal';
 
 const GUTTER = 16;
-const GAP = 12;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_STAGGER = 8;
+const GAP = 8;
+const COLUMNS = 3;
 
 function titleOf(memory: Composition): string {
   const firstLine = memory.textContent.trim().split('\n')[0];
@@ -50,103 +46,18 @@ function titleOf(memory: Composition): string {
   return 'Voice note';
 }
 
-function deletedAgo(deletedAt: number, now: number): string {
-  const days = Math.floor((now - deletedAt) / DAY_MS);
-  if (days <= 0) return 'deleted today';
-  return days === 1 ? 'deleted yesterday' : `deleted ${days} days ago`;
-}
-
-function Cover({ memory }: { memory: Composition }) {
-  const theme = useTheme();
-  const visual = memory.mediaElements.find((m) => (m.type === 'image' || m.type === 'video') && !isDecorativeMedia(m));
-  const videoThumb = useVideoThumbnail(visual?.type === 'video' ? visual.uri : undefined);
-  const music = memory.mediaElements.find((m) => m.type === 'audio' && m.metadata);
-  const uri = visual ? (visual.type === 'video' ? videoThumb : visual.uri) : getHighResArtwork(music?.metadata?.artwork);
-  const words = memory.textContent.trim();
-
-  if (uri) {
-    return <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />;
-  }
-  return (
-    <View style={[StyleSheet.absoluteFill, styles.coverFace, { backgroundColor: theme.backgroundElement }]}>
-      {words ? (
-        <ThemedText
-          {...BALANCED_TEXT}
-          numberOfLines={6}
-          style={{
-            ...memoryTextMetrics(memory.fontFamily, 13),
-            fontFamily: memory.fontFamily || 'JetBrainsMono-Regular',
-            color: memory.textColor ?? theme.text,
-            textAlign: 'center',
-          }}
-        >
-          {words}
-        </ThemedText>
-      ) : (
-        <Mic size={22} color={theme.accentWarm} />
-      )}
-    </View>
-  );
-}
-
-interface CardProps {
-  memory: Composition;
-  index: number;
-  width: number;
-  now: number;
-  onPress: (memory: Composition) => void;
-}
-
-function DeletedCard({ memory, index, width, now, onPress }: CardProps) {
-  const theme = useTheme();
-  const deletedAt = memory.deletedAt ?? now;
-  const left = daysLeftInTrash(deletedAt, now);
-  const urgent = left <= 3;
-
-  return (
-    <Animated.View
-      entering={riseIn(300, Math.min(index, MAX_STAGGER) * 40, 12)}
-      exiting={fadeOut()}
-      layout={LinearTransition.duration(240)}
-      style={{ width }}
-    >
-      <Pressable
-        onPress={() => onPress(memory)}
-        accessibilityRole="button"
-        accessibilityLabel={`${titleOf(memory)}, ${left} days left. Restore or delete.`}
-        style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.97 : 1 }], opacity: pressed ? 0.85 : 1 }]}
-      >
-        <View style={[styles.cover, { borderColor: theme.border, backgroundColor: theme.backgroundSelected }]}>
-          <Cover memory={memory} />
-          <View
-            style={[styles.badge, { backgroundColor: urgent ? theme.accentWarm : 'rgba(0,0,0,0.55)' }]}
-            pointerEvents="none"
-          >
-            <ThemedText style={styles.badgeText}>{left === 1 ? '1 DAY' : `${left} DAYS`}</ThemedText>
-          </View>
-        </View>
-        <View style={styles.caption}>
-          <ThemedText style={[styles.title, { color: theme.text }]} numberOfLines={1}>
-            {titleOf(memory)}
-          </ThemedText>
-          <ThemedText style={[styles.meta, { color: theme.textMuted }]} numberOfLines={1}>
-            {deletedAgo(deletedAt, now)}
-          </ThemedText>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
+type Row = { key: string; kind: 'header'; title: string; count: number } | { key: string; kind: 'row'; items: Composition[]; order: number };
 
 export default function TrashScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const columnWidth = (screenWidth - GUTTER * 2 - GAP) / 2;
+  const tile = Math.floor((screenWidth - GUTTER * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
   const restoreComposition = useJournalStore((state) => state.restoreComposition);
   const restoreAll = useJournalStore((state) => state.restoreAllCompositions);
   const [items, setItems] = useState<Composition[] | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [selected, setSelected] = useState<Set<number>>(() => new Set());
 
   const reload = useCallback(async () => {
     try {
@@ -165,49 +76,61 @@ export default function TrashScreen() {
     }, [reload]),
   );
 
-  const without = (id: number) => setItems((current) => current?.filter((m) => m.id !== id) ?? null);
+  const without = (ids: Set<number>) => setItems((current) => current?.filter((m) => !ids.has(m.id)) ?? null);
 
-  const restore = async (memory: Composition) => {
-    without(memory.id);
+  const toggle = useCallback((id: number) => {
+    haptic.select();
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const picked = () => (items ?? []).filter((m) => selected.has(m.id));
+
+  const restoreSelected = async () => {
+    const memories = picked();
+    haptic.press();
+    without(selected);
+    setSelected(new Set());
     try {
-      await restoreComposition(memory.id);
+      for (const memory of memories) await restoreComposition(memory.id);
       haptic.success();
     } catch (error) {
-      console.error('Failed to restore memory', error);
+      console.error('Failed to restore memories', error);
       haptic.error();
       Alert.alert("COULDN'T RESTORE", 'Please try again.');
       reload();
     }
   };
 
-  const deleteForever = (memory: Composition) => {
+  const deleteSelected = () => {
+    const memories = picked();
     haptic.warning();
-    Alert.alert('DELETE FOREVER?', "This memory and its photos and audio will be gone. This can't be undone.", [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete forever',
-        style: 'destructive',
-        onPress: async () => {
-          without(memory.id);
-          try {
-            await purgeMemories([memory]);
-          } catch (error) {
-            console.error('Failed to delete memory permanently', error);
-            Alert.alert("COULDN'T DELETE", 'Please try again.');
-            reload();
-          }
+    Alert.alert(
+      'DELETE FOREVER?',
+      `${memories.length === 1 ? 'This memory' : `These ${memories.length} memories`} and their photos and audio will be gone. This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete forever',
+          style: 'destructive',
+          onPress: async () => {
+            without(new Set(memories.map((m) => m.id)));
+            setSelected(new Set());
+            try {
+              await purgeMemories(memories);
+            } catch (error) {
+              console.error('Failed to delete memories permanently', error);
+              Alert.alert("COULDN'T DELETE", 'Please try again.');
+              reload();
+            }
+          },
         },
-      },
-    ]);
-  };
-
-  const openActions = (memory: Composition) => {
-    haptic.tap();
-    Alert.alert(titleOf(memory).toUpperCase(), `${daysLeftInTrash(memory.deletedAt ?? now, now)} days until it's deleted for good.`, [
-      { text: 'Restore', onPress: () => restore(memory) },
-      { text: 'Delete forever', style: 'destructive', onPress: () => deleteForever(memory) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+      ],
+    );
   };
 
   const confirmRestoreAll = async () => {
@@ -250,6 +173,15 @@ export default function TrashScreen() {
   };
 
   const count = items?.length ?? 0;
+  const rows = useMemo<Row[]>(() => {
+    const sections = trashSections(items ?? [], now, COLUMNS);
+    // Entrance order runs across sections, so the stagger continues down the page.
+    const starts = sections.map((_, i) => sections.slice(0, i).reduce((n, sec) => n + sec.rows.flat().length, 0));
+    return sections.flatMap((section, si) => [
+      { key: `h-${section.title}`, kind: 'header' as const, title: section.title, count: section.rows.flat().length },
+      ...section.rows.map((r, ri) => ({ key: `r-${r[0].id}`, kind: 'row' as const, items: r, order: starts[si] + ri * COLUMNS })),
+    ]);
+  }, [items, now]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -259,59 +191,49 @@ export default function TrashScreen() {
       {items === null ? null : count > 0 ? (
         <>
           <Animated.FlatList
-            data={items}
-            keyExtractor={(memory) => String(memory.id)}
-            numColumns={2}
-            columnWrapperStyle={styles.row}
-            renderItem={({ item, index }) => (
-              <DeletedCard memory={item} index={index} width={columnWidth} now={now} onPress={openActions} />
-            )}
-            itemLayoutAnimation={LinearTransition.duration(240)}
+            data={rows}
+            keyExtractor={(row) => row.key}
+            renderItem={({ item: row }) =>
+              row.kind === 'header' ? (
+                <View style={styles.sectionHead}>
+                  <ThemedText style={[Type.rail, { color: theme.text }]} numberOfLines={1}>{row.title}</ThemedText>
+                  <ThemedText style={[Type.rail, { color: theme.textMuted }]} numberOfLines={1}>{String(row.count).padStart(2, '0')}</ThemedText>
+                </View>
+              ) : (
+                <View style={styles.row}>
+                  {row.items.map((memory, i) => (
+                    <TrashTile
+                      key={memory.id}
+                      memory={memory}
+                      size={tile}
+                      daysLeft={daysLeftInTrash(memory.deletedAt ?? now, now)}
+                      selected={selected.has(memory.id)}
+                      order={row.order + i}
+                      label={titleOf(memory)}
+                      onToggle={toggle}
+                    />
+                  ))}
+                </View>
+              )
+            }
             ListHeaderComponent={
-              <Animated.View entering={fadeIn(260)} style={[styles.summary, { borderColor: theme.border }]}>
-                <ThemedText style={[Type.rail, { color: theme.textMuted }]} numberOfLines={1}>
-                  {`${String(count).padStart(2, '0')} ${count === 1 ? 'MEMORY' : 'MEMORIES'} WAITING`}
-                </ThemedText>
-                <ThemedText style={[Type.rail, styles.summaryNote, { color: theme.textMuted }]} numberOfLines={1}>
-                  {`DELETES IN ${TRASH_DAYS} DAYS`}
-                </ThemedText>
+              <Animated.View entering={fadeIn(260)} style={styles.intro}>
+                <BalancedText style={[styles.introText, { color: theme.textMuted }]}>
+                  {`each one waits ${TRASH_DAYS} days, then it's gone. tap to pick.`}
+                </BalancedText>
               </Animated.View>
             }
-            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 }]}
+            contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 120 }]}
             showsVerticalScrollIndicator={false}
           />
 
-          <Animated.View
-            entering={riseIn(300, 160, 16)}
-            style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: theme.background }]}
-          >
-            {/* Same chip language as the rest of the app (compose story chip,
-                header buttons): card surface, hairline border, mono caps. */}
-            <Pressable
-              onPress={confirmRestoreAll}
-              accessibilityRole="button"
-              accessibilityLabel="Restore all memories"
-              style={({ pressed }) => [
-                styles.barButton,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border, transform: [{ scale: pressed ? 0.96 : 1 }] },
-              ]}
-            >
-              <RotateCcw size={14} color={theme.text} />
-              <ThemedText style={[styles.barText, { color: theme.text }]}>RESTORE ALL</ThemedText>
-            </Pressable>
-            <Pressable
-              onPress={confirmEmpty}
-              accessibilityRole="button"
-              accessibilityLabel="Empty Recently Deleted"
-              style={({ pressed }) => [
-                styles.barButton,
-                { backgroundColor: theme.backgroundElement, borderColor: theme.border, transform: [{ scale: pressed ? 0.96 : 1 }] },
-              ]}
-            >
-              <Trash2 size={14} color={theme.destructive} />
-              <ThemedText style={[styles.barText, { color: theme.destructive }]}>EMPTY BIN</ThemedText>
-            </Pressable>
-          </Animated.View>
+          <TrashActionBar
+            selected={selected.size}
+            bottomInset={insets.bottom}
+            width={screenWidth}
+            onRestore={selected.size > 0 ? restoreSelected : confirmRestoreAll}
+            onDelete={selected.size > 0 ? deleteSelected : confirmEmpty}
+          />
         </>
       ) : (
         <View style={styles.empty}>
@@ -330,118 +252,13 @@ export default function TrashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  list: {
-    paddingHorizontal: GUTTER,
-    paddingTop: 8,
-  },
-  row: {
-    gap: GAP,
-    marginBottom: 20,
-  },
-  // One rail line, the same as the card rails across the app
-  // (ACTIVITY … 011 DAYS): count on the left, the rule on the right.
-  summary: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 16,
-    paddingBottom: 16,
-    marginBottom: 18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  summaryNote: {
-    flexShrink: 1,
-    textAlign: 'right',
-  },
-  card: {
-    gap: 10,
-  },
-  cover: {
-    aspectRatio: 0.8,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-  },
-  coverFace: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 14,
-  },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    paddingHorizontal: 8,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-  },
-  badgeText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 9,
-    lineHeight: 12,
-    letterSpacing: 1,
-    color: '#FFFFFF',
-  },
-  caption: {
-    gap: 3,
-    paddingHorizontal: 2,
-  },
-  title: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  meta: {
-    fontFamily: 'JetBrainsMono-Medium',
-    fontSize: 10,
-    lineHeight: 14,
-    letterSpacing: 0.4,
-  },
-  bar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: GUTTER,
-    paddingTop: 12,
-  },
-  barButton: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  barText: {
-    fontFamily: 'JetBrainsMono-Bold',
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 1.6,
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 32,
-    paddingBottom: 80,
-  },
-  emptyArt: {
-    opacity: 0.6,
-  },
-  emptyText: {
-    fontFamily: 'JetBrainsMono-Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
+  container: { flex: 1 },
+  list: { paddingHorizontal: GUTTER, paddingTop: 4 },
+  intro: { paddingTop: 4, paddingBottom: 4, paddingHorizontal: 24, alignItems: 'center' },
+  introText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 20, paddingBottom: 10 },
+  row: { flexDirection: 'row', gap: GAP, marginBottom: GAP },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 32, paddingBottom: 80 },
+  emptyArt: { opacity: 0.6 },
+  emptyText: { fontFamily: 'JetBrainsMono-Regular', fontSize: 12, lineHeight: 18, textAlign: 'center' },
 });
