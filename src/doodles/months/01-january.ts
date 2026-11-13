@@ -4,6 +4,7 @@
  */
 
 import { arc, around, circle, curve, dot, heart, leaf, line, oval, petal, place, poly, star, wave, zigzag } from '@/doodles/kit';
+import { face } from '@/doodles/motifs';
 import { doodle, type LibraryDoodle } from '@/doodles/types';
 
 export const JANUARY: LibraryDoodle[] = [
@@ -78,6 +79,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['brown', oval(-0.02, -0.05, 0.13, 0.03)],
     ['ink', arc(0.2, 0.08, 0.1, 0.11, -80, 170)],
     ['sky', wave(-0.08, -0.16, -0.08, -0.42, 0.03, 1.5), wave(0.05, -0.16, 0.05, -0.38, 0.03, 1.5)],
+    ...face(-0.02, 0.14, 0.8),
   ),
 
   // 8
@@ -142,6 +144,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['brown', poly([[-0.28, 0.18], [0.28, 0.18], [0.23, 0.38], [-0.23, 0.38]], true)],
     ['green', poly([[0, -0.2], [-0.1, 0.08], [0.1, 0.08]], true)],
     ['sky', dot(-0.16, -0.18), dot(0.14, -0.24), dot(-0.06, -0.3), dot(0.18, -0.06), dot(-0.2, 0.0)],
+    ...face(0, 0.28, 0.6),
   ),
 
   // 14
@@ -162,6 +165,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['ink', oval(0, 0.32, 0.22, 0.05), line(0, -0.12, 0, -0.18)],
     ['orange', petal(0, -0.18, -90, 0.24, 0.13, true)],
     ['amber', petal(0, -0.19, -90, 0.12, 0.06, true)],
+    ...face(0, 0.1, 0.6),
   ),
 
   // 16
@@ -172,6 +176,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['ink', arc(0.3, 0.05, 0.09, 0.12, -80, 165)],
     ['ink', arc(0, -0.14, 0.15, 0.06, 180, 180), circle(0, -0.24, 0.035)],
     ['ink', curve([[-0.24, 0.1], [0, 0.14], [0.24, 0.1]])],
+    ...face(0, 0.02, 0.9),
   ),
 
   // 17
@@ -202,6 +207,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['ink', arc(0, 0.26, 0.12, 0.17, 180, 180)],
     ['sky', arc(0, 0.26, 0.38, 0.3, 192, 156), arc(0, 0.26, 0.31, 0.12, 196, 148)],
     ['sky', line(-0.2, -0.04, -0.17, 0.1), line(0.2, -0.04, 0.17, 0.1), line(0, -0.17, 0, -0.04), line(-0.28, 0.14, -0.25, 0.25), line(0.28, 0.14, 0.25, 0.25)],
+    ...face(0, 0.06, 0.7),
   ),
 
   // 20
@@ -252,6 +258,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['ink', curve([[-0.24, 0.32], [0.33, 0.33]])],
     ['ink', wave(-0.17, -0.34, 0.14, -0.34, 0.035, 3)],
     ['ink', line(-0.12, -0.18, 0.1, -0.18)],
+    ...face(-0.01, -0.06, 0.6),
   ),
 
   // 25
@@ -290,6 +297,7 @@ export const JANUARY: LibraryDoodle[] = [
     ['pink', curve([[-0.08, -0.22], [-0.24, -0.18], [-0.27, 0.0], [-0.26, 0.3], [0, 0.36], [0.26, 0.3], [0.27, 0.0], [0.24, -0.18], [0.08, -0.22]])],
     ['ink', poly([[-0.08, -0.22], [-0.08, -0.32], [0.08, -0.32], [0.08, -0.22]]), line(-0.11, -0.38, 0.11, -0.38), line(-0.11, -0.38, -0.08, -0.32), line(0.11, -0.38, 0.08, -0.32)],
     ['pink', wave(-0.16, 0.02, 0.16, 0.02, 0.025, 2.5), wave(-0.16, 0.12, 0.16, 0.12, 0.025, 2.5), wave(-0.16, 0.22, 0.16, 0.22, 0.025, 2.5)],
+    ...face(0, -0.08, 0.7),
   ),
 
   // 29

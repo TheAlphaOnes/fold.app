@@ -11,18 +11,17 @@ import sharp from 'sharp';
 
 import { brushStrands, strokePath } from '@/canvas/doodle';
 import { DOODLES, MONTH_STARTS, serialOf } from '@/doodles/library';
-import { INKS } from '@/doodles/palette';
+import { hueOf, strokeHex } from '@/doodles/palette';
 
 const CELL = 150;
 const COLS = 7;
-const PEN = 0.042;
+const PEN = 0.026;
 const DRAW = 0.78;
 
 function main(): void {
   const [which = '1', out = 'sheet.png', scheme = 'dark'] = process.argv.slice(2);
   const light = scheme === 'light';
   const bg = light ? '#FFFFFF' : '#121212';
-  const text = light ? '#141414' : '#EFEFEF';
   const muted = light ? '#77736C' : '#8C8C8C';
 
   const month = which === 'all' ? null : Number(which);
@@ -39,10 +38,11 @@ function main(): void {
   const cells = items.map(({ d, index }, k) => {
     const cx = (k % COLS) * CELL + CELL / 2;
     const cy = Math.floor(k / COLS) * (CELL + 22) + CELL / 2 + 10;
+    const hue = hueOf(d.strokes);
     const paths = d.strokes.flatMap((s, i) =>
       brushStrands(s.points, PEN, i).map(
         (strand) =>
-          `<path d="${strokePath(strand.points, unit, { x: cx, y: cy })}" stroke="${INKS[s.ink] ?? text}" stroke-width="${(pen * strand.width).toFixed(2)}" stroke-opacity="${strand.opacity}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+          `<path d="${strokePath(strand.points, unit, { x: cx, y: cy })}" stroke="${strokeHex(s.ink, hue)}" stroke-width="${(pen * strand.width).toFixed(2)}" stroke-opacity="${strand.opacity}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
       ),
     );
     const label = `<text x="${cx}" y="${cy + CELL / 2 + 6}" font-family="Menlo, monospace" font-size="10" fill="${muted}" text-anchor="middle">${serialOf(index)} · ${d.name}</text>`;

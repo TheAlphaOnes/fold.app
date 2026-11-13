@@ -25,14 +25,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BOIL_FRAMES, BOIL_FRAME_MS, brushStrands, strokePath, wobble } from '@/canvas/doodle';
-import { INKS } from '@/doodles/palette';
+import { hueOf, strokeHex } from '@/doodles/palette';
 import type { LibraryDoodle } from '@/doodles/types';
-import { useTheme } from '@/hooks/use-theme';
 
 /** Share of the box the drawing spans, leaving room for the pen and its wobble. */
 const DRAWING_SPAN = 0.8;
 /** Pen width as a share of the drawing's span, the same weight at every size. */
-const PEN = 0.042;
+const PEN = 0.026;
 /** Wobble size, in drawing units. */
 const AMP = 0.006;
 
@@ -47,7 +46,6 @@ interface DayDoodleProps {
 }
 
 export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleProps) {
-  const theme = useTheme();
   const reduced = useReducedMotion();
   const animate = moving && !reduced;
   const frames = animate ? BOIL_FRAMES : 1;
@@ -56,11 +54,12 @@ export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleP
     const unit = size * DRAWING_SPAN;
     const pen = PEN * unit;
     const centre = { x: size / 2, y: size / 2 };
+    const hue = hueOf(doodle.strokes);
     return Array.from({ length: frames }, (_, f) =>
       doodle.strokes.flatMap((s, i) =>
         brushStrands(s.points, PEN, i).map((strand) => ({
           d: strokePath(wobble(strand.points, f, AMP, i), unit, centre),
-          ink: INKS[s.ink],
+          ink: strokeHex(s.ink, hue),
           width: pen * strand.width,
           opacity: strand.opacity,
         })),
@@ -84,7 +83,7 @@ export function DayDoodle({ doodle, size, moving = true, delay = 0 }: DayDoodleP
               <Path
                 key={k}
                 d={p.d}
-                stroke={p.ink ?? theme.text}
+                stroke={p.ink}
                 strokeWidth={p.width}
                 strokeOpacity={p.opacity}
                 strokeLinecap="round"
