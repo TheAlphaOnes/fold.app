@@ -35,7 +35,6 @@ import { useQuickCapture } from '@/hooks/use-quick-capture';
 import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
 import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
-import { InkGain } from '@/components/ink-gain';
 import { ProfileLayer } from '@/components/profile/profile-layer';
 import { useProfileVisibility } from '@/hooks/use-profile-visibility';
 
@@ -329,7 +328,6 @@ export default function HomeScreen() {
       <EdgeTab slot={0} onPress={() => useProfileVisibility.getState().openProfile()} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
       </EdgeTab>
-      <InkGain />
 
       <FieldGuideTab />
 

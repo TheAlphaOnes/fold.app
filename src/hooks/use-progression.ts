@@ -15,7 +15,6 @@ import { requestReminderPermission, syncMomentReminders } from '@/services/remin
 import { setPersonProperties, track, type PersonProperties } from '@/services/analytics';
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
-import { useMoments } from '@/hooks/use-moments';
 import { readCache, writeCache } from '@/db/cache-repository';
 import { toDayKey } from '@/utils/format-date';
 
@@ -28,12 +27,6 @@ export interface SeenInk {
   value: number;
 }
 
-/** Ink just earned by a save, shown briefly beside the profile tab. */
-export interface InkGain {
-  id: number;
-  points: number;
-}
-
 interface ProgressionState {
   /** Local day keys (YYYY-MM-DD) that hold at least one memory. */
   activeDays: Set<string>;
@@ -44,7 +37,6 @@ interface ProgressionState {
   /** Null until read from storage. */
   seenInk: SeenInk | null;
   loaded: boolean;
-  gain: InkGain | null;
 
   /** Re-reads everything from the journal and reschedules reminders. Never throws. */
   refresh: () => Promise<void>;
@@ -52,7 +44,6 @@ interface ProgressionState {
   /** Loads the saved progress; true if there was one. */
   hydrateFromSnapshot: () => Promise<boolean>;
   recordCapture: () => Promise<void>;
-  clearGain: (id: number) => void;
   /** The profile has shown the current ink; the next count-up starts here. */
   markInkSeen: () => void;
 }
@@ -106,7 +97,6 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   ink: NO_INK,
   seenInk: null,
   loaded: false,
-  gain: null,
 
   hydrateFromSnapshot: async () => {
     const snapshot = await readCache<ProgressionSnapshot>(SNAPSHOT_KEY);
@@ -163,7 +153,6 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     const { ink, streak } = get();
     if (before && before.ink.monthKey === ink.monthKey && ink.month > before.ink.month) {
       const points = ink.month - before.ink.month;
-      set({ gain: { id: Date.now(), points } });
       track('ink_earned', {
         points,
         month_total: ink.month,
@@ -174,19 +163,8 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     }
     if (before && streak.current > before.streak.current) {
       track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
-      // Past day one, the save's sparkle becomes the streak moment.
-      if (streak.current > 1) {
-        const isBest = streak.current > before.streak.longest;
-        useMoments
-          .getState()
-          .celebrate(`DAY ${String(streak.current).padStart(2, '0')}${isBest ? ' · BEST' : ''}`, 'streak');
-      }
     }
     void enableReminders();
-  },
-
-  clearGain: (id: number) => {
-    if (get().gain?.id === id) set({ gain: null });
   },
 
   markInkSeen: () => {
