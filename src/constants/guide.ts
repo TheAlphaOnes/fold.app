@@ -30,7 +30,6 @@ export type GuideStepId =
   | 'chapter'
   | 'tag'
   | 'ink'
-  | 'reminders'
   | 'today'
   | 'template'
   | 'addrow'
@@ -42,7 +41,7 @@ export type GuideStepId =
   | 'stampsticker';
 
 /** Which interactive surface a step is performed on. */
-export type GuideStage = 'trigger' | 'memory' | 'canvas' | 'chapter' | 'tag' | 'ink' | 'reminders' | 'today' | 'launch';
+export type GuideStage = 'trigger' | 'memory' | 'canvas' | 'chapter' | 'tag' | 'ink' | 'today' | 'launch';
 
 /** Where a 'launch' step is done: the real screen the guide opens. */
 export type GuideLaunch = 'compose' | 'latest-memory' | 'stamps' | 'stamps-map';
@@ -115,7 +114,6 @@ export const GUIDE_STEPS: readonly GuideStep[] = [
   { id: 'tag', mission: 'stories', chapter: 'stories', stage: 'tag', gesture: 'double-tap', title: 'FILE A MEMORY', hint: 'open it, then tap the book.', success: 'FILED' },
   // ── HABIT ─────────────────────────────────────────────────────────────
   { id: 'ink', mission: 'rhythm', chapter: 'habit', stage: 'ink', gesture: 'none', title: 'EVERY DAY INKS', hint: 'show up, and your month fills with ink.', success: 'GOT IT' },
-  { id: 'reminders', mission: 'rhythm', chapter: 'habit', stage: 'reminders', gesture: 'none', title: 'THREE NUDGES A DAY', hint: 'tap one and the camera opens.', success: 'ALL SET' },
 ];
 
 export const GUIDE_MISSION_COUNT = GUIDE_CHAPTERS.reduce(

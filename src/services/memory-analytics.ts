@@ -8,7 +8,6 @@ import { momentAt } from '@/constants/progression';
 import type { CreateCompositionInput } from '@/db/journal-repository';
 import { useProgressionStore } from '@/hooks/use-progression';
 import {
-  takeReminderAttribution,
   textLengthBucket,
   track,
   type CaptureSource,
@@ -59,12 +58,9 @@ export function trackMemoryCreated(input: CreateCompositionInput, createdAt: num
   const { activeDays } = useProgressionStore.getState();
   const now = new Date();
   const at = new Date(createdAt);
-  const nudge = takeReminderAttribution();
   track('memory_created', {
     ...memoryShape(input),
     source,
-    via_reminder: nudge !== null,
-    reminder_nudge: nudge,
     backdated: toDayKey(at) !== toDayKey(now),
     moment: momentAt(at).id,
     hour_of_day: at.getHours(),

@@ -4,7 +4,7 @@
  * Every event is declared in `AnalyticsEvents` below, so names and
  * properties are typed at each call site and the whole catalogue reads in
  * one screen. The client is created here, outside React, so stores and
- * services (the journal, ink, reminders) can report too; the provider in
+ * services (the journal, ink) can report too; the provider in
  * the root layout reuses this same instance.
  *
  * Privacy rules, enforced by what the catalogue allows:
@@ -41,7 +41,6 @@ export type CaptureSource = 'compose' | 'camera' | 'voice_hold' | 'share_extensi
 
 export type TextLengthBucket = '0' | '1-40' | '41-200' | '201-1000' | '1000+';
 
-export type NotificationPermission = 'granted' | 'denied' | 'undetermined';
 
 export interface MemoryShape {
   content_type: 'text' | 'media' | 'text_media';
@@ -71,9 +70,6 @@ export interface AnalyticsEvents {
   // Memories
   memory_created: MemoryShape & {
     source: CaptureSource;
-    /** Opened from a moment reminder within the last few minutes. */
-    via_reminder: boolean;
-    reminder_nudge: string | null;
     backdated: boolean;
     moment: MomentId;
     hour_of_day: number;
@@ -111,10 +107,8 @@ export interface AnalyticsEvents {
   story_deleted: Record<string, never>;
   story_memory_toggled: { added: boolean };
 
-  // Reminders
-  notification_permission: { status: NotificationPermission; prompted: boolean };
-  startup_permissions: { notifications: boolean; camera: boolean; microphone: boolean; photos: boolean; location: boolean };
-  reminder_opened: { moment: MomentId; nudge: string; tone: 'plain' | 'playful' };
+  // Permissions
+  startup_permissions: { camera: boolean; microphone: boolean; photos: boolean; location: boolean };
 
   // Field guide
   guide_step_completed: { step: string; completed_count: number };
@@ -190,27 +184,6 @@ export function registerSuperProperties(properties: PersonProperties): void {
 /** Undoes an opt-out an earlier build may have stored on the device. */
 export function optInAnalytics(): void {
   void posthog.optIn();
-}
-
-// ---------------------------------------------------------------------------
-// Reminder attribution
-// ---------------------------------------------------------------------------
-
-/** How long after tapping a reminder a saved memory still counts as its result. */
-const REMINDER_ATTRIBUTION_MS = 10 * 60 * 1000;
-let reminderTap: { nudge: string; at: number } | null = null;
-
-/** Call when a reminder is tapped; the next memory saved soon after credits it. */
-export function noteReminderTap(nudge: string): void {
-  reminderTap = { nudge, at: Date.now() };
-}
-
-/** The reminder behind the memory being saved now, if any. Consumed once. */
-export function takeReminderAttribution(): string | null {
-  const tap = reminderTap;
-  reminderTap = null;
-  if (!tap || Date.now() - tap.at > REMINDER_ATTRIBUTION_MS) return null;
-  return tap.nudge;
 }
 
 // ---------------------------------------------------------------------------

@@ -17,7 +17,7 @@ export interface GuideProgress {
   share: boolean;
   stickers: boolean;
   stories: boolean;
-  /** The HABIT chapter: ink and the daily reminders. */
+  /** The HABIT chapter: ink. */
   rhythm: boolean;
   // Added with the rebuilt guide. Stored progress is merged over these
   // defaults, so people who finished the old guide keep it and only these light up.
@@ -83,8 +83,6 @@ export interface UserSettings {
   guideResetAt: number;
   /** The first-launch permission prompts have run. */
   startupPermissionsAsked: boolean;
-  /** Android: the one-time ask to allow exact alarms for on-time reminders has run. */
-  exactRemindersAsked: boolean;
   /** The home screen has pointed out the Field Guide tab once. */
   guideTabIntroduced: boolean;
   /** Which of the orange key's gestures have been used; the home hint teaches the rest. */
@@ -131,7 +129,6 @@ const defaultSettings: UserSettings = {
   guideDismissed: false,
   guideResetAt: 0,
   startupPermissionsAsked: false,
-  exactRemindersAsked: false,
   guideTabIntroduced: false,
   keyGesturesUsed: defaultKeyGesturesUsed,
 };
@@ -198,7 +195,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           guideDismissed: stored.guideDismissed === "true",
           guideResetAt: Number(stored.guideResetAt) || 0,
           startupPermissionsAsked: stored.startupPermissionsAsked === "true",
-          exactRemindersAsked: stored.exactRemindersAsked === "true",
           guideTabIntroduced: stored.guideTabIntroduced === "true",
           keyGesturesUsed: parsedKeyGestures,
         },

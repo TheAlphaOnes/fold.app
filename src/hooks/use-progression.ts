@@ -1,6 +1,6 @@
 /**
  * Progression store — this month's ink, the Continuum streak, and which of
- * today's moments are captured (so their reminders are skipped).
+ * today's moments are captured.
  *
  * Everything is derived from the journal itself, so it cannot drift:
  * deleting a memory takes its ink back, restoring it returns it. The only
@@ -11,7 +11,6 @@
 import { create } from 'zustand';
 import { getMemorySignals } from '@/db/journal-repository';
 import { getSetting, setSetting } from '@/db/settings-repository';
-import { requestReminderPermission, syncMomentReminders } from '@/services/reminders.service';
 import { setPersonProperties, track, type PersonProperties } from '@/services/analytics';
 import { NO_INK, computeInk, groupByDay, type InkSummary } from '@/utils/ink';
 import { computeStreak, type StreakSummary } from '@/utils/streak';
@@ -38,7 +37,7 @@ interface ProgressionState {
   seenInk: SeenInk | null;
   loaded: boolean;
 
-  /** Re-reads everything from the journal and reschedules reminders. Never throws. */
+  /** Re-reads everything from the journal. Never throws. */
   refresh: () => Promise<void>;
   /** Call after a memory is saved: refreshes and notes any ink it earned. */
   /** Loads the saved progress; true if there was one. */
@@ -69,11 +68,6 @@ function syncPersonProgress(state: Pick<ProgressionState, 'memoryCount' | 'activ
   if (key === lastSentPerson) return;
   lastSentPerson = key;
   setPersonProperties(properties);
-}
-
-/** Asks for notification permission (once, by the system) and schedules if allowed. */
-async function enableReminders(): Promise<void> {
-  if (await requestReminderPermission()) await syncMomentReminders();
 }
 
 /**
@@ -128,7 +122,6 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
         loaded: true,
         seenInk: state.seenInk ?? parseSeen(seen),
       }));
-      void syncMomentReminders();
       syncPersonProgress(get());
       const saved = get();
       const snapshot: ProgressionSnapshot = {
@@ -164,7 +157,6 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
     if (before && streak.current > before.streak.current) {
       track('streak_extended', { streak: streak.current, is_best: streak.current >= streak.longest });
     }
-    void enableReminders();
   },
 
   markInkSeen: () => {

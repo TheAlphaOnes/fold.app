@@ -7,25 +7,14 @@ import { GrainBackground } from '@/components/grain-background';
 import { ThemedText } from '@/components/themed-text';
 import { CloseButton } from '@/components/round-button';
 import { INK_FACTORS, WORDS_MIN_CHARS } from '@/constants/ink';
-import { MOMENTS } from '@/constants/progression';
 
-/** 8 → "8am", 13 → "1pm". */
-function formatHour(hour: number): string {
-  const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}${hour < 12 ? 'am' : 'pm'}`;
-}
-
-/** Ink and reminder answers read from the same tables the app uses, so they cannot drift. */
+/** Ink answers read from the same tables the app uses, so they cannot drift. */
 const INK_RULES: Record<string, string> = {
   day: 'for saving anything that day',
   moments: 'for each of morning, afternoon and evening you capture',
   words: `for writing something real (${WORDS_MIN_CHARS}+ characters)`,
   photo: 'for a photo or video of your own (GIFs don’t count)',
 };
-
-const REMINDER_WINDOWS = MOMENTS.map(
-  (m) => `${m.id} between ${formatHour(m.nudgeFromHour)} and ${formatHour(m.nudgeToHour)}`,
-).join(', ');
 
 function B({ children }: { children: React.ReactNode }) {
   return <ThemedText style={styles.bold}>{children}</ThemedText>;
@@ -93,35 +82,27 @@ export default function FAQScreen() {
           every month, and your best month stays as your <B>record</B>. Deleting a memory takes its ink back.
         </ThemedText>
 
-        <ThemedText style={heading}>6. Reminders</ThemedText>
-        <ThemedText style={text}>
-          Fold sends three gentle reminders a day to snap what you are doing: {REMINDER_WINDOWS}. Each lands at a
-          different time every day. If you have already captured that part of the day, its reminder is skipped. Tap
-          one to open the camera.{'\n\n'}
-          To turn reminders off, switch off notifications for Fold in your phone's Settings.
-        </ThemedText>
-
-        <ThemedText style={heading}>7. Timeline modes</ThemedText>
+        <ThemedText style={heading}>6. Timeline modes</ThemedText>
         <ThemedText style={text}>
           In Settings, switch between Yearly, Monthly or Infinite to change how your memories are grouped on the home
           screen.
         </ThemedText>
 
-        <ThemedText style={heading}>8. Field Guide</ThemedText>
+        <ThemedText style={heading}>7. Field Guide</ThemedText>
         <ThemedText style={text}>
           The Field Guide tab on the home screen walks you through every gesture with short missions. Restart it any
           time from Settings → Restart Field Guide.
         </ThemedText>
 
-        <ThemedText style={heading}>9. Deleted something by mistake?</ThemedText>
+        <ThemedText style={heading}>8. Deleted something by mistake?</ThemedText>
         <ThemedText style={text}>
           Deleted memories wait in Settings → Recently Deleted for 30 days. Restore them from there before they are
           gone for good.
         </ThemedText>
 
-        <ThemedText style={heading}>10. Not getting reminders or haptics?</ThemedText>
+        <ThemedText style={heading}>9. Not feeling haptics?</ThemedText>
         <ThemedText style={text}>
-          For reminders, make sure notifications are allowed for Fold in your phone's Settings. For haptics, Settings →
+          Settings →
           Testing → <B>TEST HAPTICS</B> plays a long buzz and then each pattern, and names anything on your phone that
           blocks vibration, like Battery Saver.
         </ThemedText>

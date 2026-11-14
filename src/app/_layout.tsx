@@ -28,7 +28,6 @@ LogBox.ignoreLogs([
 ]);
 import { ProgressionSync } from "@/components/progression-sync";
 import { WidgetSync } from "@/widgets/widget-sync";
-import { configureNotifications } from "@/services/reminders.service";
 import { useProgressionStore } from "@/hooks/use-progression";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -88,8 +87,6 @@ import { ShareIntakeHost } from "@/components/share-intake-host";
 
 SplashScreen.preventAutoHideAsync();
 
-// Moment reminders that arrive while Fold is open still show as a banner.
-configureNotifications();
 
 function RootLayoutNav() {
   const [dbReady, setDbReady] = useState(false);

@@ -1,14 +1,12 @@
 /**
  * ProgressionSync — renders nothing. Keeps progression current across a
- * day change (returning after midnight starts a fresh day and a fresh
- * reminder schedule) and turns a tapped moment reminder into the camera.
+ * day change: returning after midnight starts a fresh day.
  */
 
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { useProgressionStore } from '@/hooks/use-progression';
-import { useMomentReminderTaps } from '@/hooks/use-capture-request';
 
 export function ProgressionSync() {
   const refresh = useProgressionStore((state) => state.refresh);
@@ -20,6 +18,5 @@ export function ProgressionSync() {
     return () => subscription.remove();
   }, [refresh]);
 
-  useMomentReminderTaps();
   return null;
 }

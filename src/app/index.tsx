@@ -32,7 +32,6 @@ import { KeyCaption } from '@/components/home/key-caption';
 import { unlearnedGestures, type KeyGesture } from '@/home/key-hints';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
-import { useFulfilPhotoRequest } from '@/hooks/use-capture-request';
 import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
 import { ProfileLayer } from '@/components/profile/profile-layer';
@@ -72,8 +71,6 @@ export default function HomeScreen() {
   const timelineError = useJournalStore((state) => state.error);
   
   const quickCapture = useQuickCapture();
-  // A tapped moment reminder lands here and goes straight to the camera.
-  useFulfilPhotoRequest(quickCapture.capturePhoto);
 
   const { settings, updateSetting } = useSettingsStore();
   const isFocused = useIsFocused();

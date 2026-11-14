@@ -11,7 +11,7 @@
  */
 
 import { useEffect } from 'react';
-import { AppState, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { useSegments } from 'expo-router';
 import * as Localization from 'expo-localization';
 
@@ -22,7 +22,6 @@ import {
   setPersonProperties,
   trackScreen,
 } from '@/services/analytics';
-import { getNotificationPermission } from '@/services/reminders.service';
 import { getAgeRange } from '@/utils/dob';
 
 function deviceLocale() {
@@ -78,23 +77,6 @@ function usePreferenceProperties(enabled: boolean) {
   }, [enabled, settings]);
 }
 
-/** Notification permission can change in system Settings; re-read on every return. */
-function useNotificationProperty(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return;
-    const report = () => {
-      getNotificationPermission()
-        .then((permission) => setPersonProperties({ notifications: permission }))
-        .catch((error) => console.error('Failed to read notification permission', error));
-    };
-    report();
-    const subscription = AppState.addEventListener('change', (next) => {
-      if (next === 'active') report();
-    });
-    return () => subscription.remove();
-  }, [enabled]);
-}
-
 function useScreenViews(enabled: boolean) {
   const segments = useSegments();
   const route = `/${segments.join('/')}`;
@@ -114,7 +96,6 @@ export function AnalyticsSync() {
 
   useLocaleProperties(active);
   usePreferenceProperties(active);
-  useNotificationProperty(active);
   useScreenViews(active);
   return null;
 }
