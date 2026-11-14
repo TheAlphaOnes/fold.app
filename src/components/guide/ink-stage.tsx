@@ -60,8 +60,8 @@ export function InkStage({ status, onSuccess }: Pick<GuideStageProps, 'status' |
           </View>
           <View style={[styles.figure, styles.figureEnd]}>
             <View style={styles.figureLine}>
-              <ThemedText style={[styles.count, { color: theme.text }]}>{ink.month}</ThemedText>
               <ThemedText style={[styles.unit, { color: theme.accentWarm }]}>ink</ThemedText>
+              <ThemedText style={[styles.count, { color: theme.text }]}>{ink.month}</ThemedText>
             </View>
             <ThemedText style={[styles.caption, { color: theme.textMuted }]}>{`this month · record ${ink.record}`}</ThemedText>
           </View>

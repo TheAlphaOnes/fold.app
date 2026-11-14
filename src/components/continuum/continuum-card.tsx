@@ -109,8 +109,8 @@ export function ContinuumCard() {
         </View>
         <View style={[s.column, s.columnEnd]}>
           <View style={s.figure}>
-            <InkCount reduceMotion={reduceMotion} color={ink.month > 0 ? theme.text : theme.textMuted} />
             <ThemedText style={[s.unit, { color: ink.month > 0 ? theme.accentWarm : theme.textMuted }]}>ink</ThemedText>
+            <InkCount reduceMotion={reduceMotion} color={ink.month > 0 ? theme.text : theme.textMuted} />
           </View>
           <Animated.View entering={bestEntering}>
             <ThemedText style={[s.best, { color: isRecordMonth ? theme.accentWarm : theme.textMuted }]}>
