@@ -10,7 +10,7 @@ import { Image } from 'expo-image';
 import { MapPin } from 'lucide-react-native';
 import Svg, { ClipPath, Defs, G, Image as SvgImage, Path } from 'react-native-svg';
 
-import { MusicDisc } from '@/components/stories/music-disc';
+import { SongCover } from '@/components/music/song-cover';
 import { VinylRecord } from '@/components/vinyl-record';
 import { gifFrameAt, type ExportFrameState } from '@/canvas/animated-export';
 import type { AudioSticker, DateSticker, MediaSticker, StickerShape, TextLayer } from '@/canvas/types';
@@ -188,11 +188,17 @@ export function AudioStickerView({
   interactive: boolean;
 }) {
   const theme = useTheme();
-  const { isPlaying, toggle } = useMemoryAudio(media.uri, compositionId, interactive);
+  const { isPlaying, toggle, progress } = useMemoryAudio(media.uri, compositionId, interactive);
   const size = AUDIO_DISC * width * layer.scale;
   const artwork = getHighResArtwork(media.metadata?.artwork);
 
-  const disc = media.metadata && artwork ? <MusicDisc size={size} artwork={artwork} /> : <VinylRecord size={size} isPlaying={isPlaying} />;
+  // A song shows its album cover, still, with play/pause on it; a voice note keeps its record.
+  const disc =
+    media.metadata && artwork ? (
+      <SongCover uri={artwork} size={size} playing={isPlaying} progress={progress} controls={interactive} />
+    ) : (
+      <VinylRecord size={size} isPlaying={isPlaying} />
+    );
   const body = (
     <View style={styles.audio}>
       {disc}

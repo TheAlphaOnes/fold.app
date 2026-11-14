@@ -90,5 +90,7 @@ export function useMemoryAudio(uri: string | null, compositionId: number, enable
     }
   }, [isPlaying, player, play]);
 
-  return { isPlaying, toggle };
+  // How far through it is, for a progress line; 0 before it starts.
+  const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
+  return { isPlaying, toggle, progress };
 }
