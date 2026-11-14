@@ -1,6 +1,6 @@
 /**
- * MomentDim — the brief screen dim behind every small celebration (the
- * share bird, the save sparkle), so the moment always reads over busy
+ * MomentDim — the brief screen dim behind a full-screen moment (the share
+ * bird's flight, the recording overlay), so it always reads over busy
  * photos or the list. Black in both themes; the moment on top is drawn in
  * white.
  *
