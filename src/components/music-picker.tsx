@@ -2,12 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, Modal, ActivityIndicator, Image } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { Search, Music, Heart } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAudioPlayer } from 'expo-audio';
-import * as Localization from 'expo-localization';
 
 import { useMusicStore, type MusicTrack } from '@/hooks/use-music-store';
+import { searchSongs } from '@/music/itunes';
+import type { CanvasContext } from '@/music/recommend';
+import { useRecommendations } from '@/music/use-recommendations';
 import { getHighResArtwork } from '@/utils/media-attach';
 import { useAudioFocus } from '@/hooks/use-audio-focus';
 import { CloseButton } from '@/components/round-button';
@@ -36,142 +37,86 @@ interface MusicPickerProps {
   onClose: () => void;
   /** Called as soon as a track is chosen; the caller downloads it in the background. */
   onSelect: (track: MusicTrack) => void;
+  /** What the memory says about itself, so the opening list fits it. */
+  context: CanvasContext;
 }
 
-export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
+const PAGE_SIZE = 25;
+
+export function MusicPicker({ visible, onClose, onSelect, context }: MusicPickerProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  
+
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'search' | 'saved'>('search');
   const [results, setResults] = useState<MusicTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [previewingTrack, setPreviewingTrack] = useState<MusicTrack | null>(null);
-  const [defaultSearch, setDefaultSearch] = useState('viral hits');
 
-  // Guards the search effect against stale responses: a slow fetch for an
-  // old term must not overwrite the results of a newer one, and a hung one
-  // must not pin the loading state forever.
+  // Guards the search against stale responses: a slow fetch for an old term
+  // must not overwrite the results of a newer one.
   const searchRequestRef = useRef(0);
 
-  const { savedTracks, recentSearches, initialized, init, saveTrack, removeTrack, addRecentSearch } = useMusicStore();
-
-  const PAGE_SIZE = 25;
-
-  const DEFAULT_TERMS = [
-    'viral hits', 'top hits', 'lofi chill', 'acoustic', 
-    'piano ambient', 'synthwave', 'indie pop', 'jazz vibes', 
-    'cinematic', 'electronic chill', 'trending pop', 'r&b'
-  ];
+  const { savedTracks, initialized, init, saveTrack, removeTrack, addRecentSearch, recordPick } = useMusicStore();
+  const recommended = useRecommendations(visible, context);
+  const searching = query.trim().length >= 2;
 
   useEffect(() => {
-    init();
-  }, []);
+    void init();
+  }, [init]);
 
-  // Clear state when closing, pick a new random default when opening
-  useEffect(() => {
+  // A closed picker starts fresh next time (adjusted while rendering, not in an effect).
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (wasVisible !== visible) {
+    setWasVisible(visible);
     if (!visible) {
       setPreviewingTrack(null);
       setQuery('');
       setResults([]);
-      setPage(0);
       setHasMore(true);
       setActiveTab('search');
-    } else {
-      // Create a pool of default terms, heavily weighting recent searches to act as a basic recommendation engine
-      let pool = [...DEFAULT_TERMS];
-      if (recentSearches.length > 0) {
-        pool = [...pool, ...recentSearches, ...recentSearches, ...recentSearches]; // 3x weight
-      }
-      const randomTerm = pool[Math.floor(Math.random() * pool.length)];
-      setDefaultSearch(randomTerm);
     }
-  }, [visible, recentSearches]);
+  }
 
-  // Initial search or when query changes
+  // Typing searches, a beat after the last key.
   useEffect(() => {
-    if (!visible) return;
-
-    setPage(0);
-    setHasMore(true);
-
+    if (!visible || !searching) return undefined;
     const requestId = ++searchRequestRef.current;
-    const isDefault = query.trim().length < 2;
-    const searchTerm = isDefault ? defaultSearch : query.trim();
-
+    const term = query.trim();
     const timeout = setTimeout(async () => {
       setLoading(true);
-      try {
-        const country = Localization.getLocales()[0]?.regionCode || 'US';
-        const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=${PAGE_SIZE}&offset=0&country=${country}`);
-        const data = await response.json();
-        if (searchRequestRef.current !== requestId) return;
-        const tracks = data.results.filter((t: any) => t.previewUrl);
-        setResults(tracks);
-        setHasMore(data.results.length === PAGE_SIZE);
-      } catch (e) {
-        console.error('Failed to search music', e);
-      } finally {
-        if (searchRequestRef.current === requestId) {
-          setLoading(false);
-        }
-      }
-    }, isDefault ? 0 : 500);
-
+      const tracks = await searchSongs(term, { limit: PAGE_SIZE });
+      if (searchRequestRef.current !== requestId) return;
+      setResults(tracks);
+      setHasMore(tracks.length > 0);
+      setLoading(false);
+    }, 450);
     return () => clearTimeout(timeout);
-  }, [query, visible]);
+  }, [query, visible, searching]);
 
   const loadMore = async () => {
-    // The Saved tab has nothing to paginate — its list is short and local,
-    // and onEndReached firing on layout there was the "always loading" bug.
-    if (activeTab !== 'search') return;
-    if (!visible || loading || loadingMore || !hasMore) return;
-
-    const isDefault = query.trim().length < 2;
-    const searchTerm = isDefault ? defaultSearch : query.trim();
-    const nextPage = page + 1;
-
+    // Only a typed search pages; the Saved tab and the opening mix are whole.
+    if (activeTab !== 'search' || !searching || loading || loadingMore || !hasMore) return;
     setLoadingMore(true);
-    try {
-      const country = Localization.getLocales()[0]?.regionCode || 'US';
-      const response = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&entity=song&limit=${PAGE_SIZE}&offset=${nextPage * PAGE_SIZE}&country=${country}`);
-      const data = await response.json();
-      const newTracks = data.results.filter((t: any) => t.previewUrl);
-      
-      if (newTracks.length > 0) {
-        setResults(prev => {
-          const combined = [...prev, ...newTracks];
-          const unique = Array.from(new Map(combined.map(item => [item.trackId, item])).values());
-          return unique;
-        });
-      }
-      setPage(nextPage);
-      
-      if (data.results.length < PAGE_SIZE) {
-        setHasMore(false);
-      }
-    } catch (e) {
-      console.error('Failed to load more music', e);
-    } finally {
-      setLoadingMore(false);
-    }
+    const more = await searchSongs(query.trim(), { limit: PAGE_SIZE, offset: results.length });
+    setResults((prev) => Array.from(new Map([...prev, ...more].map((t) => [t.trackId, t])).values()));
+    setHasMore(more.length > 0);
+    setLoadingMore(false);
   };
 
   // Choosing hands the track straight back and closes: the download happens
   // in the compose screen, in the background, so the choice feels instant.
   const handleSelect = (track: MusicTrack) => {
-    if (query.trim().length > 2) {
-      addRecentSearch(query.trim());
-    } else if (defaultSearch) {
-      addRecentSearch(defaultSearch);
-    }
+    if (searching) void addRecentSearch(query.trim());
+    void recordPick(track);
     setPreviewingTrack(null);
     onSelect(track);
     onClose();
   };
+
+  const list = activeTab === 'saved' ? savedTracks : searching ? results : recommended.tracks;
+  const busy = activeTab === 'search' && (searching ? loading : recommended.loading) && list.length === 0;
 
   const handleRowPress = (track: MusicTrack) => {
     if (previewingTrack?.trackId === track.trackId) {
@@ -213,16 +158,21 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
           </Pressable>
         </View>
 
-        {loading && results.length === 0 && activeTab === 'search' ? (
+        {busy ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={theme.text} />
         ) : activeTab === 'saved' && !initialized ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={theme.text} />
         ) : (
           <FlatList
-            data={activeTab === 'search' ? results : savedTracks}
+            data={list}
             keyExtractor={item => item.trackId.toString()}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              activeTab === 'search' && !searching && list.length > 0 ? (
+                <Text style={[styles.forYou, { color: theme.textMuted }]}>{`FOR THIS MEMORY · ${recommended.mood.toUpperCase()}`}</Text>
+              ) : undefined
+            }
             renderItem={({ item }) => {
               const isPreviewing = previewingTrack?.trackId === item.trackId;
 
@@ -303,6 +253,13 @@ export function MusicPicker({ visible, onClose, onSelect }: MusicPickerProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  forYou: {
+    fontFamily: 'JetBrainsMono-Medium',
+    fontSize: 10,
+    letterSpacing: 1.2,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
   },
   header: {
     flexDirection: 'row',

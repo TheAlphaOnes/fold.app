@@ -589,6 +589,11 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
 
       <MusicPicker
         visible={sheet === 'music'}
+        context={{
+          // What the canvas says: its words and its place steer the suggestions.
+          text: c.doc.layers.flatMap((l) => (l.kind === 'text' ? [l.text] : [])).join(' '),
+          place: location.name,
+        }}
         onClose={() => setSheet(null)}
         onSelect={(track) => {
           setSheet(null);
