@@ -1,6 +1,8 @@
 /**
  * useStartupPermissions — once onboarding is done and the app is on screen,
- * asks for every permission Fold uses, one prompt after another, once.
+ * asks for the permissions Fold can explain up front (microphone, photos,
+ * location), one prompt after another, once. The camera is asked the first
+ * time a photo is taken.
  */
 
 import { useEffect, useRef } from 'react';

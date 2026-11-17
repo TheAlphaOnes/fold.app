@@ -23,7 +23,6 @@ import { LogoUploadFlight } from '@/components/logo-upload-flight';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
 import { useFocusEffect, useIsFocused, Redirect } from 'expo-router';
-import { EmptyState } from '@/components/empty-state';
 import { User, Book } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -46,8 +45,16 @@ import { CarouselItem } from '@/components/carousel-item';
 import { DateSeparator, DATE_SEPARATOR_HEIGHT } from '@/components/date-separator';
 import { TimelinePlaceholder } from '@/components/timeline-placeholder';
 import { buildTimelineRows, keptToday, memoryIndexNearOffset, type TimelineRow } from '@/utils/timeline';
-import { TodayCard } from '@/components/home/today-card';
+import { DoodleSpotlight } from '@/components/almanac/doodle-spotlight';
+import { DoodleReveal } from '@/components/home/doodle-reveal';
+import { TodayDoodle } from '@/components/home/today-doodle';
+import type { AlmanacDay } from '@/doodles/almanac';
+import { slotOf } from '@/doodles/library';
+import { useDoodleReveal } from '@/hooks/use-doodle-reveal';
+import { useProfileDataStore } from '@/hooks/use-profile-data';
+import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
+import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
 
 export default function HomeScreen() {
@@ -56,7 +63,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const {
     timelineSpine,
-    timelineKey,
     hydratedById,
     hydrationVersion,
     refresh,
@@ -67,14 +73,24 @@ export default function HomeScreen() {
   } = useJournalStore();
   const hydratedRef = useRef(hydratedById);
   hydratedRef.current = hydratedById;
-  const timelineError = useJournalStore((state) => state.error);
   
   const quickCapture = useQuickCapture();
 
   const { settings, updateSetting } = useSettingsStore();
   const isFocused = useIsFocused();
-  // The profile is a layer over home, not a route, so home stays "focused" under it.
-  const profileOpen = useProfileVisibility((state) => state.open);
+
+  // The doodle reveal plays on home after the first memory kept on a day.
+  useDoodleReveal();
+  const kept = keptToday(timelineSpine);
+  const [spotlightDay, setSpotlightDay] = useState<AlmanacDay | null>(null);
+  // Days kept this month, for the earned card's line.
+  const dayCounts = useProfileDataStore((state) => state.dayCounts);
+  const dayCountsYear = useProfileDataStore((state) => state.dayCountsYear);
+  const monthPrefix = toDayKey(new Date()).slice(0, 7);
+  const monthDays = useMemo(() => {
+    if (!dayCounts || dayCountsYear !== Number(monthPrefix.slice(0, 4))) return undefined;
+    return Object.entries(dayCounts).filter(([key, count]) => count > 0 && key.startsWith(monthPrefix)).length;
+  }, [dayCounts, dayCountsYear, monthPrefix]);
 
   // ─── Teaching the orange key ───────────────────────────────────────────
   const unlearned = unlearnedGestures(settings.keyGesturesUsed);
@@ -96,16 +112,11 @@ export default function HomeScreen() {
       settings.timelineMode,
       snapInterval,
       DATE_SEPARATOR_HEIGHT,
-      // Today's page leads while nothing is kept yet today (and is all there is before the first memory).
-      !keptToday(timelineSpine),
+      // Today's page always leads: the doodle to earn, or the one earned today.
+      true,
     );
   }, [timelineSpine, settings.timelineMode, snapInterval]);
-  const [todayCentred, setTodayCentred] = useState(true);
-  // The today card's camera runs only while it's centred and home is in front:
-  // a capture session left running under the profile (and every screen pushed
-  // from it, such as Settings) costs frames on every transition.
-  const todayLive = todayCentred && isFocused && !profileOpen;
-  const { captureVideo } = quickCapture;
+  const { capturePhoto, startRecording } = quickCapture;
 
   
   // Ensure we are viewing today's data on the home screen
@@ -240,7 +251,6 @@ export default function HomeScreen() {
   const settleActive = useCallback((offsetY: number) => {
     // Today's page is centred: no memory is active (the backdrop and audio rest).
     const onToday = timelineData.todayOffset !== null && offsetY < snapInterval / 2;
-    setTodayCentred(onToday);
     if (onToday) return;
     const spine = spineRef.current;
     if (spine.length === 0) return;
@@ -296,7 +306,35 @@ export default function HomeScreen() {
     if (item.type === 'today') {
       return (
         <View style={{ height: snapInterval, alignItems: 'center', justifyContent: 'center' }}>
-          <TodayCard width={width} height={snapInterval} active={todayLive} onRecordVideo={captureVideo} />
+          <TodayDoodle
+            width={width}
+            height={snapInterval}
+            kept={kept}
+            monthDays={monthDays}
+            onOpen={() => {
+              const today = new Date();
+              setSpotlightDay({
+                key: toDayKey(today),
+                day: today.getDate(),
+                slot: slotOf(today),
+                kept: true,
+                isToday: true,
+                isFuture: false,
+              });
+            }}
+            onPhoto={() => {
+              track('today_action', { action: 'photo' });
+              capturePhoto();
+            }}
+            onWrite={() => {
+              track('today_action', { action: 'write' });
+              navigate.push('/compose');
+            }}
+            onVoice={() => {
+              track('today_action', { action: 'voice' });
+              startRecording();
+            }}
+          />
         </View>
       );
     }
@@ -313,7 +351,7 @@ export default function HomeScreen() {
         scrollY={scrollY}
       />
     );
-  }, [snapInterval, cardHeight, scrollY, width, todayLive, captureVideo]);
+  }, [snapInterval, cardHeight, scrollY, width, capturePhoto, startRecording, kept, monthDays]);
 
   return (
     // Clean background
@@ -325,41 +363,37 @@ export default function HomeScreen() {
         <User size={16} color={theme.text} strokeWidth={2.5} />
       </EdgeTab>
 
-      {(timelineKey !== null || timelineError) && timelineData.items.length === 0 ? (
-        <EmptyState />
-      ) : timelineData.items.length > 0 ? (
-        <Animated.FlatList
-          ref={listRef}
-          key={settings.timelineMode}
-          data={timelineData.items}
-          extraData={`${hydrationVersion}-${todayLive}`}
-          inverted={true}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          snapToOffsets={timelineData.snapOffsets}
-          decelerationRate="fast"
-          disableIntervalMomentum
-          windowSize={5}
-          initialNumToRender={3}
-          maxToRenderPerBatch={3}
-          updateCellsBatchingPeriod={50}
-          removeClippedSubviews={Platform.OS === 'android'}
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          viewabilityConfig={viewabilityConfig}
-          onViewableItemsChanged={onViewableItemsChanged}
-          // Center cards perfectly in the absolute physical screen.
-          // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
-          // We use symmetricPadding for both to ensure every card perfectly snaps to the physical center of the screen.
-          contentContainerStyle={{
-            paddingBottom: symmetricPadding, // visual top
-            paddingTop: symmetricPadding, // visual bottom
-          }}
-        />
-      ) : null}
+      <Animated.FlatList
+        ref={listRef}
+        key={settings.timelineMode}
+        data={timelineData.items}
+        extraData={`${hydrationVersion}-${kept}-${monthDays ?? ''}`}
+        inverted={true}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        snapToOffsets={timelineData.snapOffsets}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        windowSize={5}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === 'android'}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        viewabilityConfig={viewabilityConfig}
+        onViewableItemsChanged={onViewableItemsChanged}
+        // Center cards perfectly in the absolute physical screen.
+        // Because the list is inverted, paddingTop is applied at the visual bottom and paddingBottom at the visual top.
+        // We use symmetricPadding for both to ensure every card perfectly snaps to the physical center of the screen.
+        contentContainerStyle={{
+          paddingBottom: symmetricPadding, // visual top
+          paddingTop: symmetricPadding, // visual bottom
+        }}
+      />
 
       {/* Floating bottom bar with Date and Add Button */}
       <View
@@ -412,6 +446,19 @@ export default function HomeScreen() {
         onSave={quickCapture.saveRecording}
         onDiscard={quickCapture.discardRecording}
       />
+
+      {/* Today's earned doodle, opened large from its card. */}
+      <DoodleSpotlight
+        day={spotlightDay}
+        onClose={() => setSpotlightDay(null)}
+        onOpenDay={(day) => {
+          setSpotlightDay(null);
+          navigate.push(`/time-machine?day=${day.key}`);
+        }}
+      />
+
+      {/* The moment a day's doodle is earned. */}
+      <DoodleReveal />
     </View>
   );
 }

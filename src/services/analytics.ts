@@ -90,6 +90,8 @@ export interface AnalyticsEvents {
   ink_earned: { points: number; month_total: number; record: number; is_record_month: boolean; streak: number };
   streak_extended: { streak: number; is_best: boolean };
   year_shared: { kept: number };
+  /** A button on home's today page, before anything is kept today. */
+  today_action: { action: 'photo' | 'write' | 'voice' };
 
   // Stamps — places only as counts and a yes/no; never a place name.
   stamp_made: { new_place: boolean; serial: number; place_count: number };
@@ -108,7 +110,7 @@ export interface AnalyticsEvents {
   story_memory_toggled: { added: boolean };
 
   // Permissions
-  startup_permissions: { camera: boolean; microphone: boolean; photos: boolean; location: boolean };
+  startup_permissions: { microphone: boolean; photos: boolean; location: boolean };
 
 
   // Settings & support

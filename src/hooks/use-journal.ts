@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { 
   getAllCompositions, 
+  getCompositionCount,
   getOnThisDayCompositions,
   getTimelineSpine,
   getCompositionsByIds,
@@ -45,6 +46,8 @@ interface JournalState {
   /** True once the splash screen animation has fully completed. Guards audio auto-play. */
   isAppVisible: boolean;
   justAddedId: number | null;
+  /** Live memories in the whole journal, across every year and mode. */
+  totalMemories: number;
   pinnedIds: number[];
 
   setTargetDate: (date: Date) => void;
@@ -106,6 +109,7 @@ export const useJournalStore = create<JournalState>((set, get) => ({
   activeCompositionId: null,
   isAppVisible: false,
   justAddedId: null,
+  totalMemories: 0,
   pinnedIds: [],
 
   setTargetDate: (date: Date) => {
@@ -131,8 +135,11 @@ export const useJournalStore = create<JournalState>((set, get) => ({
       const date = get().targetDate;
       const targetMonth = date.getMonth() + 1;
       const targetDay = date.getDate();
-      const items = await getOnThisDayCompositions(targetMonth, targetDay);
-      set({ compositions: items, loading: false });
+      const [items, totalMemories] = await Promise.all([
+        getOnThisDayCompositions(targetMonth, targetDay),
+        getCompositionCount(),
+      ]);
+      set({ compositions: items, totalMemories, loading: false });
     } catch (err) {
       set({ 
         error: err instanceof Error ? err : new Error(String(err)), 

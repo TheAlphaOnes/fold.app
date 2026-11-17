@@ -8,20 +8,17 @@
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import * as Sharing from 'expo-sharing';
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Share2 } from 'lucide-react-native';
-import { captureRef } from 'react-native-view-shot';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { DoodleView } from '@/canvas/render/doodle-view';
 import type { DoodleLayer } from '@/canvas/types';
-import { DiagonalStripes } from '@/components/diagonal-stripes';
-import { Logo } from '@/components/logo';
+import { DoodleShareCard, shareDoodleCard } from '@/components/almanac/doodle-share-card';
 import { ThemedText } from '@/components/themed-text';
 import { Type } from '@/constants/theme';
 import type { AlmanacDay } from '@/doodles/almanac';
-import { DayDoodle, POP } from '@/doodles/day-doodle';
+import { POP } from '@/doodles/day-doodle';
 import { DOODLES, serialOf } from '@/doodles/library';
 import { hueOf, strokeHex } from '@/doodles/palette';
 import { useTheme } from '@/hooks/use-theme';
@@ -49,11 +46,7 @@ export function DoodleSpotlight({ day, onClose, onOpenDay }: DoodleSpotlightProp
     setSharing(true);
     haptic.tap();
     try {
-      const uri = await captureRef(shareRef, { format: 'png', quality: 1 });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { dialogTitle: `Share ${doodle.name}`, mimeType: 'image/png' });
-    } catch (error) {
-      console.warn('Failed to share doodle', error);
-      Alert.alert('Couldn’t share', 'Please try again.');
+      await shareDoodleCard(shareRef, `Share ${doodle.name}`);
     } finally {
       setSharing(false);
     }
@@ -113,16 +106,7 @@ export function DoodleSpotlight({ day, onClose, onOpenDay }: DoodleSpotlightProp
       </Pressable>
       {/* The share image, laid out off screen and captured on demand. */}
       {day && doodle && (
-        <View ref={shareRef} collapsable={false} style={[styles.shareCard, { backgroundColor: theme.backgroundElement }]}>
-          <DiagonalStripes color={theme.textMuted} opacity={0.14} />
-          <DayDoodle doodle={doodle} size={250} moving={false} />
-          <ThemedText style={[Type.rail, { color: theme.textMuted, marginTop: 6 }]}>{serialOf(day.slot)}</ThemedText>
-          <ThemedText style={[styles.name, { color: theme.text }]}>{doodle.name}</ThemedText>
-          <ThemedText style={[styles.date, { color: theme.textMuted }]}>{kept}</ThemedText>
-          <View style={styles.logo}>
-            <Logo size={30} color={theme.text} />
-          </View>
-        </View>
+        <DoodleShareCard ref={shareRef} doodle={doodle} serial={serialOf(day.slot)} date={kept} />
       )}
     </Modal>
   );
@@ -138,6 +122,4 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16 },
   open: { height: 38, justifyContent: 'center', borderWidth: 1, borderRadius: 19, paddingHorizontal: 18 },
   share: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderRadius: 19 },
-  shareCard: { position: 'absolute', left: -10000, top: 0, width: 360, height: 400, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  logo: { position: 'absolute', right: 20, bottom: 20 },
 });

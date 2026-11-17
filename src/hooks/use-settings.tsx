@@ -27,6 +27,10 @@ export interface UserSettings {
   timelineMode: TimelineMode;
   /** The first-launch permission prompts have run. */
   startupPermissionsAsked: boolean;
+  /** The day key ("YYYY-MM-DD") of the last doodle reveal, so it plays once a day. */
+  doodleRevealDay: string;
+  /** The first-ever doodle reveal has played. */
+  firstDoodleSeen: boolean;
   /** Which of the orange key's gestures have been used; the home hint teaches the rest. */
   keyGesturesUsed: KeyGesturesUsed;
 }
@@ -68,6 +72,8 @@ const defaultSettings: UserSettings = {
   backdropIntensity: 0.6,
   timelineMode: 'yearly',
   startupPermissionsAsked: false,
+  doodleRevealDay: '',
+  firstDoodleSeen: false,
   keyGesturesUsed: defaultKeyGesturesUsed,
 };
 
@@ -119,6 +125,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
               : defaultSettings.backdropIntensity,
           timelineMode: (stored.timelineMode as TimelineMode) || 'yearly',
           startupPermissionsAsked: stored.startupPermissionsAsked === "true",
+          doodleRevealDay: stored.doodleRevealDay || "",
+          firstDoodleSeen: stored.firstDoodleSeen === "true",
           keyGesturesUsed: parsedKeyGestures,
         },
         loading: false,

@@ -106,6 +106,13 @@ export function rowToComposition(row: CompositionRow): Composition {
   };
 }
 
+/** How many live memories the journal holds. */
+export async function getCompositionCount(): Promise<number> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) AS n FROM compositions WHERE deleted_at IS NULL');
+  return Number(row?.n ?? 0);
+}
+
 export async function getAllCompositions(limit: number = 100, offset: number = 0): Promise<Composition[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync(

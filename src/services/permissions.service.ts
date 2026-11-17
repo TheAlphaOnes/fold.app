@@ -1,14 +1,14 @@
 /**
- * Startup permissions — on first launch after onboarding, Fold asks for
- * everything it uses in one pass, so no prompt interrupts a capture later.
+ * Startup permissions — on first launch after onboarding, Fold asks for the
+ * permissions it can explain up front: microphone, photos (saving memories
+ * out) and location (auto-tagging). The camera is asked the first time a
+ * photo is taken, so nobody is prompted for a camera before they want one.
  *
- * Asked in the order the features matter: camera, microphone, photos
- * (saving memories out), location (auto-tagging). Each prompt only appears if the system has not decided
- * yet, so this is safe to run again. Vibration needs no prompt: Android
- * grants it at install and iOS has no such permission.
+ * Each prompt only appears if the system has not decided yet, so this is safe
+ * to run again. Vibration needs no prompt: Android grants it at install and
+ * iOS has no such permission.
  */
 
-import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import * as MediaLibrary from 'expo-media-library';
 import { AudioModule } from 'expo-audio';
@@ -16,7 +16,6 @@ import { AudioModule } from 'expo-audio';
 import { track, trackError } from '@/services/analytics';
 
 export interface StartupPermissions {
-  camera: boolean;
   microphone: boolean;
   photos: boolean;
   location: boolean;
@@ -37,16 +36,14 @@ async function granted(name: keyof StartupPermissions, request: () => Promise<{ 
 
 /** Asks for each permission in turn. Never throws. */
 export async function requestStartupPermissions(): Promise<StartupPermissions> {
-  const camera = await granted('camera', ImagePicker.requestCameraPermissionsAsync);
   const microphone = await granted('microphone', AudioModule.requestRecordingPermissionsAsync);
   // Save-only: Fold saves memories to the gallery but never reads it.
   const photos = await granted('photos', () => MediaLibrary.requestPermissionsAsync(true));
   const locationBefore = await Location.getForegroundPermissionsAsync().catch(() => null);
   const location = await granted('location', Location.requestForegroundPermissionsAsync);
 
-  track('startup_permissions', { camera, microphone, photos, location });
+  track('startup_permissions', { microphone, photos, location });
   return {
-    camera,
     microphone,
     photos,
     location,
