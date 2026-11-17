@@ -10,8 +10,7 @@ import { fadeIn } from '@/constants/motion';
 import { useSettingsStore } from '@/hooks/use-settings';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
-import { track } from '@/services/analytics';
-import { getAgeRange, isValidDob, parseDob } from '@/utils/dob';
+import { isValidDob, parseDob } from '@/utils/dob';
 import { goBack, navigate } from '@/utils/navigation';
 
 /** Whole years since the date of birth. */
@@ -50,10 +49,7 @@ export default function OnboardingDobScreen() {
     Keyboard.dismiss();
     await updateSetting('name', name.trim());
     await updateSetting('dob', dob);
-    haptic.success();
-    await updateSetting('hasOnboarded', true);
-    track('onboarding_completed', { age_range: getAgeRange(dob) });
-    navigate.replace('/');
+    navigate.push('/onboarding/intro');
   };
 
   if (!hasName) return null;
@@ -64,7 +60,7 @@ export default function OnboardingDobScreen() {
       title="BIRTHDAY"
       subtitle={'WHEN DID YOUR\nSTORY BEGIN?'}
       onBack={() => goBack('/onboarding/name')}
-      cta={{ text: 'START', onPress: handleNext, disabled: !isValid }}
+      cta={{ text: 'CONTINUE', onPress: handleNext, disabled: !isValid }}
     >
       <DobField value={dob} onChange={setDob} invalid={complete && !isValid} autoFocus />
 
