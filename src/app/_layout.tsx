@@ -147,7 +147,7 @@ function RootLayoutNav() {
   // Profile data loads in the background, so opening the profile never waits.
   useProfileDataSync(isAppReady);
   // Not during the Field Guide: its first steps would sit under the prompts.
-  useStartupPermissions(isAppReady && segments[0] !== "guide");
+  useStartupPermissions(isAppReady);
 
   const BaseTheme = isDark ? DarkTheme : DefaultTheme;
   const FoldTheme = {
@@ -197,7 +197,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isAppReady) {
       const inOnboarding = segments[0] === "onboarding";
-      const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose" || segments[0] === "memory" || segments[0] === "guide";
+      const isAllowedDuringOnboarding = inOnboarding || segments[0] === "compose" || segments[0] === "memory";
       
       if (!settings.hasOnboarded && !isAllowedDuringOnboarding) {
         setTimeout(() => {
@@ -225,13 +225,6 @@ function RootLayoutNav() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="onboarding" />
-              <Stack.Screen
-                name="guide"
-                options={{
-                  headerShown: false,
-                  animation: "slide_from_right",
-                }}
-              />
               <Stack.Screen
                 name="compose"
                 options={{

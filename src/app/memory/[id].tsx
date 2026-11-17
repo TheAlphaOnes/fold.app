@@ -20,7 +20,6 @@ import { useShareCard } from '@/components/share-card-host';
 import { DigitalAshOverlay } from '@/components/digital-ash-overlay';
 import { goBack, navigate } from '@/utils/navigation';
 import { saveToGallery } from '@/services/media-save.service';
-import { markGuideDone } from '@/services/guide-progress';
 
 /**
  * A memory, opened as a gallery: swipe through its words, photos, videos
@@ -167,10 +166,7 @@ export default function MemoryDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
 
-      <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={(next) => {
-        setPage(next);
-        if (next > 0) markGuideDone('pages');
-      }} />
+      <MemoryGallery slides={slides} width={width} height={height} index={page} focused={focused} onIndexChange={setPage} />
 
       {/* Top Action Bar */}
       <View style={[styles.topActionBar, { top: insets.top + 16 }]}>

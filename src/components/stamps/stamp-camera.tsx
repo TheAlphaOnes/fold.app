@@ -39,7 +39,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { hatchPath } from '@/utils/hatch';
 import { track, trackError } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { markGuideDone } from '@/services/guide-progress';
 import { lastKnownPlace, lookupLocation, type FoundPlace } from '@/services/location.service';
 import { formatSerial, isNewPlace, placeCount } from '@/stamps/geometry';
 import { goHome } from '@/utils/navigation';
@@ -165,7 +164,6 @@ export function StampCamera({ active, topInset, bottomInset, landing }: StampCam
       await FileSystem.moveAsync({ from: saved.uri, to: dest });
       const newPlace = isNewPlace(stamps, resolved.name);
       const createdAt = Date.now();
-      markGuideDone('stampmake');
       await add({ imageUri: dest, place: resolved.name, country: resolved.country, latitude: resolved.lat, longitude: resolved.lng, createdAt });
       track('stamp_made', { new_place: newPlace, serial: stamps.length + 1, place_count: placeCount(stamps) + (newPlace ? 1 : 0) });
       setMade({ uri: dest, place: resolved.name, createdAt, serial: stamps.length + 1, newPlace });

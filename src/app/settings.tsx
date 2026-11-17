@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, StyleSheet, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity, Compass } from 'lucide-react-native';
+import { Trash2, Moon, Sun, Smartphone, Calendar, CalendarDays, Infinity } from 'lucide-react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Location from 'expo-location';
 import { haptic } from '@/services/haptics';
@@ -26,7 +26,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   // Only the action: reading the store's state here would re-render Settings on every journal change.
   const removeAllCompositions = useJournalStore((state) => state.removeAllCompositions);
-  const { settings, updateSetting, resetGuide } = useSettingsStore();
+  const { settings, updateSetting } = useSettingsStore();
   // Live readout while the glow slider moves; null once the value is saved.
   const [glowDraft, setGlowDraft] = useState<number | null>(null);
   const glowPreview = glowDraft ?? settings.backdropIntensity;
@@ -359,7 +359,6 @@ export default function SettingsScreen() {
             onPress={async () => {
               haptic.press();
               await updateSetting('hasOnboarded', false);
-              await resetGuide();
               navigate.replace('/onboarding');
             }}
           >
@@ -369,21 +368,6 @@ export default function SettingsScreen() {
             </View>
           </Pressable>
 
-          <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
-
-          <Pressable 
-            style={({ pressed }) => [styles.actionRow, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={async () => {
-              haptic.press();
-              await resetGuide();
-              navigate.push({ pathname: '/guide', params: { step: 'write' } });
-            }}
-          >
-            <View style={styles.settingRowLeft}>
-              <Compass size={16} color={theme.text} />
-              <ThemedText style={[styles.settingText, { color: theme.text }]}>RESTART FIELD GUIDE</ThemedText>
-            </View>
-          </Pressable>
 
           <View style={[styles.hairlineDivider, { backgroundColor: theme.border }]} />
 

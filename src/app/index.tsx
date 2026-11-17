@@ -32,7 +32,6 @@ import { KeyCaption } from '@/components/home/key-caption';
 import { unlearnedGestures, type KeyGesture } from '@/home/key-hints';
 import { RecordingOverlay } from '@/components/recording-overlay';
 import { useQuickCapture } from '@/hooks/use-quick-capture';
-import { FieldGuideTab } from '@/components/field-guide-tab';
 import { EdgeTab } from '@/components/edge-tab';
 import { ProfileLayer } from '@/components/profile/profile-layer';
 import { useProfileVisibility } from '@/hooks/use-profile-visibility';
@@ -325,8 +324,6 @@ export default function HomeScreen() {
       <EdgeTab slot={0} onPress={() => useProfileVisibility.getState().openProfile()} accessibilityLabel="Profile">
         <User size={16} color={theme.text} strokeWidth={2.5} />
       </EdgeTab>
-
-      <FieldGuideTab />
 
       {(timelineKey !== null || timelineError) && timelineData.items.length === 0 ? (
         <EmptyState />

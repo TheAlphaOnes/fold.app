@@ -21,7 +21,7 @@ import { fadeIn, riseIn } from '@/constants/motion';
 import { useTheme } from '@/hooks/use-theme';
 import { haptic } from '@/services/haptics';
 
-export const ONBOARDING_STEPS = 4;
+export const ONBOARDING_STEPS = 2;
 
 interface OnboardingFrameProps {
   /** 1-based position in the setup flow. */

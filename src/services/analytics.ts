@@ -65,7 +65,7 @@ export interface AnalyticsEvents {
   // Onboarding funnel
   onboarding_started: Record<string, never>;
   onboarding_name_entered: Record<string, never>;
-  onboarding_completed: { age_range: string | null; took_tour: boolean };
+  onboarding_completed: { age_range: string | null };
 
   // Memories
   memory_created: MemoryShape & {
@@ -110,9 +110,6 @@ export interface AnalyticsEvents {
   // Permissions
   startup_permissions: { camera: boolean; microphone: boolean; photos: boolean; location: boolean };
 
-  // Field guide
-  guide_step_completed: { step: string; completed_count: number };
-  guide_reset: Record<string, never>;
 
   // Settings & support
   setting_changed: { setting: string; value: string | number | boolean };

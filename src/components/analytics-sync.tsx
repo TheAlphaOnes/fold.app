@@ -57,7 +57,6 @@ function usePreferenceProperties(enabled: boolean) {
 
   useEffect(() => {
     if (!enabled) return;
-    const completed = Object.values(settings.guideProgress).filter(Boolean).length;
     setPersonProperties({
       platform: Platform.OS,
       has_name: settings.name.length > 0,
@@ -72,7 +71,6 @@ function usePreferenceProperties(enabled: boolean) {
       auto_location: settings.autoLocationTagging,
       autoplay_audio: settings.autoPlayMusic,
       photo_glow: Math.round(settings.backdropIntensity * 100) / 100,
-      guide_completed: completed,
     });
   }, [enabled, settings]);
 }

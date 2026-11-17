@@ -30,7 +30,6 @@ import { useStamps } from '@/hooks/use-stamps';
 import { useTheme } from '@/hooks/use-theme';
 import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { markGuideDone } from '@/services/guide-progress';
 import { placeCount, regionFor, UNSTAMPED_REGION } from '@/stamps/geometry';
 import type { Stamp } from '@/types/stamp';
 import { navigate } from '@/utils/navigation';
@@ -43,7 +42,6 @@ const HOVER_STAMP = 150;
 const FOCUS_ZOOM = 11;
 
 export default function StampMap() {
-  useEffect(() => markGuideDone('stampmap'), []);
   const theme = useTheme();
 
   const insets = useSafeAreaInsets();

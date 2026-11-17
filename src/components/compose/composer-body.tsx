@@ -60,7 +60,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { useVoiceTake } from '@/hooks/use-voice-take';
 import { track, trackError, type CaptureSource } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
-import { markGuideDone } from '@/services/guide-progress';
 import { lookupLocation } from '@/services/location.service';
 import { canvasOf } from '@/templates/legacy';
 import { defaultTextSpot, frameMediaId, isBlankCard, newDoc, scatterSticker, shownMediaIds } from '@/templates/registry';
@@ -243,11 +242,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
 
   const pickTemplate = (template: TemplateId) => {
     c.setTemplate(template);
-    markGuideDone('template');
   };
 
   const onAdd = async (kind: AddKind) => {
-    markGuideDone('addrow');
     switch (kind) {
       case 'text':
         setEditing({ id: newId(), isNew: true });
@@ -501,18 +498,9 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
         {!templatesOpen && c.selectedFrame && frameMediaId(c.doc, c.selectedFrame) && (
           <FrameTools
             canFlip={c.selectedFrame !== 'background'}
-            onReplace={() => {
-              markGuideDone('frame');
-              fillFrame(c.selectedFrame!);
-            }}
-            onFlip={() => {
-              markGuideDone('frame');
-              c.mirrorCell(c.selectedFrame!);
-            }}
-            onRemove={() => {
-              markGuideDone('frame');
-              c.clearFrame(c.selectedFrame!);
-            }}
+            onReplace={() => fillFrame(c.selectedFrame!)}
+            onFlip={() => c.mirrorCell(c.selectedFrame!)}
+            onRemove={() => c.clearFrame(c.selectedFrame!)}
           />
         )}
       </Animated.View>
@@ -643,7 +631,6 @@ export function ComposerBody({ existing, sharedText, storyId, createdAt, templat
             return;
           }
           const m: MediaElement = { id: newId(), uri: dest, type: 'image', isStamp: true, x_pos: 0, y_pos: 0 };
-          markGuideDone('stampsticker');
           c.addLayer({ id: newId(), kind: 'stamp', mediaId: m.id, place: stamp.place, stampedAt: stamp.createdAt, x: 0.5, y: 0.4, scale: 1, rotation: -5 }, m);
           track('stamp_used_on_memory', {});
           haptic.thud();

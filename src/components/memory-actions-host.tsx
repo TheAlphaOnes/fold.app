@@ -14,7 +14,6 @@ import { MemoryActionsTray } from '@/components/memory-actions-tray';
 import { StoryPicker } from '@/components/story-picker';
 import { useJournalStore } from '@/hooks/use-journal';
 import { useMemoryActions } from '@/hooks/use-memory-actions';
-import { useSettingsStore } from '@/hooks/use-settings';
 import { haptic } from '@/services/haptics';
 import { saveToGallery } from '@/services/media-save.service';
 import type { Composition } from '@/types/journal';
@@ -36,7 +35,6 @@ export function MemoryActionsHost() {
   const close = useMemoryActions((state) => state.close);
   const removeComposition = useJournalStore((state) => state.removeComposition);
   const toggleStoryId = useJournalStore((state) => state.toggleStoryId);
-  const completeGuideStep = useSettingsStore((state) => state.completeGuideStep);
 
   // The memory an action is working on, kept after the menu closes.
   const [target, setTarget] = useState<Composition | null>(null);
@@ -56,10 +54,7 @@ export function MemoryActionsHost() {
 
   const shareCard = () => {
     setTarget(current);
-    void shareFlow.share(current, () => {
-      completeGuideStep('share');
-      onShared?.();
-    });
+    void shareFlow.share(current, () => onShared?.());
   };
 
   const confirmDelete = () => {

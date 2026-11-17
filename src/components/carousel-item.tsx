@@ -6,7 +6,6 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, interpolate, Extrapolation, type SharedValue } from 'react-native-reanimated';
 
 import { useMemoryActions } from '@/hooks/use-memory-actions';
-import { useSettingsStore } from '@/hooks/use-settings';
 import { MemoryCanvasCard } from '@/components/memory-canvas-card';
 import { useJournalStore } from '@/hooks/use-journal';
 import type { Composition } from '@/types/journal';
@@ -33,7 +32,6 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   const isActive = useJournalStore((s) => s.activeCompositionId === item.id);
   const isFocused = useIsFocused();
   const live = isActive && isFocused;
-  const completeGuideStep = useSettingsStore((s) => s.completeGuideStep);
   
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
@@ -57,7 +55,6 @@ export const CarouselItem = memo(function CarouselItem({ item, itemOffset, snapI
   });
 
   const navigateToDetail = () => {
-    completeGuideStep('inspect');
     onOpen?.();
     navigate.push(`/memory/${item.id}`);
   };
