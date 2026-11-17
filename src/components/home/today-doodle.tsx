@@ -1,25 +1,29 @@
 /**
- * TodayDoodle — home's first page: today's doodle.
+ * TodayDoodle — home's first page: today's doodle, set on the page itself,
+ * not in a card. Today is not a memory yet, so it shouldn't wear a memory
+ * card's frame.
  *
  *   not yet kept                  kept
  *   ┌──────────────────────┐      ┌──────────────────────┐
- *   │ TUE 17.11    No. 321 │      │ TUE 17.11    No. 321 │
+ *   │ TUE 17.11   No. 322 ?│      │ TUE 17.11      No. 322│
  *   │                      │      │                      │
  *   │      ( ghosted )     │      │      ( doodle )      │  full colour,
  *   │                      │      │                      │  gently boiling
- *   │ keep a moment today  │      │       little deer    │
- *   │ to reveal it.        │      │ kept today · 05 this │
- *   │ [photo][write][voice]│      │              month   │
+ *   │ keep today with the  │      │       star anise     │
+ *   │        key.          │      │ kept today · 07 this │
+ *   │          ↓           │      │              month   │
  *   └──────────────────────┘      └──────────────────────┘
  *
- * Keeping anything today earns the doodle (see DoodleReveal on home); the
- * earned card opens it large in the spotlight.
+ * The arrow points down at the orange key, the one place that keeps today;
+ * there are no second and third capture buttons on the page. Keeping
+ * anything earns the doodle (see DoodleReveal on home), and the earned page
+ * opens it large in the spotlight.
  */
 
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Camera, Mic, PenLine, type LucideIcon } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { BalancedText } from '@/components/balanced-text';
 import { ThemedText } from '@/components/themed-text';
@@ -34,50 +38,28 @@ const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 interface TodayDoodleProps {
   width: number;
   height: number;
-  onPhoto: () => void;
-  onWrite: () => void;
-  onVoice: () => void;
   /** Something was kept today: the doodle is earned. */
   kept?: boolean;
-  /** Days kept this month, shown on the earned card. */
+  /** Days kept this month, shown on the earned page. */
   monthDays?: number;
   /** Opens the earned doodle large. */
   onOpen?: () => void;
 }
 
-export function TodayDoodle({
-  width,
-  height,
-  onPhoto,
-  onWrite,
-  onVoice,
-  kept = false,
-  monthDays,
-  onOpen,
-}: TodayDoodleProps) {
+export function TodayDoodle({ width, height, kept = false, monthDays, onOpen }: TodayDoodleProps) {
   const theme = useTheme();
   const today = new Date();
   const doodle = doodleForDate(today);
-  const art = Math.min(width * 0.62, height * 0.42);
+  const art = Math.min(width * 0.66, height * 0.44);
   const stamp = `${DAYS[today.getDay()]} ${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}`;
   const serial = serialOf(slotOf(today));
-  const actions: { label: string; icon: LucideIcon; onPress: () => void }[] = [
-    { label: 'PHOTO', icon: Camera, onPress: onPhoto },
-    { label: 'WRITE', icon: PenLine, onPress: onWrite },
-    { label: 'VOICE', icon: Mic, onPress: onVoice },
-  ];
   const earnedLine = monthDays === undefined ? 'kept today' : `kept today · ${String(monthDays).padStart(2, '0')} this month`;
 
   const page = (
-    <View
-      style={[
-        styles.page,
-        { width: width - 32, height: height - 24, borderColor: theme.border, backgroundColor: theme.backgroundElement },
-      ]}
-    >
+    <View style={[styles.page, { width: width - 48, height: height - 16 }]}>
       <View style={styles.top}>
-        <ThemedText style={[Type.rail, styles.stamp, { color: theme.text }]}>{stamp.toUpperCase()}</ThemedText>
-        <ThemedText style={[Type.rail, { color: theme.accentWarm }]}>
+        <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`${stamp.toUpperCase()} `}</ThemedText>
+        <ThemedText style={[Type.rail, { color: kept ? theme.accentWarm : theme.textMuted }]}>
           {kept ? serial.toUpperCase() : `${serial.toUpperCase()} · ?`}
         </ThemedText>
       </View>
@@ -94,7 +76,7 @@ export function TodayDoodle({
             <DayDoodle doodle={doodle} size={art} moving />
           </Animated.View>
         ) : (
-          <View style={{ opacity: 0.14 }}>
+          <View style={{ opacity: 0.22 }}>
             <DayDoodle doodle={doodle} size={art} moving={false} />
           </View>
         )}
@@ -107,27 +89,29 @@ export function TodayDoodle({
         </Animated.View>
       ) : (
         <Animated.View entering={FadeIn.delay(160).duration(320)} style={styles.bottom}>
-          <BalancedText style={[styles.line, { color: theme.text }]}>keep a moment today to reveal it.</BalancedText>
-          <View style={styles.actions}>
-            {actions.map(({ label, icon: Icon, onPress }) => (
-              <Pressable
-                key={label}
-                onPress={() => {
-                  haptic.press();
-                  onPress();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={label.toLowerCase()}
-                style={({ pressed }) => [
-                  styles.action,
-                  { borderColor: theme.border, backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                <Icon size={18} color={theme.text} />
-                <ThemedText style={[styles.actionText, { color: theme.text }]}>{label}</ThemedText>
-              </Pressable>
-            ))}
-          </View>
+          <BalancedText style={[styles.line, { color: theme.textMuted }]}>
+            keep today with the key.
+          </BalancedText>
+          {/* A hand-drawn arrow down to the orange key, the one way in. */}
+          <Svg width={48} height={68} viewBox="0 0 48 68" style={styles.arrow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Path
+              d="M25 3 C 30 19, 20 35, 25 52"
+              stroke={theme.accentWarm}
+              strokeWidth={1.8}
+              strokeOpacity={0.85}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path
+              d="M16 44 L25 55 L34 44"
+              stroke={theme.accentWarm}
+              strokeWidth={1.8}
+              strokeOpacity={0.85}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
         </Animated.View>
       )}
     </View>
@@ -150,17 +134,12 @@ export function TodayDoodle({
 }
 
 const styles = StyleSheet.create({
-  page: { borderWidth: 1, borderRadius: 22, padding: 18, overflow: 'hidden' },
-  top: { flexDirection: 'row', justifyContent: 'space-between' },
-  // iOS measures a letter-spaced run without its trailing gap, which clips
-  // the last glyph; the padding keeps the full date inside the text's bounds.
-  stamp: { paddingRight: 3 },
+  page: { justifyContent: 'space-between' },
+  top: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 4 },
   middle: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  bottom: { gap: 14 },
+  bottom: { alignItems: 'center', gap: 6, paddingBottom: 4 },
   line: { fontFamily: 'JetBrainsMono-Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  actions: { flexDirection: 'row', gap: 8 },
-  action: { flex: 1, height: 64, borderWidth: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  actionText: { fontFamily: 'JetBrainsMono-Medium', fontSize: 10, letterSpacing: 1.2 },
-  earned: { alignItems: 'center', gap: 6, paddingBottom: 4 },
-  name: { fontFamily: 'JetBrainsMono-Medium', fontSize: 18 },
+  arrow: { marginTop: 2 },
+  earned: { alignItems: 'center', gap: 8, paddingBottom: 14 },
+  name: { fontFamily: 'JetBrainsMono-Medium', fontSize: 20 },
 });

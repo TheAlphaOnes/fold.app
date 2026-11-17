@@ -89,7 +89,7 @@ export default function CanvasGallery() {
     <View style={{ flex: 1 }}>
     <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 60, paddingHorizontal: 16, gap: 28 }}>
       {/* Today's page, as it sits in the feed before anything is kept. */}
-      <TodayDoodle width={340} height={520} onPhoto={() => undefined} onWrite={() => undefined} onVoice={() => undefined} />
+      <TodayDoodle width={340} height={520} />
       {/* The orange key teaching all three gestures, to check the hint and the key's act-outs. */}
       <KeyHintSample />
       {/* A stamp (collection tile and hover size), to check the paper and postmark. */}

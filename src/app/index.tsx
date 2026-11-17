@@ -52,7 +52,6 @@ import type { AlmanacDay } from '@/doodles/almanac';
 import { slotOf } from '@/doodles/library';
 import { useDoodleReveal } from '@/hooks/use-doodle-reveal';
 import { useProfileDataStore } from '@/hooks/use-profile-data';
-import { track } from '@/services/analytics';
 import { haptic } from '@/services/haptics';
 import { toDayKey } from '@/utils/format-date';
 import { navigate } from '@/utils/navigation';
@@ -116,7 +115,6 @@ export default function HomeScreen() {
       true,
     );
   }, [timelineSpine, settings.timelineMode, snapInterval]);
-  const { capturePhoto, startRecording } = quickCapture;
 
   
   // Ensure we are viewing today's data on the home screen
@@ -322,18 +320,6 @@ export default function HomeScreen() {
                 isFuture: false,
               });
             }}
-            onPhoto={() => {
-              track('today_action', { action: 'photo' });
-              capturePhoto();
-            }}
-            onWrite={() => {
-              track('today_action', { action: 'write' });
-              navigate.push('/compose');
-            }}
-            onVoice={() => {
-              track('today_action', { action: 'voice' });
-              startRecording();
-            }}
           />
         </View>
       );
@@ -351,7 +337,7 @@ export default function HomeScreen() {
         scrollY={scrollY}
       />
     );
-  }, [snapInterval, cardHeight, scrollY, width, capturePhoto, startRecording, kept, monthDays]);
+  }, [snapInterval, cardHeight, scrollY, width, kept, monthDays]);
 
   return (
     // Clean background
