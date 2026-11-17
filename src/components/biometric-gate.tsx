@@ -44,6 +44,12 @@ function failureCopy(error: LocalAuthentication.LocalAuthenticationError | undef
 
 export const BiometricContext = React.createContext({ isLocked: false });
 
+/**
+ * How long Fold must be away before it asks again on return. Long enough
+ * that a camera, picker or recording hand-off never triggers it.
+ */
+const RELOCK_AFTER_AWAY_MS = 5 * 60 * 1000;
+
 export function BiometricGate({ children }: BiometricGateProps) {
   const { settings, loading } = useSettings();
   const { colors } = useThemeContext();
@@ -54,9 +60,10 @@ export function BiometricGate({ children }: BiometricGateProps) {
   const [authStatus, setAuthStatus] = useState<'idle' | 'authenticating' | 'success'>('idle');
   const initialMount = useRef(true);
 
-  // Debounce re-lock after system dialogs (permission prompts, Face ID, etc.)
-  const lastUnlockTime = useRef(0);
-  const RELOCK_DEBOUNCE_MS = 1500;
+  // The lock asks when Fold is opened, not mid-use. Taking a photo or video,
+  // picking media or recording hands off to the system and back, which is a
+  // trip to the background; only a real absence re-locks.
+  const leftAt = useRef(0);
 
   // Reanimated values
   const overlayOpacity = useSharedValue(1);
@@ -65,7 +72,6 @@ export function BiometricGate({ children }: BiometricGateProps) {
 
   const handleSuccess = () => {
     setAuthStatus('success');
-    lastUnlockTime.current = Date.now();
     
     // Smooth fade out without bouncing
     coreOpacity.value = withTiming(0, { duration: 300 });
@@ -168,8 +174,8 @@ export function BiometricGate({ children }: BiometricGateProps) {
         // A prompt that was open when the app left is gone; never let it
         // leave the gate stuck in "authenticating" with no way to retry.
         inFlight.current = false;
-        const elapsed = Date.now() - lastUnlockTime.current;
-        if (settings.requireBiometrics && !initialMount.current && elapsed > RELOCK_DEBOUNCE_MS) {
+        const away = leftAt.current > 0 ? Date.now() - leftAt.current : 0;
+        if (settings.requireBiometrics && !initialMount.current && away > RELOCK_AFTER_AWAY_MS) {
           setIsLocked(true);
           resetAnimation();
           authenticateRef.current();
@@ -181,12 +187,9 @@ export function BiometricGate({ children }: BiometricGateProps) {
       else if (prev === 'active' && nextAppState === 'background') {
         // Close any open prompt so it cannot resolve into a stale state.
         LocalAuthentication.cancelAuthenticate().catch(() => {});
+        leftAt.current = Date.now();
         if (settings.privacyScreen) {
           setShowPrivacy(true);
-        }
-        if (settings.requireBiometrics) {
-          setIsLocked(true);
-          resetAnimation();
         }
       }
       // Handle inactive for privacy screen only (app switcher preview)
