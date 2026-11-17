@@ -2,15 +2,20 @@
  * Almanac — the whole year of doodles, opened from the profile's card.
  * Twelve months in order, each kept day showing its date's doodle; tap a
  * lived day to open it in the Time Machine. The current month boils; the
- * rest stay still, so a full year on screen stays light.
+ * rest stay still, so a full year on screen stays light. Share sends the
+ * whole year as one picture (see YearShareCard).
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import { Share2 } from 'lucide-react-native';
+import { captureRef } from 'react-native-view-shot';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlmanacGrid } from '@/components/almanac/almanac-grid';
+import { YEAR_CARD_HEIGHT, YEAR_CARD_WIDTH, YearShareCard } from '@/components/almanac/year-share-card';
 import { CloseButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn } from '@/constants/motion';
@@ -43,6 +48,22 @@ export default function AlmanacScreen() {
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const placed = useRef(false);
 
+  // The year picture is only built while sharing: laid out off screen, then
+  // captured once it has drawn.
+  const shareRef = useRef<React.ComponentRef<typeof View>>(null);
+  const [composing, setComposing] = useState(false);
+  const capture = async () => {
+    try {
+      const uri = await captureRef(shareRef, { format: 'png', quality: 1, width: YEAR_CARD_WIDTH * 3, height: YEAR_CARD_HEIGHT * 3 });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { dialogTitle: `Share ${year}`, mimeType: 'image/png' });
+    } catch (error) {
+      console.warn('Failed to share the year', error);
+      Alert.alert('Couldn’t share', 'Please try again.');
+    } finally {
+      setComposing(false);
+    }
+  };
+
   return (
     <View style={[styles.page, { backgroundColor: theme.background }]}>
       <View style={[styles.bar, { paddingTop: insets.top + 8 }]}>
@@ -51,7 +72,20 @@ export default function AlmanacScreen() {
           <ThemedText style={[styles.year, { color: theme.text }]}>{String(year)}</ThemedText>
           <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`ALMANAC · ${String(kept).padStart(3, '0')} / ${total}`}</ThemedText>
         </View>
-        <View style={styles.spacer} />
+        <Pressable
+          onPress={() => {
+            if (composing) return;
+            haptic.tap();
+            setComposing(true);
+          }}
+          disabled={composing}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={`Share ${year} as a picture`}
+          style={({ pressed }) => [styles.share, { borderColor: theme.border, opacity: pressed || composing ? 0.5 : 1 }]}
+        >
+          <Share2 size={16} color={theme.text} />
+        </Pressable>
       </View>
       <ScrollView ref={scroll} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}>
         {months.map((m, i) => (
@@ -81,6 +115,16 @@ export default function AlmanacScreen() {
           </Animated.View>
         ))}
       </ScrollView>
+      {composing && (
+        <View
+          style={styles.offscreen}
+          pointerEvents="none"
+          // Give the doodles a frame to draw before capturing.
+          onLayout={() => requestAnimationFrame(() => setTimeout(capture, 120))}
+        >
+          <YearShareCard ref={shareRef} months={months} year={year} kept={kept} total={total} />
+        </View>
+      )}
     </View>
   );
 }
@@ -90,7 +134,8 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
   title: { alignItems: 'center', gap: 2 },
   year: { fontFamily: 'JetBrainsMono-Medium', fontSize: 15, letterSpacing: 2 },
-  spacer: { width: 44 },
+  share: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  offscreen: { position: 'absolute', left: -10000, top: 0 },
   month: { marginTop: 18 },
   monthHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
 });
