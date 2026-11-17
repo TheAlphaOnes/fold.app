@@ -89,7 +89,7 @@ export interface AnalyticsEvents {
   // Progress
   ink_earned: { points: number; month_total: number; record: number; is_record_month: boolean; streak: number };
   streak_extended: { streak: number; is_best: boolean };
-  achievement_shared: { streak: number; ink: number };
+  year_shared: { kept: number };
 
   // Stamps — places only as counts and a yes/no; never a place name.
   stamp_made: { new_place: boolean; serial: number; place_count: number };

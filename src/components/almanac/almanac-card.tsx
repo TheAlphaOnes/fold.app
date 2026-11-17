@@ -1,8 +1,8 @@
 /**
  * AlmanacCard — the profile's activity card: this month as doodles. Every
  * day a memory was kept shows that date's doodle; the rest are dots. The
- * card opens the whole year (/almanac); the share icon keeps opening the
- * achievement card.
+ * card opens the whole year (/almanac); the share icon sends the whole
+ * year as one picture.
  *
  * Counts come from the profile cache (this year, live memories only).
  */
@@ -13,6 +13,7 @@ import Animated from 'react-native-reanimated';
 import { ChevronRight, Share2 } from 'lucide-react-native';
 
 import { ALMANAC_COLUMNS, AlmanacGrid } from '@/components/almanac/almanac-grid';
+import { useYearShare } from '@/components/almanac/use-year-share';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn } from '@/constants/motion';
 import { Type } from '@/constants/theme';
@@ -48,6 +49,7 @@ export function AlmanacCard() {
   const keptYear = useMemo(() => Object.entries(counts).filter(([k, n]) => n > 0 && k.startsWith(`${now.getFullYear()}-`)).length, [counts, now]);
 
   const cell = almanacCell(width);
+  const yearShare = useYearShare();
 
   const open = () => {
     haptic.press();
@@ -83,18 +85,17 @@ export function AlmanacCard() {
       <Animated.View entering={fadeIn(240, 300)} style={styles.footer}>
         <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`ALMANAC · ${pad3(keptYear)} DAYS`}</ThemedText>
         <Pressable
-          onPress={() => {
-            haptic.tap();
-            navigate.push('/achievement');
-          }}
+          onPress={yearShare.share}
+          disabled={yearShare.sharing}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Share your achievement"
-          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+          accessibilityLabel="Share your year as a picture"
+          style={({ pressed }) => ({ opacity: pressed || yearShare.sharing ? 0.5 : 1 })}
         >
           <Share2 size={16} color={theme.textMuted} />
         </Pressable>
       </Animated.View>
+      {yearShare.element}
     </Pressable>
   );
 }

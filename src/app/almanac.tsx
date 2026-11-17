@@ -7,15 +7,13 @@
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import * as Sharing from 'expo-sharing';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Share2 } from 'lucide-react-native';
-import { captureRef } from 'react-native-view-shot';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AlmanacGrid } from '@/components/almanac/almanac-grid';
-import { YEAR_CARD_HEIGHT, YEAR_CARD_WIDTH, YearShareCard } from '@/components/almanac/year-share-card';
+import { useYearShare } from '@/components/almanac/use-year-share';
 import { CloseButton } from '@/components/round-button';
 import { ThemedText } from '@/components/themed-text';
 import { fadeIn } from '@/constants/motion';
@@ -48,21 +46,7 @@ export default function AlmanacScreen() {
   const scroll = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const placed = useRef(false);
 
-  // The year picture is only built while sharing: laid out off screen, then
-  // captured once it has drawn.
-  const shareRef = useRef<React.ComponentRef<typeof View>>(null);
-  const [composing, setComposing] = useState(false);
-  const capture = async () => {
-    try {
-      const uri = await captureRef(shareRef, { format: 'png', quality: 1, width: YEAR_CARD_WIDTH * 3, height: YEAR_CARD_HEIGHT * 3 });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { dialogTitle: `Share ${year}`, mimeType: 'image/png' });
-    } catch (error) {
-      console.warn('Failed to share the year', error);
-      Alert.alert('Couldn’t share', 'Please try again.');
-    } finally {
-      setComposing(false);
-    }
-  };
+  const yearShare = useYearShare();
 
   return (
     <View style={[styles.page, { backgroundColor: theme.background }]}>
@@ -73,16 +57,12 @@ export default function AlmanacScreen() {
           <ThemedText style={[Type.rail, { color: theme.textMuted }]}>{`ALMANAC · ${String(kept).padStart(3, '0')} / ${total}`}</ThemedText>
         </View>
         <Pressable
-          onPress={() => {
-            if (composing) return;
-            haptic.tap();
-            setComposing(true);
-          }}
-          disabled={composing}
+          onPress={yearShare.share}
+          disabled={yearShare.sharing}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={`Share ${year} as a picture`}
-          style={({ pressed }) => [styles.share, { borderColor: theme.border, opacity: pressed || composing ? 0.5 : 1 }]}
+          style={({ pressed }) => [styles.share, { borderColor: theme.border, opacity: pressed || yearShare.sharing ? 0.5 : 1 }]}
         >
           <Share2 size={16} color={theme.text} />
         </Pressable>
@@ -115,16 +95,7 @@ export default function AlmanacScreen() {
           </Animated.View>
         ))}
       </ScrollView>
-      {composing && (
-        <View
-          style={styles.offscreen}
-          pointerEvents="none"
-          // Give the doodles a frame to draw before capturing.
-          onLayout={() => requestAnimationFrame(() => setTimeout(capture, 120))}
-        >
-          <YearShareCard ref={shareRef} months={months} year={year} kept={kept} total={total} />
-        </View>
-      )}
+      {yearShare.element}
     </View>
   );
 }
@@ -135,7 +106,6 @@ const styles = StyleSheet.create({
   title: { alignItems: 'center', gap: 2 },
   year: { fontFamily: 'JetBrainsMono-Medium', fontSize: 15, letterSpacing: 2 },
   share: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  offscreen: { position: 'absolute', left: -10000, top: 0 },
   month: { marginTop: 18 },
   monthHead: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
 });
